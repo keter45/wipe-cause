@@ -89,6 +89,7 @@
     { "id": 633, "name": "Lay on Hands", "class": "Paladin", "cd": 600, "kind": "personal" },
     { "id": 31850, "name": "Ardent Defender", "class": "Paladin", "cd": 120, "kind": "personal" },
     { "id": 86659, "name": "Guardian of Ancient Kings", "class": "Paladin", "cd": 300, "kind": "personal" },
+    { "id": 212641, "name": "Guardian of Ancient Kings", "class": "Paladin", "cd": 300, "kind": "personal" },
     { "id": 1022, "name": "Blessing of Protection", "class": "Paladin", "cd": 300, "kind": "external" },
     { "id": 6940, "name": "Blessing of Sacrifice", "class": "Paladin", "cd": 120, "kind": "external" },
 

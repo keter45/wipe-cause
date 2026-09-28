@@ -30,7 +30,8 @@ const q = (s) => `"${s}"`;
 const unit = (u) => (u ? [u.guid, q(u.name), u.flags, '0x0'] : NIL);
 function adv(u, owner = '0000000000000000') {
   const cur = hp.has(u.guid) ? hp.get(u.guid) : u.maxHp;
-  return [u.guid, owner, cur, u.maxHp, 0, 0, 5000, 0, 0, 100, 100, 0, '1234.50', '-567.80', 2900, '1.5708', 620];
+  // 19 campos, como no build 12.1 (ver linhas reais: guid,owner,hp,maxHp,...,posX,posY,uiMapID,facing,level)
+  return [u.guid, owner, cur, u.maxHp, 0, 0, 5000, 0, 0, 100, 0, 100, 100, 0, '1234.50', '-567.80', 2900, '1.5708', 620];
 }
 function line(t, fields) {
   out.push({ t, text: `${ts(t)}  ${fields.join(',')}` });
@@ -54,7 +55,8 @@ function damage(t, src, dst, spellId, spellName, amount, { swing = false } = {})
 function heal(t, src, dst, spellId, spellName, amount, overheal = 0) {
   const cur = hp.has(dst.guid) ? hp.get(dst.guid) : dst.maxHp;
   setHp(dst, Math.min(dst.maxHp, cur + amount - overheal));
-  line(t, ['SPELL_HEAL', ...unit(src), ...unit(dst), spellId, q(spellName), '0x2', ...adv(dst), amount, amount, overheal, 0, 'nil']);
+  // sufixo 12.x: efetivo, total, absorvido, overheal, crit
+  line(t, ['SPELL_HEAL', ...unit(src), ...unit(dst), spellId, q(spellName), '0x2', ...adv(dst), amount - overheal, amount, 0, overheal, 'nil']);
 }
 function cast(t, src, spellId, spellName, owner) {
   line(t, ['SPELL_CAST_SUCCESS', ...unit(src), ...NIL, spellId, q(spellName), '0x1', ...adv(src, owner)]);
@@ -63,7 +65,7 @@ function died(t, u) {
   line(t, ['UNIT_DIED', ...NIL, ...unit(u), 0]);
 }
 function combatant(t, u, spec) {
-  const stats = Array.from({ length: 21 }, (_, i) => 100 + i);
+  const stats = Array.from({ length: 22 }, (_, i) => 100 + i); // 22 stats no 12.x
   line(t, ['COMBATANT_INFO', u.guid, 0, ...stats, spec, '[(1,2,1),(3,4,1)]', '(0,0,0,0)', '[(212345,639,(),(1,2),())]', `[${u.guid},1234,1]`, 0, 0, 0]);
 }
 

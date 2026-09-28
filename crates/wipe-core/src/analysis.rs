@@ -17,7 +17,8 @@ const NIL_GUID: &str = "0000000000000000";
 const AFFILIATION_GROUP: u32 = 0x1 | 0x2 | 0x4;
 const REACTION_HOSTILE_OR_NEUTRAL: u32 = 0x40 | 0x20;
 const TYPE_PLAYER: u32 = 0x400;
-const ADVANCED_LEN: usize = 17;
+/// Tamanhos conhecidos do bloco advanced: 19 no 12.x, 17 em versões anteriores.
+const ADVANCED_LENS: [usize; 5] = [19, 17, 20, 21, 18];
 
 fn hex(s: &str) -> u32 {
     u32::from_str_radix(s.trim_start_matches("0x"), 16).unwrap_or(0)
@@ -42,15 +43,33 @@ struct Advanced<'a> {
     owner_guid: &'a str,
     hp: i64,
     max_hp: i64,
+    /// quantidade de campos do bloco (varia entre patches)
+    len: usize,
 }
 
+fn is_decimal(s: &str) -> bool {
+    s.contains('.') && s.parse::<f64>().is_ok()
+}
+
+/// O bloco começa com guid,owner,hp,maxHp e termina com posX,posY,uiMapID,facing,level.
+/// Os campos do meio mudam entre patches, então o tamanho é descoberto pelo formato do final.
 fn advanced_at<'a>(f: &[&'a str], at: usize) -> Option<Advanced<'a>> {
-    if f.len() < at + ADVANCED_LEN || !is_guid_like(f[at]) {
+    if f.len() < at + 17 || !is_guid_like(f[at]) {
         return None;
     }
     let hp = f[at + 2].parse::<i64>().ok()?;
     let max_hp = f[at + 3].parse::<i64>().ok()?;
-    Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp })
+    let len = ADVANCED_LENS.into_iter().find(|&len| {
+        f.len() >= at + len && {
+            let end = &f[at + len - 5..at + len];
+            is_decimal(end[0])
+                && is_decimal(end[1])
+                && end[2].parse::<i64>().is_ok()
+                && is_decimal(end[3])
+                && end[4].parse::<i64>().is_ok()
+        }
+    })?;
+    Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp, len })
 }
 
 #[derive(Default)]
@@ -218,8 +237,7 @@ impl PullBuilder {
             "SPELL_DAMAGE" | "SPELL_PERIODIC_DAMAGE" | "RANGE_DAMAGE" | "SPELL_BUILDING_DAMAGE" => {
                 self.damage(f, t, 12)
             }
-            "SWING_DAMAGE" => self.damage(f, t, 9),
-            "ENVIRONMENTAL_DAMAGE" => self.damage(f, t, 10),
+            "SWING_DAMAGE" | "ENVIRONMENTAL_DAMAGE" => self.damage(f, t, 9),
             "SWING_DAMAGE_LANDED" => {
                 if let Some(adv) = advanced_at(f, 9) {
                     self.track_advanced(&adv, f);
@@ -239,22 +257,36 @@ impl PullBuilder {
     }
 
     fn combatant_info(&mut self, f: &[&str]) {
-        // COMBATANT_INFO,guid,faction,21 stats...,specID,[talentos],...
+        // COMBATANT_INFO,guid,faction,<stats>,specID,[talentos],...
+        // A quantidade de stats muda entre patches (21 no 11.x, 22 no 12.x): a spec é o campo
+        // imediatamente antes da lista de talentos.
         let Some(guid) = f.get(1) else { return };
-        let spec = f.get(24).and_then(|v| v.parse::<u32>().ok());
+        let spec = f
+            .iter()
+            .position(|v| v.starts_with('['))
+            .and_then(|i| f.get(i.checked_sub(1)?))
+            .and_then(|v| v.parse::<u32>().ok());
         let p = self.players.entry(guid.to_string()).or_default();
         if spec.is_some() {
             p.spec_id = spec;
         }
     }
 
-    /// `prefix_end`: índice onde começa o bloco advanced (ou o sufixo, sem advanced).
-    fn damage(&mut self, f: &[&str], t: i64, prefix_end: usize) {
-        let adv = advanced_at(f, prefix_end);
+    /// `adv_at`: índice onde começa o bloco advanced (depois do prefixo spell, se houver).
+    /// Sufixo de dano: amount, baseAmount, overkill, school, resisted, blocked, absorbed, critical, ...
+    fn damage(&mut self, f: &[&str], t: i64, adv_at: usize) {
+        let adv = advanced_at(f, adv_at);
         if let Some(a) = &adv {
             self.track_advanced(a, f);
         }
-        let s = prefix_end + if adv.is_some() { ADVANCED_LEN } else { 0 };
+        let mut s = adv_at + adv.as_ref().map_or(0, |a| a.len);
+        // ENVIRONMENTAL_DAMAGE: o tipo (Falling, Lava, ...) vem depois do bloco advanced
+        let env_type = if f[0] == "ENVIRONMENTAL_DAMAGE" {
+            s += 1;
+            f.get(s - 1).copied().unwrap_or("Ambiente")
+        } else {
+            ""
+        };
         if f.len() <= s {
             return;
         }
@@ -266,7 +298,7 @@ impl PullBuilder {
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
         let (spell_id, spell_name) = match f[0] {
             "SWING_DAMAGE" => (1u32, "Melee".to_string()),
-            "ENVIRONMENTAL_DAMAGE" => (0u32, f[9].to_string()),
+            "ENVIRONMENTAL_DAMAGE" => (0u32, env_type.to_string()),
             _ => (f[9].parse().unwrap_or(0), f[10].to_string()),
         };
 
@@ -280,7 +312,11 @@ impl PullBuilder {
 
         // dano tomado por player
         if Self::is_group_player(dst_guid, dst_flags) {
-            let source_label = if src_name == "nil" || src_name.is_empty() { "Ambiente".to_string() } else { src_name.to_string() };
+            let source_label = match (src_name, f[0]) {
+                (_, "ENVIRONMENTAL_DAMAGE") => "Ambiente".to_string(),
+                ("nil" | "", _) => "(sem origem)".to_string(),
+                (name, _) => name.to_string(),
+            };
             if Self::is_enemy(src_guid, src_flags) || src_guid == NIL_GUID {
                 let e = self.enemy_spells.entry(spell_id).or_default();
                 e.name = spell_name.clone();
@@ -325,12 +361,13 @@ impl PullBuilder {
         if let Some(a) = &adv {
             self.track_advanced(a, f);
         }
-        let s = 12 + if adv.is_some() { ADVANCED_LEN } else { 0 };
-        // Sufixo: amount, baseAmount, overheal, absorbed, critical. A ordem dos dois
-        // primeiros variou entre versões; o maior dos dois é o total com overheal.
-        let total = num(f.get(s)).max(num(f.get(s + 1)));
-        let overheal = num(f.get(s + 2)).max(0);
-        let effective = (total - overheal).max(0);
+        let s = 12 + adv.as_ref().map_or(0, |a| a.len);
+        let effective = match f.len().saturating_sub(s) {
+            // 12.x: effective, total, absorbed, overheal, critical
+            5.. => (num(f.get(s + 1)) - num(f.get(s + 3)).max(0)).max(0),
+            // formato antigo: amount, overheal, absorbed, critical
+            _ => (num(f.get(s)) - num(f.get(s + 1)).max(0)).max(0),
+        };
 
         let (src_guid, src_name, src_flags) = (f[1], f[2], hex(f[3]));
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
@@ -686,4 +723,42 @@ pub(crate) fn finalize(finished: Vec<FinishedPull>, data: &GameData) -> Vec<Pull
             pull
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tokenizer::split_fields;
+
+    // Linhas reais do build 12.1.0 (nomes trocados).
+    const DMG_12_1: &str = "SPELL_DAMAGE,Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000,Creature-0-3778-3004-13995-257361-000035B455,\"Vexhul\",0x10a48,0x80000000,8092,\"Mind Blast\",0x20,Creature-0-3778-3004-13995-257361-000035B455,0000000000000000,734281151,734324750,0,0,1470,0,0,0,3,0,100,0,691.57,16.16,2607,3.4732,93,37899,36794,-1,32,0,0,0,nil,nil,nil,ST";
+    const ENV_12_1: &str = "ENVIRONMENTAL_DAMAGE,0000000000000000,nil,0x80000000,0x80000000,Player-3209-0B7FC6E4,\"Fulano-Azralon-US\",0x514,0x80000000,Player-3209-0B7FC6E4,0000000000000000,1089460,1243920,4250,657,7380,598,116,0,0,250000,250000,0,530.82,0.16,2607,0.0006,324,Falling,44148,44148,0,1,0,0,0,nil,nil,nil";
+
+    #[test]
+    fn detects_advanced_block_length() {
+        let mut f = Vec::new();
+        split_fields(DMG_12_1, &mut f);
+        let a = advanced_at(&f, 12).unwrap();
+        assert_eq!((a.len, a.hp, a.max_hp), (19, 734281151, 734324750));
+        assert_eq!(f[12 + a.len], "37899");
+
+        // formato antigo com 17 campos
+        let legacy = "SPELL_DAMAGE,Player-1-A,\"A\",0x514,0x0,Creature-0-1-2-3-4-5,\"B\",0x10a48,0x0,1,\"X\",0x1,Creature-0-1-2-3-4-5,0000000000000000,50,100,0,0,0,0,0,0,0,0,1.00,2.00,2607,0.5000,80,10,10,-1,1,0,0,0,nil,nil,nil";
+        split_fields(legacy, &mut f);
+        assert_eq!(advanced_at(&f, 12).unwrap().len, 17);
+    }
+
+    #[test]
+    fn environmental_damage_reads_type_after_advanced() {
+        let data = GameData::embedded();
+        let start = ["ENCOUNTER_START", "1", "Boss", "16", "20", "1"];
+        let mut b = PullBuilder::start(&start, 0, "", 0.0);
+        let mut f = Vec::new();
+        split_fields(ENV_12_1, &mut f);
+        b.feed(&f, 1000, &data);
+        let p = b.players.get("Player-3209-0B7FC6E4").unwrap();
+        assert_eq!(p.damage_taken, 44148);
+        let e = p.recap.back().unwrap();
+        assert_eq!((e.spell_name.as_str(), e.source.as_str()), ("Falling", "Ambiente"));
+    }
 }

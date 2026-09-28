@@ -70,7 +70,11 @@ impl GameData {
 
     pub fn consumable(&self, spell_id: u32, spell_name: &str) -> Option<Consumable> {
         let name = spell_name.to_lowercase();
-        let hit = |c: &ConsumableDef| c.ids.contains(&spell_id) || c.name_patterns.iter().any(|p| name.contains(p.as_str()));
+        // "Create Healthstone" é o warlock criando as pedras, não alguém usando
+        let creating = name.starts_with("create ") || name.starts_with("criar ");
+        let hit = |c: &ConsumableDef| {
+            c.ids.contains(&spell_id) || (!creating && c.name_patterns.iter().any(|p| name.contains(p.as_str())))
+        };
         if hit(&self.healthstone) {
             Some(Consumable::Healthstone)
         } else if hit(&self.health_potion) {
@@ -97,5 +101,20 @@ pub fn difficulty_name(id: u32) -> &'static str {
         17 => "LFR",
         23 => "Mythic (dungeon)",
         _ => "Outra",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn matches_consumables_by_id_and_name() {
+        let d = GameData::embedded();
+        assert_eq!(d.consumable(1295247, "Concentrated Silvermoon Health Potion"), Some(Consumable::HealthPotion));
+        assert_eq!(d.consumable(999, "Poção de Cura Qualquer"), Some(Consumable::HealthPotion));
+        assert_eq!(d.consumable(6262, "Healthstone"), Some(Consumable::Healthstone));
+        assert_eq!(d.consumable(6201, "Create Healthstone"), None, "warlock criando pedra não é uso");
+        assert_eq!(d.consumable(1236994, "Potion of Recklessness"), None, "poção de dano não é de vida");
     }
 }
