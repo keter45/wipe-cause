@@ -1,0 +1,11 @@
+{
+  "_comment": "Consumíveis de vida. IDs mudam a cada expansão; name_patterns casa pelo nome do spell no log (inglês e pt-BR) como fallback.",
+  "healthstone": {
+    "ids": [6262, 452930],
+    "name_patterns": ["healthstone", "pedra de vida"]
+  },
+  "health_potion": {
+    "ids": [431416, 431419],
+    "name_patterns": ["healing potion", "poção de cura", "poção de vida", "cavedweller's delight"]
+  }
+}

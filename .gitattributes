@@ -2,3 +2,5 @@
 *.png binary
 *.ico binary
 *.icns binary
+# fixtures de combat log mantêm o CRLF do cliente Windows
+crates/wipe-core/tests/fixtures/*.txt -text
