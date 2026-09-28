@@ -555,7 +555,7 @@ impl PullBuilder {
                     hits: *hits,
                 })
                 .collect();
-            taken.sort_by(|a, b| b.amount.cmp(&a.amount));
+            taken.sort_by_key(|a| std::cmp::Reverse(a.amount));
             taken.truncate(15);
             let mut defensives_used: Vec<SpellUse> =
                 p.defensive_casts.iter().chain(p.externals_received.iter()).cloned().collect();
@@ -578,7 +578,7 @@ impl PullBuilder {
                 taken_by_ability: taken,
             });
         }
-        players.sort_by(|a, b| b.damage_done.cmp(&a.damage_done));
+        players.sort_by_key(|a| std::cmp::Reverse(a.damage_done));
 
         let mut pending = self.deaths;
         for d in &mut pending {
