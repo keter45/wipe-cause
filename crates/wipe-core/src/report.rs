@@ -27,8 +27,10 @@ pub struct Pull {
     pub difficulty_id: u32,
     pub difficulty_name: String,
     pub group_size: u32,
-    /// Número do pull para este boss + dificuldade no log (1..)
+    /// Número do pull para este boss + dificuldade no log (1..), sem os pulls curtos descartados
     pub pull_number: u32,
+    /// Mesmo número contando os pulls curtos — é a numeração do Warcraft Logs ("Wipe N")
+    pub pull_number_all: u32,
     /// Epoch ms (UTC quando o log tem offset de fuso)
     pub start_ms: i64,
     /// Timestamp original da linha ENCOUNTER_START (hora local do jogo)

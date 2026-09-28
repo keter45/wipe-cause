@@ -1,4 +1,3 @@
-mod wcl;
 mod wcr;
 
 use serde::Serialize;
@@ -44,13 +43,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .manage(wcl::WclState::default())
         .invoke_handler(tauri::generate_handler![
             analyze_log,
             rules_dir,
-            wcl::wcl_get_settings,
-            wcl::wcl_save_settings,
-            wcl::wcl_report,
             wcr::wcr_videos
         ])
         .run(tauri::generate_context!())

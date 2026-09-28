@@ -3,10 +3,9 @@ import type { LogReport } from './types';
 import { analyzeLog, inTauri, lastFile, pickLogFile, readReportFile, rememberFile } from './lib/api';
 import { PullList } from './components/PullList';
 import { PullView } from './components/PullView';
-import { IntegrationsBar, type WclLink } from './components/IntegrationsBar';
+import { IntegrationsBar } from './components/IntegrationsBar';
 import type { WcrScan, WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
-import { reportUrl } from './lib/wcl';
 
 type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string } | { kind: 'error'; message: string };
 
@@ -14,7 +13,7 @@ export default function App() {
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
-  const [wcl, setWcl] = useState<WclLink | null>(null);
+  const [wclCode, setWclCode] = useState<string | null>(null);
   const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
   const previous = lastFile();
 
@@ -116,7 +115,7 @@ export default function App() {
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
       )}
 
-      {report && <IntegrationsBar logFile={report.file} pulls={report.pulls} onWcl={setWcl} onVideos={setVideos} />}
+      {report && <IntegrationsBar logFile={report.file} pulls={report.pulls} onWcl={setWclCode} onVideos={setVideos} />}
 
       {!report ? (
         <Empty previous={inTauri ? previous : null} onReopen={load} />
@@ -127,8 +126,7 @@ export default function App() {
             {pull ? (
               <PullView
                 pull={pull}
-                wclUrl={wcl ? reportUrl(wcl.code, wcl.fights.get(pull.id)) : undefined}
-                wclExact={wcl?.fights.has(pull.id) ?? false}
+                wclCode={wclCode ?? undefined}
                 video={videos.get(pull.id)}
               />
             ) : (

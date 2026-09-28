@@ -9,6 +9,7 @@ import { MechanicsView } from './MechanicsView';
 import { InterruptsView } from './InterruptsView';
 import { openExternal, type WcrVideo } from '../lib/api';
 import { SeekContext } from '../lib/wcr';
+import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
 
 type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells';
@@ -17,14 +18,13 @@ const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info
 
 interface Props {
   pull: Pull;
-  /** link do report no Warcraft Logs (com #fight quando o pull foi casado) */
-  wclUrl?: string;
-  wclExact?: boolean;
+  /** código do report da noite no Warcraft Logs */
+  wclCode?: string;
   /** vídeo do Warcraft Recorder casado com o pull */
   video?: WcrVideo;
 }
 
-export function PullView({ pull, wclUrl, wclExact, video }: Props) {
+export function PullView({ pull, wclCode, video }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
   const [videoOpen, setVideoOpen] = useState(false);
   const [seekReq, setSeekReq] = useState<{ t: number; n: number } | null>(null);
@@ -55,13 +55,13 @@ export function PullView({ pull, wclUrl, wclExact, video }: Props) {
             {pull.startLocal.split(' ')[1]?.slice(0, 8)} · {mmss(pull.durationMs)}
             {pull.incomplete && <span className="warn"> · log terminou antes do fim do encontro</span>}
           </div>
-          {wclUrl && (
+          {wclCode && (
             <button
               className="btn wcl-open"
-              onClick={() => openExternal(wclUrl)}
-              title={wclExact ? 'Abrir esta try no Warcraft Logs' : 'Pull não encontrado no report: abre o report inteiro'}
+              onClick={() => openExternal(bossUrl(wclCode, pull))}
+              title={`Abre o report filtrado neste boss; a try é a "${wclPullLabel(pull)}" da lista`}
             >
-              {wclExact ? 'Abrir no Warcraft Logs ↗' : 'Abrir report no Warcraft Logs ↗'}
+              Warcraft Logs ↗ <span className="muted">{wclPullLabel(pull)}</span>
             </button>
           )}
           {video && (

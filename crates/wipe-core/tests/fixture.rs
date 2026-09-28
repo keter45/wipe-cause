@@ -130,6 +130,8 @@ fn short_pulls_are_ignored() {
     assert_eq!(r.pulls.len(), 3);
     assert_eq!(r.pulls.iter().map(|p| p.pull_number).collect::<Vec<_>>(), vec![1, 2, 3]);
     assert_eq!(r.pulls.iter().map(|p| p.id).collect::<Vec<_>>(), vec![0, 1, 2]);
+    // o pull curto (o 3º do log) some da lista, mas conta na numeração do Warcraft Logs
+    assert_eq!(r.pulls.iter().map(|p| p.pull_number_all).collect::<Vec<_>>(), vec![1, 2, 4]);
 }
 
 #[test]

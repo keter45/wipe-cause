@@ -16,17 +16,7 @@ Wipes com menos de 30s são ignorados.
 
 ## Warcraft Logs
 
-Cada pull pode abrir a mesma try no Warcraft Logs. Uma vez: crie um client gratuito em [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) e cole o client id/secret na engrenagem do app (fica salvo só na sua máquina). Por noite: cole o link do report na barra do Warcraft Logs — o app casa cada pull com a fight pelo boss e horário de início.
-
-## Regras por boss
-
-Cada boss tem um arquivo em `encounters/<raid>/<boss>.yaml` com as mecânicas (dano evitável, soaks, interrupts, stacks...) e os spell IDs que provam a falha no log. As regras são geradas pela skill `boss-rules` a partir de um guia e calibradas com `wipe-cli spells <log>`.
-
-Para testar ou customizar sem recompilar, coloque `*.yaml` em `%APPDATA%\gg.wipecause.app\encounters` — um arquivo com o mesmo `encounter_id` substitui o embutido.
-
-| boss | raid | status |
-|---|---|---|
-| The Twin Fangs | The Venomous Abyss | calibrado com log Mítico |
+Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Não usa a API do Warcraft Logs nem pede login.
 
 ## Warcraft Recorder
 

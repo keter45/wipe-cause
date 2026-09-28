@@ -49,33 +49,7 @@ export function rememberFile(path: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Warcraft Logs (via backend Tauri) e links externos
-
-export interface WclSettings {
-  clientId: string;
-  hasSecret: boolean;
-}
-
-export interface WclFight {
-  id: number;
-  encounterId: number;
-  startMs: number;
-  endMs: number;
-  kill: boolean;
-  fightPercentage: number | null;
-  difficulty: number | null;
-}
-
-export interface WclReport {
-  code: string;
-  title: string;
-  fights: WclFight[];
-}
-
-export const wclGetSettings = () => invoke<WclSettings>('wcl_get_settings');
-export const wclSaveSettings = (clientId: string, clientSecret: string) =>
-  invoke<void>('wcl_save_settings', { clientId, clientSecret });
-export const wclReport = (report: string) => invoke<WclReport>('wcl_report', { report });
+// Links externos e link do report do Warcraft Logs
 
 /** Abre no navegador padrão (no app) ou numa aba nova (no navegador). */
 export async function openExternal(url: string) {

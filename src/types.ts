@@ -19,6 +19,8 @@ export interface Pull {
   difficultyName: string;
   groupSize: number;
   pullNumber: number;
+  /** numeração do Warcraft Logs (conta os pulls curtos) */
+  pullNumberAll: number;
   startMs: number;
   startLocal: string;
   tzOffsetHours: number;

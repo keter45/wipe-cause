@@ -829,6 +829,7 @@ impl PullBuilder {
                 difficulty_name: crate::data::difficulty_name(self.difficulty_id).to_string(),
                 group_size: self.group_size,
                 pull_number: 0,
+                pull_number_all: 0,
                 start_ms: self.start_ms,
                 start_local: self.start_local,
                 tz_offset_hours: self.tz_offset_hours,
@@ -976,7 +977,14 @@ pub const MIN_PULL_MS: i64 = 30_000;
 
 /// Pós-processamento com visão do log inteiro. Devolve os pulls e quantos wipes curtos
 /// foram descartados.
-pub(crate) fn finalize(finished: Vec<FinishedPull>, data: &GameData) -> (Vec<Pull>, u32) {
+pub(crate) fn finalize(mut finished: Vec<FinishedPull>, data: &GameData) -> (Vec<Pull>, u32) {
+    // numeração com todos os pulls (igual à do Warcraft Logs), antes de descartar os curtos
+    let mut all: HashMap<(u32, u32), u32> = HashMap::new();
+    for fp in &mut finished {
+        let c = all.entry((fp.pull.encounter_id, fp.pull.difficulty_id)).or_insert(0);
+        *c += 1;
+        fp.pull.pull_number_all = *c;
+    }
     let total = finished.len();
     let finished: Vec<FinishedPull> =
         finished.into_iter().filter(|fp| fp.pull.success || fp.pull.duration_ms >= MIN_PULL_MS).collect();
