@@ -1011,3 +1011,25 @@ ul.plain {
 .scoreboard th .sort {
   font-size: 12px;
 }
+
+/* ignorar eventos após N mortes */
+.cutoff {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.cutoff input {
+  width: 48px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 6px;
+  font: inherit;
+}
+.death.ignored {
+  opacity: 0.4;
+}

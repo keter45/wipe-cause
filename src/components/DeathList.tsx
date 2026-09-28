@@ -10,6 +10,8 @@ interface Props {
   deaths: Death[];
   /** chaves `${guid}:${t}` das mortes decisivas */
   decisive: Set<string>;
+  /** momento da N-ésima morte: mortes depois disso são ignoradas */
+  cutoffT: number | null;
 }
 
 export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: string }> = {
@@ -19,7 +21,7 @@ export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: stri
   unknown: { label: '?', title: 'Sem dados de HP (Advanced Combat Logging desligado?)' },
 };
 
-export function DeathList({ deaths, decisive }: Props) {
+export function DeathList({ deaths, decisive, cutoffT }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const seek = useSeek();
   if (deaths.length === 0) return <p className="muted pad">Ninguém morreu neste pull.</p>;
@@ -30,7 +32,7 @@ export function DeathList({ deaths, decisive }: Props) {
         const key = `${d.guid}:${d.t}`;
         const isOpen = open === key;
         return (
-          <div key={key} className={`death ${decisive.has(key) ? 'decisive' : 'cascade'}`}>
+          <div key={key} className={`death ${decisive.has(key) ? 'decisive' : 'cascade'} ${cutoffT != null && d.t > cutoffT ? 'ignored' : ''}`}>
             <div className="death-head">
             <button className="death-row" onClick={() => setOpen(isOpen ? null : key)} aria-expanded={isOpen}>
               <span className="death-order">{d.order}</span>
@@ -38,6 +40,7 @@ export function DeathList({ deaths, decisive }: Props) {
               <span className="death-name" style={{ color: classColor(d.class) }}>
                 {shortName(d.name)}
                 {d.role === 'tank' && <span className="role-tag">tank</span>}
+                {cutoffT != null && d.t > cutoffT && <span className="role-tag">ignorada</span>}
               </span>
               <span className="death-kb">
                 {d.killingBlow ? (
@@ -75,7 +78,11 @@ export function DeathList({ deaths, decisive }: Props) {
           </div>
         );
       })}
-      <p className="muted small">Mortes esmaecidas aconteceram depois das primeiras (efeito cascata).</p>
+      <p className="muted small">
+        {cutoffT != null
+          ? `Mortes marcadas "ignorada" vieram depois do corte (${mmss(cutoffT)}): erros e falhas depois dele não contam.`
+          : 'Mortes esmaecidas aconteceram depois das primeiras (efeito cascata).'}
+      </p>
     </div>
   );
 }

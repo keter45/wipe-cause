@@ -3,6 +3,7 @@ import type { LogReport } from './types';
 import { analyzeLog, inTauri, lastFile, pickLogFile, readReportFile, rememberFile } from './lib/api';
 import { PullList } from './components/PullList';
 import { NightSummary } from './components/NightSummary';
+import { applyCutoff, savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { PullView } from './components/PullView';
 import { IntegrationsBar } from './components/IntegrationsBar';
 import type { WcrScan, WcrVideo } from './lib/api';
@@ -14,6 +15,11 @@ export default function App() {
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [showSummary, setShowSummary] = useState(true);
+  const [deathCutoff, setDeathCutoff] = useState(savedDeathCutoff);
+  const changeCutoff = (n: number) => {
+    setDeathCutoff(n);
+    saveDeathCutoff(n);
+  };
   const selectPull = (id: number) => {
     setSelected(id);
     setShowSummary(false);
@@ -68,7 +74,9 @@ export default function App() {
     if (path) await load(path);
   }
 
-  const pull = useMemo(() => report?.pulls.find((p) => p.id === selected) ?? null, [report, selected]);
+  // pulls recortados em "ignorar eventos após N mortes" (instantâneo, sem reanalisar)
+  const pulls = useMemo(() => report?.pulls.map((p) => applyCutoff(p, deathCutoff)) ?? [], [report, deathCutoff]);
+  const pull = useMemo(() => pulls.find((p) => p.id === selected) ?? null, [pulls, selected]);
 
   return (
     <div className="app">
@@ -102,12 +110,25 @@ export default function App() {
           </label>
         )}
         {report && (
+          <>
+          <label className="cutoff" title="Depois de algumas mortes o wipe já está decidido: erros, falhas e interrupts depois da N-ésima morte não contam (0 = conta tudo)">
+            Ignorar após
+            <input
+              type="number"
+              min={0}
+              max={40}
+              value={deathCutoff}
+              onChange={(e) => changeCutoff(Math.max(0, Math.min(40, Number(e.target.value) || 0)))}
+            />
+            mortes
+          </label>
           <span className="file muted" title={report.file}>
             {report.file.split(/[\\/]/).pop()} · {report.pulls.length} pulls
             {report.ignoredShortPulls > 0 && ` (+${report.ignoredShortPulls} com menos de 30s ignorados)`} ·{' '}
             {(report.parseMs / 1000).toFixed(1)}s
             {!report.advancedLogging && <span className="warn"> · Advanced Combat Logging desligado</span>}
           </span>
+          </>
         )}
       </header>
 
@@ -137,7 +158,7 @@ export default function App() {
           />
           <main className="content">
             {showSummary ? (
-              <NightSummary pulls={report.pulls} onSelectPull={selectPull} />
+              <NightSummary pulls={pulls} onSelectPull={selectPull} />
             ) : (
               <>
             {pull ? (

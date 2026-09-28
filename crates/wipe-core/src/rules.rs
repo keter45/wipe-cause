@@ -257,6 +257,7 @@ struct PlayerHits {
     stacks: u32,
     max_stacks: u32,
     first_t: Option<i64>,
+    timeline: Vec<(i64, u32, i64)>,
 }
 
 #[derive(Default)]
@@ -422,6 +423,7 @@ impl RuleTracker {
                     p.stacks = stacks;
                     if stacks > p.max_stacks {
                         p.max_stacks = stacks;
+                        p.timeline.push((t, stacks, 0));
                         let warn = m.warn_stacks.unwrap_or(u32::MAX);
                         if stacks == warn || m.lethal_stacks == Some(stacks) {
                             p.first_t.get_or_insert(t);
@@ -488,6 +490,7 @@ impl RuleTracker {
                         first_t: p.first_t,
                         credit: false,
                         message: render(&m.message, &p.name, if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count }, lethal),
+                        timeline: p.timeline.clone(),
                     })
                 })
                 .collect();
@@ -511,6 +514,7 @@ impl RuleTracker {
                     first_t: p.first_t,
                     credit: true,
                     message: String::new(),
+                    timeline: p.timeline.clone(),
                 })
                 .collect();
             credits.sort_by(|a, b| b.count.cmp(&a.count).then(a.name.cmp(&b.name)));
@@ -527,6 +531,11 @@ impl RuleTracker {
                 summary: if collective { render(&m.message, "", st.failures, lethal) } else { String::new() },
                 players,
                 events: st.events,
+                fail_times: st.fail_times,
+                tolerance: m.tolerance,
+                warn_stacks: m.warn_stacks,
+                lethal_stacks: m.lethal_stacks,
+                message_template: m.message,
             });
         }
         let rank = |s: &str| match s {
@@ -548,6 +557,7 @@ fn bump(map: &mut HashMap<String, PlayerHits>, guid: &str, name: &str, amount: i
     p.count += 1;
     p.amount += amount;
     p.first_t.get_or_insert(t);
+    p.timeline.push((t, 1, amount));
 }
 
 fn push_event(st: &mut MechState, t: i64, player: Option<&str>, detail: String) {

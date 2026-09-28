@@ -81,6 +81,13 @@ pub struct MechanicResult {
     /// culpados primeiro; depois quem ajudou (`credit`: interrupts, soaks)
     pub players: Vec<MechanicPlayer>,
     pub events: Vec<MechanicEvent>,
+    /// momentos das falhas coletivas (para recortar por "ignorar após N mortes")
+    pub fail_times: Vec<i64>,
+    pub tolerance: u32,
+    pub warn_stacks: Option<u32>,
+    pub lethal_stacks: Option<u32>,
+    /// mensagem da regra, com {player} {count} {stacks} {lethal_stacks}, para re-renderizar
+    pub message_template: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -94,6 +101,8 @@ pub struct MechanicPlayer {
     pub first_t: Option<i64>,
     pub credit: bool,
     pub message: String,
+    /// (ms do pull, valor, dano): valor = 1 por hit/ajuda, ou o nº de stacks a cada aumento
+    pub timeline: Vec<(i64, u32, i64)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -293,4 +302,7 @@ pub struct EnemySpell {
     pub interrupted: u32,
     /// foi interrompido ao menos uma vez em algum pull do log
     pub interruptible: bool,
+    /// ms do pull de cada cast completado / interrompido
+    pub cast_times: Vec<i64>,
+    pub interrupt_times: Vec<i64>,
 }

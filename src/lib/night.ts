@@ -110,7 +110,8 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
   };
   for (const p of pulls) {
     if (p.trigger && !p.success) cause(p.trigger.key, p.trigger.name).triggers++;
-    for (const d of p.deaths) if (d.causedBy) cause(d.causedBy.key, d.causedBy.name).deaths++;
+    // mortes depois do corte ("ignorar após N mortes") não entram
+    for (const d of p.deaths) if (d.causedBy && (p.cutoffT == null || d.t <= p.cutoffT)) cause(d.causedBy.key, d.causedBy.name).deaths++;
     for (const m of p.mechanics) if (m.failures > 0 && m.severity !== 'none') cause(m.key, m.name).failures += m.failures;
   }
 

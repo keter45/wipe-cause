@@ -25,18 +25,18 @@ const pull = (id: number, startMs: number, durationMs: number, over: Partial<Pul
 const cause = { key: 'orb', name: 'Orb', amount: 1, pct: 100, failT: 1000 };
 /** Orb (soak): A foi atingido pela explosão 2x (vítima, não culpado), B ajudou a soakar 3x */
 const orbMech: MechanicResult = {
-  key: 'orb', name: 'Orb', kind: 'soak', severity: 'wipe', tip: '', evaluated: true, failures: 1, summary: '',
+  key: 'orb', name: 'Orb', kind: 'soak', severity: 'wipe', tip: '', evaluated: true, failures: 1, summary: '', failTimes: [], tolerance: 0, warnStacks: null, lethalStacks: null, messageTemplate: '',
   players: [
-    { guid: 'A', name: 'A-Realm', count: 2, amount: 0, firstT: 0, credit: false, message: '' },
-    { guid: 'B', name: 'B-Realm', count: 3, amount: 0, firstT: 0, credit: true, message: '' },
+    { guid: 'A', name: 'A-Realm', count: 2, amount: 0, firstT: 0, credit: false, message: '', timeline: [] },
+    { guid: 'B', name: 'B-Realm', count: 3, amount: 0, firstT: 0, credit: true, message: '', timeline: [] },
   ],
   events: [],
 };
 
 /** poça (dano evitável): A pisou 2x — erro pessoal */
 const puddle: MechanicResult = {
-  key: 'puddle', name: 'Poça', kind: 'avoidable_damage', severity: 'minor', tip: '', evaluated: true, failures: 2, summary: '',
-  players: [{ guid: 'A', name: 'A-Realm', count: 2, amount: 0, firstT: 0, credit: false, message: '' }],
+  key: 'puddle', name: 'Poça', kind: 'avoidable_damage', severity: 'minor', tip: '', evaluated: true, failures: 2, summary: '', failTimes: [], tolerance: 0, warnStacks: null, lethalStacks: null, messageTemplate: '',
+  players: [{ guid: 'A', name: 'A-Realm', count: 2, amount: 0, firstT: 0, credit: false, message: '', timeline: [] }],
   events: [],
 };
 
@@ -52,7 +52,7 @@ describe('summarizeNight', () => {
     pull(1, 240_000, 60_000, {
       bosses: [{ guid: 'b', name: 'Boss', npcId: 1, maxHp: 1, hpPct: 12 }],
       players: [player('A'), player('B', { canInterrupt: false }), player('C', { interrupts: 4, dps: 300 })],
-      enemySpells: [{ spellId: 9, name: 'Burst', sources: [], casts: 2, hitsOnPlayers: 0, damageToPlayers: 0, interrupted: 4, interruptible: true }],
+      enemySpells: [{ spellId: 9, name: 'Burst', sources: [], casts: 2, hitsOnPlayers: 0, damageToPlayers: 0, interrupted: 4, interruptible: true, castTimes: [], interruptTimes: [] }],
     }),
     // pull 3 depois de uma pausa de 15 min
     pull(2, 300_000 + 15 * 60_000, 30_000, { success: true }),

@@ -127,6 +127,8 @@ struct EnemySpellAcc {
     hits: u32,
     damage: i64,
     interrupted: u32,
+    cast_times: Vec<i64>,
+    interrupt_times: Vec<i64>,
 }
 
 /// Morte ainda sem a checagem de defensivos disponíveis (feita depois, com dados do log inteiro).
@@ -356,7 +358,9 @@ impl PullBuilder {
         let rel = self.rel(t);
         let Some(cut_id) = f.get(12).and_then(|v| v.parse::<u32>().ok()) else { return };
         let cut_name = f.get(13).unwrap_or(&"").to_string();
-        self.enemy_spells.entry(cut_id).or_default().interrupted += 1;
+        let e = self.enemy_spells.entry(cut_id).or_default();
+        e.interrupted += 1;
+        e.interrupt_times.push(rel);
         // pets (Spell Lock, Axe Toss) contam para o dono
         let Some(owner) = self.owner_of(f[1], hex(f[3])) else { return };
         let owner_name = if owner == f[1] { f[2] } else { "" };
@@ -543,6 +547,7 @@ impl PullBuilder {
             e.name = spell_name;
             e.sources.insert(src_name.to_string());
             e.casts += 1;
+            e.cast_times.push(rel);
             return;
         }
         if data.interrupts.contains_key(&spell_id) {
@@ -815,6 +820,8 @@ impl PullBuilder {
                     damage_to_players: e.damage,
                     interrupted: e.interrupted,
                     interruptible: e.interrupted > 0,
+                    cast_times: e.cast_times,
+                    interrupt_times: e.interrupt_times,
                 }
             })
             .collect();

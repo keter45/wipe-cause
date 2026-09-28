@@ -14,6 +14,8 @@ Ferramenta local para descobrir **por que a try deu wipe** no World of Warcraft,
 
 Wipes com menos de 30s são ignorados.
 
+**Ignorar após N mortes** (topo da tela, padrão 4): depois de algumas mortes o wipe já está decidido. Erros de mecânica, falhas, interrupts e o gatilho só contam até a N-ésima morte de cada pull; o resto aparece esmaecido. Mudar o N é instantâneo (0 = conta tudo).
+
 ## Warcraft Logs
 
 Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Não usa a API do Warcraft Logs nem pede login.

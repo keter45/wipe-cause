@@ -34,6 +34,8 @@ export interface Pull {
   rulesFile: string | null;
   mechanics: MechanicResult[];
   trigger: PullTrigger | null;
+  /** preenchido na UI: momento da N-ésima morte (eventos depois dele são ignorados) */
+  cutoffT?: number | null;
 }
 
 export interface PullTrigger {
@@ -174,6 +176,8 @@ export interface EnemySpell {
   damageToPlayers: number;
   interrupted: number;
   interruptible: boolean;
+  castTimes: number[];
+  interruptTimes: number[];
 }
 
 export type MechanicSeverity = 'wipe' | 'major' | 'minor' | 'none';
@@ -189,6 +193,11 @@ export interface MechanicResult {
   summary: string;
   players: MechanicPlayer[];
   events: MechanicEvent[];
+  failTimes: number[];
+  tolerance: number;
+  warnStacks: number | null;
+  lethalStacks: number | null;
+  messageTemplate: string;
 }
 
 export interface MechanicPlayer {
@@ -200,6 +209,8 @@ export interface MechanicPlayer {
   /** true = ajudou (interrupt, soak); false = errou */
   credit: boolean;
   message: string;
+  /** [ms do pull, valor (1 por hit, ou stacks), dano] */
+  timeline: [number, number, number][];
 }
 
 export interface MechanicEvent {

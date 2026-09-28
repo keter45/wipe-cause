@@ -37,6 +37,9 @@ export function MechanicsView({ pull }: { pull: Pull }) {
 
   return (
     <div className="mechanics">
+      {pull.cutoffT != null && (
+        <p className="muted small">Contando só até a morte que fechou o corte ({mmss(pull.cutoffT)}); o que veio depois é ignorado.</p>
+      )}
       {failed.length === 0 && <p className="muted pad">Nenhuma falha de mecânica detectada neste pull.</p>}
       {failed.map((m) => (
         <MechanicCard key={m.key} m={m} />

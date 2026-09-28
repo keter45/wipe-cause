@@ -48,7 +48,8 @@ export function lowestBossHp(p: Pull): number | null {
 export function analyzePull(p: Pull): Verdict {
   const findings: Finding[] = [];
   const deaths = [...p.deaths].sort((a, b) => a.t - b.t);
-  const decisive = decisiveDeaths(deaths, cascadeThreshold(p));
+  // com "ignorar após N mortes" ligado, as decisivas são as N primeiras; senão, janela de cascata
+  const decisive = p.cutoffT != null ? deaths.filter((d) => d.t <= p.cutoffT!) : decisiveDeaths(deaths, cascadeThreshold(p));
   const bossHp = lowestBossHp(p);
 
   // 0. Regras do boss: falhas de mecânica graves entram primeiro

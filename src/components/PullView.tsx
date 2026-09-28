@@ -123,7 +123,7 @@ export function PullView({ pull, wclCode, video }: Props) {
       </div>
 
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
-      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} />}
+      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
