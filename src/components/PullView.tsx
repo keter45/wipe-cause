@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ExternalLink, Play, X } from 'lucide-react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
@@ -68,16 +69,18 @@ export function PullView({ pull, wclCode, video }: Props) {
           </div>
           {wclCode && (
             <button
-              className="btn wcl-open"
+              className="btn sm"
               onClick={() => openExternal(bossUrl(wclCode, pull))}
               title={`Abre o report filtrado neste boss; a try é a "${wclPullLabel(pull)}" da lista`}
             >
-              Warcraft Logs ↗ <span className="muted">{wclPullLabel(pull)}</span>
+              Warcraft Logs <span className="muted">{wclPullLabel(pull)}</span>
+              <ExternalLink size={14} strokeWidth={1.5} aria-hidden />
             </button>
           )}
           {video && (
-            <button className="btn wcl-open" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
-              {videoOpen ? 'Fechar vídeo' : `▶ Vídeo (${video.player ?? 'POV'})`}
+            <button className="btn sm" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
+              {videoOpen ? <X size={14} strokeWidth={1.5} aria-hidden /> : <Play size={14} strokeWidth={1.5} aria-hidden />}
+              {videoOpen ? 'Fechar vídeo' : `Vídeo (${video.player ?? 'POV'})`}
             </button>
           )}
         </div>

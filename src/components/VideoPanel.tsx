@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Play, Video, X } from 'lucide-react';
 import { videoSrc, type WcrVideo } from '../lib/api';
 import { LEAD_MS } from '../lib/wcr';
 import { mmss } from '../lib/format';
@@ -36,11 +37,11 @@ export function VideoPanel({ video, seek, onClose }: Props) {
     <section className="video-panel">
       <header>
         <span>
-          🎥 POV de <strong>{video.player ?? '?'}</strong>
+          <Video size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> POV de <strong>{video.player ?? '?'}</strong>
           {seek && <span className="muted"> · indo para {mmss(Math.max(0, seek.t - LEAD_MS))} (5s antes)</span>}
         </span>
-        <button className="btn icon" onClick={onClose} title="Fechar vídeo">
-          ✕
+        <button className="icon-btn" onClick={onClose} title="Fechar vídeo" aria-label="Fechar vídeo">
+          <X size={16} strokeWidth={1.5} aria-hidden />
         </button>
       </header>
       {error ? (
@@ -54,19 +55,21 @@ export function VideoPanel({ video, seek, onClose }: Props) {
   );
 }
 
-/** Botão ▶ que pula o vídeo para `t`; some quando o pull não tem vídeo. */
+/** Botão "play" que pula o vídeo para `t`; some quando o pull não tem vídeo. */
 export function PlayAt({ t, seek, label }: { t: number; seek: ((t: number) => void) | null; label?: string }) {
   if (!seek) return null;
   return (
     <button
       className="play"
+      aria-label={label ?? 'Ver no vídeo'}
       title={`Ver no vídeo (${mmss(Math.max(0, t - LEAD_MS))})`}
       onClick={(e) => {
         e.stopPropagation();
         seek(t);
       }}
     >
-      ▶{label ? ` ${label}` : ''}
+      <Play size={11} strokeWidth={2} aria-hidden />
+      {label && <span>{label}</span>}
     </button>
   );
 }

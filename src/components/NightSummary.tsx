@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { EyeOff, Hand, Handshake, HeartPulse, ShieldCheck, ShieldOff, Skull, Swords, TriangleAlert, type LucideIcon } from 'lucide-react';
 import type { Pull } from '../types';
 import { classColor, mmss, num, pct, shortName } from '../lib/format';
 import { summarizeNight, topBy, type NightSummary as Summary, type PlayerNight } from '../lib/night';
@@ -335,25 +336,25 @@ function CausesTable({ s }: { s: Summary }) {
 // Vilões e mocinhos
 
 interface Award {
-  icon: string;
+  icon: LucideIcon;
   label: string;
   score: (p: PlayerNight) => number;
   format: (p: PlayerNight) => string;
 }
 
 const VILLAIN_AWARDS: Award[] = [
-  { icon: '💀', label: 'Mais mortes decisivas', score: (p) => p.decisiveDeaths, format: (p) => `${p.decisiveDeaths} em ${p.pulls} pulls` },
-  { icon: '⚠', label: 'Mais erros de mecânica', score: (p) => p.mechanicErrorsWeighted, format: (p) => `${p.mechanicErrors} erros` },
-  { icon: '🧱', label: 'Morreu com defensivo sobrando', score: (p) => p.deathsNoDefensive, format: (p) => `${p.deathsNoDefensive}×` },
-  { icon: '🙈', label: 'Tinha interrupt e não cortou', score: (p) => p.idleInterruptPulls, format: (p) => `${p.idleInterruptPulls} pulls` },
+  { icon: Skull, label: 'Mais mortes decisivas', score: (p) => p.decisiveDeaths, format: (p) => `${p.decisiveDeaths} em ${p.pulls} pulls` },
+  { icon: TriangleAlert, label: 'Mais erros de mecânica', score: (p) => p.mechanicErrorsWeighted, format: (p) => `${p.mechanicErrors} erros` },
+  { icon: ShieldOff, label: 'Morreu com defensivo sobrando', score: (p) => p.deathsNoDefensive, format: (p) => `${p.deathsNoDefensive}×` },
+  { icon: EyeOff, label: 'Tinha interrupt e não cortou', score: (p) => p.idleInterruptPulls, format: (p) => `${p.idleInterruptPulls} pulls` },
 ];
 
 const HERO_AWARDS: Award[] = [
-  { icon: '✋', label: 'Mais interrupts', score: (p) => p.interrupts, format: (p) => `${p.interrupts} cortes` },
-  { icon: '🤝', label: 'Mais ajuda em mecânicas', score: (p) => p.assists, format: (p) => `${p.assists} ajudas` },
-  { icon: '🛡', label: 'Pulls limpos', score: (p) => p.cleanPulls, format: (p) => `${p.cleanPulls} de ${p.pulls}` },
-  { icon: '⚔', label: 'Maior DPS médio', score: (p) => (p.role === 'dps' ? p.avgDps : 0), format: (p) => num(p.avgDps) },
-  { icon: '✚', label: 'Maior HPS médio', score: (p) => (p.role === 'healer' ? p.avgHps : 0), format: (p) => num(p.avgHps) },
+  { icon: Hand, label: 'Mais interrupts', score: (p) => p.interrupts, format: (p) => `${p.interrupts} cortes` },
+  { icon: Handshake, label: 'Mais ajuda em mecânicas', score: (p) => p.assists, format: (p) => `${p.assists} ajudas` },
+  { icon: ShieldCheck, label: 'Pulls limpos', score: (p) => p.cleanPulls, format: (p) => `${p.cleanPulls} de ${p.pulls}` },
+  { icon: Swords, label: 'Maior DPS médio', score: (p) => (p.role === 'dps' ? p.avgDps : 0), format: (p) => num(p.avgDps) },
+  { icon: HeartPulse, label: 'Maior HPS médio', score: (p) => (p.role === 'healer' ? p.avgHps : 0), format: (p) => num(p.avgHps) },
 ];
 
 function villainReasons(p: PlayerNight): string {
@@ -399,7 +400,7 @@ function Awards(props: {
           return (
             <li key={a.label}>
               <span className="award-label">
-                {a.icon} {a.label}
+                <a.icon size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> {a.label}
               </span>
               <span className="award-people">
                 {top.length === 0 ? (

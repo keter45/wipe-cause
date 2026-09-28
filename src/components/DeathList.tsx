@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check, ExternalLink, X } from 'lucide-react';
 import type { Death, DeathAura, RecapEntry } from '../types';
 import { classColor, mmss, num, relSeconds, shortName } from '../lib/format';
 import { iconUrl, useTooltip, wowheadUrl } from '../lib/wowhead';
@@ -96,7 +97,7 @@ function defTitle(d: Death): string {
 function Flag({ ok, label, title, muted }: { ok: boolean; label: string; title: string; muted?: boolean }) {
   return (
     <span className={`flag ${ok ? 'ok' : muted ? 'na' : 'bad'}`} title={title}>
-      {ok ? '✓' : '✕'} {label}
+      {ok ? <Check size={12} strokeWidth={2} aria-hidden /> : <X size={12} strokeWidth={2} aria-hidden />} {label}
     </span>
   );
 }
@@ -201,7 +202,7 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
           {tip === null && <p className="muted">Sem descrição disponível.</p>}
           {tip && <p className="tooltip-text">{tip.text}</p>}
           <button className="link" onClick={() => openExternal(wowheadUrl(a.spellId))}>
-            Wowhead #{a.spellId} ↗
+            Wowhead #{a.spellId} <ExternalLink size={12} strokeWidth={1.5} className="inline-icon" aria-hidden />
           </button>
         </div>
       )}

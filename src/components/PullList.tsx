@@ -1,3 +1,4 @@
+import { ChartColumn, Skull } from 'lucide-react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { lowestBossHp } from '../lib/verdict';
@@ -21,7 +22,7 @@ export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }
   return (
     <nav className="pull-list">
       <button className={`summary-link ${summaryActive ? 'active' : ''}`} onClick={onSummary}>
-        📊 Resumo da noite
+        <ChartColumn size={16} strokeWidth={2} aria-hidden /> Resumo da noite
       </button>
       {[...groups.entries()].map(([title, ps]) => (
         <section key={title}>
@@ -37,7 +38,8 @@ export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }
                 <span className="pull-num">#{p.pullNumber}</span>
                 <span className="pull-result">{p.success ? 'Kill' : pct(hp)}</span>
                 <span className="pull-meta muted">
-                  {mmss(p.durationMs)} · {p.deaths.filter((d) => !d.ignored).length}☠
+                  {mmss(p.durationMs)} · {p.deaths.filter((d) => !d.ignored).length}
+                  <Skull size={13} strokeWidth={1.5} className="inline-icon skull" aria-label="mortes" />
                 </span>
                 {!p.success && hp != null && (
                   <span className="pull-hp" style={{ width: `${100 - hp}%` }} aria-hidden />

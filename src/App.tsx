@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { LogReport } from './types';
-import { analyzeLog, inTauri, lastFile, pickLogFile, readReportFile, rememberFile } from './lib/api';
+import { analyzeLog, inTauri, lastFile, pickLogFile, rememberFile } from './lib/api';
 import { PullList } from './components/PullList';
 import { NightSummary } from './components/NightSummary';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { PullView } from './components/PullView';
-import { IntegrationsBar } from './components/IntegrationsBar';
+import { Header } from './components/Header';
 import type { WcrScan, WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
 
@@ -88,69 +88,21 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark">✕</span> Wipe Cause
-        </div>
-        {inTauri ? (
-          <>
-            <button className="btn primary" onClick={openFile} disabled={status.kind === 'loading'}>
-              Abrir combat log
-            </button>
-            {report && (
-              <button className="btn" onClick={() => load(report.file)} disabled={status.kind === 'loading'}>
-                Reanalisar
-              </button>
-            )}
-          </>
-        ) : (
-          <label className="btn primary">
-            Abrir relatório JSON
-            <input
-              type="file"
-              accept=".json"
-              hidden
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (f) showReport(await readReportFile(f));
-              }}
-            />
-          </label>
-        )}
-        {report && (
-          <>
-          <label
-            className="cutoff"
-            title={
-              inTauri
-                ? 'Depois de algumas mortes o wipe já está decidido: nada depois da N-ésima morte conta (dano, cura, erros, falhas, interrupts). 0 = conta tudo. Mudar reanalisa o log.'
-                : 'No navegador o corte vem do JSON (wipe-cli analyze --cutoff N)'
-            }
-          >
-            Ignorar após
-            <input
-              type="number"
-              min={0}
-              max={40}
-              value={inTauri ? deathCutoff : report.deathCutoff}
-              disabled={!inTauri || status.kind === 'loading'}
-              onChange={(e) => changeCutoff(Math.max(0, Math.min(40, Number(e.target.value) || 0)))}
-            />
-            mortes
-          </label>
-          <span className="file muted" title={report.file}>
-            {report.file.split(/[\\/]/).pop()} · {report.pulls.length} pulls
-            {report.ignoredShortPulls > 0 && ` (+${report.ignoredShortPulls} com menos de 30s ignorados)`} ·{' '}
-            {(report.parseMs / 1000).toFixed(1)}s
-            {!report.advancedLogging && <span className="warn"> · Advanced Combat Logging desligado</span>}
-          </span>
-          </>
-        )}
-      </header>
+      <Header
+        report={report}
+        busy={status.kind === 'loading'}
+        deathCutoff={deathCutoff}
+        onCutoff={changeCutoff}
+        onOpenLog={openFile}
+        onReanalyze={() => report && load(report.file, true)}
+        onOpenJson={showReport}
+        onWcl={setWclCode}
+        onVideos={setVideos}
+      />
 
       {status.kind === 'loading' && (
         <div className="progress">
-          <div className="progress-bar" style={{ width: `${Math.round(status.progress * 100)}%` }} />
+          <div className="progress-bar" style={{ transform: `scaleX(${status.progress})` }} />
           <span>Analisando {status.path.split(/[\\/]/).pop()}… {Math.round(status.progress * 100)}%</span>
         </div>
       )}
@@ -158,8 +110,6 @@ export default function App() {
       {report && report.ruleErrors?.length > 0 && (
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
       )}
-
-      {report && <IntegrationsBar logFile={report.file} pulls={report.pulls} onWcl={setWclCode} onVideos={setVideos} />}
 
       {!report ? (
         <Empty previous={inTauri ? previous : null} onReopen={load} />
