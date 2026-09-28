@@ -3,6 +3,8 @@ import type { Death, DeathAura, RecapEntry } from '../types';
 import { classColor, mmss, num, relSeconds, shortName } from '../lib/format';
 import { iconUrl, useTooltip, wowheadUrl } from '../lib/wowhead';
 import { openExternal } from '../lib/api';
+import { useSeek } from '../lib/wcr';
+import { PlayAt } from './VideoPanel';
 
 interface Props {
   deaths: Death[];
@@ -19,6 +21,7 @@ export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: stri
 
 export function DeathList({ deaths, decisive }: Props) {
   const [open, setOpen] = useState<string | null>(null);
+  const seek = useSeek();
   if (deaths.length === 0) return <p className="muted pad">Ninguém morreu neste pull.</p>;
 
   return (
@@ -28,6 +31,7 @@ export function DeathList({ deaths, decisive }: Props) {
         const isOpen = open === key;
         return (
           <div key={key} className={`death ${decisive.has(key) ? 'decisive' : 'cascade'}`}>
+            <div className="death-head">
             <button className="death-row" onClick={() => setOpen(isOpen ? null : key)} aria-expanded={isOpen}>
               <span className="death-order">{d.order}</span>
               <span className="death-time">{mmss(d.t)}</span>
@@ -65,6 +69,8 @@ export function DeathList({ deaths, decisive }: Props) {
               </span>
               <span className="chev">{isOpen ? '▾' : '▸'}</span>
             </button>
+            <PlayAt t={d.t} seek={seek} />
+            </div>
             {isOpen && <DeathDetail death={d} />}
           </div>
         );

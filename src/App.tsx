@@ -3,7 +3,9 @@ import type { LogReport } from './types';
 import { analyzeLog, inTauri, lastFile, pickLogFile, readReportFile, rememberFile } from './lib/api';
 import { PullList } from './components/PullList';
 import { PullView } from './components/PullView';
-import { WclBar, type WclLink } from './components/WclBar';
+import { IntegrationsBar, type WclLink } from './components/IntegrationsBar';
+import type { WcrScan, WcrVideo } from './lib/api';
+import { matchVideos } from './lib/wcr';
 import { reportUrl } from './lib/wcl';
 
 type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string } | { kind: 'error'; message: string };
@@ -13,15 +15,25 @@ export default function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [wcl, setWcl] = useState<WclLink | null>(null);
+  const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
   const previous = lastFile();
 
-  // Dev no navegador: ?report=/samples/report.json carrega um relatório gerado pelo wipe-cli.
+  // Dev no navegador: ?report=/samples/report.json carrega um relatório gerado pelo wipe-cli;
+  // &videos=/samples/wcr-scan.json casa vídeos do Warcraft Recorder (arquivos servidos pelo vite).
   useEffect(() => {
-    const url = new URLSearchParams(window.location.search).get('report');
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get('report');
     if (import.meta.env.DEV && !inTauri && url) {
       fetch(url)
         .then((r) => r.json())
-        .then(showReport)
+        .then(async (r: LogReport) => {
+          showReport(r);
+          const scan = params.get('videos');
+          if (scan) {
+            const s = (await fetch(scan).then((x) => x.json())) as WcrScan;
+            setVideos(matchVideos(r.pulls, s.videos));
+          }
+        })
         .catch((e) => setStatus({ kind: 'error', message: String(e) }));
     }
   }, []);
@@ -104,7 +116,7 @@ export default function App() {
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
       )}
 
-      {report && <WclBar logFile={report.file} pulls={report.pulls} onLinked={setWcl} />}
+      {report && <IntegrationsBar logFile={report.file} pulls={report.pulls} onWcl={setWcl} onVideos={setVideos} />}
 
       {!report ? (
         <Empty previous={inTauri ? previous : null} onReopen={load} />
@@ -117,6 +129,7 @@ export default function App() {
                 pull={pull}
                 wclUrl={wcl ? reportUrl(wcl.code, wcl.fights.get(pull.id)) : undefined}
                 wclExact={wcl?.fights.has(pull.id) ?? false}
+                video={videos.get(pull.id)}
               />
             ) : (
               <p className="muted">Nenhum pull no log.</p>

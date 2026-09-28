@@ -28,6 +28,12 @@ Para testar ou customizar sem recompilar, coloque `*.yaml` em `%APPDATA%\gg.wipe
 |---|---|---|
 | The Twin Fangs | The Venomous Abyss | calibrado com log Mítico |
 
+## Warcraft Recorder
+
+Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com), o app acha os vídeos sozinho (lê só a pasta de vídeos da configuração do Recorder; dá para escolher outra na engrenagem) e casa cada vídeo com o pull pelo boss e horário de início. No pull aparece o botão **▶ Vídeo** e cada morte, gatilho e evento de mecânica ganha um **▶** que abre o vídeo 5s antes do momento.
+
+Vídeos só na nuvem do Recorder ainda não são suportados (a API da nuvem é privada).
+
 ## Estrutura
 
 | pasta | o quê |

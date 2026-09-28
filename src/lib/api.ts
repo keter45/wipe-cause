@@ -103,3 +103,53 @@ export function saveWclLink(logFile: string, link: string) {
     /* sem storage */
   }
 }
+
+// ---------------------------------------------------------------------------
+// Warcraft Recorder (vídeos locais)
+
+export interface WcrVideo {
+  videoPath: string;
+  encounterId: number;
+  difficultyId: number | null;
+  startMs: number;
+  durationS: number;
+  result: boolean;
+  bossPercent: number | null;
+  player: string | null;
+}
+
+export interface WcrScan {
+  dir: string | null;
+  source: 'settings' | 'recorder' | 'none';
+  videos: WcrVideo[];
+}
+
+export const wcrVideos = (dir: string | null) => invoke<WcrScan>('wcr_videos', { dir });
+
+export async function videoSrc(path: string): Promise<string> {
+  if (!inTauri) return `/__video?path=${encodeURIComponent(path)}`; // dev no navegador (vite.config.ts)
+  const { convertFileSrc } = await import('@tauri-apps/api/core');
+  return convertFileSrc(path);
+}
+
+export async function pickFolder(title: string): Promise<string | null> {
+  const picked = await open({ directory: true, multiple: false, title });
+  return typeof picked === 'string' ? picked : null;
+}
+
+const WCR_DIR_KEY = 'wipe-cause:wcr-dir';
+/** Pasta de vídeos escolhida no app (vazio = usar a do Warcraft Recorder). */
+export function savedWcrDir(): string {
+  try {
+    return localStorage.getItem(WCR_DIR_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+export function saveWcrDir(dir: string) {
+  try {
+    localStorage.setItem(WCR_DIR_KEY, dir);
+  } catch {
+    /* sem storage */
+  }
+}

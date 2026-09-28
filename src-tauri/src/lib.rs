@@ -1,4 +1,5 @@
 mod wcl;
+mod wcr;
 
 use serde::Serialize;
 use std::path::PathBuf;
@@ -49,7 +50,8 @@ pub fn run() {
             rules_dir,
             wcl::wcl_get_settings,
             wcl::wcl_save_settings,
-            wcl::wcl_report
+            wcl::wcl_report,
+            wcr::wcr_videos
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Wipe Cause");

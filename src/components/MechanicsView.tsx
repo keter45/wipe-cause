@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { MechanicResult, Pull } from '../types';
 import { mmss, num, shortName } from '../lib/format';
+import { useSeek } from '../lib/wcr';
+import { PlayAt } from './VideoPanel';
 
 const SEVERITY_LABEL: Record<string, string> = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', none: 'Info' };
 
@@ -56,6 +58,7 @@ export function MechanicsView({ pull }: { pull: Pull }) {
 
 function MechanicCard({ m }: { m: MechanicResult }) {
   const [showEvents, setShowEvents] = useState(false);
+  const seek = useSeek();
   const blamed = m.players.filter((p) => !p.credit);
   const credits = m.players.filter((p) => p.credit);
 
@@ -78,7 +81,13 @@ function MechanicCard({ m }: { m: MechanicResult }) {
                 <td>{shortName(p.name)}</td>
                 <td className="num">{m.kind === 'stack_limit' ? `${p.count} stacks` : `${p.count}×`}</td>
                 <td className="num muted">{p.amount ? num(p.amount) : ''}</td>
-                <td className="muted">{p.firstT != null ? `1ª vez ${mmss(p.firstT)}` : ''}</td>
+                <td className="muted">
+                  {p.firstT != null && (
+                    <>
+                      1ª vez {mmss(p.firstT)} <PlayAt t={p.firstT} seek={seek} />
+                    </>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -100,7 +109,7 @@ function MechanicCard({ m }: { m: MechanicResult }) {
               {m.events.map((e, i) => (
                 <li key={i}>
                   <span className="muted">{mmss(e.t)}</span> {e.player ? `${shortName(e.player)} — ` : ''}
-                  {e.detail}
+                  {e.detail} <PlayAt t={e.t} seek={seek} />
                 </li>
               ))}
             </ul>

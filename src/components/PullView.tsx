@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { analyzePull } from '../lib/verdict';
@@ -7,7 +7,9 @@ import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
 import { MechanicsView } from './MechanicsView';
 import { InterruptsView } from './InterruptsView';
-import { openExternal } from '../lib/api';
+import { openExternal, type WcrVideo } from '../lib/api';
+import { SeekContext } from '../lib/wcr';
+import { PlayAt, VideoPanel } from './VideoPanel';
 
 type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells';
 
@@ -18,15 +20,31 @@ interface Props {
   /** link do report no Warcraft Logs (com #fight quando o pull foi casado) */
   wclUrl?: string;
   wclExact?: boolean;
+  /** vídeo do Warcraft Recorder casado com o pull */
+  video?: WcrVideo;
 }
 
-export function PullView({ pull, wclUrl, wclExact }: Props) {
+export function PullView({ pull, wclUrl, wclExact, video }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
+  const [videoOpen, setVideoOpen] = useState(false);
+  const [seekReq, setSeekReq] = useState<{ t: number; n: number } | null>(null);
+  const seek = video
+    ? (t: number) => {
+        setSeekReq((prev) => ({ t, n: (prev?.n ?? 0) + 1 }));
+        setVideoOpen(true);
+      }
+    : null;
+  // outro pull: fecha o vídeo
+  useEffect(() => {
+    setVideoOpen(false);
+    setSeekReq(null);
+  }, [pull.id]);
   const mechFailures = pull.mechanics.filter((m) => m.failures > 0).length;
   const verdict = analyzePull(pull);
   const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
 
   return (
+    <SeekContext.Provider value={seek}>
     <div className="pull-view">
       <div className="pull-header">
         <div>
@@ -46,6 +64,11 @@ export function PullView({ pull, wclUrl, wclExact }: Props) {
               {wclExact ? 'Abrir no Warcraft Logs ↗' : 'Abrir report no Warcraft Logs ↗'}
             </button>
           )}
+          {video && (
+            <button className="btn wcl-open" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
+              {videoOpen ? 'Fechar vídeo' : `▶ Vídeo (${video.player ?? 'POV'})`}
+            </button>
+          )}
         </div>
         <div className="boss-bars">
           {pull.bosses.map((b) => (
@@ -59,8 +82,13 @@ export function PullView({ pull, wclUrl, wclExact }: Props) {
         </div>
       </div>
 
+      {video && videoOpen && <VideoPanel video={video} seek={seekReq} onClose={() => setVideoOpen(false)} />}
+
       <section className={`verdict ${pull.success ? 'kill' : 'wipe'}`}>
-        <h3>{verdict.headline}</h3>
+        <h3>
+          {verdict.headline}
+          {pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label="ver gatilho" />}
+        </h3>
         {verdict.findings.length > 0 && (
           <ul className="findings">
             {verdict.findings.map((f, i) => (
@@ -100,5 +128,6 @@ export function PullView({ pull, wclUrl, wclExact }: Props) {
       {tab === 'players' && <PlayersTable players={pull.players} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
     </div>
+    </SeekContext.Provider>
   );
 }
