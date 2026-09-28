@@ -6,8 +6,9 @@ import { DeathList } from './DeathList';
 import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
 import { MechanicsView } from './MechanicsView';
+import { InterruptsView } from './InterruptsView';
 
-type Tab = 'mechanics' | 'deaths' | 'players' | 'spells';
+type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells';
 
 const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info: 'Info' } as const;
 
@@ -65,6 +66,9 @@ export function PullView({ pull }: { pull: Pull }) {
         <button role="tab" aria-selected={tab === 'deaths'} className={tab === 'deaths' ? 'active' : ''} onClick={() => setTab('deaths')}>
           Mortes ({pull.deaths.length})
         </button>
+        <button role="tab" aria-selected={tab === 'interrupts'} className={tab === 'interrupts' ? 'active' : ''} onClick={() => setTab('interrupts')}>
+          Interrupts
+        </button>
         <button role="tab" aria-selected={tab === 'players'} className={tab === 'players' ? 'active' : ''} onClick={() => setTab('players')}>
           Jogadores ({pull.players.length})
         </button>
@@ -75,6 +79,7 @@ export function PullView({ pull }: { pull: Pull }) {
 
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
       {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} />}
+      {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
     </div>

@@ -115,6 +115,8 @@ pub struct RuleSet {
     pub file: String,
     pub name: String,
     pub encounter_id: Option<u32>,
+    /// `scope: global` = vale para todos os encontros
+    pub global: bool,
     mechanics: Vec<Value>,
 }
 
@@ -124,7 +126,8 @@ impl RuleSet {
         let name = doc.get("name").and_then(Value::as_str).unwrap_or(file).to_string();
         let encounter_id = doc.get("encounter_id").and_then(Value::as_u64).map(|v| v as u32);
         let mechanics = doc.get("mechanics").and_then(Value::as_sequence).cloned().unwrap_or_default();
-        let set = RuleSet { file: file.to_string(), name, encounter_id, mechanics };
+        let global = doc.get("scope").and_then(Value::as_str) == Some("global");
+        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics };
         // valida já na carga, para erro de YAML aparecer cedo
         for diff in [14, 15, 16] {
             set.mechanics_for(diff)?;
@@ -154,6 +157,10 @@ impl RuleSet {
         }
         Ok(out)
     }
+}
+
+fn file_stem(path: &str) -> &str {
+    path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
 
 fn difficulty_key(id: u32) -> Option<&'static str> {
@@ -200,7 +207,14 @@ impl RuleBook {
     fn add(&mut self, file: &str, src: &str) {
         match RuleSet::parse(file, src) {
             Ok(set) => {
-                self.sets.retain(|s| s.encounter_id.is_none() || s.encounter_id != set.encounter_id);
+                // mesmo encounter_id (ou mesmo nome de arquivo global) substitui
+                self.sets.retain(|s| {
+                    if set.global {
+                        !(s.global && file_stem(&s.file) == file_stem(&set.file))
+                    } else {
+                        s.encounter_id.is_none() || s.encounter_id != set.encounter_id
+                    }
+                });
                 self.sets.push(set);
             }
             Err(e) => self.errors.push(e),
@@ -208,10 +222,17 @@ impl RuleBook {
     }
 
     pub fn find(&self, encounter_id: u32, name: &str) -> Option<&RuleSet> {
-        self.sets
-            .iter()
+        let boss = self.sets.iter().filter(|s| !s.global);
+        boss.clone()
             .find(|s| s.encounter_id == Some(encounter_id))
-            .or_else(|| self.sets.iter().find(|s| s.encounter_id.is_none() && s.name.eq_ignore_ascii_case(name)))
+            .or_else(|| boss.clone().find(|s| s.encounter_id.is_none() && s.name.eq_ignore_ascii_case(name)))
+    }
+
+    /// Regras do boss (se houver) + regras globais.
+    pub fn for_encounter(&self, encounter_id: u32, name: &str) -> Vec<&RuleSet> {
+        let mut out: Vec<&RuleSet> = self.find(encounter_id, name).into_iter().collect();
+        out.extend(self.sets.iter().filter(|s| s.global));
+        out
     }
 }
 
@@ -244,13 +265,16 @@ struct MechState {
     /// jogadores que cortaram (interrupt) ou soakaram
     credits: HashMap<String, PlayerHits>,
     failures: u32,
+    /// momentos das falhas coletivas (explosão, cast não cortado, enrage)
+    fail_times: Vec<i64>,
     last_fail_t: Option<i64>,
     last_burst_t: Option<i64>,
     events: Vec<MechanicEvent>,
 }
 
 pub struct RuleTracker {
-    pub file: String,
+    /// arquivos de regra usados (boss primeiro, depois globais)
+    pub files: Vec<String>,
     mechs: Vec<Mechanic>,
     state: Vec<MechState>,
     hooks: HashMap<u32, Vec<(usize, Hook)>>,
@@ -260,8 +284,11 @@ pub struct RuleTracker {
 }
 
 impl RuleTracker {
-    pub fn new(set: &RuleSet, difficulty_id: u32) -> Result<Self, String> {
-        let mechs = set.mechanics_for(difficulty_id)?;
+    pub fn new(sets: &[&RuleSet], difficulty_id: u32) -> Result<Self, String> {
+        let mut mechs = Vec::new();
+        for set in sets {
+            mechs.extend(set.mechanics_for(difficulty_id)?);
+        }
         let mut hooks: HashMap<u32, Vec<(usize, Hook)>> = HashMap::new();
         let mut watched_auras = HashSet::new();
         for (i, m) in mechs.iter().enumerate() {
@@ -282,7 +309,8 @@ impl RuleTracker {
             }
         }
         let state = mechs.iter().map(|_| MechState::default()).collect();
-        Ok(RuleTracker { file: set.file.clone(), mechs, state, hooks, watched_auras, active_auras: HashSet::new() })
+        let files = sets.iter().map(|s| s.file.clone()).collect();
+        Ok(RuleTracker { files, mechs, state, hooks, watched_auras, active_auras: HashSet::new() })
     }
 
     /// Chave e nome da mecânica que causa dano com este spell (para anotar golpes finais).
@@ -291,6 +319,43 @@ impl RuleTracker {
             matches!(h, Hook::Damage | Hook::Fail)
                 .then(|| (self.mechs[*i].key.as_str(), self.mechs[*i].name.as_str()))
         })
+    }
+
+    /// Mecânica cuja falha este spell representa: `fail_ids`, dano de mecânica evitável
+    /// ou dano do debuff acumulativo (stack_limit). Unavoidable não conta.
+    pub fn failure_mechanic(&self, spell_id: u32) -> Option<(&str, &str)> {
+        self.hooks.get(&spell_id)?.iter().find_map(|(i, h)| {
+            let m = &self.mechs[*i];
+            let is_failure = *h == Hook::Fail
+                || (*h == Hook::Damage && (m.kind.per_hit_blame() || m.kind == MechanicType::StackLimit));
+            is_failure.then_some((m.key.as_str(), m.name.as_str()))
+        })
+    }
+
+    /// Última falha coletiva da mecânica até `t`.
+    pub fn last_failure_before(&self, key: &str, t: i64) -> Option<i64> {
+        let i = self.mechs.iter().position(|m| m.key == key)?;
+        self.state[i].fail_times.iter().copied().filter(|&f| f <= t).max()
+    }
+
+    /// Mecânica (nome, dica) a que pertence uma aura.
+    pub fn aura_mechanic(&self, spell_id: u32) -> Option<(&str, &str)> {
+        self.hooks.get(&spell_id)?.iter().find_map(|(i, h)| {
+            matches!(h, Hook::Aura | Hook::SoakAura | Hook::Enrage)
+                .then(|| (self.mechs[*i].name.as_str(), self.mechs[*i].tip.as_str()))
+        })
+    }
+
+    /// Primeira falha coletiva registrada (para apontar o gatilho do wipe).
+    pub fn failure_times(&self) -> Vec<(i64, &str, &str)> {
+        let mut out: Vec<(i64, &str, &str)> = self
+            .mechs
+            .iter()
+            .zip(&self.state)
+            .flat_map(|(m, st)| st.fail_times.iter().map(move |&t| (t, m.key.as_str(), m.name.as_str())))
+            .collect();
+        out.sort_by_key(|x| x.0);
+        out
     }
 
     pub fn on_damage(&mut self, spell_id: u32, guid: &str, name: &str, amount: i64, t: i64) {
@@ -303,6 +368,7 @@ impl RuleTracker {
                     let new_burst = st.last_fail_t.is_none_or(|last| t - last > BURST_MS);
                     if new_burst {
                         st.failures += 1;
+                        st.fail_times.push(t);
                         push_event(st, t, None, format!("{} (falha)", m.name));
                     }
                     st.last_fail_t = Some(t);
@@ -366,6 +432,7 @@ impl RuleTracker {
                 Hook::SoakAura if is_player && stacks > 0 => bump(&mut st.credits, guid, name, 0, t),
                 Hook::Enrage if stacks > 0 => {
                     st.failures += 1;
+                    st.fail_times.push(t);
                     push_event(st, t, Some(name), format!("{} em {}", m.name, name));
                 }
                 _ => {}
@@ -379,6 +446,7 @@ impl RuleTracker {
             if hook == Hook::Cast && self.mechs[i].kind == MechanicType::Interrupt {
                 let st = &mut self.state[i];
                 st.failures += 1;
+                st.fail_times.push(t);
                 push_event(st, t, None, format!("{} completou {}", source, self.mechs[i].name));
             }
         }
@@ -541,7 +609,7 @@ mechanics:
     #[test]
     fn evaluates_hits_stacks_and_interrupts() {
         let set = RuleSet::parse("t.yaml", YAML).unwrap();
-        let mut tr = RuleTracker::new(&set, 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
         tr.on_damage(20, "P1", "Um-Realm", 100, 1000);
         tr.on_damage(20, "P1", "Um-Realm", 100, 5000);
         tr.on_damage(20, "P2", "Dois-Realm", 100, 6000); // dentro da tolerância
@@ -570,5 +638,20 @@ mechanics:
         let book = RuleBook::embedded();
         assert!(book.errors.is_empty(), "{:?}", book.errors);
         assert!(book.find(3421, "The Twin Fangs").is_some());
+    }
+
+    #[test]
+    fn global_rules_join_boss_rules() {
+        let book = RuleBook::embedded();
+        let sets = book.for_encounter(3421, "The Twin Fangs");
+        assert!(sets.len() >= 2 && !sets[0].global && sets[1..].iter().all(|s| s.global));
+        // encontro sem regras próprias ainda recebe as globais
+        let other = book.for_encounter(9999, "Outro Boss");
+        assert!(!other.is_empty() && other.iter().all(|s| s.global));
+
+        let mut tr = RuleTracker::new(&other, 16).unwrap();
+        tr.on_damage(0, "P1", "Um-Realm", 5000, 1000); // queda (ENVIRONMENTAL_DAMAGE)
+        let res = tr.finish(&HashMap::new());
+        assert_eq!(res.iter().find(|m| m.key == "environmental").unwrap().failures, 1);
     }
 }

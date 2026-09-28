@@ -102,13 +102,15 @@ pub fn analyze_reader<R: BufRead>(
     }
     progress(total, total);
 
+    let (pulls, ignored_short_pulls) = finalize(finished, &data);
     Ok(LogReport {
         file: String::new(),
         log_version,
         advanced_logging,
         lines,
         parse_ms: started.elapsed().as_millis() as u64,
-        pulls: finalize(finished, &data),
+        pulls,
+        ignored_short_pulls,
         rule_errors: book.errors.clone(),
     })
 }

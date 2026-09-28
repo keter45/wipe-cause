@@ -82,7 +82,9 @@ export default function App() {
         )}
         {report && (
           <span className="file muted" title={report.file}>
-            {report.file.split(/[\\/]/).pop()} · {report.pulls.length} pulls · {(report.parseMs / 1000).toFixed(1)}s
+            {report.file.split(/[\\/]/).pop()} · {report.pulls.length} pulls
+            {report.ignoredShortPulls > 0 && ` (+${report.ignoredShortPulls} com menos de 30s ignorados)`} ·{' '}
+            {(report.parseMs / 1000).toFixed(1)}s
             {!report.advancedLogging && <span className="warn"> · Advanced Combat Logging desligado</span>}
           </span>
         )}

@@ -1,0 +1,15 @@
+# Regras que valem para todos os encontros (somadas às regras do boss).
+schema_version: 1
+scope: global
+name: "Regras gerais"
+updated: 2026-09-28
+
+mechanics:
+  - key: environmental
+    name: "Dano de ambiente"
+    type: avoidable_damage
+    severity: minor
+    # ENVIRONMENTAL_DAMAGE (queda, lava, afogamento...) usa spell id 0 no wipe-core
+    detect: { damage_ids: [0] }
+    tip: "Queda, lava, fogo no chão: posicionamento."
+    message: "{player} tomou dano de ambiente {count}x"

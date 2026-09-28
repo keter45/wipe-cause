@@ -117,6 +117,32 @@ export function analyzePull(p: Pull): Verdict {
     }
   }
 
+  // 3b. Morte lenta: o player ficou muito tempo com pouca vida
+  const seenSlow = new Set<string>();
+  for (const d of decisive.filter((d) => d.deathKind === 'slow')) {
+    if (seenSlow.has(d.guid)) continue;
+    seenSlow.add(d.guid);
+    const below = d.stats.belowHalfMs != null ? `${Math.round(d.stats.belowHalfMs / 1000)}s abaixo de 50%` : '';
+    const heal = d.stats.healingPctOfMax10s != null ? `cura recebida: ${Math.round(d.stats.healingPctOfMax10s)}% do HP em 10s` : '';
+    findings.push({
+      severity: d.stats.underhealed ? 'major' : 'minor',
+      title: `${shortName(d.name)} morreu devagar${d.stats.underhealed ? ' e quase sem cura' : ''}`,
+      detail: [below, heal].filter(Boolean).join(' · '),
+      player: d.guid,
+    });
+  }
+
+  // 3c. Casts interrompíveis que passaram
+  const passed = p.enemySpells.filter((e) => e.interruptible && e.casts > 0);
+  if (passed.length) {
+    const idle = p.players.filter((x) => x.canInterrupt && x.interrupts === 0).map((x) => shortName(x.name));
+    findings.push({
+      severity: 'major',
+      title: `${passed.reduce((n, e) => n + e.casts, 0)} cast(s) interrompível(is) passaram: ${passed.map((e) => `${e.name} ${e.casts}×`).join(', ')}`,
+      detail: idle.length ? `Não cortaram nada: ${idle.join(', ')}` : undefined,
+    });
+  }
+
   // 4. Sem mortes relevantes e boss vivo: provavelmente dano (enrage/soft enrage) ou reset
   if (!p.success && deaths.length < 2 && bossHp != null && bossHp > 0) {
     findings.push({
@@ -130,6 +156,9 @@ export function analyzePull(p: Pull): Verdict {
   let headline: string;
   if (p.success) {
     headline = `Kill em ${mmss(p.durationMs)}${deaths.length ? ` com ${deaths.length} morte(s)` : ''}`;
+  } else if (p.trigger) {
+    const tr = p.trigger;
+    headline = `Wipe${bossHp != null ? ` com boss em ${pct(bossHp)}` : ''} — gatilho: ${tr.name} aos ${mmss(tr.t)} (${tr.deaths} morte${tr.deaths > 1 ? 's' : ''} ligada${tr.deaths > 1 ? 's' : ''})`;
   } else if (first) {
     const kb = first.killingBlow ? ` para ${first.killingBlow.spellName}` : '';
     headline = `Wipe${bossHp != null ? ` com boss em ${pct(bossHp)}` : ''} — começou com ${shortName(first.name)} morrendo${kb} aos ${mmss(first.t)}`;

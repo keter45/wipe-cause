@@ -122,3 +122,69 @@ fn boss_rules_are_applied() {
     assert!(p1.mechanics[..first_clean].iter().all(|m| m.failures > 0));
     assert!(r.rule_errors.is_empty());
 }
+
+#[test]
+fn short_pulls_are_ignored() {
+    let r = report();
+    assert_eq!(r.ignored_short_pulls, 1);
+    assert_eq!(r.pulls.len(), 3);
+    assert_eq!(r.pulls.iter().map(|p| p.pull_number).collect::<Vec<_>>(), vec![1, 2, 3]);
+    assert_eq!(r.pulls.iter().map(|p| p.id).collect::<Vec<_>>(), vec![0, 1, 2]);
+}
+
+#[test]
+fn classifies_spike_and_slow_deaths() {
+    let r = report();
+    // priest: 85% -> 0 em 4s, com o maior HP dos 3s finais em 85%
+    let priest = &r.pulls[0].deaths[0];
+    assert_eq!(priest.death_kind, "spike");
+    assert!(priest.stats.max_hp_pct_last_3s.unwrap() >= 60.0);
+
+    // warrior: 14s abaixo de 50% sem nenhuma cura
+    let warrior = r.pulls[1].deaths.iter().find(|d| d.name == "Tankão-Gallywix").unwrap();
+    assert_eq!(warrior.death_kind, "slow");
+    assert_eq!(warrior.stats.below_half_ms, Some(14_010));
+    assert_eq!(warrior.stats.healing_received_10s, 0);
+    assert!(warrior.stats.underhealed);
+    assert!(warrior.caused_by.is_none(), "Toxic Fumes é inevitável: não é falha de mecânica");
+}
+
+#[test]
+fn death_snapshot_has_debuffs_with_stacks() {
+    let r = report();
+    let mage = r.pulls[1].deaths.iter().find(|d| d.name == "Magozin-Azralon").unwrap();
+    let venom = mage.debuffs.iter().find(|d| d.spell_id == 1290336).expect("Eternal Venom na morte");
+    assert_eq!(venom.stacks, 3);
+    assert_eq!(venom.mechanic.as_deref(), Some("Eternal Venom"));
+    assert!(venom.tip.is_some());
+    assert!(mage.recap.iter().any(|e| e.kind == RecapKind::Debuff && e.spell_name == "Eternal Venom (3)"));
+}
+
+#[test]
+fn tracks_interrupts_per_player() {
+    let r = report();
+    let p2 = &r.pulls[1];
+    let mage = p2.players.iter().find(|p| p.name == "Magozin-Azralon").unwrap();
+    assert_eq!((mage.interrupts, mage.interrupt_attempts), (1, 1));
+    assert_eq!(mage.interrupt_log[0].target_spell.as_deref(), Some("Visceral Burst"));
+    assert!(mage.can_interrupt);
+    let priest = p2.players.iter().find(|p| p.name == "Curandeira-Azralon").unwrap();
+    assert!(!priest.can_interrupt, "disc priest não tem interrupt");
+    let warrior = p2.players.iter().find(|p| p.name == "Tankão-Gallywix").unwrap();
+    assert!(warrior.can_interrupt && warrior.interrupts == 0, "prot warrior podia (Pummel) e não cortou");
+
+    let burst = p2.enemy_spells.iter().find(|e| e.spell_id == 1308385).unwrap();
+    assert_eq!((burst.casts, burst.interrupted), (1, 1));
+    assert!(burst.interruptible);
+}
+
+#[test]
+fn deaths_are_linked_to_failed_mechanics() {
+    let r = report();
+    let priest = &r.pulls[0].deaths[0];
+    let cause = priest.caused_by.as_ref().expect("Vile Flood causou a morte");
+    assert_eq!(cause.key, "vile_flood");
+    assert!(cause.pct > 80.0, "{}", cause.pct);
+    let trigger = r.pulls[0].trigger.as_ref().unwrap();
+    assert_eq!((trigger.key.as_str(), trigger.deaths), ("vile_flood", 1));
+}

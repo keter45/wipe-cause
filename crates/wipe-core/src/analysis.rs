@@ -10,8 +10,14 @@ use std::collections::{HashMap, HashSet, VecDeque};
 const RECAP_WINDOW_MS: i64 = 15_000;
 /// Janela para "defensivo usado logo antes de morrer".
 const RECENT_DEFENSIVE_MS: i64 = 10_000;
-const MAX_RECAP_ENTRIES: usize = 60;
+const MAX_RECAP_ENTRIES: usize = 150;
 const FEIGN_DEATH: u32 = 5384;
+/// Histórico de HP guardado por player (para slow death).
+const HP_HISTORY_MS: i64 = 60_000;
+/// Janela de dano/cura para classificar a morte.
+const DEATH_STATS_MS: i64 = 10_000;
+/// Uma mecânica "causou" a morte se deu o golpe final ou este % do dano recebido no recap.
+const CAUSE_MIN_PCT: f32 = 35.0;
 const NIL_GUID: &str = "0000000000000000";
 
 // Flags de unidade (COMBATLOG_OBJECT_*)
@@ -91,6 +97,20 @@ struct PlayerAcc {
     recap: VecDeque<RecapEntry>,
     last_hp_pct: Option<f32>,
     feigning: bool,
+    max_hp: Option<i64>,
+    /// (ms do pull, HP%) dos últimos 60s
+    hp_hist: VecDeque<(i64, f32)>,
+    /// debuffs ativos: spell id -> estado
+    debuffs: HashMap<u32, ActiveDebuff>,
+    interrupt_log: Vec<InterruptUse>,
+    interrupt_attempts: u32,
+}
+
+struct ActiveDebuff {
+    name: String,
+    stacks: u32,
+    source: String,
+    applied_t: i64,
 }
 
 struct UnitHp {
@@ -106,6 +126,7 @@ struct EnemySpellAcc {
     casts: u32,
     hits: u32,
     damage: i64,
+    interrupted: u32,
 }
 
 /// Morte ainda sem a checagem de defensivos disponíveis (feita depois, com dados do log inteiro).
@@ -146,9 +167,8 @@ impl PullBuilder {
         let encounter_name = f.get(2).unwrap_or(&"?").to_string();
         let difficulty_id = f.get(3).and_then(|v| v.parse().ok()).unwrap_or(0);
         // erros de regra já foram reportados na carga do RuleBook
-        let rules = book
-            .find(encounter_id, &encounter_name)
-            .and_then(|set| RuleTracker::new(set, difficulty_id).ok());
+        let sets = book.for_encounter(encounter_id, &encounter_name);
+        let rules = if sets.is_empty() { None } else { RuleTracker::new(&sets, difficulty_id).ok() };
         PullBuilder {
             encounter_id,
             encounter_name,
@@ -206,8 +226,16 @@ impl PullBuilder {
         if adv.owner_guid != NIL_GUID && adv.owner_guid.starts_with("Player-") {
             self.pet_owner.insert(adv.info_guid.to_string(), adv.owner_guid.to_string());
         }
+        let rel = self.last_ms - self.start_ms;
         if let Some(p) = self.players.get_mut(adv.info_guid) {
             p.last_hp_pct = Some(pct);
+            p.max_hp = Some(adv.max_hp);
+            if p.hp_hist.back().is_none_or(|&(t, v)| t != rel || v != pct) {
+                p.hp_hist.push_back((rel, pct));
+            }
+            while p.hp_hist.front().is_some_and(|&(t, _)| rel - t > HP_HISTORY_MS) {
+                p.hp_hist.pop_front();
+            }
         }
         // unidade inimiga: guarda HP para identificar bosses
         let (src, dst) = (f[1], f[5]);
@@ -256,17 +284,11 @@ impl PullBuilder {
             "SPELL_HEAL" | "SPELL_PERIODIC_HEAL" => self.heal(f, t),
             "SPELL_CAST_SUCCESS" => self.cast(f, t, data),
             "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED" => {
-                self.rules_aura(f, t);
+                self.aura_state(f, t);
                 self.aura(f, t, data)
             }
-            "SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE" => self.rules_aura(f, t),
-            "SPELL_INTERRUPT" => {
-                // sufixo: extraSpellId (o cast cortado), extraSpellName, extraSchool
-                let rel = self.rel(t);
-                if let (Some(r), Some(id)) = (self.rules.as_mut(), f.get(12).and_then(|v| v.parse().ok())) {
-                    r.on_interrupt(id, f[1], f[2], rel);
-                }
-            }
+            "SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE" => self.aura_state(f, t),
+            "SPELL_INTERRUPT" => self.interrupt(f, t),
             "SPELL_SUMMON" => {
                 if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
                     self.pet_owner.insert(f[5].to_string(), owner);
@@ -277,10 +299,10 @@ impl PullBuilder {
         }
     }
 
-    /// Auras para as regras do boss: stacks de debuff em players e buffs de enrage em inimigos.
-    fn rules_aura(&mut self, f: &[&str], t: i64) {
+    /// Estado de auras: debuffs ativos em cada player (para a foto na morte) e regras do boss
+    /// (stacks de debuff em players, enrage em inimigos).
+    fn aura_state(&mut self, f: &[&str], t: i64) {
         let rel = self.rel(t);
-        let Some(r) = self.rules.as_mut() else { return };
         let spell_id: u32 = f[9].parse().unwrap_or(0);
         // APPLIED/REMOVED: auraType[,amount]; *_DOSE: auraType,stacks
         let stacks = match f[0] {
@@ -288,8 +310,70 @@ impl PullBuilder {
             "SPELL_AURA_REMOVED" => 0,
             _ => f.get(13).and_then(|v| v.parse().ok()).unwrap_or(1),
         };
-        let is_player = Self::is_group_player(f[5], hex(f[7]));
-        r.on_aura(spell_id, f[5], f[6], stacks, is_player, rel);
+        let (dst_guid, dst_name) = (f[5], f[6]);
+        let is_player = Self::is_group_player(dst_guid, hex(f[7]));
+        if let Some(r) = self.rules.as_mut() {
+            r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
+        }
+        if !is_player || f.get(12) != Some(&"DEBUFF") {
+            return;
+        }
+        let mechanic = self.rules.as_ref().and_then(|r| r.aura_mechanic(spell_id)).map(|(n, _)| n.to_string());
+        let source = if f[2] == "nil" { "(sem origem)" } else { f[2] };
+        let p = self.player(dst_guid, dst_name);
+        if stacks == 0 {
+            p.debuffs.remove(&spell_id);
+            return;
+        }
+        let d = p.debuffs.entry(spell_id).or_insert_with(|| ActiveDebuff {
+            name: f[10].to_string(),
+            stacks,
+            source: source.to_string(),
+            applied_t: rel,
+        });
+        d.stacks = stacks;
+        // debuffs de mecânica aparecem no death recap (ex.: "Eternal Venom (8)")
+        if mechanic.is_some() && f[0] != "SPELL_AURA_REMOVED_DOSE" {
+            push_recap(
+                p,
+                RecapEntry {
+                    t: rel,
+                    kind: RecapKind::Debuff,
+                    spell_id,
+                    spell_name: if stacks > 1 { format!("{} ({})", f[10], stacks) } else { f[10].to_string() },
+                    source: source.to_string(),
+                    amount: 0,
+                    overkill: 0,
+                    absorbed: 0,
+                    hp_pct: None,
+                },
+            );
+        }
+    }
+
+    /// SPELL_INTERRUPT: sufixo extraSpellId (o cast cortado), extraSpellName, extraSchool.
+    fn interrupt(&mut self, f: &[&str], t: i64) {
+        let rel = self.rel(t);
+        let Some(cut_id) = f.get(12).and_then(|v| v.parse::<u32>().ok()) else { return };
+        let cut_name = f.get(13).unwrap_or(&"").to_string();
+        self.enemy_spells.entry(cut_id).or_default().interrupted += 1;
+        // pets (Spell Lock, Axe Toss) contam para o dono
+        let Some(owner) = self.owner_of(f[1], hex(f[3])) else { return };
+        let owner_name = if owner == f[1] { f[2] } else { "" };
+        if let Some(r) = self.rules.as_mut() {
+            let label = self.players.get(&owner).map(|p| p.name.clone()).filter(|n| !n.is_empty());
+            r.on_interrupt(cut_id, &owner, label.as_deref().unwrap_or(f[2]), rel);
+        }
+        let kick = f[10].to_string();
+        let p = self.player(&owner, owner_name);
+        // a tentativa (SPELL_CAST_SUCCESS) vem logo antes: completa ela em vez de duplicar
+        match p.interrupt_log.iter_mut().rev().find(|u| u.target_spell_id.is_none() && rel - u.t <= 500) {
+            Some(u) => {
+                u.target_spell_id = Some(cut_id);
+                u.target_spell = Some(cut_name);
+            }
+            None => p.interrupt_log.push(InterruptUse { t: rel, spell: kick, target_spell_id: Some(cut_id), target_spell: Some(cut_name) }),
+        }
     }
 
     fn combatant_info(&mut self, f: &[&str]) {
@@ -461,6 +545,14 @@ impl PullBuilder {
             e.casts += 1;
             return;
         }
+        if data.interrupts.contains_key(&spell_id) {
+            if let Some(owner) = self.owner_of(src_guid, src_flags) {
+                let owner_name = if owner == src_guid { src_name } else { "" };
+                let p = self.player(&owner, owner_name);
+                p.interrupt_attempts += 1;
+                p.interrupt_log.push(InterruptUse { t: rel, spell: spell_name.clone(), target_spell_id: None, target_spell: None });
+            }
+        }
         if !Self::is_group_player(src_guid, src_flags) {
             return;
         }
@@ -566,7 +658,23 @@ impl PullBuilder {
             .collect();
         defensives_recent.sort_by_key(|u| u.t);
         let casts_before = p.defensive_casts.iter().filter(|u| u.t <= rel).map(|u| (u.spell_id, u.t)).collect();
-        let death = Death {
+        let stats = death_stats(p, &recap, rel);
+        let death_kind = classify_death(&stats).to_string();
+        let mut debuffs: Vec<DeathAura> = p
+            .debuffs
+            .iter()
+            .map(|(id, d)| DeathAura {
+                spell_id: *id,
+                name: d.name.clone(),
+                stacks: d.stacks,
+                source: d.source.clone(),
+                applied_t: d.applied_t,
+                mechanic: None,
+                tip: None,
+            })
+            .collect();
+        debuffs.sort_by_key(|d| d.applied_t);
+        let mut death = Death {
             order,
             guid: dst_guid.to_string(),
             name: p.name.clone(),
@@ -575,6 +683,11 @@ impl PullBuilder {
             t: rel,
             killing_blow,
             killing_blow_mechanic: None,
+            death_kind,
+            stats,
+            debuffs,
+            mechanic_damage: Vec::new(),
+            caused_by: None,
             recap,
             defensives_recent,
             defensives_available: Vec::new(),
@@ -583,6 +696,10 @@ impl PullBuilder {
             healthstone_known: false,
         };
         p.recap.clear();
+        p.debuffs.clear();
+        if let Some(r) = self.rules.as_ref() {
+            attribute_death(&mut death, r);
+        }
         self.deaths.push(PendingDeath { death, casts_before });
     }
 
@@ -640,6 +757,7 @@ impl PullBuilder {
             let mut defensives_used: Vec<SpellUse> =
                 p.defensive_casts.iter().chain(p.externals_received.iter()).cloned().collect();
             defensives_used.sort_by_key(|u| u.t);
+            let interrupts = p.interrupt_log.iter().filter(|u| u.target_spell_id.is_some()).count() as u32;
             players.push(PlayerStats {
                 guid: guid.clone(),
                 name: p.name.clone(),
@@ -656,6 +774,10 @@ impl PullBuilder {
                 healthstones: p.healthstones.len() as u32,
                 defensives_used,
                 taken_by_ability: taken,
+                interrupts,
+                interrupt_attempts: p.interrupt_attempts.max(interrupts),
+                can_interrupt: p.interrupt_attempts > 0 || p.spec_id.is_some_and(|s| data.spec_can_interrupt(s)),
+                interrupt_log: p.interrupt_log.clone(),
             });
         }
         players.sort_by_key(|a| std::cmp::Reverse(a.damage_done));
@@ -673,7 +795,9 @@ impl PullBuilder {
 
         let roles: HashMap<String, String> =
             players.iter().filter_map(|p| Some((p.guid.clone(), p.role.clone()?))).collect();
-        let rules_file = self.rules.as_ref().map(|r| r.file.clone());
+        let rules_file = self.rules.as_ref().and_then(|r| r.files.first().cloned());
+        let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).collect();
+        let trigger = pull_trigger(&deaths_view);
         let mechanics = self.rules.map(|r| r.finish(&roles)).unwrap_or_default();
 
         let mut enemy_spells: Vec<EnemySpell> = self
@@ -682,7 +806,16 @@ impl PullBuilder {
             .map(|(id, e)| {
                 let mut sources: Vec<String> = e.sources.into_iter().collect();
                 sources.sort();
-                EnemySpell { spell_id: id, name: e.name, sources, casts: e.casts, hits_on_players: e.hits, damage_to_players: e.damage }
+                EnemySpell {
+                    spell_id: id,
+                    name: e.name,
+                    sources,
+                    casts: e.casts,
+                    hits_on_players: e.hits,
+                    damage_to_players: e.damage,
+                    interrupted: e.interrupted,
+                    interruptible: e.interrupted > 0,
+                }
             })
             .collect();
         enemy_spells.sort_by(|a, b| b.damage_to_players.cmp(&a.damage_to_players).then(b.casts.cmp(&a.casts)));
@@ -708,12 +841,120 @@ impl PullBuilder {
                 enemy_spells,
                 rules_file,
                 mechanics,
+                trigger,
             },
             pending_deaths: pending,
             defensives_by_player,
             healthstone_users,
         }
     }
+}
+
+/// Números da janela antes da morte (HP ao longo do tempo, dano e cura recebidos).
+fn death_stats(p: &PlayerAcc, recap: &[RecapEntry], death_t: i64) -> DeathStats {
+    let window: Vec<&RecapEntry> = recap.iter().filter(|e| death_t - e.t <= DEATH_STATS_MS).collect();
+    let damage_taken_10s = window.iter().filter(|e| e.kind == RecapKind::Damage).map(|e| e.amount + e.absorbed).sum();
+    let healing_received_10s = window.iter().filter(|e| e.kind == RecapKind::Heal).map(|e| e.amount).sum();
+    let hist: Vec<(i64, f32)> = p.hp_hist.iter().copied().filter(|&(t, _)| t <= death_t).collect();
+
+    // tempo contínuo abaixo de 50% até a morte
+    let below_half_ms = (!hist.is_empty()).then(|| match hist.iter().rposition(|&(_, v)| v >= 50.0) {
+        Some(i) => hist.get(i + 1).map_or(0, |&(t, _)| death_t - t),
+        None => death_t - hist[0].0, // o histórico todo já estava abaixo de 50%
+    });
+    // maior HP nos 3s finais, incluindo o HP com que o player entrou na janela
+    let start = death_t - 3_000;
+    let entering = hist.iter().rev().find(|&&(t, _)| t < start).map(|&(_, v)| v);
+    let max_hp_pct_last_3s = hist
+        .iter()
+        .filter(|&&(t, _)| t >= start)
+        .map(|&(_, v)| v)
+        .chain(entering)
+        .reduce(f32::max);
+    let healing_pct_of_max_10s = p.max_hp.filter(|&m| m > 0).map(|m| healing_received_10s as f32 / m as f32 * 100.0);
+    DeathStats {
+        max_hp: p.max_hp,
+        below_half_ms,
+        max_hp_pct_last_3s,
+        damage_taken_10s,
+        healing_received_10s,
+        healing_pct_of_max_10s,
+        underhealed: healing_pct_of_max_10s.is_some_and(|v| v < 25.0),
+    }
+}
+
+/// spike: saiu de >= 60% para 0 em até 3s. slow: >= 6s abaixo de 50% antes de morrer.
+fn classify_death(s: &DeathStats) -> &'static str {
+    match (s.max_hp_pct_last_3s, s.below_half_ms) {
+        (Some(hp), _) if hp >= 60.0 => "spike",
+        (_, Some(ms)) if ms >= 6_000 => "slow",
+        (None, None) => "unknown",
+        _ => "normal",
+    }
+}
+
+/// Liga a morte às mecânicas com falha cujo dano aparece no recap.
+fn attribute_death(d: &mut Death, rules: &RuleTracker) {
+    let dmg = |e: &RecapEntry| e.amount + e.absorbed;
+    let total: i64 = d.recap.iter().filter(|e| e.kind == RecapKind::Damage).map(dmg).sum();
+    let mut by_mech: Vec<(String, String, i64)> = Vec::new();
+    for e in d.recap.iter().filter(|e| e.kind == RecapKind::Damage) {
+        if let Some((key, name)) = rules.failure_mechanic(e.spell_id) {
+            match by_mech.iter_mut().find(|m| m.0 == key) {
+                Some(m) => m.2 += dmg(e),
+                None => by_mech.push((key.to_string(), name.to_string(), dmg(e))),
+            }
+        }
+    }
+    by_mech.sort_by_key(|m| std::cmp::Reverse(m.2));
+    d.mechanic_damage = by_mech
+        .into_iter()
+        .map(|(key, name, amount)| MechanicShare {
+            fail_t: rules.last_failure_before(&key, d.t),
+            pct: if total > 0 { amount as f32 / total as f32 * 100.0 } else { 0.0 },
+            key,
+            name,
+            amount,
+        })
+        .collect();
+    let kb_mech = d.killing_blow.as_ref().and_then(|kb| rules.failure_mechanic(kb.spell_id)).map(|(k, _)| k.to_string());
+    for a in &mut d.debuffs {
+        if let Some((name, tip)) = rules.aura_mechanic(a.spell_id) {
+            a.mechanic = Some(name.to_string());
+            a.tip = (!tip.is_empty()).then(|| tip.to_string());
+        }
+    }
+    d.caused_by = match kb_mech {
+        Some(k) => d.mechanic_damage.iter().find(|m| m.key == k).cloned(),
+        None => d.mechanic_damage.first().filter(|m| m.pct >= CAUSE_MIN_PCT).cloned(),
+    };
+}
+
+/// Mecânica que puxou as mortes: a mais cedo entre as que causaram 2+ mortes;
+/// senão, a causa da primeira morte.
+fn pull_trigger(deaths: &[&Death]) -> Option<PullTrigger> {
+    let mut groups: Vec<PullTrigger> = Vec::new();
+    for d in deaths {
+        let Some(c) = &d.caused_by else { continue };
+        let t = c.fail_t.unwrap_or(d.t);
+        match groups.iter_mut().find(|g| g.key == c.key) {
+            Some(g) => {
+                g.deaths += 1;
+                g.t = g.t.min(t);
+            }
+            None => groups.push(PullTrigger { key: c.key.clone(), name: c.name.clone(), t, deaths: 1 }),
+        }
+    }
+    let first_death = deaths.iter().min_by_key(|d| d.t)?;
+    groups
+        .iter()
+        .filter(|g| g.deaths >= 2)
+        .min_by_key(|g| g.t)
+        .cloned()
+        .or_else(|| {
+            let c = first_death.caused_by.as_ref()?;
+            groups.iter().find(|g| g.key == c.key).cloned()
+        })
 }
 
 /// Adiciona ao recap; sem HP no evento, usa o último HP conhecido do player.
@@ -730,21 +971,44 @@ fn push_recap(p: &mut PlayerAcc, mut e: RecapEntry) {
 
 /// Pós-processamento com visão do log inteiro: numeração dos pulls por boss e
 /// "defensivos disponíveis" (só conta defensivos que o player usou em algum pull).
-pub(crate) fn finalize(finished: Vec<FinishedPull>, data: &GameData) -> Vec<Pull> {
+/// Wipes mais curtos que isso são descartados (pull falso, reset, pull de posicionamento).
+pub const MIN_PULL_MS: i64 = 30_000;
+
+/// Pós-processamento com visão do log inteiro. Devolve os pulls e quantos wipes curtos
+/// foram descartados.
+pub(crate) fn finalize(finished: Vec<FinishedPull>, data: &GameData) -> (Vec<Pull>, u32) {
+    let total = finished.len();
+    let finished: Vec<FinishedPull> =
+        finished.into_iter().filter(|fp| fp.pull.success || fp.pull.duration_ms >= MIN_PULL_MS).collect();
+    let ignored = (total - finished.len()) as u32;
+
     let mut known: HashMap<String, HashSet<u32>> = HashMap::new();
     let mut hs_known: HashSet<String> = HashSet::new();
+    // casts inimigos cortados em algum pull = interrompíveis; players que tentaram cortar algo
+    let mut interruptible: HashSet<u32> = HashSet::new();
+    let mut kickers: HashSet<String> = HashSet::new();
     for fp in &finished {
         for (guid, set) in &fp.defensives_by_player {
             known.entry(guid.clone()).or_default().extend(set.iter().copied());
         }
         hs_known.extend(fp.healthstone_users.iter().cloned());
+        interruptible.extend(fp.pull.enemy_spells.iter().filter(|e| e.interrupted > 0).map(|e| e.spell_id));
+        kickers.extend(fp.pull.players.iter().filter(|p| p.interrupt_attempts > 0).map(|p| p.guid.clone()));
     }
 
     let mut counters: HashMap<(u32, u32), u32> = HashMap::new();
-    finished
+    let pulls = finished
         .into_iter()
-        .map(|fp| {
+        .enumerate()
+        .map(|(idx, fp)| {
             let mut pull = fp.pull;
+            pull.id = idx;
+            for e in &mut pull.enemy_spells {
+                e.interruptible = interruptible.contains(&e.spell_id);
+            }
+            for p in &mut pull.players {
+                p.can_interrupt |= kickers.contains(&p.guid);
+            }
             let c = counters.entry((pull.encounter_id, pull.difficulty_id)).or_insert(0);
             *c += 1;
             pull.pull_number = *c;
@@ -775,7 +1039,8 @@ pub(crate) fn finalize(finished: Vec<FinishedPull>, data: &GameData) -> Vec<Pull
                 .collect();
             pull
         })
-        .collect()
+        .collect();
+    (pulls, ignored)
 }
 
 #[cfg(test)]

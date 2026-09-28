@@ -7,6 +7,7 @@ export interface LogReport {
   lines: number;
   parseMs: number;
   pulls: Pull[];
+  ignoredShortPulls: number;
   ruleErrors: string[];
 }
 
@@ -30,6 +31,14 @@ export interface Pull {
   enemySpells: EnemySpell[];
   rulesFile: string | null;
   mechanics: MechanicResult[];
+  trigger: PullTrigger | null;
+}
+
+export interface PullTrigger {
+  key: string;
+  name: string;
+  t: number;
+  deaths: number;
 }
 
 export interface BossState {
@@ -58,6 +67,45 @@ export interface PlayerStats {
   healthstones: number;
   defensivesUsed: SpellUse[];
   takenByAbility: AbilityDamage[];
+  interrupts: number;
+  interruptAttempts: number;
+  canInterrupt: boolean;
+  interruptLog: InterruptUse[];
+}
+
+export interface InterruptUse {
+  t: number;
+  spell: string;
+  targetSpellId: number | null;
+  targetSpell: string | null;
+}
+
+export interface DeathStats {
+  maxHp: number | null;
+  belowHalfMs: number | null;
+  maxHpPctLast3s: number | null;
+  damageTaken10s: number;
+  healingReceived10s: number;
+  healingPctOfMax10s: number | null;
+  underhealed: boolean;
+}
+
+export interface DeathAura {
+  spellId: number;
+  name: string;
+  stacks: number;
+  source: string;
+  appliedT: number;
+  mechanic: string | null;
+  tip: string | null;
+}
+
+export interface MechanicShare {
+  key: string;
+  name: string;
+  amount: number;
+  pct: number;
+  failT: number | null;
 }
 
 export interface SpellUse {
@@ -84,6 +132,11 @@ export interface Death {
   t: number;
   killingBlow: RecapEntry | null;
   killingBlowMechanic: string | null;
+  deathKind: 'spike' | 'slow' | 'normal' | 'unknown';
+  stats: DeathStats;
+  debuffs: DeathAura[];
+  mechanicDamage: MechanicShare[];
+  causedBy: MechanicShare | null;
   recap: RecapEntry[];
   defensivesRecent: SpellUse[];
   defensivesAvailable: AvailableSpell[];
@@ -100,7 +153,7 @@ export interface AvailableSpell {
 
 export interface RecapEntry {
   t: number;
-  kind: 'damage' | 'heal' | 'buff';
+  kind: 'damage' | 'heal' | 'buff' | 'debuff';
   spellId: number;
   spellName: string;
   source: string;
@@ -117,6 +170,8 @@ export interface EnemySpell {
   casts: number;
   hitsOnPlayers: number;
   damageToPlayers: number;
+  interrupted: number;
+  interruptible: boolean;
 }
 
 export type MechanicSeverity = 'wipe' | 'major' | 'minor' | 'none';

@@ -27,11 +27,11 @@ mechanics:
     lethal_stacks: 11
     warn_stacks: 8
     overrides:
-      heroic: { lethal_stacks: 10, warn_stacks: 8, severity: wipe }
-      mythic: { lethal_stacks: 10, warn_stacks: 9, severity: wipe }
+      heroic: { warn_stacks: 9, severity: wipe }
+      mythic: { warn_stacks: 9, severity: wipe }
     tip: "Cada mecânica errada dá stack; entrar no Ravenous Feast limpa."
     message: "{player} chegou a {stacks} stacks de Eternal Venom"
-    notes: "Guia de PTR dizia 9 no Mítico; no log live os players chegaram a 10."
+    notes: "Tooltip live: morre ao chegar em 11 aplicações (o 11º stack não aparece no log). Guia de PTR dizia 9-10."
 
   # ---------- Vexhul ----------
   - key: caustic_globule
