@@ -37,7 +37,7 @@ export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }
                 <span className="pull-num">#{p.pullNumber}</span>
                 <span className="pull-result">{p.success ? 'Kill' : pct(hp)}</span>
                 <span className="pull-meta muted">
-                  {mmss(p.durationMs)} · {p.deaths.length}☠
+                  {mmss(p.durationMs)} · {p.deaths.filter((d) => !d.ignored).length}☠
                 </span>
                 {!p.success && hp != null && (
                   <span className="pull-hp" style={{ width: `${100 - hp}%` }} aria-hidden />

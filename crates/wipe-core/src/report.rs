@@ -11,6 +11,8 @@ pub struct LogReport {
     pub lines: u64,
     pub parse_ms: u64,
     pub pulls: Vec<Pull>,
+    /// "Ignorar eventos após N mortes" usado na análise (0 = sem corte)
+    pub death_cutoff: u32,
     /// Wipes com menos de 30s descartados (pull falso / reset)
     pub ignored_short_pulls: u32,
     /// Erros ao carregar regras de boss (YAML inválido etc.)
@@ -37,6 +39,10 @@ pub struct Pull {
     pub start_local: String,
     pub tz_offset_hours: f64,
     pub duration_ms: i64,
+    /// Momento (ms do pull) da N-ésima morte: estatísticas param de contar aqui
+    pub cutoff_t: Option<i64>,
+    /// Tempo usado nas médias (DPS/HPS): até o corte, ou o pull inteiro
+    pub analyzed_ms: i64,
     pub success: bool,
     /// ENCOUNTER_END não encontrado (log cortado / desconectou)
     pub incomplete: bool,
@@ -81,13 +87,6 @@ pub struct MechanicResult {
     /// culpados primeiro; depois quem ajudou (`credit`: interrupts, soaks)
     pub players: Vec<MechanicPlayer>,
     pub events: Vec<MechanicEvent>,
-    /// momentos das falhas coletivas (para recortar por "ignorar após N mortes")
-    pub fail_times: Vec<i64>,
-    pub tolerance: u32,
-    pub warn_stacks: Option<u32>,
-    pub lethal_stacks: Option<u32>,
-    /// mensagem da regra, com {player} {count} {stacks} {lethal_stacks}, para re-renderizar
-    pub message_template: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -101,8 +100,6 @@ pub struct MechanicPlayer {
     pub first_t: Option<i64>,
     pub credit: bool,
     pub message: String,
-    /// (ms do pull, valor, dano): valor = 1 por hit/ajuda, ou o nº de stacks a cada aumento
-    pub timeline: Vec<(i64, u32, i64)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -122,6 +119,8 @@ pub struct BossState {
     pub max_hp: i64,
     /// HP restante no fim do pull (0-100). None sem advanced logging.
     pub hp_pct: Option<f32>,
+    /// HP no momento do corte ("ignorar após N mortes")
+    pub hp_pct_at_cutoff: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -180,6 +179,8 @@ pub struct Death {
     pub class: Option<String>,
     pub role: Option<String>,
     pub t: i64,
+    /// Depois do corte ("ignorar após N mortes"): só para consulta, não conta em nada
+    pub ignored: bool,
     pub killing_blow: Option<RecapEntry>,
     /// Mecânica do boss (regras) que deu o golpe final, se reconhecida
     pub killing_blow_mechanic: Option<String>,
@@ -302,7 +303,4 @@ pub struct EnemySpell {
     pub interrupted: u32,
     /// foi interrompido ao menos uma vez em algum pull do log
     pub interruptible: bool,
-    /// ms do pull de cada cast completado / interrompido
-    pub cast_times: Vec<i64>,
-    pub interrupt_times: Vec<i64>,
 }

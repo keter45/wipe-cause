@@ -20,10 +20,10 @@ fn user_rules_dir(app: &AppHandle) -> Option<PathBuf> {
 
 /// Analisa o combat log fora da thread da UI, emitindo `analyze-progress` durante a leitura.
 #[tauri::command]
-async fn analyze_log(app: AppHandle, path: String) -> Result<LogReport, String> {
-    let rules_dir = user_rules_dir(&app);
+async fn analyze_log(app: AppHandle, path: String, death_cutoff: Option<u32>) -> Result<LogReport, String> {
+    let opts = wipe_core::AnalyzeOptions { rules_dir: user_rules_dir(&app), death_cutoff: death_cutoff.unwrap_or(0) };
     tauri::async_runtime::spawn_blocking(move || {
-        wipe_core::analyze_file(&PathBuf::from(&path), rules_dir.as_deref(), |read, total| {
+        wipe_core::analyze_file(&PathBuf::from(&path), &opts, |read, total| {
             let _ = app.emit("analyze-progress", Progress { read, total });
         })
         .map_err(|e| format!("não foi possível ler {path}: {e}"))

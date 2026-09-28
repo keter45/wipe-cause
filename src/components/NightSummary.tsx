@@ -209,7 +209,7 @@ function pullTip(p: Pull, hp: number) {
         Pull {p.pullNumber} · {clock(p)} · {mmss(p.durationMs)}
       </span>
       {p.trigger && <span>Gatilho: {p.trigger.name}</span>}
-      <span>{p.deaths.length} mortes</span>
+      <span>{p.deaths.filter((d) => !d.ignored).length} mortes</span>
     </>
   );
 }

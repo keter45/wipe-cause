@@ -32,7 +32,7 @@ export function DeathList({ deaths, decisive, cutoffT }: Props) {
         const key = `${d.guid}:${d.t}`;
         const isOpen = open === key;
         return (
-          <div key={key} className={`death ${decisive.has(key) ? 'decisive' : 'cascade'} ${cutoffT != null && d.t > cutoffT ? 'ignored' : ''}`}>
+          <div key={key} className={`death ${decisive.has(key) ? 'decisive' : 'cascade'} ${d.ignored ? 'ignored' : ''}`}>
             <div className="death-head">
             <button className="death-row" onClick={() => setOpen(isOpen ? null : key)} aria-expanded={isOpen}>
               <span className="death-order">{d.order}</span>
@@ -40,7 +40,7 @@ export function DeathList({ deaths, decisive, cutoffT }: Props) {
               <span className="death-name" style={{ color: classColor(d.class) }}>
                 {shortName(d.name)}
                 {d.role === 'tank' && <span className="role-tag">tank</span>}
-                {cutoffT != null && d.t > cutoffT && <span className="role-tag">ignorada</span>}
+                {d.ignored && <span className="role-tag">ignorada</span>}
               </span>
               <span className="death-kb">
                 {d.killingBlow ? (
@@ -80,7 +80,7 @@ export function DeathList({ deaths, decisive, cutoffT }: Props) {
       })}
       <p className="muted small">
         {cutoffT != null
-          ? `Mortes marcadas "ignorada" vieram depois do corte (${mmss(cutoffT)}): erros e falhas depois dele não contam.`
+          ? `Mortes marcadas "ignorada" vieram depois do corte (${mmss(cutoffT)}): nada depois dele conta (dano, cura, erros, falhas).`
           : 'Mortes esmaecidas aconteceram depois das primeiras (efeito cascata).'}
       </p>
     </div>

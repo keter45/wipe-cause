@@ -7,6 +7,8 @@ export interface LogReport {
   lines: number;
   parseMs: number;
   pulls: Pull[];
+  /** "ignorar eventos após N mortes" usado na análise (0 = sem corte) */
+  deathCutoff: number;
   ignoredShortPulls: number;
   ruleErrors: string[];
 }
@@ -25,6 +27,10 @@ export interface Pull {
   startLocal: string;
   tzOffsetHours: number;
   durationMs: number;
+  /** momento da N-ésima morte: estatísticas param de contar aqui */
+  cutoffT: number | null;
+  /** tempo usado nas médias (DPS/HPS): até o corte, ou o pull inteiro */
+  analyzedMs: number;
   success: boolean;
   incomplete: boolean;
   bosses: BossState[];
@@ -34,8 +40,6 @@ export interface Pull {
   rulesFile: string | null;
   mechanics: MechanicResult[];
   trigger: PullTrigger | null;
-  /** preenchido na UI: momento da N-ésima morte (eventos depois dele são ignorados) */
-  cutoffT?: number | null;
 }
 
 export interface PullTrigger {
@@ -51,6 +55,8 @@ export interface BossState {
   npcId: number | null;
   maxHp: number;
   hpPct: number | null;
+  /** HP no momento do corte */
+  hpPctAtCutoff: number | null;
 }
 
 export type Role = 'tank' | 'healer' | 'dps';
@@ -134,6 +140,8 @@ export interface Death {
   class: string | null;
   role: Role | null;
   t: number;
+  /** depois do corte: só para consulta, não conta em nada */
+  ignored: boolean;
   killingBlow: RecapEntry | null;
   killingBlowMechanic: string | null;
   deathKind: 'spike' | 'slow' | 'normal' | 'unknown';
@@ -176,8 +184,6 @@ export interface EnemySpell {
   damageToPlayers: number;
   interrupted: number;
   interruptible: boolean;
-  castTimes: number[];
-  interruptTimes: number[];
 }
 
 export type MechanicSeverity = 'wipe' | 'major' | 'minor' | 'none';
@@ -193,11 +199,6 @@ export interface MechanicResult {
   summary: string;
   players: MechanicPlayer[];
   events: MechanicEvent[];
-  failTimes: number[];
-  tolerance: number;
-  warnStacks: number | null;
-  lethalStacks: number | null;
-  messageTemplate: string;
 }
 
 export interface MechanicPlayer {
@@ -209,8 +210,6 @@ export interface MechanicPlayer {
   /** true = ajudou (interrupt, soak); false = errou */
   credit: boolean;
   message: string;
-  /** [ms do pull, valor (1 por hit, ou stacks), dano] */
-  timeline: [number, number, number][];
 }
 
 export interface MechanicEvent {

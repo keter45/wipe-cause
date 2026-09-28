@@ -16,12 +16,12 @@ export async function pickLogFile(): Promise<string | null> {
   return typeof picked === 'string' ? picked : null;
 }
 
-export async function analyzeLog(path: string, onProgress: (fraction: number) => void): Promise<LogReport> {
+export async function analyzeLog(path: string, deathCutoff: number, onProgress: (fraction: number) => void): Promise<LogReport> {
   const unlisten = await listen<{ read: number; total: number }>('analyze-progress', (e) => {
     if (e.payload.total > 0) onProgress(e.payload.read / e.payload.total);
   });
   try {
-    return await invoke<LogReport>('analyze_log', { path });
+    return await invoke<LogReport>('analyze_log', { path, deathCutoff });
   } finally {
     unlisten();
   }

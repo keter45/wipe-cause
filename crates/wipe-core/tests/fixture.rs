@@ -1,11 +1,15 @@
 //! Testa a análise ponta a ponta no log sintético (ver tests/fixtures/gen-fixture.mjs).
 
 use std::path::PathBuf;
-use wipe_core::{analyze_file, LogReport, RecapKind};
+use wipe_core::{analyze_file, AnalyzeOptions, LogReport, RecapKind};
+
+fn report_with(death_cutoff: u32) -> LogReport {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/twin-fangs.txt");
+    analyze_file(&path, &AnalyzeOptions { rules_dir: None, death_cutoff }, |_, _| {}).expect("fixture deve ser lida")
+}
 
 fn report() -> LogReport {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/twin-fangs.txt");
-    analyze_file(&path, None, |_, _| {}).expect("fixture deve ser lida")
+    report_with(0)
 }
 
 #[test]
@@ -189,4 +193,41 @@ fn deaths_are_linked_to_failed_mechanics() {
     assert!(cause.pct > 80.0, "{}", cause.pct);
     let trigger = r.pulls[0].trigger.as_ref().unwrap();
     assert_eq!((trigger.key.as_str(), trigger.deaths), ("vile_flood", 1));
+}
+
+#[test]
+fn death_cutoff_freezes_every_stat() {
+    let full = report();
+    let cut = report_with(1); // ignora tudo depois da 1ª morte de cada pull
+    assert_eq!(cut.death_cutoff, 1);
+
+    // pull 1: priest morre aos 1:30 — dano do mage (e do pet) só até ali
+    let p1 = &cut.pulls[0];
+    assert_eq!(p1.cutoff_t, Some(90_010));
+    assert_eq!(p1.analyzed_ms, 90_010);
+    assert_eq!(p1.duration_ms, 150_000, "a duração real do pull continua");
+    let mage = p1.players.iter().find(|p| p.name == "Magozin-Azralon").unwrap();
+    // fireball aos 1..90s; a mordida do pet dos 90,2s já é depois do corte (90,01s)
+    assert_eq!(mage.damage_done, 90 * 150_000 + 89 * 50_000);
+    assert!((mage.dps - mage.damage_done as f64 / 90.01).abs() < 1.0, "DPS sobre o tempo até o corte");
+    let vex = p1.bosses.iter().find(|b| b.name == "Vexhul").unwrap();
+    assert!((vex.hp_pct_at_cutoff.unwrap() - 86.5).abs() < 0.01);
+    assert!((vex.hp_pct.unwrap() - 79.0).abs() < 0.01, "HP no fim do pull continua");
+
+    // pull 2: mage morre aos 0:45; a morte do warrior (0:58) fica registrada mas ignorada
+    let p2 = &cut.pulls[1];
+    let wdeath = p2.deaths.iter().find(|d| d.name == "Tankão-Gallywix").unwrap();
+    assert!(wdeath.ignored);
+    assert!(!wdeath.recap.is_empty(), "recap das mortes ignoradas continua disponível");
+    let warrior = p2.players.iter().find(|p| p.name == "Tankão-Gallywix").unwrap();
+    assert_eq!(warrior.deaths, 0);
+    assert_eq!(warrior.damage_taken, 8 * 100_000, "só os ticks de Toxic Fumes até 0:45");
+    assert_eq!(warrior.healthstones, 1, "healthstone aos 0:20 conta");
+    let fumes_full = full.pulls[1].enemy_spells.iter().find(|e| e.spell_id == 1294976).unwrap();
+    let fumes_cut = p2.enemy_spells.iter().find(|e| e.spell_id == 1294976).unwrap();
+    assert_eq!((fumes_full.hits_on_players, fumes_cut.hits_on_players), (15, 8));
+
+    // sem corte, nada muda
+    assert!(full.pulls.iter().all(|p| p.cutoff_t.is_none() && p.analyzed_ms == p.duration_ms));
+    assert!(full.pulls.iter().flat_map(|p| &p.deaths).all(|d| !d.ignored));
 }

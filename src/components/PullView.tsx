@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
-import { analyzePull } from '../lib/verdict';
+import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
 import { DeathList } from './DeathList';
 import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
@@ -24,6 +24,9 @@ interface Props {
   video?: WcrVideo;
 }
 
+/** HP de um boss: no corte ("ignorar após N mortes"), se houver. */
+const bossHpOf = (pull: Pull) => (b: Pull['bosses'][number]) => (pull.cutoffT != null ? b.hpPctAtCutoff ?? b.hpPct : b.hpPct);
+
 export function PullView({ pull, wclCode, video }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
   const [videoOpen, setVideoOpen] = useState(false);
@@ -41,6 +44,7 @@ export function PullView({ pull, wclCode, video }: Props) {
   }, [pull.id]);
   const mechFailures = pull.mechanics.filter((m) => m.failures > 0).length;
   const verdict = analyzePull(pull);
+  const bossHp = bossHpOf(pull);
   const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
 
   return (
@@ -54,6 +58,13 @@ export function PullView({ pull, wclCode, video }: Props) {
           <div className="muted">
             {pull.startLocal.split(' ')[1]?.slice(0, 8)} · {mmss(pull.durationMs)}
             {pull.incomplete && <span className="warn"> · log terminou antes do fim do encontro</span>}
+            {pull.cutoffT != null && (
+              <span title="Ignorar eventos após N mortes: dano, cura, erros e falhas contam só até aqui">
+                {' '}
+                · analisado até {mmss(pull.cutoffT)}
+                {!pull.success && ` (no fim do pull o boss estava em ${pct(lowestBossHpAtEnd(pull))})`}
+              </span>
+            )}
           </div>
           {wclCode && (
             <button
@@ -72,10 +83,10 @@ export function PullView({ pull, wclCode, video }: Props) {
         </div>
         <div className="boss-bars">
           {pull.bosses.map((b) => (
-            <div key={b.guid} className="boss-bar" title={`${b.name}: ${pct(b.hpPct)}`}>
-              <div className="boss-bar-fill" style={{ width: `${b.hpPct ?? 0}%` }} />
+            <div key={b.guid} className="boss-bar" title={`${b.name}: ${pct(bossHp(b))}`}>
+              <div className="boss-bar-fill" style={{ width: `${bossHp(b) ?? 0}%` }} />
               <span>
-                {b.name} {pct(b.hpPct)}
+                {b.name} {pct(bossHp(b))}
               </span>
             </div>
           ))}
@@ -109,7 +120,7 @@ export function PullView({ pull, wclCode, video }: Props) {
           Mecânicas{pull.rulesFile ? ` (${mechFailures})` : ''}
         </button>
         <button role="tab" aria-selected={tab === 'deaths'} className={tab === 'deaths' ? 'active' : ''} onClick={() => setTab('deaths')}>
-          Mortes ({pull.deaths.length})
+          Mortes ({pull.deaths.filter((d) => !d.ignored).length})
         </button>
         <button role="tab" aria-selected={tab === 'interrupts'} className={tab === 'interrupts' ? 'active' : ''} onClick={() => setTab('interrupts')}>
           Interrupts

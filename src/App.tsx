@@ -3,7 +3,7 @@ import type { LogReport } from './types';
 import { analyzeLog, inTauri, lastFile, pickLogFile, readReportFile, rememberFile } from './lib/api';
 import { PullList } from './components/PullList';
 import { NightSummary } from './components/NightSummary';
-import { applyCutoff, savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
+import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { PullView } from './components/PullView';
 import { IntegrationsBar } from './components/IntegrationsBar';
 import type { WcrScan, WcrVideo } from './lib/api';
@@ -20,6 +20,14 @@ export default function App() {
     setDeathCutoff(n);
     saveDeathCutoff(n);
   };
+
+  // mudou o N: reanalisa o log (o corte é feito no núcleo), mantendo o pull aberto
+  useEffect(() => {
+    if (!inTauri || !report || report.deathCutoff === deathCutoff) return;
+    const timer = setTimeout(() => load(report.file, true), 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deathCutoff]);
   const selectPull = (id: number) => {
     setSelected(id);
     setShowSummary(false);
@@ -49,12 +57,13 @@ export default function App() {
     }
   }, []);
 
-  async function load(path: string) {
+  async function load(path: string, keepView = false) {
     setStatus({ kind: 'loading', progress: 0, path });
     try {
-      const r = await analyzeLog(path, (progress) => setStatus({ kind: 'loading', progress, path }));
+      const r = await analyzeLog(path, deathCutoff, (progress) => setStatus({ kind: 'loading', progress, path }));
       rememberFile(path);
-      showReport(r);
+      if (keepView) setReport(r);
+      else showReport(r);
       setStatus({ kind: 'idle' });
     } catch (e) {
       setStatus({ kind: 'error', message: String(e) });
@@ -74,9 +83,8 @@ export default function App() {
     if (path) await load(path);
   }
 
-  // pulls recortados em "ignorar eventos após N mortes" (instantâneo, sem reanalisar)
-  const pulls = useMemo(() => report?.pulls.map((p) => applyCutoff(p, deathCutoff)) ?? [], [report, deathCutoff]);
-  const pull = useMemo(() => pulls.find((p) => p.id === selected) ?? null, [pulls, selected]);
+  const pulls = report?.pulls ?? [];
+  const pull = useMemo(() => report?.pulls.find((p) => p.id === selected) ?? null, [report, selected]);
 
   return (
     <div className="app">
@@ -111,13 +119,21 @@ export default function App() {
         )}
         {report && (
           <>
-          <label className="cutoff" title="Depois de algumas mortes o wipe já está decidido: erros, falhas e interrupts depois da N-ésima morte não contam (0 = conta tudo)">
+          <label
+            className="cutoff"
+            title={
+              inTauri
+                ? 'Depois de algumas mortes o wipe já está decidido: nada depois da N-ésima morte conta (dano, cura, erros, falhas, interrupts). 0 = conta tudo. Mudar reanalisa o log.'
+                : 'No navegador o corte vem do JSON (wipe-cli analyze --cutoff N)'
+            }
+          >
             Ignorar após
             <input
               type="number"
               min={0}
               max={40}
-              value={deathCutoff}
+              value={inTauri ? deathCutoff : report.deathCutoff}
+              disabled={!inTauri || status.kind === 'loading'}
               onChange={(e) => changeCutoff(Math.max(0, Math.min(40, Number(e.target.value) || 0)))}
             />
             mortes

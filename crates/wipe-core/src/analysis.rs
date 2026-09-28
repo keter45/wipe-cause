@@ -127,8 +127,6 @@ struct EnemySpellAcc {
     hits: u32,
     damage: i64,
     interrupted: u32,
-    cast_times: Vec<i64>,
-    interrupt_times: Vec<i64>,
 }
 
 /// Morte ainda sem a checagem de defensivos disponíveis (feita depois, com dados do log inteiro).
@@ -152,6 +150,12 @@ pub(crate) struct PullBuilder {
     enemy_spells: HashMap<u32, EnemySpellAcc>,
     deaths: Vec<PendingDeath>,
     rules: Option<RuleTracker>,
+    /// "ignorar eventos após N mortes" (0 = sem corte)
+    death_cutoff: u32,
+    /// momento da N-ésima morte; a partir daqui as estatísticas param de contar
+    cutoff_t: Option<i64>,
+    /// HP dos inimigos no corte
+    hp_at_cutoff: HashMap<String, f32>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -164,7 +168,7 @@ pub(crate) struct FinishedPull {
 }
 
 impl PullBuilder {
-    pub fn start(f: &[&str], t: i64, start_local: &str, tz: f64, book: &RuleBook) -> Self {
+    pub fn start(f: &[&str], t: i64, start_local: &str, tz: f64, book: &RuleBook, death_cutoff: u32) -> Self {
         let encounter_id = f.get(1).and_then(|v| v.parse().ok()).unwrap_or(0);
         let encounter_name = f.get(2).unwrap_or(&"?").to_string();
         let difficulty_id = f.get(3).and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -186,7 +190,15 @@ impl PullBuilder {
             enemies: HashMap::new(),
             enemy_spells: HashMap::new(),
             deaths: Vec::new(),
+            death_cutoff,
+            cutoff_t: None,
+            hp_at_cutoff: HashMap::new(),
         }
+    }
+
+    /// Ainda antes do corte: estatísticas contam.
+    fn counting(&self) -> bool {
+        self.cutoff_t.is_none()
     }
 
     fn rel(&self, t: i64) -> i64 {
@@ -314,8 +326,10 @@ impl PullBuilder {
         };
         let (dst_guid, dst_name) = (f[5], f[6]);
         let is_player = Self::is_group_player(dst_guid, hex(f[7]));
-        if let Some(r) = self.rules.as_mut() {
-            r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
+        if self.counting() {
+            if let Some(r) = self.rules.as_mut() {
+                r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
+            }
         }
         if !is_player || f.get(12) != Some(&"DEBUFF") {
             return;
@@ -355,12 +369,13 @@ impl PullBuilder {
 
     /// SPELL_INTERRUPT: sufixo extraSpellId (o cast cortado), extraSpellName, extraSchool.
     fn interrupt(&mut self, f: &[&str], t: i64) {
+        if !self.counting() {
+            return;
+        }
         let rel = self.rel(t);
         let Some(cut_id) = f.get(12).and_then(|v| v.parse::<u32>().ok()) else { return };
         let cut_name = f.get(13).unwrap_or(&"").to_string();
-        let e = self.enemy_spells.entry(cut_id).or_default();
-        e.interrupted += 1;
-        e.interrupt_times.push(rel);
+        self.enemy_spells.entry(cut_id).or_default().interrupted += 1;
         // pets (Spell Lock, Axe Toss) contam para o dono
         let Some(owner) = self.owner_of(f[1], hex(f[3])) else { return };
         let owner_name = if owner == f[1] { f[2] } else { "" };
@@ -426,8 +441,9 @@ impl PullBuilder {
             _ => (f[9].parse().unwrap_or(0), f[10].to_string()),
         };
 
+        let counting = self.counting();
         // dano causado por player (ou pet) em inimigo
-        if Self::is_enemy(dst_guid, dst_flags) {
+        if counting && Self::is_enemy(dst_guid, dst_flags) {
             if let Some(owner) = self.owner_of(src_guid, src_flags) {
                 self.player(&owner, if owner == src_guid { src_name } else { "" }).damage_done +=
                     (amount - overkill).max(0);
@@ -441,7 +457,7 @@ impl PullBuilder {
                 ("nil" | "", _) => "(sem origem)".to_string(),
                 (name, _) => name.to_string(),
             };
-            if Self::is_enemy(src_guid, src_flags) || src_guid == NIL_GUID {
+            if counting && (Self::is_enemy(src_guid, src_flags) || src_guid == NIL_GUID) {
                 let e = self.enemy_spells.entry(spell_id).or_default();
                 e.name = spell_name.clone();
                 e.sources.insert(source_label.clone());
@@ -455,14 +471,18 @@ impl PullBuilder {
                 _ => None,
             };
             let rel = self.rel(t);
-            if let Some(r) = self.rules.as_mut() {
-                r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel);
+            if counting {
+                if let Some(r) = self.rules.as_mut() {
+                    r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel);
+                }
             }
             let p = self.player(dst_guid, dst_name);
-            p.damage_taken += amount + absorbed;
-            let entry = p.taken.entry((spell_id, source_label.clone())).or_insert((spell_name.clone(), 0, 0));
-            entry.1 += amount + absorbed;
-            entry.2 += 1;
+            if counting {
+                p.damage_taken += amount + absorbed;
+                let entry = p.taken.entry((spell_id, source_label.clone())).or_insert((spell_name.clone(), 0, 0));
+                entry.1 += amount + absorbed;
+                entry.2 += 1;
+            }
             if hp_pct.is_some() {
                 p.last_hp_pct = hp_pct;
             }
@@ -498,8 +518,10 @@ impl PullBuilder {
 
         let (src_guid, src_name, src_flags) = (f[1], f[2], hex(f[3]));
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
-        if let Some(owner) = self.owner_of(src_guid, src_flags) {
-            self.player(&owner, if owner == src_guid { src_name } else { "" }).healing_done += effective;
+        if self.counting() {
+            if let Some(owner) = self.owner_of(src_guid, src_flags) {
+                self.player(&owner, if owner == src_guid { src_name } else { "" }).healing_done += effective;
+            }
         }
         if effective > 0 && Self::is_group_player(dst_guid, dst_flags) {
             let hp_pct = match &adv {
@@ -539,7 +561,11 @@ impl PullBuilder {
         let spell_name = f.get(10).unwrap_or(&"").to_string();
         let rel = self.rel(t);
 
+        let counting = self.counting();
         if Self::is_enemy(src_guid, src_flags) {
+            if !counting {
+                return;
+            }
             if let Some(r) = self.rules.as_mut() {
                 r.on_enemy_cast(spell_id, src_name, rel);
             }
@@ -547,10 +573,9 @@ impl PullBuilder {
             e.name = spell_name;
             e.sources.insert(src_name.to_string());
             e.casts += 1;
-            e.cast_times.push(rel);
             return;
         }
-        if data.interrupts.contains_key(&spell_id) {
+        if counting && data.interrupts.contains_key(&spell_id) {
             if let Some(owner) = self.owner_of(src_guid, src_flags) {
                 let owner_name = if owner == src_guid { src_name } else { "" };
                 let p = self.player(&owner, owner_name);
@@ -647,11 +672,15 @@ impl PullBuilder {
         }
         let rel = self.rel(t);
         let order = self.deaths.len() as u32 + 1;
+        // depois do corte a morte fica registrada (recap), mas não conta em nada
+        let ignored = !self.counting();
         let p = self.player(dst_guid, dst_name);
         if p.feigning {
             return;
         }
-        p.deaths += 1;
+        if !ignored {
+            p.deaths += 1;
+        }
         let recap: Vec<RecapEntry> = p.recap.iter().filter(|e| rel - e.t <= RECAP_WINDOW_MS).cloned().collect();
         let killing_blow = recap.iter().rev().find(|e| e.kind == RecapKind::Damage).cloned();
         let mut defensives_recent: Vec<SpellUse> = p
@@ -686,6 +715,7 @@ impl PullBuilder {
             class: None,
             role: None,
             t: rel,
+            ignored,
             killing_blow,
             killing_blow_mechanic: None,
             death_kind,
@@ -706,6 +736,18 @@ impl PullBuilder {
             attribute_death(&mut death, r);
         }
         self.deaths.push(PendingDeath { death, casts_before });
+
+        // N-ésima morte: congela as estatísticas daqui em diante
+        let counted = self.deaths.iter().filter(|d| !d.death.ignored).count() as u32;
+        if !ignored && self.death_cutoff > 0 && counted == self.death_cutoff {
+            self.cutoff_t = Some(rel);
+            self.hp_at_cutoff = self
+                .enemies
+                .iter()
+                .filter(|(_, e)| e.max_hp > 0)
+                .map(|(g, e)| (g.clone(), (e.hp as f32 / e.max_hp as f32 * 100.0).clamp(0.0, 100.0)))
+                .collect();
+        }
     }
 
     pub fn finish(self, end: Option<(&[&str], i64)>, id: usize, data: &GameData) -> FinishedPull {
@@ -715,7 +757,11 @@ impl PullBuilder {
             None => (false, self.last_ms, true),
         };
         let duration_ms = (end_ms - self.start_ms).max(1);
-        let secs = duration_ms as f64 / 1000.0;
+        // médias (DPS/HPS) sobre o tempo analisado: até o corte, se houver
+        let analyzed_ms = self.cutoff_t.map_or(duration_ms, |c| c.max(1));
+        let secs = analyzed_ms as f64 / 1000.0;
+        let cutoff = self.cutoff_t;
+        let before_cut = |t: i64| cutoff.is_none_or(|c| t <= c);
 
         // bosses: inimigos com maior HP máximo (tolerância para lutas de conselho)
         let top_hp = self.enemies.values().map(|e| e.max_hp).max().unwrap_or(0);
@@ -729,6 +775,7 @@ impl PullBuilder {
                 npc_id: npc_id(guid),
                 max_hp: e.max_hp,
                 hp_pct: Some(if success { 0.0 } else { (e.hp as f32 / e.max_hp as f32 * 100.0).clamp(0.0, 100.0) }),
+                hp_pct_at_cutoff: self.hp_at_cutoff.get(guid).copied(),
             })
             .collect();
         bosses.sort_by(|a, b| b.max_hp.cmp(&a.max_hp).then(a.name.cmp(&b.name)));
@@ -760,7 +807,7 @@ impl PullBuilder {
             taken.sort_by_key(|a| std::cmp::Reverse(a.amount));
             taken.truncate(15);
             let mut defensives_used: Vec<SpellUse> =
-                p.defensive_casts.iter().chain(p.externals_received.iter()).cloned().collect();
+                p.defensive_casts.iter().chain(p.externals_received.iter()).filter(|u| before_cut(u.t)).cloned().collect();
             defensives_used.sort_by_key(|u| u.t);
             let interrupts = p.interrupt_log.iter().filter(|u| u.target_spell_id.is_some()).count() as u32;
             players.push(PlayerStats {
@@ -775,8 +822,8 @@ impl PullBuilder {
                 hps: p.healing_done as f64 / secs,
                 damage_taken: p.damage_taken,
                 deaths: p.deaths,
-                health_potions: p.health_potions.len() as u32,
-                healthstones: p.healthstones.len() as u32,
+                health_potions: p.health_potions.iter().filter(|&&t| before_cut(t)).count() as u32,
+                healthstones: p.healthstones.iter().filter(|&&t| before_cut(t)).count() as u32,
                 defensives_used,
                 taken_by_ability: taken,
                 interrupts,
@@ -801,7 +848,7 @@ impl PullBuilder {
         let roles: HashMap<String, String> =
             players.iter().filter_map(|p| Some((p.guid.clone(), p.role.clone()?))).collect();
         let rules_file = self.rules.as_ref().and_then(|r| r.files.first().cloned());
-        let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).collect();
+        let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).filter(|d| !d.ignored).collect();
         let trigger = pull_trigger(&deaths_view);
         let mechanics = self.rules.map(|r| r.finish(&roles)).unwrap_or_default();
 
@@ -820,8 +867,6 @@ impl PullBuilder {
                     damage_to_players: e.damage,
                     interrupted: e.interrupted,
                     interruptible: e.interrupted > 0,
-                    cast_times: e.cast_times,
-                    interrupt_times: e.interrupt_times,
                 }
             })
             .collect();
@@ -841,6 +886,8 @@ impl PullBuilder {
                 start_local: self.start_local,
                 tz_offset_hours: self.tz_offset_hours,
                 duration_ms,
+                cutoff_t: self.cutoff_t,
+                analyzed_ms,
                 success,
                 incomplete,
                 bosses,
@@ -1085,7 +1132,7 @@ mod tests {
     fn environmental_damage_reads_type_after_advanced() {
         let data = GameData::embedded();
         let start = ["ENCOUNTER_START", "1", "Boss", "16", "20", "1"];
-        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::default());
+        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::default(), 0);
         let mut f = Vec::new();
         split_fields(ENV_12_1, &mut f);
         b.feed(&f, 1000, &data);
