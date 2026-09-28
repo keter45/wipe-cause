@@ -1,0 +1,20 @@
+# deps / build
+node_modules/
+dist/
+target/
+src-tauri/gen/schemas/
+
+# combat logs são grandes e têm dados da guilda
+samples/*
+!samples/.gitkeep
+*.txt.gz
+
+# editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code local
+.claude/settings.local.json
