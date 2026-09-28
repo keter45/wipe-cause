@@ -6,9 +6,11 @@ interface Props {
   pulls: Pull[];
   selected: number | null;
   onSelect: (id: number) => void;
+  summaryActive: boolean;
+  onSummary: () => void;
 }
 
-export function PullList({ pulls, selected, onSelect }: Props) {
+export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }: Props) {
   // agrupa por boss + dificuldade, na ordem em que apareceram
   const groups = new Map<string, Pull[]>();
   for (const p of pulls) {
@@ -18,6 +20,9 @@ export function PullList({ pulls, selected, onSelect }: Props) {
 
   return (
     <nav className="pull-list">
+      <button className={`summary-link ${summaryActive ? 'active' : ''}`} onClick={onSummary}>
+        📊 Resumo da noite
+      </button>
       {[...groups.entries()].map(([title, ps]) => (
         <section key={title}>
           <h3>{title}</h3>
@@ -26,7 +31,7 @@ export function PullList({ pulls, selected, onSelect }: Props) {
             return (
               <button
                 key={p.id}
-                className={`pull-row ${p.success ? 'kill' : 'wipe'} ${selected === p.id ? 'active' : ''}`}
+                className={`pull-row ${p.success ? 'kill' : 'wipe'} ${!summaryActive && selected === p.id ? 'active' : ''}`}
                 onClick={() => onSelect(p.id)}
               >
                 <span className="pull-num">#{p.pullNumber}</span>

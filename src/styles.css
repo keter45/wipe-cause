@@ -767,3 +767,247 @@ ul.plain {
   justify-content: flex-start;
   margin-top: 0;
 }
+
+/* resumo da noite */
+.night {
+  --viz-series: #3987e5;
+  --viz-good: #0ca30c;
+  --viz-grid: #2a2f3a;
+  --viz-axis: #898781;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.night-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.night-head h2 {
+  margin: 0;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chips button {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.chips button.active {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  text-align: left;
+}
+.tile.clickable {
+  cursor: pointer;
+}
+.tile.clickable:hover {
+  border-color: var(--muted);
+}
+.tile-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.tile-value {
+  font-size: 22px;
+  font-weight: 600;
+}
+.tile-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  min-width: 0;
+}
+.panel h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+.hero-cause .hero-figure {
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 4px 0;
+}
+.hero-cause p {
+  margin: 0;
+}
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+}
+.chart {
+  position: relative;
+}
+.chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.chart .grid {
+  stroke: var(--viz-grid);
+  stroke-width: 1;
+}
+.chart .baseline {
+  stroke: #383835;
+  stroke-width: 1;
+}
+.chart .axis {
+  fill: var(--viz-axis);
+  font-size: 10px;
+}
+.chart .value-label {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+.chart .mark {
+  fill: var(--viz-series);
+}
+.chart .mark-best {
+  fill: var(--viz-series);
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+.chart .mark-good {
+  fill: var(--viz-good);
+}
+.chart .bar-hit {
+  cursor: pointer;
+  outline: none;
+}
+.chart .bar-hit:hover .mark,
+.chart .bar-hit:focus .mark,
+.chart rect.bar-hit:hover,
+.chart rect.bar-hit:focus {
+  filter: brightness(1.25);
+}
+.chart-tip {
+  position: absolute;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  z-index: 2;
+}
+.chart-tip strong {
+  color: var(--text);
+  font-size: 13px;
+}
+.gap-list {
+  margin-top: 8px;
+}
+.gap-list li {
+  margin: 2px 0;
+}
+.causes td {
+  border-bottom: 1px solid var(--border);
+}
+.inline-bar {
+  display: inline-block;
+  width: 110px;
+  height: 8px;
+  background: var(--panel-2);
+  border-radius: 4px;
+  vertical-align: middle;
+  overflow: hidden;
+}
+.inline-bar span {
+  display: block;
+  height: 100%;
+  background: #3987e5;
+  border-radius: 0 4px 4px 0;
+}
+.num-inline {
+  margin-left: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.awards {
+  border-top: 3px solid var(--border);
+}
+.awards.bad {
+  border-top-color: var(--wipe);
+}
+.awards.good {
+  border-top-color: var(--kill);
+}
+.award-winner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.award-winner strong {
+  font-size: 24px;
+}
+.award-list li {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.award-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.award-people .first {
+  font-weight: 600;
+}
+.summary-link {
+  width: 100%;
+  text-align: left;
+  padding: 8px;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+.summary-link:hover,
+.summary-link.active {
+  background: var(--panel-2);
+  border-color: var(--border);
+}
+.scoreboard th .sort {
+  font-size: 12px;
+}

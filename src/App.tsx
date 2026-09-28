@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { LogReport } from './types';
 import { analyzeLog, inTauri, lastFile, pickLogFile, readReportFile, rememberFile } from './lib/api';
 import { PullList } from './components/PullList';
+import { NightSummary } from './components/NightSummary';
 import { PullView } from './components/PullView';
 import { IntegrationsBar } from './components/IntegrationsBar';
 import type { WcrScan, WcrVideo } from './lib/api';
@@ -12,6 +13,11 @@ type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: stri
 export default function App() {
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
+  const [showSummary, setShowSummary] = useState(true);
+  const selectPull = (id: number) => {
+    setSelected(id);
+    setShowSummary(false);
+  };
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [wclCode, setWclCode] = useState<string | null>(null);
   const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
@@ -54,6 +60,7 @@ export default function App() {
     // abre no último wipe (normalmente o que a raid quer ver)
     const lastWipe = [...r.pulls].reverse().find((p) => !p.success) ?? r.pulls[r.pulls.length - 1];
     setSelected(lastWipe?.id ?? null);
+    setShowSummary(true); // abre no resumo da noite
   }
 
   async function openFile() {
@@ -121,8 +128,18 @@ export default function App() {
         <Empty previous={inTauri ? previous : null} onReopen={load} />
       ) : (
         <div className="layout">
-          <PullList pulls={report.pulls} selected={selected} onSelect={setSelected} />
+          <PullList
+            pulls={report.pulls}
+            selected={selected}
+            onSelect={selectPull}
+            summaryActive={showSummary}
+            onSummary={() => setShowSummary(true)}
+          />
           <main className="content">
+            {showSummary ? (
+              <NightSummary pulls={report.pulls} onSelectPull={selectPull} />
+            ) : (
+              <>
             {pull ? (
               <PullView
                 pull={pull}
@@ -131,6 +148,8 @@ export default function App() {
               />
             ) : (
               <p className="muted">Nenhum pull no log.</p>
+            )}
+          </>
             )}
           </main>
         </div>
