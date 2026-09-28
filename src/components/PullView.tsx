@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ExternalLink, Play, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, Play, X } from 'lucide-react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
@@ -31,6 +31,7 @@ const bossHpOf = (pull: Pull) => (b: Pull['bosses'][number]) => (pull.cutoffT !=
 export function PullView({ pull, wclCode, video }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
   const [videoOpen, setVideoOpen] = useState(false);
+  const [showMinor, setShowMinor] = useState(false);
   const [seekReq, setSeekReq] = useState<{ t: number; n: number } | null>(null);
   const seek = video
     ? (t: number) => {
@@ -38,15 +39,27 @@ export function PullView({ pull, wclCode, video }: Props) {
         setVideoOpen(true);
       }
     : null;
-  // outro pull: fecha o vídeo
+  // outro pull: fecha o vídeo e recolhe os avisos
   useEffect(() => {
     setVideoOpen(false);
     setSeekReq(null);
+    setShowMinor(false);
   }, [pull.id]);
   const mechFailures = pull.mechanics.filter((m) => m.failures > 0).length;
   const verdict = analyzePull(pull);
   const bossHp = bossHpOf(pull);
   const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
+  // causas e problemas graves sempre visíveis; avisos menores recolhidos
+  const main = verdict.findings.filter((f) => f.severity === 'wipe' || f.severity === 'major');
+  const minor = verdict.findings.filter((f) => f.severity === 'minor' || f.severity === 'info');
+  const deathCount = pull.deaths.filter((d) => !d.ignored).length;
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: 'mechanics', label: 'Mecânicas', count: pull.rulesFile ? mechFailures : undefined },
+    { key: 'deaths', label: 'Mortes', count: deathCount },
+    { key: 'interrupts', label: 'Interrupts' },
+    { key: 'players', label: 'Jogadores', count: pull.players.length },
+    { key: 'spells', label: 'Habilidades do boss' },
+  ];
 
   return (
     <SeekContext.Provider value={seek}>
@@ -103,37 +116,37 @@ export function PullView({ pull, wclCode, video }: Props) {
           {verdict.headline}
           {pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label="ver gatilho" />}
         </h3>
-        {verdict.findings.length > 0 && (
+        {main.length > 0 && (
           <ul className="findings">
-            {verdict.findings.map((f, i) => (
-              <li key={i} className={`finding ${f.severity}`}>
-                <span className="badge">{SEVERITY_LABEL[f.severity]}</span>
-                <span>
-                  <strong>{f.title}</strong>
-                  {f.detail && <span className="muted"> — {f.detail}</span>}
-                </span>
-              </li>
+            {main.map((f, i) => (
+              <Finding key={i} f={f} />
             ))}
           </ul>
+        )}
+        {minor.length > 0 && (
+          <>
+            <button className="link small more-toggle" onClick={() => setShowMinor(!showMinor)} aria-expanded={showMinor}>
+              <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${showMinor ? 'open' : ''}`} aria-hidden />
+              {showMinor ? 'Esconder' : 'Mostrar'} {minor.length} aviso{minor.length > 1 ? 's' : ''} menor{minor.length > 1 ? 'es' : ''}
+            </button>
+            {showMinor && (
+              <ul className="findings minor">
+                {minor.map((f, i) => (
+                  <Finding key={i} f={f} />
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </section>
 
       <div className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === 'mechanics'} className={tab === 'mechanics' ? 'active' : ''} onClick={() => setTab('mechanics')}>
-          Mecânicas{pull.rulesFile ? ` (${mechFailures})` : ''}
-        </button>
-        <button role="tab" aria-selected={tab === 'deaths'} className={tab === 'deaths' ? 'active' : ''} onClick={() => setTab('deaths')}>
-          Mortes ({pull.deaths.filter((d) => !d.ignored).length})
-        </button>
-        <button role="tab" aria-selected={tab === 'interrupts'} className={tab === 'interrupts' ? 'active' : ''} onClick={() => setTab('interrupts')}>
-          Interrupts
-        </button>
-        <button role="tab" aria-selected={tab === 'players'} className={tab === 'players' ? 'active' : ''} onClick={() => setTab('players')}>
-          Jogadores ({pull.players.length})
-        </button>
-        <button role="tab" aria-selected={tab === 'spells'} className={tab === 'spells' ? 'active' : ''} onClick={() => setTab('spells')}>
-          Habilidades do boss
-        </button>
+        {tabs.map((t) => (
+          <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
+            {t.label}
+            {t.count != null && <span className="tab-count">{t.count}</span>}
+          </button>
+        ))}
       </div>
 
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
@@ -143,5 +156,17 @@ export function PullView({ pull, wclCode, video }: Props) {
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
     </div>
     </SeekContext.Provider>
+  );
+}
+
+function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] }) {
+  return (
+    <li className={`finding ${f.severity}`}>
+      <span className="badge">{SEVERITY_LABEL[f.severity]}</span>
+      <span>
+        <strong>{f.title}</strong>
+        {f.detail && <span className="muted"> — {f.detail}</span>}
+      </span>
+    </li>
   );
 }

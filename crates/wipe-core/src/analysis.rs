@@ -375,7 +375,13 @@ impl PullBuilder {
         let rel = self.rel(t);
         let Some(cut_id) = f.get(12).and_then(|v| v.parse::<u32>().ok()) else { return };
         let cut_name = f.get(13).unwrap_or(&"").to_string();
-        self.enemy_spells.entry(cut_id).or_default().interrupted += 1;
+        // o nome vem daqui também: se todo cast foi cortado, nunca houve SPELL_CAST_SUCCESS
+        let e = self.enemy_spells.entry(cut_id).or_default();
+        e.interrupted += 1;
+        if e.name.is_empty() {
+            e.name = cut_name.clone();
+        }
+        e.sources.insert(f[6].to_string()); // quem estava castando (alvo do interrupt)
         // pets (Spell Lock, Axe Toss) contam para o dono
         let Some(owner) = self.owner_of(f[1], hex(f[3])) else { return };
         let owner_name = if owner == f[1] { f[2] } else { "" };

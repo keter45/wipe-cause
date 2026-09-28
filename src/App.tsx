@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Crosshair, FolderOpen, History } from 'lucide-react';
 import type { LogReport } from './types';
 import { analyzeLog, inTauri, lastFile, pickLogFile, rememberFile } from './lib/api';
 import { PullList } from './components/PullList';
@@ -112,7 +113,7 @@ export default function App() {
       )}
 
       {!report ? (
-        <Empty previous={inTauri ? previous : null} onReopen={load} />
+        <Empty previous={inTauri ? previous : null} onReopen={load} onOpen={openFile} />
       ) : (
         <div className="layout">
           <PullList
@@ -145,26 +146,42 @@ export default function App() {
   );
 }
 
-function Empty({ previous, onReopen }: { previous: string | null; onReopen: (p: string) => void }) {
+function Empty({ previous, onReopen, onOpen }: { previous: string | null; onReopen: (p: string) => void; onOpen: () => void }) {
   return (
     <div className="empty">
+      <Crosshair size={40} strokeWidth={1.5} className="empty-mark" aria-hidden />
       <h1>Por que deu wipe?</h1>
-      <p>
-        Abra o <code>WoWCombatLog.txt</code> da raid. Ele fica em{' '}
-        <code>World of Warcraft\_retail_\Logs</code>.
-      </p>
-      <p className="muted">
-        No jogo: digite <code>/combatlog</code> antes do pull e ative <em>Advanced Combat Logging</em> em Opções → Rede.
-      </p>
-      {!inTauri && (
-        <p className="muted">
-          Modo navegador: gere o relatório com <code>cargo run -p wipe-core --bin wipe-cli -- analyze log.txt --json</code>.
+      <p className="muted">Abra o combat log da raid e veja o gatilho de cada wipe, as mortes e quem errou o quê.</p>
+      <ol className="empty-steps">
+        <li>
+          <span>
+          No jogo, digite <code>/combatlog</code> antes do pull e ative <em>Advanced Combat Logging</em> em Opções → Rede.
+          </span>
+        </li>
+        <li>
+          <span>
+          Depois das trys, abra o <code>WoWCombatLog-*.txt</code> em <code>World of Warcraft\_retail_\Logs</code>.
+          </span>
+        </li>
+        <li>
+          <span>Opcional: cole o link do report do Warcraft Logs e ligue a pasta de vídeos do Warcraft Recorder.</span>
+        </li>
+      </ol>
+      {inTauri ? (
+        <div className="empty-actions">
+          <button className="btn primary" onClick={onOpen}>
+            <FolderOpen size={16} strokeWidth={2} aria-hidden /> Abrir combat log
+          </button>
+          {previous && (
+            <button className="btn" onClick={() => onReopen(previous)} title={previous}>
+              <History size={16} strokeWidth={1.5} aria-hidden /> Reabrir {previous.split(/[\/]/).pop()}
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="muted small">
+          Modo navegador: gere o relatório com <code>wipe-cli analyze log.txt --json</code> e abra o JSON no topo.
         </p>
-      )}
-      {previous && (
-        <button className="btn" onClick={() => onReopen(previous)}>
-          Reabrir {previous.split(/[\\/]/).pop()}
-        </button>
       )}
     </div>
   );

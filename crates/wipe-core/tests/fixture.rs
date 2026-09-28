@@ -181,6 +181,8 @@ fn tracks_interrupts_per_player() {
 
     let burst = p2.enemy_spells.iter().find(|e| e.spell_id == 1308385).unwrap();
     assert_eq!((burst.casts, burst.interrupted), (1, 1));
+    assert_eq!(burst.name, "Visceral Burst");
+    assert!(burst.sources.contains(&"Broodling of Ithraz".to_string()));
     assert!(burst.interruptible);
 }
 
