@@ -130,9 +130,12 @@ const FILTERS: { key: RecapFilter; label: string }[] = [
 function DeathDetail({ death }: { death: Death }) {
   const s = death.stats;
   const [filter, setFilter] = useState<RecapFilter>('all');
-  const recap = death.recap.filter((e) =>
-    filter === 'all' ? true : filter === 'aura' ? e.kind === 'buff' || e.kind === 'debuff' : e.kind === filter,
-  );
+  // mais recente primeiro: o que matou fica no topo
+  const recap = death.recap
+    .filter((e) => (filter === 'all' ? true : filter === 'aura' ? e.kind === 'buff' || e.kind === 'debuff' : e.kind === filter))
+    .reverse();
+  const kb = death.killingBlow;
+  const isKillingBlow = (e: RecapEntry) => kb != null && e.kind === 'damage' && e.t === kb.t && e.spellId === kb.spellId && e.amount === kb.amount;
   return (
     <div className="recap">
       <div className="death-stats">
@@ -184,7 +187,9 @@ function DeathDetail({ death }: { death: Death }) {
       )}
 
       <div className="recap-toolbar">
-        <h4 className="recap-title">Últimos 15s</h4>
+        <h4 className="recap-title">
+          Últimos 15s <span className="muted small">· mais recente primeiro</span>
+        </h4>
         <div className="segmented" role="tablist" aria-label="Filtrar eventos">
           {FILTERS.map((f) => (
             <button key={f.key} role="tab" aria-selected={filter === f.key} className={filter === f.key ? 'active' : ''} onClick={() => setFilter(f.key)}>
@@ -193,6 +198,7 @@ function DeathDetail({ death }: { death: Death }) {
           ))}
         </div>
       </div>
+      <div className="recap-scroll">
       <table className="recap-table">
         <thead>
           <tr>
@@ -205,7 +211,7 @@ function DeathDetail({ death }: { death: Death }) {
         </thead>
         <tbody>
           {recap.map((e, i) => (
-            <RecapRow key={i} e={e} deathT={death.t} />
+            <RecapRow key={i} e={e} deathT={death.t} killingBlow={isKillingBlow(e)} />
           ))}
           {recap.length === 0 && (
             <tr>
@@ -216,6 +222,7 @@ function DeathDetail({ death }: { death: Death }) {
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -259,10 +266,10 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
   );
 }
 
-function RecapRow({ e, deathT }: { e: RecapEntry; deathT: number }) {
+function RecapRow({ e, deathT, killingBlow }: { e: RecapEntry; deathT: number; killingBlow: boolean }) {
   const sign = e.kind === 'damage' ? '−' : e.kind === 'heal' ? '+' : '';
   return (
-    <tr className={`recap-${e.kind}`}>
+    <tr className={`recap-${e.kind} ${killingBlow ? 'kb-row' : ''}`} title={killingBlow ? 'Golpe final' : undefined}>
       <td className="muted num-cell">{relSeconds(e.t - deathT)}</td>
       <td>
         {e.spellName}

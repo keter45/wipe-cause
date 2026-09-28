@@ -1701,3 +1701,30 @@ ul.plain {
   margin-left: 2px;
   vertical-align: -2px;
 }
+
+/* recap: altura limitada com rolagem interna e cabeçalho fixo */
+.recap-scroll {
+  max-height: 360px;
+  margin-top: 8px;
+  overflow-y: auto;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--ring);
+  scrollbar-width: thin;
+  scrollbar-color: #343a47 transparent;
+}
+.recap-scroll .recap-table {
+  margin-top: 0;
+}
+.recap-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel-2);
+}
+/* golpe final destacado no topo */
+.recap-table tr.kb-row td {
+  background: rgba(224, 86, 86, 0.08);
+}
+.recap-table tr.kb-row td:first-child {
+  box-shadow: inset 2px 0 0 var(--wipe);
+}
