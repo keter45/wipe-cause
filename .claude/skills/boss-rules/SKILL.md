@@ -14,7 +14,7 @@ Leia `references/schema.md` antes de escrever qualquer arquivo. `encounters/veno
 
 1. **URL de guia** — busque o texto da página (WebFetch; se vier vazio ou só navegação, use o browser e `get_page_text`). Se houver seletor de dificuldade, leia a versão **Mythic** e anote o que é exclusivo de Heroic/Mythic.
 2. **Texto livre colado** — trate como fonte primária; pergunte só se o nome do boss/raid não estiver claro.
-3. **Dump de spells de um log** (`id,name,source` de eventos hostis) — use para preencher `id: null` em um YAML existente (ver "Resolver spell IDs").
+3. **Log real** — rode `cargo run -q -p wipe-core --bin wipe-cli -- spells <WoWCombatLog.txt> > samples/spells.csv` (spells inimigas por pull: casts, hits em players, dano). É a fonte que confirma os IDs; o Journal quase nunca traz os IDs de dano/explosão.
 
 ## Fluxo
 
@@ -45,6 +45,12 @@ Um guia quase nunca traz spell IDs, e o log pode estar com nomes em pt-BR, entã
 O ID do Journal nem sempre é o ID que aparece no `SPELL_DAMAGE` (ex.: cast ≠ dano ≠ explosão). Use o ID do Journal como ponto de partida e, quando não souber se ele vale para o evento que a regra detecta, deixe um `notes` pedindo confirmação no log.
 
 Uma habilidade pode ter vários IDs (cast, dano, debuff, explosão). Coloque cada um no campo certo (`cast_id`, `damage_ids`, `aura_id`, `fail_ids`). Se não conseguir resolver, deixe `id: null` e `needs_id: true` — o app mostra essas regras como "não calibradas" e o usuário completa depois com um log.
+
+## Validar
+
+Depois de escrever, rode `cargo test -p wipe-core` (o teste `embedded_rules_parse` falha se o YAML for inválido) e, com um log do boss, `wipe-cli analyze <log> --json` — confira em `pulls[].mechanics` se as falhas batem com o que aconteceu. Se uma regra marca quase todo mundo em todo pull, provavelmente não é erro (ex.: stacks que todo tank pega): tire o `warn_stacks`/`tolerance` ou mude para `info`.
+
+Regras novas vão em `encounters/<raid>/<boss>.yaml` (embutidas no build). Para testar sem recompilar, o app também lê `*.yaml` da pasta de dados do app (`%APPDATA%/gg.wipecause.app/encounters`), que substitui a embutida com o mesmo `encounter_id`.
 
 ## Regras de escrita
 

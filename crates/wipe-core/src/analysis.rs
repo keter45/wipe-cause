@@ -3,6 +3,7 @@
 
 use crate::data::{Consumable, GameData};
 use crate::report::*;
+use crate::rules::{RuleBook, RuleTracker};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Janela do death recap.
@@ -127,6 +128,7 @@ pub(crate) struct PullBuilder {
     enemies: HashMap<String, UnitHp>,
     enemy_spells: HashMap<u32, EnemySpellAcc>,
     deaths: Vec<PendingDeath>,
+    rules: Option<RuleTracker>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -139,11 +141,19 @@ pub(crate) struct FinishedPull {
 }
 
 impl PullBuilder {
-    pub fn start(f: &[&str], t: i64, start_local: &str, tz: f64) -> Self {
+    pub fn start(f: &[&str], t: i64, start_local: &str, tz: f64, book: &RuleBook) -> Self {
+        let encounter_id = f.get(1).and_then(|v| v.parse().ok()).unwrap_or(0);
+        let encounter_name = f.get(2).unwrap_or(&"?").to_string();
+        let difficulty_id = f.get(3).and_then(|v| v.parse().ok()).unwrap_or(0);
+        // erros de regra já foram reportados na carga do RuleBook
+        let rules = book
+            .find(encounter_id, &encounter_name)
+            .and_then(|set| RuleTracker::new(set, difficulty_id).ok());
         PullBuilder {
-            encounter_id: f.get(1).and_then(|v| v.parse().ok()).unwrap_or(0),
-            encounter_name: f.get(2).unwrap_or(&"?").to_string(),
-            difficulty_id: f.get(3).and_then(|v| v.parse().ok()).unwrap_or(0),
+            encounter_id,
+            encounter_name,
+            difficulty_id,
+            rules,
             group_size: f.get(4).and_then(|v| v.parse().ok()).unwrap_or(0),
             start_ms: t,
             start_local: start_local.to_string(),
@@ -245,7 +255,18 @@ impl PullBuilder {
             }
             "SPELL_HEAL" | "SPELL_PERIODIC_HEAL" => self.heal(f, t),
             "SPELL_CAST_SUCCESS" => self.cast(f, t, data),
-            "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED" => self.aura(f, t, data),
+            "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED" => {
+                self.rules_aura(f, t);
+                self.aura(f, t, data)
+            }
+            "SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE" => self.rules_aura(f, t),
+            "SPELL_INTERRUPT" => {
+                // sufixo: extraSpellId (o cast cortado), extraSpellName, extraSchool
+                let rel = self.rel(t);
+                if let (Some(r), Some(id)) = (self.rules.as_mut(), f.get(12).and_then(|v| v.parse().ok())) {
+                    r.on_interrupt(id, f[1], f[2], rel);
+                }
+            }
             "SPELL_SUMMON" => {
                 if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
                     self.pet_owner.insert(f[5].to_string(), owner);
@@ -254,6 +275,21 @@ impl PullBuilder {
             "UNIT_DIED" => self.unit_died(f, t),
             _ => {}
         }
+    }
+
+    /// Auras para as regras do boss: stacks de debuff em players e buffs de enrage em inimigos.
+    fn rules_aura(&mut self, f: &[&str], t: i64) {
+        let rel = self.rel(t);
+        let Some(r) = self.rules.as_mut() else { return };
+        let spell_id: u32 = f[9].parse().unwrap_or(0);
+        // APPLIED/REMOVED: auraType[,amount]; *_DOSE: auraType,stacks
+        let stacks = match f[0] {
+            "SPELL_AURA_APPLIED" => 1,
+            "SPELL_AURA_REMOVED" => 0,
+            _ => f.get(13).and_then(|v| v.parse().ok()).unwrap_or(1),
+        };
+        let is_player = Self::is_group_player(f[5], hex(f[7]));
+        r.on_aura(spell_id, f[5], f[6], stacks, is_player, rel);
     }
 
     fn combatant_info(&mut self, f: &[&str]) {
@@ -331,6 +367,9 @@ impl PullBuilder {
                 _ => None,
             };
             let rel = self.rel(t);
+            if let Some(r) = self.rules.as_mut() {
+                r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel);
+            }
             let p = self.player(dst_guid, dst_name);
             p.damage_taken += amount + absorbed;
             let entry = p.taken.entry((spell_id, source_label.clone())).or_insert((spell_name.clone(), 0, 0));
@@ -413,6 +452,9 @@ impl PullBuilder {
         let rel = self.rel(t);
 
         if Self::is_enemy(src_guid, src_flags) {
+            if let Some(r) = self.rules.as_mut() {
+                r.on_enemy_cast(spell_id, src_name, rel);
+            }
             let e = self.enemy_spells.entry(spell_id).or_default();
             e.name = spell_name;
             e.sources.insert(src_name.to_string());
@@ -532,6 +574,7 @@ impl PullBuilder {
             role: None,
             t: rel,
             killing_blow,
+            killing_blow_mechanic: None,
             recap,
             defensives_recent,
             defensives_available: Vec::new(),
@@ -623,7 +666,15 @@ impl PullBuilder {
                 d.death.class = ps.class.clone();
                 d.death.role = ps.role.clone();
             }
+            if let (Some(r), Some(kb)) = (self.rules.as_ref(), d.death.killing_blow.as_ref()) {
+                d.death.killing_blow_mechanic = r.mechanic_for_damage(kb.spell_id).map(|(_, name)| name.to_string());
+            }
         }
+
+        let roles: HashMap<String, String> =
+            players.iter().filter_map(|p| Some((p.guid.clone(), p.role.clone()?))).collect();
+        let rules_file = self.rules.as_ref().map(|r| r.file.clone());
+        let mechanics = self.rules.map(|r| r.finish(&roles)).unwrap_or_default();
 
         let mut enemy_spells: Vec<EnemySpell> = self
             .enemy_spells
@@ -655,6 +706,8 @@ impl PullBuilder {
                 players,
                 deaths: Vec::new(),
                 enemy_spells,
+                rules_file,
+                mechanics,
             },
             pending_deaths: pending,
             defensives_by_player,
@@ -752,7 +805,7 @@ mod tests {
     fn environmental_damage_reads_type_after_advanced() {
         let data = GameData::embedded();
         let start = ["ENCOUNTER_START", "1", "Boss", "16", "20", "1"];
-        let mut b = PullBuilder::start(&start, 0, "", 0.0);
+        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::default());
         let mut f = Vec::new();
         split_fields(ENV_12_1, &mut f);
         b.feed(&f, 1000, &data);

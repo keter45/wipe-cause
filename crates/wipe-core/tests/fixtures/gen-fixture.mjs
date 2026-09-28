@@ -71,7 +71,7 @@ function combatant(t, u, spec) {
 
 function startPull(t) {
   for (const u of [mage, priest, warrior, pet, vexhul, ithraz, spawn]) hp.delete(u.guid);
-  line(t, ['ENCOUNTER_START', 3180, q('The Twin Fangs'), 15, 20, 2900]);
+  line(t, ['ENCOUNTER_START', 3421, q('The Twin Fangs'), 15, 20, 2900]);
   combatant(t, mage, 63);
   combatant(t, priest, 256);
   combatant(t, warrior, 73);
@@ -98,11 +98,11 @@ cast(p + s(5), warrior, 871, 'Shield Wall');
 cast(p + s(10), mage, 45438, 'Ice Block');
 // priest morre pro Vile Flood aos 1:30
 heal(p + s(84), priest, priest, 2061, 'Flash Heal', 50000, 50000);
-damage(p + s(86), ithraz, priest, 1295049, 'Toxic Fumes', 100000);
-damage(p + s(88), vexhul, priest, 1294293, 'Vile Flood', 350000);
-damage(p + s(90), vexhul, priest, 1294293, 'Vile Flood', 400000);
+damage(p + s(86), ithraz, priest, 1294976, 'Toxic Fumes', 100000);
+damage(p + s(88), vexhul, priest, 1294605, 'Vile Flood', 350000);
+damage(p + s(90), vexhul, priest, 1294605, 'Vile Flood', 400000);
 died(p + s(90) + 10, priest);
-line(p + s(150), ['ENCOUNTER_END', 3180, q('The Twin Fangs'), 15, 20, 0, 150000]);
+line(p + s(150), ['ENCOUNTER_END', 3421, q('The Twin Fangs'), 15, 20, 0, 150000]);
 
 // ---- pull 2 ----
 p = Date.UTC(2026, 8, 28, 21, 10, 0);
@@ -110,13 +110,13 @@ startPull(p);
 cast(p + s(3), priest, 19236, 'Desperate Prayer');
 cast(p + s(20), warrior, 6262, 'Healthstone');
 for (let i = 1; i <= 55; i++) damage(p + s(i), mage, vexhul, 133, 'Fireball', 150000);
-damage(p + s(40), spawn, mage, 1291478, 'Corrosive Spit', 500000);
+damage(p + s(40), spawn, mage, 1293295, 'Corrosive Spit', 500000);
 cast(p + s(41), mage, 431416, 'Algari Healing Potion');
 heal(p + s(41), mage, mage, 431416, 'Algari Healing Potion', 200000, 0);
-damage(p + s(44), spawn, mage, 1291478, 'Corrosive Spit', 300000);
-damage(p + s(45), spawn, mage, 1291478, 'Corrosive Spit', 300000);
+damage(p + s(44), spawn, mage, 1293295, 'Corrosive Spit', 300000);
+damage(p + s(45), spawn, mage, 1293295, 'Corrosive Spit', 300000);
 died(p + s(45) + 5, mage);
-line(p + s(60), ['ENCOUNTER_END', 3180, q('The Twin Fangs'), 15, 20, 0, 60000]);
+line(p + s(60), ['ENCOUNTER_END', 3421, q('The Twin Fangs'), 15, 20, 0, 60000]);
 
 // ---- pull 3 (kill) ----
 p = Date.UTC(2026, 8, 28, 21, 15, 0);
@@ -127,7 +127,7 @@ for (let i = 1; i <= 179; i++) {
 }
 died(p + s(180), vexhul);
 died(p + s(180), ithraz);
-line(p + s(180), ['ENCOUNTER_END', 3180, q('The Twin Fangs'), 15, 20, 1, 180000]);
+line(p + s(180), ['ENCOUNTER_END', 3421, q('The Twin Fangs'), 15, 20, 1, 180000]);
 
 // cada linha termina em \r\n como no cliente Windows
 // ordena por tempo (sort estável mantém a ordem de eventos no mesmo ms)

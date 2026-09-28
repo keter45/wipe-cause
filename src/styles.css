@@ -496,3 +496,59 @@ ul.plain {
   padding: 0;
   margin: 0;
 }
+
+/* mecânicas */
+.mechanics {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mechanic {
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+.mechanic-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.mechanic-count {
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.mechanic-summary {
+  margin: 6px 0 2px;
+}
+.mechanic p {
+  margin: 4px 0;
+}
+.mechanic-players {
+  margin-top: 6px;
+  width: auto;
+  min-width: 420px;
+}
+.mechanic-players td {
+  padding: 3px 10px 3px 0;
+  border-bottom: none;
+}
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--info);
+  cursor: pointer;
+}
+.timeline {
+  margin-top: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.chip.mech {
+  background: rgba(110, 168, 254, 0.15);
+  color: var(--info);
+  margin-left: 4px;
+}

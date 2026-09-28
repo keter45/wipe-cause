@@ -7,6 +7,7 @@ export interface LogReport {
   lines: number;
   parseMs: number;
   pulls: Pull[];
+  ruleErrors: string[];
 }
 
 export interface Pull {
@@ -27,6 +28,8 @@ export interface Pull {
   players: PlayerStats[];
   deaths: Death[];
   enemySpells: EnemySpell[];
+  rulesFile: string | null;
+  mechanics: MechanicResult[];
 }
 
 export interface BossState {
@@ -80,6 +83,7 @@ export interface Death {
   role: Role | null;
   t: number;
   killingBlow: RecapEntry | null;
+  killingBlowMechanic: string | null;
   recap: RecapEntry[];
   defensivesRecent: SpellUse[];
   defensivesAvailable: AvailableSpell[];
@@ -113,4 +117,36 @@ export interface EnemySpell {
   casts: number;
   hitsOnPlayers: number;
   damageToPlayers: number;
+}
+
+export type MechanicSeverity = 'wipe' | 'major' | 'minor' | 'none';
+
+export interface MechanicResult {
+  key: string;
+  name: string;
+  kind: string;
+  severity: MechanicSeverity;
+  tip: string;
+  evaluated: boolean;
+  failures: number;
+  summary: string;
+  players: MechanicPlayer[];
+  events: MechanicEvent[];
+}
+
+export interface MechanicPlayer {
+  guid: string;
+  name: string;
+  count: number;
+  amount: number;
+  firstT: number | null;
+  /** true = ajudou (interrupt, soak); false = errou */
+  credit: boolean;
+  message: string;
+}
+
+export interface MechanicEvent {
+  t: number;
+  player: string | null;
+  detail: string;
 }

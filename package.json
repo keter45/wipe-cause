@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "tauri": "tauri",
-    "fixture": "node crates/wipe-core/tests/fixtures/gen-fixture.mjs > crates/wipe-core/tests/fixtures/twin-fangs.txt"
+    "fixture": "node crates/wipe-core/tests/fixtures/gen-fixture.mjs > crates/wipe-core/tests/fixtures/twin-fangs.txt",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.0",
@@ -23,6 +24,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.1"
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
   }
 }

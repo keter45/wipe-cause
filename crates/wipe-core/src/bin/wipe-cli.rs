@@ -13,7 +13,7 @@ fn main() -> ExitCode {
         eprintln!("uso: wipe-cli <analyze|spells> <WoWCombatLog.txt> [--json]");
         return ExitCode::from(2);
     };
-    let report = match analyze_file(&PathBuf::from(path), |_, _| {}) {
+    let report = match analyze_file(&PathBuf::from(path), None, |_, _| {}) {
         Ok(r) => r,
         Err(e) => {
             eprintln!("erro ao ler {path}: {e}");

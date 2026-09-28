@@ -95,6 +95,9 @@ export default function App() {
         </div>
       )}
       {status.kind === 'error' && <div className="error">Erro: {status.message}</div>}
+      {report && report.ruleErrors?.length > 0 && (
+        <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
+      )}
 
       {!report ? (
         <Empty previous={inTauri ? previous : null} onReopen={load} />

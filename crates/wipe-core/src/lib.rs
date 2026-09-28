@@ -3,11 +3,13 @@
 pub mod analysis;
 pub mod data;
 pub mod report;
+pub mod rules;
 pub mod timestamp;
 pub mod tokenizer;
 
 use analysis::{finalize, PullBuilder};
 use data::GameData;
+use rules::RuleBook;
 pub use report::*;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
@@ -16,16 +18,26 @@ use std::time::Instant;
 use timestamp::{parse_timestamp, tz_offset_hours};
 use tokenizer::{split_fields, split_timestamp};
 
-/// Analisa um arquivo de log. `progress(lidos, total)` é chamado ~200 vezes ao longo do arquivo.
-pub fn analyze_file(path: &Path, progress: impl FnMut(u64, u64)) -> io::Result<LogReport> {
+/// Analisa um arquivo de log. `rules_dir`: pasta extra com regras de boss (*.yaml) que
+/// substituem as embutidas. `progress(lidos, total)` é chamado ~200 vezes ao longo do arquivo.
+pub fn analyze_file(path: &Path, rules_dir: Option<&Path>, progress: impl FnMut(u64, u64)) -> io::Result<LogReport> {
     let file = File::open(path)?;
     let total = file.metadata()?.len();
-    let mut report = analyze_reader(BufReader::with_capacity(1 << 20, file), total, progress)?;
+    let mut book = RuleBook::embedded();
+    if let Some(dir) = rules_dir {
+        book.load_dir(dir);
+    }
+    let mut report = analyze_reader(BufReader::with_capacity(1 << 20, file), total, &book, progress)?;
     report.file = path.display().to_string();
     Ok(report)
 }
 
-pub fn analyze_reader<R: BufRead>(mut reader: R, total: u64, mut progress: impl FnMut(u64, u64)) -> io::Result<LogReport> {
+pub fn analyze_reader<R: BufRead>(
+    mut reader: R,
+    total: u64,
+    book: &RuleBook,
+    mut progress: impl FnMut(u64, u64),
+) -> io::Result<LogReport> {
     let data = GameData::embedded();
     let started = Instant::now();
     let default_year = current_year();
@@ -76,7 +88,7 @@ pub fn analyze_reader<R: BufRead>(mut reader: R, total: u64, mut progress: impl 
             if let Some(prev) = current.take() {
                 finished.push(prev.finish(None, finished.len(), &data));
             }
-            current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts)));
+            current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book));
         } else if f[0] == "ENCOUNTER_END" {
             if let Some(b) = current.take() {
                 finished.push(b.finish(Some((f.as_slice(), t)), finished.len(), &data));
@@ -97,6 +109,7 @@ pub fn analyze_reader<R: BufRead>(mut reader: R, total: u64, mut progress: impl 
         lines,
         parse_ms: started.elapsed().as_millis() as u64,
         pulls: finalize(finished, &data),
+        rule_errors: book.errors.clone(),
     })
 }
 

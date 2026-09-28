@@ -26,6 +26,20 @@ function cascadeThreshold(p: Pull): number {
   return Math.max(2, Math.ceil(raid * 0.2));
 }
 
+const CASCADE_WINDOW_MS = 20_000;
+const MAX_DECISIVE = 6;
+
+/**
+ * Mortes que importam: as isoladas antes da cascata + as 2 primeiras da cascata.
+ * Cascata = primeira janela de 20s com `threshold` mortes ou mais.
+ */
+export function decisiveDeaths(sorted: Death[], threshold: number): Death[] {
+  const start = sorted.findIndex((d) => sorted.filter((x) => x.t >= d.t && x.t - d.t <= CASCADE_WINDOW_MS).length >= threshold);
+  if (start < 0) return sorted.slice(0, threshold);
+  const isolated = sorted.slice(0, start).slice(0, MAX_DECISIVE - 2);
+  return [...isolated, ...sorted.slice(start, start + 2)];
+}
+
 export function lowestBossHp(p: Pull): number | null {
   const hps = p.bosses.map((b) => b.hpPct).filter((x): x is number => x != null);
   return hps.length ? Math.min(...hps) : null;
@@ -34,13 +48,29 @@ export function lowestBossHp(p: Pull): number | null {
 export function analyzePull(p: Pull): Verdict {
   const findings: Finding[] = [];
   const deaths = [...p.deaths].sort((a, b) => a.t - b.t);
-  const decisive = deaths.slice(0, cascadeThreshold(p));
+  const decisive = decisiveDeaths(deaths, cascadeThreshold(p));
   const bossHp = lowestBossHp(p);
+
+  // 0. Regras do boss: falhas de mecânica graves entram primeiro
+  for (const m of p.mechanics) {
+    if (m.failures === 0 || (m.severity !== 'wipe' && m.severity !== 'major')) continue;
+    const blamed = m.players.filter((x) => !x.credit);
+    findings.push({
+      severity: m.severity,
+      title: m.summary || `${m.name}: ${blamed.length} jogador(es)`,
+      detail: m.summary
+        ? m.tip
+        : blamed
+            .slice(0, 4)
+            .map((x) => x.message || shortName(x.name))
+            .join(' · ') + (blamed.length > 4 ? ` · +${blamed.length - 4}` : ''),
+    });
+  }
 
   // 1. Mortes decisivas agrupadas pelo golpe final
   const byKiller = new Map<string, Death[]>();
   for (const d of decisive) {
-    const key = d.killingBlow?.spellName ?? 'Desconhecido';
+    const key = d.killingBlowMechanic ?? d.killingBlow?.spellName ?? 'Desconhecido';
     byKiller.set(key, [...(byKiller.get(key) ?? []), d]);
   }
   const ranked = [...byKiller.entries()].sort((a, b) => b[1].length - a[1].length);
@@ -64,8 +94,11 @@ export function analyzePull(p: Pull): Verdict {
     });
   }
 
-  // 3. Sobrevivência de cada morte decisiva
+  // 3. Sobrevivência de cada morte decisiva (uma vez por player, mesmo com battle rez)
+  const seen = new Set<string>();
   for (const d of decisive) {
+    if (seen.has(d.guid)) continue;
+    seen.add(d.guid);
     const who = shortName(d.name);
     if (d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0) {
       findings.push({

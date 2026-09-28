@@ -5,13 +5,15 @@ import { analyzePull } from '../lib/verdict';
 import { DeathList } from './DeathList';
 import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
+import { MechanicsView } from './MechanicsView';
 
-type Tab = 'deaths' | 'players' | 'spells';
+type Tab = 'mechanics' | 'deaths' | 'players' | 'spells';
 
 const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info: 'Info' } as const;
 
 export function PullView({ pull }: { pull: Pull }) {
   const [tab, setTab] = useState<Tab>('deaths');
+  const mechFailures = pull.mechanics.filter((m) => m.failures > 0).length;
   const verdict = analyzePull(pull);
   const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
 
@@ -57,6 +59,9 @@ export function PullView({ pull }: { pull: Pull }) {
       </section>
 
       <div className="tabs" role="tablist">
+        <button role="tab" aria-selected={tab === 'mechanics'} className={tab === 'mechanics' ? 'active' : ''} onClick={() => setTab('mechanics')}>
+          Mecânicas{pull.rulesFile ? ` (${mechFailures})` : ''}
+        </button>
         <button role="tab" aria-selected={tab === 'deaths'} className={tab === 'deaths' ? 'active' : ''} onClick={() => setTab('deaths')}>
           Mortes ({pull.deaths.length})
         </button>
@@ -68,6 +73,7 @@ export function PullView({ pull }: { pull: Pull }) {
         </button>
       </div>
 
+      {tab === 'mechanics' && <MechanicsView pull={pull} />}
       {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} />}
       {tab === 'players' && <PlayersTable players={pull.players} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}

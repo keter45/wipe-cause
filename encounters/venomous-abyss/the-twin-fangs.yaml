@@ -2,10 +2,11 @@ schema_version: 1
 raid: venomous-abyss
 boss: the-twin-fangs
 name: "The Twin Fangs"
-encounter_id: null            # preencher com o ID do ENCOUNTER_START do primeiro log
+encounter_id: 3421
 source:
   - https://www.mythictrap.com/en/venomous-abyss/the-twin-fangs/mythic
-  - https://warcraft.wiki.gg/wiki/The_Twin_Fangs   # spell IDs (IDs do Encounter Journal; confirmar no log)
+  - https://warcraft.wiki.gg/wiki/The_Twin_Fangs   # IDs do Encounter Journal
+  - "log: Split-2026-09-25T000428.939Z-TheTwinFangs Mythic (28 pulls) — IDs de dano/aura calibrados"
 updated: 2026-09-28
 difficulties: [normal, heroic, mythic]
 
@@ -14,11 +15,7 @@ units:
   - { key: ithraz, name: "Ithraz", npc_id: 257368, boss: true }
   - { key: broodling, name: "Broodling of Ithraz", npc_id: 270898 }
   - { key: spawn_of_vexhul, name: "Spawn of Vexhul", npc_id: null }
-  - { key: caustic_globule, name: "Caustic Globule", npc_id: null }
-
-phases:
-  - { key: main, name: "Fase única", start: pull }
-  - { key: transition, name: "Vile Flood (troca de canto)", start: { cast: submerge } }
+  - { key: barbed_bulwark, name: "Barbed Bulwark", npc_id: null }
 
 mechanics:
   # ---------- Debuff central da luta ----------
@@ -26,154 +23,156 @@ mechanics:
     name: "Eternal Venom"
     type: stack_limit
     severity: major
-    detect: { aura_id: 1290336 }
+    detect: { aura_id: 1290336, damage_ids: [1290480] }
     lethal_stacks: 11
     warn_stacks: 8
     overrides:
-      heroic: { lethal_stacks: 10, warn_stacks: 7, severity: wipe }
-      mythic: { lethal_stacks: 9, warn_stacks: 6, severity: wipe }
-    sources: [caustic_globule_soak, venomous_emergence, corrosive_spit, stir_the_depths, vile_flood]
-    removed_by: [ravenous_feast]
-    tip: "Cada mecânica errada dá stack; entrar no Ravenous Feast é o único jeito de limpar."
-    message: "{player} chegou a {stacks} stacks de Eternal Venom aos {time} (limite {lethal_stacks})."
-    notes: "No Normal o limite causa dano massivo + stun, não morte."
+      heroic: { lethal_stacks: 10, warn_stacks: 8, severity: wipe }
+      mythic: { lethal_stacks: 10, warn_stacks: 9, severity: wipe }
+    tip: "Cada mecânica errada dá stack; entrar no Ravenous Feast limpa."
+    message: "{player} chegou a {stacks} stacks de Eternal Venom"
+    notes: "Guia de PTR dizia 9 no Mítico; no log live os players chegaram a 10."
 
   # ---------- Vexhul ----------
-  - key: caustic_globule_soak
+  - key: caustic_globule
     name: "Caustic Globule"
     type: soak
     source_unit: vexhul
     severity: major
     detect:
-      soak_aura_id: 1289993
-      fail_ids: [null]          # explosão do globule (dá venom no raid inteiro) — ID a confirmar no log
-    min_soakers: 1
-    needs_id: true
-    tip: "Pisar em todos os orbs antes de explodirem (10s)."
-    message: "{count} Caustic Globule explodiram sem soak — stack de Eternal Venom no raid todo."
+      damage_ids: [1289201]     # hit em quem soaka (1-6 players)
+      fail_ids: [1290338]       # explosão: atinge 11-20 players
+    tip: "Pisar em todos os orbs antes de explodirem."
+    message: "{count} Caustic Globule explodiram sem soak"
 
   - key: caustic_deluge
     name: "Caustic Deluge"
-    type: info
+    type: unavoidable
     source_unit: vexhul
     roles: [tank]
     severity: none
-    detect: { aura_id: 1289192 }
-    tip: "DoT no tank que dispara a leva de orbs; use como marcador de tempo dos soaks."
-    message: "Caustic Deluge em {player} aos {time}."
+    detect: { damage_ids: [1289237], aura_id: 1289192 }
+    tip: "DoT no tank que solta a leva de orbs."
+    message: "Caustic Deluge"
 
   - key: envenomed
     name: "Envenomed"
-    type: info
+    type: stack_limit
     source_unit: vexhul
     roles: [tank]
     severity: minor
     detect: { aura_id: 1310360 }
     tip: "Vulnerabilidade do tank ao Caustic Deluge; trocar tank olhando os stacks."
-    message: "{player} com {stacks} stacks de Envenomed."
-    notes: "Promover a regra de taunt swap quando soubermos o limite aceitável."
+    message: "{player} chegou a {stacks} stacks de Envenomed"
+    notes: "Sem warn_stacks: no log os dois tanks chegam a 11 em todo pull, então não é erro por si só. Calibrar."
 
   - key: venomous_emergence
     name: "Venomous Emergence"
-    type: add_kill
+    type: unavoidable
     source_unit: vexhul
-    severity: major
-    detect: { cast_id: 1291404, unit: spawn_of_vexhul }
-    kill_within: 20s
-    tip: "Matar os 3 Spawn of Vexhul rápido; cada um solta linhas que dão venom."
-    message: "Spawns de Vexhul viveram {time} (meta: 20s)."
-    notes: "kill_within é chute inicial; calibrar com pulls reais."
+    severity: none
+    detect: { damage_ids: [1308122], cast_id: 1291404 }
+    tip: "Dano no raid quando os Spawns nascem."
+    message: "Venomous Emergence"
 
   - key: corrosive_spit
     name: "Corrosive Spit"
     type: avoidable_damage
     source_unit: spawn_of_vexhul
     severity: minor
-    detect: { damage_ids: [1291478] }
-    tolerance: 0
+    detect: { damage_ids: [1293295] }
+    ignore_first_hit_in_burst: true
     tip: "Sair da linha se você não é o alvo."
-    message: "{player} tomou {count}x Corrosive Spit sem ser o alvo."
-    notes: "O alvo da linha sempre toma; o motor precisa excluir o alvo do cast (primeiro hit)."
+    message: "{player} tomou Corrosive Spit sem ser o alvo ({count}x)"
+    notes: "O primeiro hit de cada linha é o alvo; hits extras na mesma rajada são erro."
 
-  - key: concentrated_spittle
-    name: "Concentrated Spittle"
-    type: info
-    source_unit: vexhul
-    severity: none
-    detect: { damage_ids: [1295107] }
-    tip: "Não descrito no guia; revisar quando aparecer no log."
-    message: "Concentrated Spittle em {player}."
-
-  - key: stir_the_depths
-    name: "Stir the Depths"
+  - key: stir_the_depths_wave
+    name: "Stir the Depths (onda)"
     type: avoidable_damage
     source_unit: vexhul
     severity: minor
-    detect: { damage_ids: [1290956] }
-    tolerance: 0
-    tip: "Desviar das ondas; o pulso de dano no raid é inevitável."
-    message: "{player} foi pego por {count} ondas de Stir the Depths."
-    needs_id: true
-    notes: "Pulso de raid e onda provavelmente têm IDs diferentes; separar o pulso em uma regra unavoidable."
+    detect: { damage_ids: [1292807] }
+    tip: "Desviar das ondas."
+    message: "{player} foi pego por {count} ondas de Stir the Depths"
+
+  - key: stir_the_depths_pulse
+    name: "Stir the Depths (pulso)"
+    type: unavoidable
+    source_unit: vexhul
+    severity: none
+    detect: { damage_ids: [1292806] }
+    tip: "Pulso de dano no raid; healers seguram."
+    message: "Stir the Depths"
 
   - key: vile_flood
     name: "Vile Flood"
     type: avoidable_damage
     source_unit: vexhul
     severity: major
-    detect: { damage_ids: [1294293] }
-    tolerance: 0
-    tip: "Fugir do feixe giratório na transição e ir para o novo canto."
-    message: "{player} foi atingido pelo feixe do Vile Flood aos {time}."
+    detect: { damage_ids: [1294605] }
+    tip: "Fugir do feixe giratório na transição."
+    message: "{player} foi atingido pelo feixe do Vile Flood ({count}x)"
+
+  - key: concentrated_spittle
+    name: "Concentrated Spittle"
+    type: tank_range
+    source_unit: vexhul
+    roles: [tank]
+    severity: minor
+    detect: { damage_ids: [1295107] }
+    tip: "Tank do Vexhul dentro do alcance."
+    message: "{player} tomou Concentrated Spittle {count}x (fora de alcance)"
+    notes: "Mesmo padrão do Clotted Bolt (casts ≈ hits); confirmar que é o bolt de alcance do Vexhul."
 
   # ---------- Ithraz ----------
-  - key: protected_gestation
-    name: "Blood Torrent / Protected Gestation"
-    type: cc_required
-    source_unit: ithraz
+  - key: barbed_bulwark
+    name: "Barbed Bulwark"
+    type: info
+    source_unit: barbed_bulwark
     difficulty: [mythic]
-    severity: major
-    detect: { aura_id: 1303378, cast_id: 1303230 }
-    window: 5s
-    tip: "CC nos orbs para quebrar o escudo, depois soak normal."
-    message: "Escudo do Globule ficou {time} sem ser quebrado."
-    notes: "Assumindo que Protected Gestation é o escudo nos orbs; confirmar no log. window é chute."
+    severity: minor
+    detect: { cast_id: 1303378, damage_ids: [1307363] }
+    tip: "Escudo nos orbs: CC para quebrar antes do soak."
+    message: "Barbed Bulwark"
+    notes: "Blood Torrent (1303230) no tank. Regra de CC ainda não avaliada."
 
   - key: visceral_burst
-    name: "Rouse the Brood / Visceral Burst"
+    name: "Visceral Burst"
     type: interrupt
     source_unit: broodling
     difficulty: [mythic]
     severity: wipe
-    detect: { cast_id: 1308385 }
-    accept: [interrupt, cc, kill]
-    tip: "Cada Broodling precisa ser cortado; ter escala de interrupt definida."
-    message: "{count} Visceral Burst passaram sem interrupt."
+    detect: { cast_id: 1308385, fail_ids: [1308386] }
+    tip: "Cada Broodling precisa ser cortado; tenha escala de interrupt."
+    message: "{count} Visceral Burst passaram sem interrupt"
+
+  - key: rouse_the_brood
+    name: "Rouse the Brood"
+    type: unavoidable
+    source_unit: ithraz
+    severity: none
+    detect: { damage_ids: [1308482], cast_id: 1308356 }
+    tip: "Dano no raid quando os Broodlings nascem."
+    message: "Rouse the Brood"
 
   - key: ravenous_feast
     name: "Ravenous Feast"
-    type: soak
+    type: unavoidable
     source_unit: ithraz
-    severity: major
-    detect:
-      soak_aura_id: 1290516
-      fail_ids: []
-    min_soakers: 5
-    tip: "Entrar no soak para dividir o dano e limpar um stack de Eternal Venom."
-    message: "Ravenous Feast com só {count} soakers."
-    notes: "min_soakers chute; ajustar ao tamanho do raid."
+    severity: none
+    detect: { damage_ids: [1290662], cast_id: 1290516 }
+    tip: "Soak dividido; também remove stack de Eternal Venom."
+    message: "Ravenous Feast"
 
   - key: feasted_double_soak
-    name: "Feasted"
+    name: "Feasted (soak duplo)"
     type: avoidable_damage
     source_unit: ithraz
     difficulty: [heroic, mythic]
     severity: major
-    detect: { aura_id: 1310096, damage_ids: [1290516] }
-    tolerance: 0
-    tip: "Com Feasted não soakar outro smash da mesma leva; dividir em 3 grupos."
-    message: "{player} soakou Ravenous Feast com Feasted ativo (vulnerabilidade de 800%)."
-    notes: "Regra composta: dano do Feast em player que já tem a aura Feasted."
+    detect: { damage_ids: [1290662], requires_aura: 1310096 }
+    tip: "Com Feasted não soakar outro smash; dividir em grupos."
+    message: "{player} soakou Ravenous Feast com Feasted ativo ({count}x)"
 
   - key: tainted_blood
     name: "Tainted Blood"
@@ -182,102 +181,82 @@ mechanics:
     difficulty: [mythic]
     severity: wipe
     detect:
-      soak_aura_id: 1310099
-      fail_ids: [1310105]       # Tainted Burst
-    min_soakers: 3
+      soak_aura_id: 1310102
+      fail_ids: [1310105]       # Tainted Burst (ID do Journal; não visto no log ainda)
     tip: "Vários players em cada orb vermelho; orb não soakado mata o raid."
-    message: "Tainted Burst explodiu aos {time} — orb vermelho sem soak."
+    message: "{count} Tainted Burst — orb vermelho sem soak"
 
   - key: coiling_ichor
     name: "Coiling Ichor"
-    type: spread
+    type: unavoidable
     source_unit: ithraz
-    severity: minor
-    detect: { aura_id: 1290809, damage_ids: [1292505, 1306922] }
-    tip: "Com o debuff, ir para a borda antes de a poça cair."
-    message: "Poça de Coiling Ichor de {player} atingiu {count} players."
-    notes: "Congealed Gore (2 IDs) parece ser a poça; confirmar qual é poça e qual é outra coisa."
+    severity: none
+    detect: { damage_ids: [1290878], aura_id: 1290809 }
+    tip: "DoT em quem é marcado; ir para a borda antes da poça cair."
+    message: "Coiling Ichor"
 
   - key: congealed_gore
     name: "Congealed Gore"
     type: avoidable_damage
     source_unit: ithraz
     severity: minor
-    detect: { damage_ids: [1292505, 1306922] }
+    detect: { damage_ids: [1292552, 1306925] }
     tolerance: 1
     tip: "Não ficar em cima das poças."
-    message: "{player} tomou {count} ticks de Congealed Gore."
+    message: "{player} tomou {count} ticks de Congealed Gore"
 
   - key: stone_breaker
     name: "Stone Breaker"
     type: tank_soak
     source_unit: ithraz
     roles: [tank]
-    severity: major
+    severity: wipe
     detect:
-      damage_ids: [1288538]
-      fail_ids: [null]          # dano/knock no raid quando o tank não soaka — ID a confirmar
-    expected_hits: 3
-    needs_id: true
-    tip: "Um tank soaka os 3 smashes na ordem em que aparecem."
-    message: "Stone Breaker: tank soakou {count}/3 — raid tomou o resto."
-
-  - key: fractured
-    name: "Fractured"
-    type: info
-    source_unit: ithraz
-    roles: [tank]
-    severity: none
-    detect: { aura_id: 1289092 }
-    tip: "Vulnerabilidade de 33% por 90s após o Stone Breaker; considerar no death recap do tank."
-    message: "{player} com Fractured ({stacks})."
+      damage_ids: [1310371]     # hit no tank que soaka
+      fail_ids: [1289153]       # raid inteiro toma quando um smash não é soakado
+    tip: "Um tank soaka os 3 smashes, na ordem."
+    message: "{count} smash(es) de Stone Breaker sem soak"
 
   - key: sanguine_storm
     name: "Sanguine Storm"
     type: avoidable_damage
     source_unit: ithraz
     severity: minor
-    detect: { damage_ids: [1306872] }
-    tolerance: 0
+    detect: { damage_ids: [1306876] }
     tip: "Desviar dos swirlies enquanto foge do feixe."
-    message: "{player} tomou {count}x Sanguine Storm."
-
-  - key: noxious_slick
-    name: "Noxious Slick"
-    type: avoidable_damage
-    difficulty: [heroic, mythic]
-    severity: minor
-    detect: { damage_ids: [1309471] }
-    tolerance: 1
-    tip: "Sair das poças deixadas pelo Sanguine Storm."
-    message: "{player} ficou {count} ticks em Noxious Slick."
-    notes: "Assumindo que são as poças do Sanguine Storm no Heroic+; confirmar."
+    message: "{player} tomou {count}x Sanguine Storm"
 
   - key: clotted_bolt
     name: "Clotted Bolt"
     type: tank_range
+    source_unit: ithraz
     roles: [tank]
-    severity: minor
+    severity: major
     detect: { damage_ids: [1295115] }
-    tip: "Tanks dentro do alcance dos bosses."
-    message: "{player} tomou Clotted Bolt {count}x (fora de alcance)."
+    tip: "Tank do Ithraz dentro do alcance."
+    message: "{player} tomou Clotted Bolt {count}x (fora de alcance)"
 
   # ---------- Luta inteira ----------
   - key: toxic_fumes
     name: "Toxic Fumes"
     type: unavoidable
     severity: none
-    detect: { damage_ids: [1295049] }
-    tip: "Rot no raid a luta toda; healers seguram."
-    message: "Toxic Fumes: {count} de dano no raid."
+    detect: { damage_ids: [1294976] }
+    tip: "Rot no raid a luta toda."
+    message: "Toxic Fumes"
+
+  - key: deadly_venom
+    name: "Deadly Venom"
+    type: info
+    severity: none
+    detect: { aura_id: 1297338 }
+    tip: "Debuff sem origem visto no log; investigar."
+    message: "Deadly Venom"
 
   - key: uncoiled_wrath
     name: "Uncoiled Wrath"
-    type: hp_balance
+    type: enrage
     severity: major
-    detect:
-      units: [vexhul, ithraz]
-      enrage_aura_id: 1308583
-    max_hp_diff_pct: 10
+    detect: { enrage_aura_id: 1308583 }
     tip: "Matar os dois juntos; o que sobra ganha dano progressivo."
-    message: "Diferença de HP entre os bosses chegou a {count}% aos {time}."
+    message: "Uncoiled Wrath ativado — bosses com HP desbalanceado"

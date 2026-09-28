@@ -5,7 +5,7 @@ use wipe_core::{analyze_file, LogReport, RecapKind};
 
 fn report() -> LogReport {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/twin-fangs.txt");
-    analyze_file(&path, |_, _| {}).expect("fixture deve ser lida")
+    analyze_file(&path, None, |_, _| {}).expect("fixture deve ser lida")
 }
 
 #[test]
@@ -93,7 +93,32 @@ fn death_recap_and_available_defensives() {
 fn enemy_spells_are_collected() {
     let r = report();
     let spells = &r.pulls[1].enemy_spells;
-    let spit = spells.iter().find(|s| s.spell_id == 1291478).unwrap();
+    let spit = spells.iter().find(|s| s.spell_id == 1293295).unwrap();
     assert_eq!(spit.hits_on_players, 3);
     assert_eq!(spit.sources, vec!["Spawn of Vexhul".to_string()]);
+}
+
+#[test]
+fn boss_rules_are_applied() {
+    let r = report();
+    let p1 = &r.pulls[0];
+    assert!(p1.rules_file.as_deref().unwrap().ends_with("the-twin-fangs.yaml"));
+
+    // Vile Flood: priest pegou 2 hits do feixe (dano evitável)
+    let vf = p1.mechanics.iter().find(|m| m.key == "vile_flood").unwrap();
+    assert_eq!(vf.failures, 2);
+    assert_eq!(vf.players[0].name, "Curandeira-Azralon");
+    assert_eq!(vf.players[0].message, "Curandeira foi atingido pelo feixe do Vile Flood (2x)");
+    // a morte fica ligada à mecânica
+    assert_eq!(p1.deaths[0].killing_blow_mechanic.as_deref(), Some("Vile Flood"));
+
+    // Corrosive Spit: o 1º hit de cada rajada é o alvo; só o 3º (1s depois do 2º) é erro
+    let p2 = &r.pulls[1];
+    let spit = p2.mechanics.iter().find(|m| m.key == "corrosive_spit").unwrap();
+    assert_eq!(spit.failures, 1);
+
+    // mecânicas sem falha vêm depois das com falha
+    let first_clean = p1.mechanics.iter().position(|m| m.failures == 0).unwrap();
+    assert!(p1.mechanics[..first_clean].iter().all(|m| m.failures > 0));
+    assert!(r.rule_errors.is_empty());
 }

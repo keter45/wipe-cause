@@ -11,6 +11,8 @@ pub struct LogReport {
     pub lines: u64,
     pub parse_ms: u64,
     pub pulls: Vec<Pull>,
+    /// Erros ao carregar regras de boss (YAML inválido etc.)
+    pub rule_errors: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -38,6 +40,51 @@ pub struct Pull {
     pub players: Vec<PlayerStats>,
     pub deaths: Vec<Death>,
     pub enemy_spells: Vec<EnemySpell>,
+    /// Arquivo de regras usado (encounters/*.yaml), se houver para este boss
+    pub rules_file: Option<String>,
+    /// Resultado das regras do boss, falhas primeiro
+    pub mechanics: Vec<MechanicResult>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicResult {
+    pub key: String,
+    pub name: String,
+    /// tipo da regra (avoidable_damage, soak, interrupt, ...)
+    pub kind: String,
+    /// wipe | major | minor | none
+    pub severity: String,
+    pub tip: String,
+    /// false = tipo de regra que o motor ainda não avalia (só dica)
+    pub evaluated: bool,
+    pub failures: u32,
+    /// mensagem da falha coletiva (soak, interrupt, enrage), já renderizada
+    pub summary: String,
+    /// culpados primeiro; depois quem ajudou (`credit`: interrupts, soaks)
+    pub players: Vec<MechanicPlayer>,
+    pub events: Vec<MechanicEvent>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicPlayer {
+    pub guid: String,
+    pub name: String,
+    /// hits, stacks máximos ou vezes que ajudou
+    pub count: u32,
+    pub amount: i64,
+    pub first_t: Option<i64>,
+    pub credit: bool,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicEvent {
+    pub t: i64,
+    pub player: Option<String>,
+    pub detail: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -103,6 +150,8 @@ pub struct Death {
     pub role: Option<String>,
     pub t: i64,
     pub killing_blow: Option<RecapEntry>,
+    /// Mecânica do boss (regras) que deu o golpe final, se reconhecida
+    pub killing_blow_mechanic: Option<String>,
     /// Eventos dos últimos segundos antes da morte, em ordem cronológica
     pub recap: Vec<RecapEntry>,
     /// Defensivos (pessoais ou externos) ativados nos últimos 10s

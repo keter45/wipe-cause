@@ -43,7 +43,19 @@ mechanics: [ ... ]              # lista de regras (abaixo)
 | `needs_id` | não | `true` enquanto algum ID estiver `null` |
 | `notes` | não | observações de calibração |
 
-IDs: `cast_id` (SPELL_CAST_START/SUCCESS), `damage_ids` (lista; SPELL_DAMAGE/PERIODIC), `aura_id` (SPELL_AURA_*), `fail_ids` (spell que só acontece quando a mecânica falha, ex.: explosão).
+IDs: `cast_id` (SPELL_CAST_SUCCESS), `damage_ids` (lista; SPELL_DAMAGE/PERIODIC), `aura_id` (SPELL_AURA_*), `fail_ids` (spell que só acontece quando a mecânica falha, ex.: explosão), `soak_aura_id`, `enrage_aura_id`, `requires_aura` (o dano só conta se o player estiver com essa aura — ex.: soak duplo com vulnerabilidade).
+
+Opções extras:
+
+| campo | descrição |
+|---|---|
+| `ignore_first_hit_in_burst` | `avoidable_damage`: o 1º hit de cada rajada (hits a <1,5s um do outro) é o alvo da mecânica e não conta como erro. Ex.: linha mirada em um player. |
+
+> **IDs do Journal ≠ IDs do log.** O cast, o dano, o debuff e a explosão da mesma habilidade costumam ter IDs diferentes, e o Encounter Journal (wiki/wowhead) mostra só um deles. Calibre sempre com `wipe-cli spells <log>` ou a aba "Habilidades do boss" do app.
+
+### O que o motor avalia hoje
+
+`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
 
 ## Tipos
 
@@ -116,6 +128,12 @@ detect: { unit: spawn_of_vexhul }
 kill_within: 20s
 ```
 Log: `SPELL_SUMMON`/primeiro evento do NPC → `UNIT_DIED`.
+
+### `enrage`
+Buff de enrage aplicado em inimigo = falha coletiva.
+```yaml
+detect: { enrage_aura_id: .. }
+```
 
 ### `hp_balance`
 Bosses precisam morrer juntos.

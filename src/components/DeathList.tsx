@@ -30,6 +30,7 @@ export function DeathList({ deaths, decisive }: Props) {
                 {d.killingBlow ? (
                   <>
                     {d.killingBlow.spellName} <span className="muted">({d.killingBlow.source})</span>{' '}
+                    {d.killingBlowMechanic && <span className="chip mech" title="Mecânica do boss (regras)">mecânica</span>}
                     <span className="dmg">{num(d.killingBlow.amount)}</span>
                   </>
                 ) : (
