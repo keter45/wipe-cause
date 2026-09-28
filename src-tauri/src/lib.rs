@@ -46,7 +46,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             analyze_log,
             rules_dir,
-            wcr::wcr_videos
+            wcr::wcr_videos,
+            wcr::wcr_get_dir,
+            wcr::wcr_set_dir,
+            wcr::wcr_detect_dir
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Wipe Cause");

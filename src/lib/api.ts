@@ -96,9 +96,15 @@ export interface WcrScan {
   dir: string | null;
   source: 'settings' | 'recorder' | 'none';
   videos: WcrVideo[];
+  warning: string | null;
 }
 
-export const wcrVideos = (dir: string | null) => invoke<WcrScan>('wcr_videos', { dir });
+export const wcrVideos = () => invoke<WcrScan>('wcr_videos');
+/** Pasta cadastrada pelo usuário (null = detecção automática). Fica no settings.json do app. */
+export const wcrGetDir = () => invoke<string | null>('wcr_get_dir');
+export const wcrSetDir = (dir: string | null) => invoke<void>('wcr_set_dir', { dir });
+/** Pasta configurada no próprio Warcraft Recorder, se instalado. */
+export const wcrDetectDir = () => invoke<string | null>('wcr_detect_dir');
 
 export async function videoSrc(path: string): Promise<string> {
   if (!inTauri) return `/__video?path=${encodeURIComponent(path)}`; // dev no navegador (vite.config.ts)
@@ -111,18 +117,13 @@ export async function pickFolder(title: string): Promise<string | null> {
   return typeof picked === 'string' ? picked : null;
 }
 
-const WCR_DIR_KEY = 'wipe-cause:wcr-dir';
-/** Pasta de vídeos escolhida no app (vazio = usar a do Warcraft Recorder). */
-export function savedWcrDir(): string {
+/** Versões anteriores guardavam a pasta no localStorage: passa para o settings.json uma vez. */
+export async function migrateWcrDir() {
+  const KEY = 'wipe-cause:wcr-dir';
   try {
-    return localStorage.getItem(WCR_DIR_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
-export function saveWcrDir(dir: string) {
-  try {
-    localStorage.setItem(WCR_DIR_KEY, dir);
+    const old = localStorage.getItem(KEY);
+    if (old && !(await wcrGetDir())) await wcrSetDir(old);
+    localStorage.removeItem(KEY);
   } catch {
     /* sem storage */
   }

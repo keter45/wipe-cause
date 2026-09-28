@@ -1033,3 +1033,26 @@ ul.plain {
 .death.ignored {
   opacity: 0.4;
 }
+
+/* pasta de vídeos */
+.link-btn {
+  background: none;
+  border-color: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+.link-btn:hover {
+  color: var(--text);
+}
+.folder-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+.ok-text {
+  color: var(--kill);
+}

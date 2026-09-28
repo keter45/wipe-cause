@@ -22,7 +22,7 @@ Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele
 
 ## Warcraft Recorder
 
-Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com), o app acha os vídeos sozinho (lê só a pasta de vídeos da configuração do Recorder; dá para escolher outra na engrenagem) e casa cada vídeo com o pull pelo boss e horário de início. No pull aparece o botão **▶ Vídeo** e cada morte, gatilho e evento de mecânica ganha um **▶** que abre o vídeo 5s antes do momento.
+Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com), cadastre a pasta onde ele salva os vídeos (botão 🎥 na barra: colar o caminho ou Procurar…). Ela fica salva no `settings.json` do app, porque varia de PC para PC. Sem cadastro, o app tenta detectar a pasta pela configuração do Recorder (lê só o caminho) e casa cada vídeo com o pull pelo boss e horário de início. No pull aparece o botão **▶ Vídeo** e cada morte, gatilho e evento de mecânica ganha um **▶** que abre o vídeo 5s antes do momento.
 
 Vídeos só na nuvem do Recorder ainda não são suportados (a API da nuvem é privada).
 

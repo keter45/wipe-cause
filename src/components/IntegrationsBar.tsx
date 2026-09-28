@@ -1,6 +1,18 @@
 import { useEffect, useState } from 'react';
 import type { Pull } from '../types';
-import { inTauri, pickFolder, savedWclLink, saveWclLink, savedWcrDir, saveWcrDir, wcrVideos, type WcrScan, type WcrVideo } from '../lib/api';
+import {
+  inTauri,
+  migrateWcrDir,
+  pickFolder,
+  savedWclLink,
+  saveWclLink,
+  wcrDetectDir,
+  wcrGetDir,
+  wcrSetDir,
+  wcrVideos,
+  type WcrScan,
+  type WcrVideo,
+} from '../lib/api';
 import { reportCode } from '../lib/wcl';
 import { matchVideos } from '../lib/wcr';
 
@@ -27,7 +39,7 @@ export function IntegrationsBar({ logFile, pulls, onWcl, onVideos }: Props) {
   }
 
   async function loadVideos() {
-    const s = await wcrVideos(savedWcrDir() || null);
+    const s = await wcrVideos();
     setScan(s);
     const m = matchVideos(pulls, s.videos);
     setVideoCount(m.size);
@@ -39,7 +51,7 @@ export function IntegrationsBar({ logFile, pulls, onWcl, onVideos }: Props) {
     const saved = savedWclLink(logFile);
     setInput(saved);
     onWcl(reportCode(saved));
-    if (inTauri) loadVideos();
+    if (inTauri) migrateWcrDir().then(loadVideos);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logFile]);
 
@@ -56,60 +68,111 @@ export function IntegrationsBar({ logFile, pulls, onWcl, onVideos }: Props) {
         <span className={`small wcl-status ${code ? 'muted' : 'bad'}`}>{code ? `report ${code}` : 'link inválido'}</span>
       )}
       {inTauri && (
-        <>
-          <span className="wcl-label video-status" title={scan?.dir ?? 'Pasta de vídeos não encontrada'}>
-            🎥 {scan?.dir ? `${videoCount}/${pulls.length} pulls com vídeo` : 'sem pasta de vídeos'}
-          </span>
-          <button className="btn icon" title="Pasta de vídeos" onClick={() => setShowSettings(true)}>
-            ⚙
-          </button>
-        </>
+        <span className="video-status">
+          {scan?.dir && !scan.warning ? (
+            <button className="btn link-btn" title={scan.dir} onClick={() => setShowSettings(true)}>
+              🎥 {videoCount}/{pulls.length} pulls com vídeo
+            </button>
+          ) : (
+            <button className="btn" onClick={() => setShowSettings(true)} title={scan?.warning ?? undefined}>
+              🎥 {scan?.warning ? 'Pasta de vídeos com problema' : 'Escolher pasta de vídeos'}
+            </button>
+          )}
+        </span>
       )}
-      {showSettings && <VideoSettings scan={scan} onClose={() => setShowSettings(false)} onChanged={loadVideos} />}
+      {showSettings && <VideoFolderDialog scan={scan} onClose={() => setShowSettings(false)} onChanged={loadVideos} />}
     </div>
   );
 }
 
-function VideoSettings({ scan, onClose, onChanged }: { scan: WcrScan | null; onClose: () => void; onChanged: () => void }) {
-  async function chooseDir() {
+/** Cadastro da pasta onde o Warcraft Recorder salva os vídeos (varia de PC para PC). */
+function VideoFolderDialog({ scan, onClose, onChanged }: { scan: WcrScan | null; onClose: () => void; onChanged: () => Promise<void> }) {
+  const [path, setPath] = useState('');
+  const [detected, setDetected] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+
+  useEffect(() => {
+    wcrGetDir().then((d) => {
+      setSaved(d);
+      setPath(d ?? '');
+    });
+    wcrDetectDir().then(setDetected);
+  }, []);
+
+  async function save(dir: string | null) {
+    await wcrSetDir(dir);
+    setSaved(dir && dir.trim() ? dir.trim() : null);
+    await onChanged();
+  }
+
+  async function browse() {
     const dir = await pickFolder('Pasta de vídeos do Warcraft Recorder');
     if (dir) {
-      saveWcrDir(dir);
-      onChanged();
+      setPath(dir);
+      await save(dir);
     }
   }
-  function useRecorderDir() {
-    saveWcrDir('');
-    onChanged();
-  }
-  const sourceLabel = { settings: 'escolhida aqui', recorder: 'detectada nas configurações do Warcraft Recorder', none: '' };
+
+  const using = saved ? 'cadastrada aqui' : scan?.source === 'recorder' ? 'detectada no Warcraft Recorder' : null;
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" role="dialog" aria-label="Vídeos do Warcraft Recorder" onClick={(e) => e.stopPropagation()}>
-        <h3>Warcraft Recorder</h3>
-        <p className="small">
-          {scan?.dir ? (
-            <>
-              Vídeos em <code>{scan.dir}</code>{' '}
-              <span className="muted">
-                ({sourceLabel[scan.source]}, {scan.videos.length} encontros)
-              </span>
-            </>
-          ) : (
-            'Pasta de vídeos não encontrada.'
-          )}
+      <div className="dialog" role="dialog" aria-label="Pasta de vídeos do Warcraft Recorder" onClick={(e) => e.stopPropagation()}>
+        <h3>Pasta de vídeos do Warcraft Recorder</h3>
+        <p className="small muted">
+          Onde o Warcraft Recorder salva os vídeos neste PC (em Settings → General → Storage Path dentro do Recorder). O app lê os
+          .mp4 e os .json dessa pasta e casa cada vídeo com o pull.
         </p>
-        <div className="dialog-actions">
-          <button className="btn" onClick={chooseDir}>
-            Escolher pasta…
+
+        <label className="field">
+          Caminho da pasta
+          <input
+            value={path}
+            placeholder={detected ?? 'D:\\WarcraftRecorder'}
+            onChange={(e) => setPath(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && save(path)}
+          />
+        </label>
+        <div className="dialog-actions left">
+          <button className="btn" onClick={browse}>
+            Procurar…
           </button>
-          {scan?.source === 'settings' && (
-            <button className="btn" onClick={useRecorderDir}>
+          <button className="btn primary" onClick={() => save(path)} disabled={!path.trim() || path.trim() === saved}>
+            Salvar
+          </button>
+          {detected && (
+            <button
+              className="btn"
+              onClick={() => {
+                setPath('');
+                save(null);
+              }}
+              disabled={!saved}
+              title={detected}
+            >
               Usar a do Warcraft Recorder
             </button>
           )}
-          <button className="btn primary" onClick={onClose}>
+        </div>
+
+        <div className="folder-status small">
+          {scan?.dir ? (
+            <>
+              <div>
+                Usando <code>{scan.dir}</code> {using && <span className="muted">({using})</span>}
+              </div>
+              {scan.warning ? <div className="bad">⚠ {scan.warning}</div> : <div className="ok-text">✓ {scan.videos.length} vídeos de encontros encontrados</div>}
+            </>
+          ) : (
+            <div className="muted">
+              Nenhuma pasta cadastrada{detected ? '' : ' e o Warcraft Recorder não foi encontrado neste PC'}.
+            </div>
+          )}
+          {detected && !saved && scan?.source !== 'recorder' && <div className="muted">Detectada no Recorder: {detected}</div>}
+        </div>
+
+        <div className="dialog-actions">
+          <button className="btn" onClick={onClose}>
             Fechar
           </button>
         </div>
