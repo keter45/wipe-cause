@@ -47,3 +47,59 @@ export function rememberFile(path: string) {
     /* sem storage: ok */
   }
 }
+
+// ---------------------------------------------------------------------------
+// Warcraft Logs (via backend Tauri) e links externos
+
+export interface WclSettings {
+  clientId: string;
+  hasSecret: boolean;
+}
+
+export interface WclFight {
+  id: number;
+  encounterId: number;
+  startMs: number;
+  endMs: number;
+  kill: boolean;
+  fightPercentage: number | null;
+  difficulty: number | null;
+}
+
+export interface WclReport {
+  code: string;
+  title: string;
+  fights: WclFight[];
+}
+
+export const wclGetSettings = () => invoke<WclSettings>('wcl_get_settings');
+export const wclSaveSettings = (clientId: string, clientSecret: string) =>
+  invoke<void>('wcl_save_settings', { clientId, clientSecret });
+export const wclReport = (report: string) => invoke<WclReport>('wcl_report', { report });
+
+/** Abre no navegador padrão (no app) ou numa aba nova (no navegador). */
+export async function openExternal(url: string) {
+  if (inTauri) {
+    const { openUrl } = await import('@tauri-apps/plugin-opener');
+    await openUrl(url);
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
+}
+
+const WCL_LINK_KEY = 'wipe-cause:wcl-report:';
+/** Link do report do WCL lembrado por arquivo de log. */
+export function savedWclLink(logFile: string): string {
+  try {
+    return localStorage.getItem(WCL_LINK_KEY + logFile) ?? '';
+  } catch {
+    return '';
+  }
+}
+export function saveWclLink(logFile: string, link: string) {
+  try {
+    localStorage.setItem(WCL_LINK_KEY + logFile, link);
+  } catch {
+    /* sem storage */
+  }
+}

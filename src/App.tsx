@@ -3,6 +3,8 @@ import type { LogReport } from './types';
 import { analyzeLog, inTauri, lastFile, pickLogFile, readReportFile, rememberFile } from './lib/api';
 import { PullList } from './components/PullList';
 import { PullView } from './components/PullView';
+import { WclBar, type WclLink } from './components/WclBar';
+import { reportUrl } from './lib/wcl';
 
 type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string } | { kind: 'error'; message: string };
 
@@ -10,6 +12,7 @@ export default function App() {
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [wcl, setWcl] = useState<WclLink | null>(null);
   const previous = lastFile();
 
   // Dev no navegador: ?report=/samples/report.json carrega um relatório gerado pelo wipe-cli.
@@ -101,12 +104,24 @@ export default function App() {
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
       )}
 
+      {report && <WclBar logFile={report.file} pulls={report.pulls} onLinked={setWcl} />}
+
       {!report ? (
         <Empty previous={inTauri ? previous : null} onReopen={load} />
       ) : (
         <div className="layout">
           <PullList pulls={report.pulls} selected={selected} onSelect={setSelected} />
-          <main className="content">{pull ? <PullView pull={pull} /> : <p className="muted">Nenhum pull no log.</p>}</main>
+          <main className="content">
+            {pull ? (
+              <PullView
+                pull={pull}
+                wclUrl={wcl ? reportUrl(wcl.code, wcl.fights.get(pull.id)) : undefined}
+                wclExact={wcl?.fights.has(pull.id) ?? false}
+              />
+            ) : (
+              <p className="muted">Nenhum pull no log.</p>
+            )}
+          </main>
         </div>
       )}
     </div>

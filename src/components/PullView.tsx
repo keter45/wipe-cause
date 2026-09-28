@@ -7,12 +7,20 @@ import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
 import { MechanicsView } from './MechanicsView';
 import { InterruptsView } from './InterruptsView';
+import { openExternal } from '../lib/api';
 
 type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells';
 
 const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info: 'Info' } as const;
 
-export function PullView({ pull }: { pull: Pull }) {
+interface Props {
+  pull: Pull;
+  /** link do report no Warcraft Logs (com #fight quando o pull foi casado) */
+  wclUrl?: string;
+  wclExact?: boolean;
+}
+
+export function PullView({ pull, wclUrl, wclExact }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
   const mechFailures = pull.mechanics.filter((m) => m.failures > 0).length;
   const verdict = analyzePull(pull);
@@ -29,6 +37,15 @@ export function PullView({ pull }: { pull: Pull }) {
             {pull.startLocal.split(' ')[1]?.slice(0, 8)} · {mmss(pull.durationMs)}
             {pull.incomplete && <span className="warn"> · log terminou antes do fim do encontro</span>}
           </div>
+          {wclUrl && (
+            <button
+              className="btn wcl-open"
+              onClick={() => openExternal(wclUrl)}
+              title={wclExact ? 'Abrir esta try no Warcraft Logs' : 'Pull não encontrado no report: abre o report inteiro'}
+            >
+              {wclExact ? 'Abrir no Warcraft Logs ↗' : 'Abrir report no Warcraft Logs ↗'}
+            </button>
+          )}
         </div>
         <div className="boss-bars">
           {pull.bosses.map((b) => (

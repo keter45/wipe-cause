@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Death, DeathAura, RecapEntry } from '../types';
 import { classColor, mmss, num, relSeconds, shortName } from '../lib/format';
 import { iconUrl, useTooltip, wowheadUrl } from '../lib/wowhead';
+import { openExternal } from '../lib/api';
 
 interface Props {
   deaths: Death[];
@@ -186,9 +187,9 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
           {tip === undefined && <p className="muted">Buscando descrição…</p>}
           {tip === null && <p className="muted">Sem descrição disponível.</p>}
           {tip && <p className="tooltip-text">{tip.text}</p>}
-          <a href={wowheadUrl(a.spellId)} target="_blank" rel="noreferrer">
-            Wowhead #{a.spellId}
-          </a>
+          <button className="link" onClick={() => openExternal(wowheadUrl(a.spellId))}>
+            Wowhead #{a.spellId} ↗
+          </button>
         </div>
       )}
     </li>

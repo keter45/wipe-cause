@@ -1,3 +1,5 @@
+mod wcl;
+
 use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
@@ -40,7 +42,15 @@ fn rules_dir(app: AppHandle) -> Option<String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![analyze_log, rules_dir])
+        .plugin(tauri_plugin_opener::init())
+        .manage(wcl::WclState::default())
+        .invoke_handler(tauri::generate_handler![
+            analyze_log,
+            rules_dir,
+            wcl::wcl_get_settings,
+            wcl::wcl_save_settings,
+            wcl::wcl_report
+        ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Wipe Cause");
 }

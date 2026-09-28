@@ -2,6 +2,8 @@
 
 Um arquivo por boss: `encounters/<raid-slug>/<boss-slug>.yaml`.
 
+**Regras globais** (valem para todos os encontros, somadas às do boss) ficam em `encounters/_global/*.yaml` com `scope: global` no cabeçalho e sem `encounter_id`. Use para o que não depende do boss (ex.: dano de ambiente/queda, spell id 0). Análises genéricas — morte lenta, defensivos, poções, interrupts — já são feitas pelo wipe-core e não precisam de regra.
+
 ## Cabeçalho
 
 ```yaml
