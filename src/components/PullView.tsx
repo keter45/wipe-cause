@@ -223,7 +223,7 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
-      {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
+      {tab === 'spells' && <EnemySpellsTable pull={pull} onRulesChanged={onRulesChanged} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       </ErrorBoundary>
     </div>

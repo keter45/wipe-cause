@@ -3751,3 +3751,34 @@ td.warn {
 .invisible {
   visibility: hidden;
 }
+.create-rule-row td {
+  background: var(--panel-2);
+}
+.create-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 4px;
+}
+.create-rule .field {
+  margin: 6px 0;
+}
+.rule-covered {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.custom-rules h4 {
+  margin: 8px 0 2px;
+  font-size: 14px;
+}
+.custom-rule {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  margin-top: 4px;
+}

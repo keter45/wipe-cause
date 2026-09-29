@@ -141,6 +141,25 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
         ))}
       </div>
 
+      {draft.custom.length > 0 && (
+        <section className="custom-rules">
+          <h4>Suas regras</h4>
+          <p className="muted small">Criadas na aba “Habilidades do boss”. Apagar aqui e salvar remove a regra.</p>
+          <ul className="plain">
+            {draft.custom.map((c) => (
+              <li key={c.key} className="custom-rule">
+                <span>
+                  <strong>{c.name}</strong> <span className="muted small">· {KIND_LABEL[c.type] ?? c.type} · {c.severity}</span>
+                </span>
+                <button className="link small" onClick={() => setDraft((d) => d && { ...d, custom: d.custom.filter((x) => x.key !== c.key) })}>
+                  apagar
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {msg && <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>{msg.text}</p>}
       <div className="dialog-actions">
         {(rules.tuning || tunedCount > 0) && (
