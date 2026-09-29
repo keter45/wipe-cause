@@ -2,7 +2,7 @@
 //!
 //! Formato documentado em `.claude/skills/boss-rules/references/schema.md`.
 
-use crate::report::{MechanicEvent, MechanicPlayer, MechanicResult, Positions};
+use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, Positions};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -17,6 +17,8 @@ const BURST_MS: i64 = 1_500;
 const MAX_EVENTS: usize = 60;
 /// Fotos de posição guardadas por mecânica (as primeiras falhas bastam para ver o padrão).
 const MAX_SNAPSHOTS: usize = 3;
+/// SPELL_DISPEL chega logo depois do SPELL_AURA_REMOVED do mesmo debuff.
+const DISPEL_AFTER_REMOVAL_MS: i64 = 250;
 /// Aura aplicada no mesmo instante do hit (vulnerabilidade do próprio soak) não conta como
 /// "já estava com a aura"; e aura removida logo antes do hit (a explosão consome o debuff do
 /// portador ~20ms antes do dano) ainda conta como "tinha a aura".
@@ -43,6 +45,7 @@ pub enum MechanicType {
     Unavoidable,
     Enrage,
     FailureEvent,
+    Dispel,
     Info,
 }
 
@@ -63,6 +66,7 @@ impl MechanicType {
             Self::Unavoidable => "unavoidable",
             Self::Enrage => "enrage",
             Self::FailureEvent => "failure_event",
+            Self::Dispel => "dispel",
             Self::Info => "info",
         }
     }
@@ -126,6 +130,8 @@ pub struct Mechanic {
     pub warn_stacks: Option<u32>,
     #[serde(default)]
     pub ignore_first_hit_in_burst: bool,
+    /// dispel: segundos até o dispel antes de contar como atrasado
+    pub max_delay: Option<f64>,
 }
 
 fn default_severity() -> String {
@@ -293,6 +299,12 @@ struct MechState {
     last_burst_t: Option<i64>,
     events: Vec<MechanicEvent>,
     snapshots: Vec<Positions>,
+    casts: Vec<CastOutcome>,
+    dispels: Vec<DispelOutcome>,
+    /// dispel: último debuff de cada player (índice em `dispels`), ainda sem veredito
+    open_dispels: HashMap<String, usize>,
+    /// dispel: quando o debuff saiu (o SPELL_DISPEL vem logo depois da remoção)
+    dispel_removed: HashMap<usize, i64>,
 }
 
 pub struct RuleTracker {
@@ -511,6 +523,28 @@ impl RuleTracker {
                     }
                 }
                 Hook::SoakAura if is_player && stacks > 0 => bump(&mut st.credits, guid, name, 0, t),
+                Hook::Aura if is_player && m.kind == MechanicType::Dispel => {
+                    let open = st.open_dispels.get(guid).copied();
+                    if stacks > 0 && open.is_none_or(|i| st.dispel_removed.contains_key(&i)) {
+                        // debuff novo: o anterior (se houver) já saiu e pode ser julgado
+                        if let Some(i) = open {
+                            judge_dispel(m, st, i);
+                        }
+                        st.open_dispels.insert(guid.to_string(), st.dispels.len());
+                        st.dispels.push(DispelOutcome {
+                            t,
+                            target_guid: guid.to_string(),
+                            target: name.to_string(),
+                            delay_ms: None,
+                            dispelled_by: None,
+                            dispelled_by_guid: None,
+                        });
+                    } else if stacks == 0 {
+                        if let Some(i) = open {
+                            st.dispel_removed.entry(i).or_insert(t);
+                        }
+                    }
+                }
                 Hook::Enrage if stacks > 0 => {
                     st.failures += 1;
                     st.fail_times.push(t);
@@ -521,7 +555,7 @@ impl RuleTracker {
         }
     }
 
-    pub fn on_enemy_cast(&mut self, spell_id: u32, source: &str, t: i64) {
+    pub fn on_enemy_cast(&mut self, spell_id: u32, source_guid: &str, source: &str, t: i64) {
         let Some(hooks) = self.hooks.get(&spell_id) else { return };
         for &(i, hook) in hooks {
             if hook == Hook::Cast && self.mechs[i].kind == MechanicType::Interrupt {
@@ -529,15 +563,51 @@ impl RuleTracker {
                 st.failures += 1;
                 st.fail_times.push(t);
                 push_event(st, t, None, format!("{} completou {}", source, self.mechs[i].name));
+                st.casts.push(CastOutcome {
+                    t,
+                    source_guid: source_guid.to_string(),
+                    source: source.to_string(),
+                    interrupted_by: None,
+                    interrupted_by_guid: None,
+                });
             }
         }
     }
 
-    pub fn on_interrupt(&mut self, interrupted_spell: u32, guid: &str, name: &str, t: i64) {
+    /// `guid`/`name`: quem cortou; `target_*`: o inimigo que castava.
+    pub fn on_interrupt(&mut self, interrupted_spell: u32, guid: &str, name: &str, target_guid: &str, target: &str, t: i64) {
         let Some(hooks) = self.hooks.get(&interrupted_spell) else { return };
         for &(i, hook) in hooks {
             if hook == Hook::Cast && self.mechs[i].kind == MechanicType::Interrupt {
-                bump(&mut self.state[i].credits, guid, name, 0, t);
+                let st = &mut self.state[i];
+                bump(&mut st.credits, guid, name, 0, t);
+                st.casts.push(CastOutcome {
+                    t,
+                    source_guid: target_guid.to_string(),
+                    source: target.to_string(),
+                    interrupted_by: Some(name.to_string()),
+                    interrupted_by_guid: Some(guid.to_string()),
+                });
+            }
+        }
+    }
+
+    /// Debuff `aura` tirado de `target_guid` pelo dispel de `guid`/`name`.
+    pub fn on_dispel(&mut self, aura: u32, target_guid: &str, guid: &str, name: &str, t: i64) {
+        let Some(hooks) = self.hooks.get(&aura) else { return };
+        for &(i, hook) in hooks {
+            if hook == Hook::Aura && self.mechs[i].kind == MechanicType::Dispel {
+                let st = &mut self.state[i];
+                let Some(&k) = st.open_dispels.get(target_guid) else { continue };
+                // a remoção vem antes do SPELL_DISPEL no log (mesmo instante)
+                let just_removed = st.dispel_removed.get(&k).is_none_or(|&r| t - r <= DISPEL_AFTER_REMOVAL_MS);
+                let d = &mut st.dispels[k];
+                if d.delay_ms.is_none() && just_removed {
+                    d.delay_ms = Some(t - d.t);
+                    d.dispelled_by = Some(name.to_string());
+                    d.dispelled_by_guid = Some(guid.to_string());
+                    bump(&mut st.credits, guid, name, 0, t);
+                }
             }
         }
     }
@@ -547,6 +617,12 @@ impl RuleTracker {
         let mut out = Vec::new();
         let removals = self.removals;
         for (m, mut st) in self.mechs.into_iter().zip(self.state) {
+            if m.kind == MechanicType::Dispel {
+                let open: Vec<usize> = st.open_dispels.drain().map(|(_, i)| i).collect();
+                for i in open {
+                    judge_dispel(&m, &mut st, i);
+                }
+            }
             if m.kind == MechanicType::Unavoidable {
                 continue;
             }
@@ -590,7 +666,7 @@ impl RuleTracker {
                 .collect();
             let collective = matches!(
                 m.kind,
-                MechanicType::Soak | MechanicType::TankSoak | MechanicType::Interrupt | MechanicType::Enrage | MechanicType::HpBalance | MechanicType::FailureEvent
+                MechanicType::Soak | MechanicType::TankSoak | MechanicType::Interrupt | MechanicType::Enrage | MechanicType::HpBalance | MechanicType::FailureEvent | MechanicType::Dispel
             );
             let failures = match m.kind {
                 _ if collective => st.failures,
@@ -629,6 +705,13 @@ impl RuleTracker {
                 .or_else(|| d.fail_ids.iter().flatten().next().copied())
                 .or(d.soak_aura_id)
                 .or(d.enrage_aura_id);
+            let summary = if m.kind == MechanicType::Dispel {
+                dispel_summary(&m.name, st.failures, &st.dispels)
+            } else if collective {
+                render(&m.message, "", st.failures, lethal)
+            } else {
+                String::new()
+            };
             out.push(MechanicResult {
                 spell_id,
                 key: m.key,
@@ -638,10 +721,12 @@ impl RuleTracker {
                 tip: m.tip,
                 evaluated: m.kind.evaluated(),
                 failures,
-                summary: if collective { render(&m.message, "", st.failures, lethal) } else { String::new() },
+                summary,
                 players,
                 events: st.events,
                 snapshots: st.snapshots,
+                casts: st.casts,
+                dispels: st.dispels,
             });
         }
         let rank = |s: &str| match s {
@@ -653,6 +738,39 @@ impl RuleTracker {
         out.sort_by(|a, b| (a.failures == 0).cmp(&(b.failures == 0)).then(rank(&a.severity).cmp(&rank(&b.severity))).then(b.failures.cmp(&a.failures)));
         out
     }
+}
+
+/// Veredito de um debuff que já saiu: sem dispel, ou dispel depois de `max_delay` = falha.
+/// Debuff ainda ativo no fim do pull não é julgado.
+fn judge_dispel(m: &Mechanic, st: &mut MechState, i: usize) {
+    if !st.dispel_removed.contains_key(&i) {
+        return;
+    }
+    let d = &st.dispels[i];
+    let late = m.max_delay.map(|s| (s * 1000.0) as i64);
+    let failed = match d.delay_ms {
+        None => true,
+        Some(ms) => late.is_some_and(|l| ms > l),
+    };
+    if !failed {
+        return;
+    }
+    let what = match d.delay_ms {
+        None => "sem dispel".to_string(),
+        Some(ms) => format!("dispel em {:.1}s", ms as f64 / 1000.0),
+    };
+    let (t0, guid, target) = (d.t, d.target_guid.clone(), d.target.clone());
+    st.failures += 1;
+    st.fail_times.push(t0);
+    bump(&mut st.players, &guid, &target, 0, t0);
+    push_event(st, t0, Some(&target), format!("{} {}", m.name, what));
+}
+
+/// "2 de 9 Venomfang sem dispel a tempo · dispel médio 2,4s"
+fn dispel_summary(name: &str, failures: u32, dispels: &[DispelOutcome]) -> String {
+    let done: Vec<i64> = dispels.iter().filter_map(|d| d.delay_ms).collect();
+    let avg = if done.is_empty() { String::new() } else { format!(" · dispel médio {:.1}s", done.iter().sum::<i64>() as f64 / done.len() as f64 / 1000.0).replace('.', ",") };
+    format!("{failures} de {} {name} sem dispel a tempo{avg}", dispels.len())
 }
 
 fn bump(map: &mut HashMap<String, PlayerHits>, guid: &str, name: &str, amount: i64, t: i64) {
@@ -731,8 +849,8 @@ mechanics:
         for s in 1..=4 {
             tr.on_aura(10, "P2", "Dois-Realm", s, true, 7000 + s as i64);
         }
-        tr.on_enemy_cast(30, "Add", 8000);
-        tr.on_interrupt(30, "P1", "Um-Realm", 9000);
+        tr.on_enemy_cast(30, "Creature-1", "Add", 8000);
+        tr.on_interrupt(30, "P1", "Um-Realm", "Creature-1", "Add", 9000);
 
         let res = tr.finish(&HashMap::new());
         let get = |k: &str| res.iter().find(|r| r.key == k).unwrap();
@@ -746,6 +864,9 @@ mechanics:
         let int = get("mythic_only");
         assert_eq!(int.failures, 1);
         assert!(int.players[0].credit);
+        // cada cast em ordem: o 1º passou, o 2º foi cortado por Um
+        let casts: Vec<Option<&str>> = int.casts.iter().map(|c| c.interrupted_by.as_deref()).collect();
+        assert_eq!(casts, [None, Some("Um-Realm")]);
     }
 
     #[test]
@@ -798,6 +919,41 @@ mechanics:
         let bomb = get("bomb");
         assert_eq!(bomb.players.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Um-R"]);
         assert_eq!(get("double").players[0].count, 1);
+    }
+
+    #[test]
+    fn dispel_delay_and_missed_dispels() {
+        let yaml = r#"
+name: "Boss"
+encounter_id: 44
+mechanics:
+  - key: poison
+    name: Venomfang
+    type: dispel
+    detect: { aura_id: 80 }
+    max_delay: 4
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        // A: dispel em 1,5s (ok); B: dispel em 6s (atrasado); C: expirou sem dispel
+        // no log a remoção vem antes do SPELL_DISPEL, no mesmo instante
+        tr.on_aura(80, "A", "A-R", 1, true, 1_000);
+        tr.on_aura(80, "A", "A-R", 0, true, 2_500);
+        tr.on_dispel(80, "A", "H", "Healer-R", 2_500);
+        tr.on_aura(80, "B", "B-R", 1, true, 3_000);
+        tr.on_aura(80, "B", "B-R", 0, true, 9_000);
+        tr.on_dispel(80, "B", "H", "Healer-R", 9_000);
+        tr.on_aura(80, "C", "C-R", 1, true, 10_000);
+        tr.on_aura(80, "C", "C-R", 0, true, 24_000);
+
+        let res = tr.finish(&HashMap::new());
+        let m = &res[0];
+        assert_eq!(m.failures, 2);
+        assert_eq!(m.summary, "2 de 3 Venomfang sem dispel a tempo · dispel médio 3,8s");
+        assert_eq!(m.dispels.iter().map(|d| d.delay_ms).collect::<Vec<_>>(), [Some(1_500), Some(6_000), None]);
+        let blamed: Vec<&str> = m.players.iter().filter(|p| !p.credit).map(|p| p.name.as_str()).collect();
+        assert_eq!(blamed.len(), 2);
+        assert!(m.players.iter().any(|p| p.credit && p.name == "Healer-R" && p.count == 2));
     }
 
     #[test]

@@ -2527,3 +2527,44 @@ table.heat td {
   font-weight: 600;
   text-decoration: underline;
 }
+
+/* ---------------------------------------------------------------- escala de interrupts */
+.assignments {
+  margin-bottom: 16px;
+}
+.assign-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.assign-head h3 {
+  margin: 0;
+}
+.assign-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+.assign-edit textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.assign-mech {
+  margin-top: 12px;
+}
+.assign-mech table.players {
+  width: auto;
+  min-width: 420px;
+}
+td.warn {
+  color: var(--minor);
+}
+.dispel-line {
+  line-height: 1.7;
+}

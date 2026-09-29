@@ -204,13 +204,15 @@ mechanics:
 
   - key: venomfang
     name: "Venomfang"
-    type: info
+    type: dispel
     source_unit: zuljan
     severity: minor
-    detect: { damage_ids: [1306906], aura_id: 1306906, cast_id: 1282287 }
-    tip: "DoT de veneno em alguns players: dispel."
-    message: "Venomfang"
-    notes: "Motor ainda não mede tempo até o dispel."
+    detect: { aura_id: 1306906, cast_id: 1282287 }
+    max_delay: 4
+    tip: "DoT de veneno em alguns players: dispel rápido (poison)."
+    message: "Venomfang sem dispel a tempo"
+    blame_message: "{player} ficou com Venomfang sem dispel"
+    notes: "Dano: 1306906 (125k a cada 2s por 14s). 4s = 2 ticks. Calibrar com o tempo real dos healers."
 
   # =====================================================================
   # Fase 2 — Malacrass

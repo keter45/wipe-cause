@@ -6,6 +6,7 @@ import { mmss, pct, shortName } from './format';
 import type { NightSummary } from './night';
 import { analyzePull, lowestBossHp } from './verdict';
 import { bossUrl } from './wcl';
+import { assignmentsFor, checkAssignments } from './assignments';
 
 export interface DiscordEmbed {
   title: string;
@@ -66,7 +67,13 @@ export function pullPayload(p: Pull, wclCode?: string | null): DiscordPayload {
     });
   const deaths = v.decisiveDeaths.map((d) => `${shortName(d.name)} (${mmss(d.t)}) — ${d.killingBlowMechanic ?? d.killingBlow?.spellName ?? '?'}`);
   const noDefensive = [...new Set(v.decisiveDeaths.filter((d) => d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0).map((d) => shortName(d.name)))];
+  const assignments = assignmentsFor(p);
   const passed = p.enemySpells.filter((e) => e.interruptible && e.casts > 0).map((e) => `${e.name}: ${e.casts} passaram`);
+  for (const m of p.mechanics.filter((m) => m.kind === 'interrupt')) {
+    const groups = assignments.get(m.key);
+    const missed = groups?.length ? checkAssignments(m, groups).kickers.filter((k) => k.missed) : [];
+    if (missed.length) passed.push(`${m.name} — passou na vez de: ${missed.map((k) => k.name).join(', ')}`);
+  }
 
   const counted = p.deaths.filter((d) => !d.ignored).length;
   return {

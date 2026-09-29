@@ -18,6 +18,7 @@ const KIND_LABEL: Record<string, string> = {
   positioning: 'Posicionamento',
   enrage: 'Enrage',
   failure_event: 'Falha do raid',
+  dispel: 'Dispel',
   hp_balance: 'HP dos bosses',
   cc_required: 'CC',
   spread: 'Espalhar',
@@ -104,9 +105,21 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           </tbody>
         </table>
       )}
+      {m.dispels && m.dispels.length > 0 && (
+        <p className="small dispel-line">
+          <span className="muted">Dispels: </span>
+          {m.dispels.map((d, i) => (
+            <span key={i} className={d.delayMs == null ? 'bad' : ''}>
+              {i > 0 && ' · '}
+              {shortName(d.target)} {d.delayMs == null ? 'sem dispel' : `${(d.delayMs / 1000).toFixed(1).replace('.', ',')}s`}
+              {d.dispelledBy && <span className="muted"> ({shortName(d.dispelledBy)})</span>}
+            </span>
+          ))}
+        </p>
+      )}
       {credits.length > 0 && (
         <p className="small">
-          <span className="muted">{m.kind === 'interrupt' ? 'Cortaram: ' : 'Ajudaram: '}</span>
+          <span className="muted">{m.kind === 'interrupt' ? 'Cortaram: ' : m.kind === 'dispel' ? 'Dispelaram: ' : 'Ajudaram: '}</span>
           {credits.map((p) => `${shortName(p.name)} (${p.count})`).join(', ')}
         </p>
       )}

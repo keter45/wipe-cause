@@ -344,6 +344,7 @@ impl PullBuilder {
             }
             "SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE" => self.aura_state(f, t),
             "SPELL_INTERRUPT" => self.interrupt(f, t),
+            "SPELL_DISPEL" => self.dispel(f, t),
             "SPELL_SUMMON" => {
                 if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
                     self.pet_owner.insert(f[5].to_string(), owner);
@@ -428,7 +429,7 @@ impl PullBuilder {
         let owner_name = if owner == f[1] { f[2] } else { "" };
         if let Some(r) = self.rules.as_mut() {
             let label = self.players.get(&owner).map(|p| p.name.clone()).filter(|n| !n.is_empty());
-            r.on_interrupt(cut_id, &owner, label.as_deref().unwrap_or(f[2]), rel);
+            r.on_interrupt(cut_id, &owner, label.as_deref().unwrap_or(f[2]), f[5], f[6], rel);
         }
         let kick = f[10].to_string();
         let kick_id: u32 = f[9].parse().unwrap_or(0);
@@ -446,6 +447,20 @@ impl PullBuilder {
                 target_spell_id: Some(cut_id),
                 target_spell: Some(cut_name),
             }),
+        }
+    }
+
+    /// SPELL_DISPEL: quem dispelou (f[1]), de quem (f[5]) e qual debuff (extraSpellId, f[12]).
+    fn dispel(&mut self, f: &[&str], t: i64) {
+        if !self.counting() {
+            return;
+        }
+        let Some(aura) = f.get(12).and_then(|v| v.parse::<u32>().ok()) else { return };
+        let rel = self.rel(t);
+        let Some(owner) = self.owner_of(f[1], hex(f[3])) else { return };
+        let name = self.players.get(&owner).map(|p| p.name.clone()).filter(|n| !n.is_empty()).unwrap_or_else(|| f[2].to_string());
+        if let Some(r) = self.rules.as_mut() {
+            r.on_dispel(aura, f[5], &owner, &name, rel);
         }
     }
 
@@ -628,7 +643,7 @@ impl PullBuilder {
                 return;
             }
             if let Some(r) = self.rules.as_mut() {
-                r.on_enemy_cast(spell_id, src_name, rel);
+                r.on_enemy_cast(spell_id, src_guid, src_name, rel);
             }
             let e = self.enemy_spells.entry(spell_id).or_default();
             e.name = spell_name;

@@ -62,7 +62,7 @@ Opções extras:
 
 ### O que o motor avalia hoje
 
-`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
+`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event`, `dispel` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
 
 ## Tipos
 
@@ -101,7 +101,7 @@ Cast inimigo que tem que ser interrompido (ou CCado).
 detect: { cast_id: .. }
 accept: [interrupt, cc, kill]   # o que conta como sucesso
 ```
-Log: `SPELL_CAST_SUCCESS` do inimigo = falha; `SPELL_INTERRUPT` credita quem cortou. Relatório: quem cortou, quantos passaram, quem estava designado (se houver atribuição).
+Log: `SPELL_CAST_SUCCESS` do inimigo = falha; `SPELL_INTERRUPT` credita quem cortou. Relatório: cada cast em ordem (add, quem cortou ou se passou) — a UI compara com a escala de interrupts colada pelo líder (nota do MRT/NSRT).
 
 ### `failure_event`
 Evento que só acontece quando o raid erra, sem "soak" envolvido (explosão por contato, timer estourado).
@@ -113,6 +113,14 @@ detect:
 blame_message: "{player} carregava o orb"
 ```
 Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `culprit_auras`); sem elas, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.
+
+### `dispel`
+Debuff que um healer/dispeller precisa tirar.
+```yaml
+detect: { aura_id: .. }
+max_delay: 4          # segundos até o dispel; depois disso conta como atrasado
+```
+Log: `SPELL_AURA_APPLIED` no player abre; `SPELL_DISPEL` (extraSpellId = aura) credita quem dispelou e mede o tempo; debuff que sai sem dispel (ou depois de `max_delay`) = falha. Relatório: tempo de cada dispel, quem dispelou e quem ficou sem.
 
 ### `cc_required`
 Precisa de CC/stop para quebrar algo (escudo, cast).

@@ -206,6 +206,29 @@ export interface MechanicResult {
   events: MechanicEvent[];
   /** posições nas primeiras falhas coletivas */
   snapshots?: Positions[];
+  /** interrupt: cada cast do inimigo, em ordem */
+  casts?: CastOutcome[];
+  /** dispel: cada debuff e o que aconteceu com ele */
+  dispels?: DispelOutcome[];
+}
+
+export interface CastOutcome {
+  t: number;
+  sourceGuid: string;
+  source: string;
+  /** null = o cast passou */
+  interruptedBy: string | null;
+  interruptedByGuid: string | null;
+}
+
+export interface DispelOutcome {
+  t: number;
+  targetGuid: string;
+  target: string;
+  /** null = saiu sem dispel */
+  delayMs: number | null;
+  dispelledBy: string | null;
+  dispelledByGuid: string | null;
 }
 
 export interface MechanicPlayer {

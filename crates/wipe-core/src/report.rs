@@ -92,6 +92,37 @@ pub struct MechanicResult {
     /// posições no momento das primeiras falhas coletivas (explosão, Execution...)
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub snapshots: Vec<Positions>,
+    /// interrupt: cada cast do inimigo, em ordem (para conferir a escala de interrupts)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub casts: Vec<CastOutcome>,
+    /// dispel: cada debuff aplicado e o que aconteceu com ele
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub dispels: Vec<DispelOutcome>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CastOutcome {
+    pub t: i64,
+    /// quem castou (cada add tem o seu guid)
+    pub source_guid: String,
+    pub source: String,
+    /// quem cortou; None = o cast passou
+    pub interrupted_by: Option<String>,
+    pub interrupted_by_guid: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DispelOutcome {
+    /// quando o debuff entrou
+    pub t: i64,
+    pub target_guid: String,
+    pub target: String,
+    /// ms até o dispel; None = saiu sem dispel (expirou ou o player morreu)
+    pub delay_ms: Option<i64>,
+    pub dispelled_by: Option<String>,
+    pub dispelled_by_guid: Option<String>,
 }
 
 /// Foto das posições (advanced logging) num momento do pull. Coordenadas do mundo, em jardas.
