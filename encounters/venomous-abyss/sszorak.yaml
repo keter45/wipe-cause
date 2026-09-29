@@ -1,0 +1,188 @@
+schema_version: 1
+raid: venomous-abyss
+boss: sszorak
+name: "Sszorak"
+encounter_id: 3420
+source:
+  - https://www.mythictrap.com/en/venomous-abyss/sszorak/mythic
+  - "log: Archive-WoWCombatLog-091726 (26 pulls míticos) — IDs de dano, auras e enrage calibrados"
+updated: 2026-09-29
+difficulties: [normal, heroic, mythic]
+
+units:
+  - { key: sszorak, name: "Sszorak", npc_id: 257347, boss: true }
+
+mechanics:
+  # ---------- Mítico: Serpent's Fury ----------
+  - key: unbound_ferocity
+    name: "Unbound Ferocity"
+    type: enrage
+    source_unit: sszorak
+    difficulty: [mythic]
+    severity: wipe
+    detect: { enrage_aura_id: 1296898 }
+    tip: "Ativar o Serpent's Fury com 14 players no círculo antes da fúria encher."
+    message: "Sszorak enfureceu (Serpent's Fury não ativado a tempo)"
+    notes: "Aplicado segundos antes do fim de 10 wipes no log."
+
+  - key: serpents_fury
+    name: "Serpent's Fury"
+    type: info
+    source_unit: sszorak
+    difficulty: [mythic]
+    severity: major
+    detect: { aura_id: 1305621 }
+    tip: "14 players entram no círculo do marcado para ativar."
+    message: "Serpent's Fury"
+
+  - key: virulence
+    name: "Virulence"
+    type: unavoidable
+    source_unit: sszorak
+    difficulty: [mythic]
+    severity: none
+    detect: { damage_ids: [1312189], aura_id: 1297707 }
+    tip: "Depois do soak, levar a marca para a borda e espalhar: o estouro deixa poça."
+    message: "Virulence"
+
+  - key: virulence_spread
+    name: "Virulence (espalhado)"
+    type: avoidable_damage
+    source_unit: sszorak
+    difficulty: [mythic]
+    severity: minor
+    detect: { damage_ids: [1300089] }
+    tip: "Ficar longe de quem vai estourar a Virulence."
+    message: "{player} foi pego pelo estouro de Virulence de outro ({count}x)"
+    notes: "Hipótese: 1300089 é o estouro que acerta quem estava perto. Confirmar no vídeo."
+
+  # ---------- Ventos ----------
+  - key: howling_maelstrom
+    name: "Howling Maelstrom"
+    type: info
+    source_unit: sszorak
+    severity: major
+    detect: { aura_id: 1285447 }
+    tip: "Ver a sequência dos túneis e usar os Viscous Cysts para não cair; o boss toma +30% de dano nos ventos."
+    message: "Howling Maelstrom"
+    notes: "Quem cai da plataforma aparece como dano de ambiente (queda)."
+
+  - key: venomous_surge
+    name: "Venomous Surge"
+    type: unavoidable
+    source_unit: sszorak
+    severity: none
+    detect: { damage_ids: [1306120, 1312156], aura_id: 1305963 }
+    tip: "Marcados soltam os Cysts no lado oposto aos túneis marcados."
+    message: "Venomous Surge"
+
+  - key: viscous_cyst
+    name: "Viscous Cyst"
+    type: unavoidable
+    source_unit: sszorak
+    severity: none
+    detect: { damage_ids: [1287205], aura_id: 1287205 }
+    tip: "Estourar um Cyst em cada empurrão de vento; estourar os que sobrarem antes dos 2 minutos."
+    message: "Viscous Cyst"
+
+  - key: raging_crosswinds
+    name: "Raging Crosswinds"
+    type: unavoidable
+    source_unit: sszorak
+    severity: none
+    detect: { damage_ids: [1285616, 1312219] }
+    tip: "Parear com alguém de seta oposta para os empurrões se anularem."
+    message: "Raging Crosswinds"
+    notes: "Os marcados tomam o dano de qualquer jeito; errar o par aparece como queda."
+
+  # ---------- Apex Predator (tank) ----------
+  - key: ravage
+    name: "Ravage"
+    type: avoidable_damage
+    source_unit: sszorak
+    roles: [healer, dps]
+    severity: major
+    detect: { damage_ids: [1277101] }
+    tip: "Tank aponta o Ravage para longe; ninguém além do tank no cone."
+    message: "{player} foi pego pelo Ravage ({count}x)"
+
+  - key: ravage_tank
+    name: "Ravage (tank)"
+    type: unavoidable
+    source_unit: sszorak
+    roles: [tank]
+    severity: none
+    detect: { damage_ids: [1277101], aura_id: 1277105 }
+    tip: "Frontal solo com vulnerabilidade: taunt na sequência."
+    message: "Ravage"
+
+  - key: mutilate
+    name: "Mutilate"
+    type: unavoidable
+    source_unit: sszorak
+    severity: none
+    detect: { damage_ids: [1285999, 1285998], cast_id: 1277027 }
+    tip: "Tank aponta o Mutilate para o raid e o grupo divide o dano."
+    message: "Mutilate"
+
+  - key: mutilate_double
+    name: "Mutilate (soak duplo)"
+    type: avoidable_damage
+    source_unit: sszorak
+    difficulty: [heroic, mythic]
+    severity: major
+    detect: { damage_ids: [1285999], requires_aura: 1277051 }
+    tip: "Com a vulnerabilidade do Mutilate anterior, não soakar o próximo: alternar grupos."
+    message: "{player} soakou Mutilate com a vulnerabilidade ativa ({count}x)"
+    notes: "Mutilated Gash (1277051) é a vulnerabilidade de quem soakou; confirmar que é esse o debuff de 500%."
+
+  - key: tempest
+    name: "Tempest"
+    type: avoidable_damage
+    source_unit: sszorak
+    severity: major
+    detect: { damage_ids: [1287083] }
+    tolerance: 2
+    tip: "Desviar dos tornados que saem do boss."
+    message: "{player} foi pego pelo Tempest ({count} hits)"
+    notes: "Hit e DoT têm o mesmo ID (e valores parecidos): a contagem inclui ticks; tolerance 2 para não culpar um tick isolado."
+
+  - key: corroding_venom
+    name: "Corroding Venom"
+    type: stack_limit
+    source_unit: sszorak
+    roles: [tank]
+    severity: minor
+    detect: { aura_id: 1282873 }
+    tip: "Trocar de tank com stacks altos."
+    message: "{player} chegou a {stacks} stacks de Corroding Venom"
+    notes: "Chega a 12 no log; sem warn_stacks até calibrar."
+
+  # ---------- Poças ----------
+  - key: caustic_claws
+    name: "Caustic Claws"
+    type: avoidable_damage
+    source_unit: sszorak
+    difficulty: [heroic, mythic]
+    severity: major
+    detect: { damage_ids: [1305998] }
+    tip: "Sair dos círculos onde o veneno cai."
+    message: "{player} foi atingido por Caustic Claws ({count}x)"
+
+  - key: caustic_residue
+    name: "Caustic Residue"
+    type: avoidable_damage
+    source_unit: sszorak
+    severity: minor
+    detect: { damage_ids: [1296667] }
+    tolerance: 2
+    tip: "Não ficar nas poças de veneno."
+    message: "{player} tomou {count} ticks de Caustic Residue"
+
+  - key: ulateks_presence
+    name: "Ula'tek's Presence"
+    type: unavoidable
+    severity: none
+    detect: { damage_ids: [1285965] }
+    tip: "Dano contínuo no raid a luta toda."
+    message: "Ula'tek's Presence"
