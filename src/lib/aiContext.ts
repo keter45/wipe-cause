@@ -61,7 +61,7 @@ function deathLine(d: Death, byGuid: Map<string, Pull['players'][number]>): stri
         : 'sem defensivo disponível',
     d.usedHealthPotion ? 'usou poção' : 'não usou poção',
     d.usedHealthstone ? 'usou healthstone' : d.healthstoneKnown ? 'tinha healthstone e não usou' : null,
-    d.debuffs.length ? `debuffs: ${d.debuffs.map((a) => `${a.name}${a.stacks > 1 ? ` x${a.stacks}` : ''}`).join(', ')}` : null,
+    d.debuffs?.length ? `debuffs: ${d.debuffs.map((a) => `${a.name}${a.stacks > 1 ? ` x${a.stacks}` : ''}`).join(', ')}` : null,
   ].filter(Boolean);
 
   // posição: distância do boss e quem estava perto
@@ -75,7 +75,7 @@ function deathLine(d: Death, byGuid: Map<string, Pull['players'][number]>): stri
     );
   }
   // últimos golpes recebidos
-  const hits = d.recap
+  const hits = (d.recap ?? [])
     .filter((e) => e.kind === 'damage')
     .slice(-5)
     .map((e) => `${((e.t - d.t) / 1000).toFixed(1)}s ${e.spellName} ${num(e.amount + e.absorbed)}${e.hpPct != null ? ` (HP ${Math.round(e.hpPct)}%)` : ''}`);
@@ -125,7 +125,7 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
       if (credit.length) lines.push(`  Ajudaram/cortaram: ${credit.map((x) => `${shortName(x.name)} (${x.count})`).join(', ')}`);
       if (m.dispels?.length)
         lines.push(`  Dispels: ${m.dispels.map((d) => `${shortName(d.target)} ${d.delayMs == null ? 'sem dispel' : `${(d.delayMs / 1000).toFixed(1)}s por ${shortName(d.dispelledBy ?? '?')}`}`).join('; ')}`);
-      if (m.events.length) lines.push(`  Eventos: ${m.events.slice(0, MAX_MECH_EVENTS).map((e) => `${mmss(e.t)} ${e.player ? `${shortName(e.player)} ` : ''}${e.detail}`).join('; ')}`);
+      if (m.events?.length) lines.push(`  Eventos: ${m.events.slice(0, MAX_MECH_EVENTS).map((e) => `${mmss(e.t)} ${e.player ? `${shortName(e.player)} ` : ''}${e.detail}`).join('; ')}`);
       out.push(lines.join('\n'));
     }
     if (rest.length) out.push(`Sem falhas: ${rest.map((m) => `${m.name}${m.tip ? ` (${m.tip})` : ''}`).join('; ')}`);
@@ -161,7 +161,7 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
   // linha do tempo resumida
   const timeline: [number, string][] = [];
   if (p.trigger) timeline.push([p.trigger.t, `GATILHO do wipe: ${p.trigger.name} (${p.trigger.deaths} mortes ligadas)`]);
-  for (const m of p.mechanics) for (const e of m.events.slice(0, MAX_MECH_EVENTS)) timeline.push([e.t, `${m.name}: ${e.player ? `${shortName(e.player)} ` : ''}${e.detail}`]);
+  for (const m of p.mechanics) for (const e of (m.events ?? []).slice(0, MAX_MECH_EVENTS)) timeline.push([e.t, `${m.name}: ${e.player ? `${shortName(e.player)} ` : ''}${e.detail}`]);
   for (const d of counted) timeline.push([d.t, `morre ${shortName(d.name)}`]);
   timeline.sort((a, b) => a[0] - b[0]);
   if (timeline.length) out.push('\n## Linha do tempo\n' + timeline.slice(0, MAX_TIMELINE).map(([t, s]) => `${mmss(t)} ${s}`).join('\n'));
