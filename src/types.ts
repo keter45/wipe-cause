@@ -156,6 +156,8 @@ export interface Death {
   usedHealthPotion: boolean;
   usedHealthstone: boolean;
   healthstoneKnown: boolean;
+  /** onde cada um estava na hora da morte (só mortes antes do corte, com Advanced Logging) */
+  positions?: Positions;
 }
 
 export interface AvailableSpell {
@@ -202,6 +204,31 @@ export interface MechanicResult {
   summary: string;
   players: MechanicPlayer[];
   events: MechanicEvent[];
+  /** posições nas primeiras falhas coletivas */
+  snapshots?: Positions[];
+  /** interrupt: cada cast do inimigo, em ordem */
+  casts?: CastOutcome[];
+  /** dispel: cada debuff e o que aconteceu com ele */
+  dispels?: DispelOutcome[];
+}
+
+export interface CastOutcome {
+  t: number;
+  sourceGuid: string;
+  source: string;
+  /** null = o cast passou */
+  interruptedBy: string | null;
+  interruptedByGuid: string | null;
+}
+
+export interface DispelOutcome {
+  t: number;
+  targetGuid: string;
+  target: string;
+  /** null = saiu sem dispel */
+  delayMs: number | null;
+  dispelledBy: string | null;
+  dispelledByGuid: string | null;
 }
 
 export interface MechanicPlayer {
@@ -219,4 +246,20 @@ export interface MechanicEvent {
   t: number;
   player: string | null;
   detail: string;
+}
+
+/** Foto das posições num momento do pull (coordenadas do mundo, em jardas). */
+export interface Positions {
+  t: number;
+  units: UnitPos[];
+}
+
+export interface UnitPos {
+  guid: string;
+  name: string;
+  kind: 'player' | 'enemy';
+  x: number;
+  y: number;
+  /** há quanto tempo a posição foi vista */
+  ageMs: number;
 }

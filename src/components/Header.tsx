@@ -12,6 +12,7 @@ import {
   wcrGetDir,
   wcrSetDir,
   wcrVideos,
+  type LiveStatus,
   type WcrScan,
   type WcrVideo,
 } from '../lib/api';
@@ -19,6 +20,7 @@ import { reportCode } from '../lib/wcl';
 import { logTitle } from '../lib/format';
 import { matchVideos } from '../lib/wcr';
 import { Popover } from './Popover';
+import { DiscordButton, LiveButton } from './LiveControls';
 
 /** Tamanho e traço dos ícones ao lado de texto regular. */
 const ICON = { size: 16, strokeWidth: 1.5, 'aria-hidden': true } as const;
@@ -35,6 +37,12 @@ interface Props {
   onVideos: (videos: Map<number, WcrVideo>) => void;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  live: LiveStatus;
+  /** mostrar o botão "Ao vivo" (só no app; no navegador, com ?demoLive=1) */
+  showLive: boolean;
+  liveError: string | null;
+  onLiveStart: () => void;
+  onLiveStop: () => void;
 }
 
 /**
@@ -61,9 +69,9 @@ export function Header(props: Props) {
 
       <LogGroup {...props} />
 
+      <span className="topbar-spacer" />
       {report && (
         <>
-          <span className="topbar-spacer" />
           <CutoffStepper
             value={inTauri ? props.deathCutoff : report.deathCutoff}
             disabled={!inTauri || props.busy || !props.canReanalyze}
@@ -71,12 +79,14 @@ export function Header(props: Props) {
             onChange={props.onCutoff}
           />
           <span className="topbar-divider" aria-hidden />
-          <div className="topbar-group" aria-label="Integrações">
-            <WclButton logFile={report.file} onWcl={props.onWcl} />
-            {inTauri && <VideosButton pulls={report.pulls} onVideos={props.onVideos} />}
-          </div>
         </>
       )}
+      <div className="topbar-group" aria-label="Integrações">
+        {props.showLive && <LiveButton status={props.live} error={props.liveError} onStart={props.onLiveStart} onStop={props.onLiveStop} />}
+        {report && <WclButton logFile={report.file} onWcl={props.onWcl} />}
+        {report && inTauri && <VideosButton pulls={report.pulls} onVideos={props.onVideos} />}
+        {inTauri && <DiscordButton />}
+      </div>
     </header>
   );
 }

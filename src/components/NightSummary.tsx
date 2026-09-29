@@ -1,10 +1,15 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { ChevronRight, EyeOff, Hand, Handshake, HeartPulse, ShieldCheck, ShieldOff, Skull, Swords, TriangleAlert, type LucideIcon } from 'lucide-react';
+import { Award as AwardIcon, ChevronRight, EyeOff, Hand, Handshake, HeartPulse, ShieldCheck, ShieldOff, Skull, Swords, TriangleAlert, type LucideIcon } from 'lucide-react';
 import type { Pull } from '../types';
 import { classColor, mmss, num, pct, shortName } from '../lib/format';
 import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummary as Summary, type PlayerNight } from '../lib/night';
 import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
+import { scoreTone } from '../lib/score';
+import { SendToDiscord } from './SendToDiscord';
+import { ShareMenu } from './ShareMenu';
+import { BossShareCard } from './ShareCards';
+import { bossPayload } from '../lib/discord';
 
 interface Props {
   pulls: Pull[];
@@ -109,7 +114,10 @@ export function BossSummary({ title, pulls, onSelectPull }: Props & { title: str
     <div className="night">
       <header className="night-head">
         <h2>{title}</h2>
-        <span className="muted small">Resumo do boss</span>
+        <span className="head-actions">
+          <SendToDiscord payload={() => bossPayload(title, s)} label="Enviar resumo ao Discord" />
+          <ShareMenu card={() => <BossShareCard title={title} pulls={pulls} />} name={`Resumo - ${title}`} />
+        </span>
       </header>
 
       <div className="tiles">
@@ -422,6 +430,7 @@ const VILLAIN_AWARDS: Award[] = [
 const HERO_AWARDS: Award[] = [
   { icon: Hand, label: 'Mais interrupts', score: (p) => p.interrupts, format: (p) => `${p.interrupts} cortes` },
   { icon: Handshake, label: 'Mais ajuda em mecânicas', score: (p) => p.assists, format: (p) => `${p.assists} ajudas` },
+  { icon: AwardIcon, label: 'Melhor nota média', score: (p) => (p.pulls >= 3 ? p.avgScore : 0), format: (p) => `${Math.round(p.avgScore)} em ${p.pulls} pulls` },
   { icon: ShieldCheck, label: 'Pulls limpos', score: (p) => p.cleanPulls, format: (p) => `${p.cleanPulls} de ${p.pulls}` },
   { icon: Swords, label: 'Maior DPS médio', score: (p) => (p.role === 'dps' ? p.avgDps : 0), format: (p) => num(p.avgDps) },
   { icon: HeartPulse, label: 'Maior HPS médio', score: (p) => (p.role === 'healer' ? p.avgHps : 0), format: (p) => num(p.avgHps) },
@@ -491,9 +500,10 @@ function Awards(props: {
   );
 }
 
-type SortKey = 'name' | 'deaths' | 'decisiveDeaths' | 'mechanicErrors' | 'deathsNoDefensive' | 'interrupts' | 'assists' | 'cleanPulls' | 'avgDps' | 'avgHps';
+type SortKey = 'name' | 'avgScore' | 'deaths' | 'decisiveDeaths' | 'mechanicErrors' | 'deathsNoDefensive' | 'interrupts' | 'assists' | 'cleanPulls' | 'avgDps' | 'avgHps';
 const COLS: { key: SortKey; label: string; title?: string }[] = [
   { key: 'name', label: 'Jogador' },
+  { key: 'avgScore', label: 'Nota', title: 'Nota média (0-100) nos pulls em que jogou' },
   { key: 'deaths', label: 'Mortes' },
   { key: 'decisiveDeaths', label: 'Decisivas', title: 'Mortes antes da cascata do wipe' },
   { key: 'mechanicErrors', label: 'Erros mec.' },
@@ -507,7 +517,9 @@ const COLS: { key: SortKey; label: string; title?: string }[] = [
 
 function Scoreboard({ players }: { players: PlayerNight[] }) {
   const [sort, setSort] = useState<SortKey>('decisiveDeaths');
-  const rows = [...players].sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : (b[sort] as number) - (a[sort] as number)));
+  const rows = [...players].sort((a, b) =>
+    sort === 'name' ? a.name.localeCompare(b.name) : sort === 'avgScore' ? a.avgScore - b.avgScore : (b[sort] as number) - (a[sort] as number),
+  );
   return (
     <table className="players scoreboard">
       <thead>
@@ -525,6 +537,9 @@ function Scoreboard({ players }: { players: PlayerNight[] }) {
         {rows.map((p) => (
           <tr key={p.guid}>
             <td style={{ color: classColor(p.class) }}>{shortName(p.name)}</td>
+            <td className="num">
+              <span className={`score-pill ${scoreTone(p.avgScore)}`}>{Math.round(p.avgScore)}</span>
+            </td>
             <td className="num">{p.deaths}</td>
             <td className="num">{p.decisiveDeaths || ''}</td>
             <td className="num">{p.mechanicErrors || ''}</td>

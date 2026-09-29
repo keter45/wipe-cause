@@ -179,6 +179,7 @@ fn set_pinned_in(dir: &Path, id: &str, pinned: bool) -> Result<(), String> {
 
 fn remove(dir: &Path, index: &mut Vec<HistoryEntry>, id: &str) {
     let _ = std::fs::remove_file(dir.join(format!("{id}.json.gz")));
+    let _ = std::fs::remove_file(compact_path(dir, id));
     index.retain(|e| e.id != id);
 }
 
@@ -207,6 +208,79 @@ fn delete_unpinned_in(dir: &Path) -> Result<usize, String> {
     }
     save_index(dir, &index)?;
     Ok(ids.len())
+}
+
+// ---------------------------------------------------------------------------
+// Evolução entre noites: versão enxuta de cada análise (sem recap, eventos e dano por
+// habilidade), guardada ao lado da completa e refeita quando a análise muda.
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrendNight {
+    pub id: String,
+    pub title: String,
+    pub raid_start_ms: Option<i64>,
+    pub report: serde_json::Value,
+}
+
+fn compact_path(dir: &Path, id: &str) -> PathBuf {
+    dir.join(format!("{id}.compact.json"))
+}
+
+/// Tira do relatório o que só serve para ver um pull em detalhe.
+pub fn compact(mut report: serde_json::Value) -> serde_json::Value {
+    let strip = |v: &mut serde_json::Value, keys: &[&str]| {
+        if let Some(o) = v.as_object_mut() {
+            for k in keys {
+                o.remove(*k);
+            }
+        }
+    };
+    if let Some(pulls) = report.get_mut("pulls").and_then(|p| p.as_array_mut()) {
+        for p in pulls {
+            for d in p.get_mut("deaths").and_then(|x| x.as_array_mut()).into_iter().flatten() {
+                strip(d, &["recap", "debuffs", "mechanicDamage", "positions"]);
+            }
+            for m in p.get_mut("mechanics").and_then(|x| x.as_array_mut()).into_iter().flatten() {
+                strip(m, &["events", "snapshots"]);
+            }
+            for pl in p.get_mut("players").and_then(|x| x.as_array_mut()).into_iter().flatten() {
+                strip(pl, &["takenByAbility", "interruptLog"]);
+            }
+        }
+    }
+    report
+}
+
+fn modified(p: &Path) -> Option<SystemTime> {
+    std::fs::metadata(p).and_then(|m| m.modified()).ok()
+}
+
+/// Todas as análises salvas, enxutas, da mais antiga para a mais nova.
+#[tauri::command]
+pub async fn history_trends(app: AppHandle) -> Result<Vec<TrendNight>, String> {
+    let dir = history_dir(&app)?;
+    tauri::async_runtime::spawn_blocking(move || Ok(trends_in(&dir))).await.map_err(|e| e.to_string())?
+}
+
+fn trends_in(dir: &Path) -> Vec<TrendNight> {
+    let mut index = load_index(dir);
+    index.sort_by_key(|e| e.raid_start_ms.unwrap_or(e.saved_at));
+    index
+        .into_iter()
+        .filter_map(|e| {
+            let cp = compact_path(dir, &e.id);
+            let fresh = matches!((modified(&cp), modified(&dir.join(format!("{}.json.gz", e.id)))), (Some(c), Some(g)) if c >= g);
+            let report = if fresh {
+                std::fs::read_to_string(&cp).ok().and_then(|s| serde_json::from_str(&s).ok())?
+            } else {
+                let r = compact(load_in(dir, &e.id).ok()?);
+                let _ = std::fs::write(&cp, serde_json::to_string(&r).unwrap_or_default());
+                r
+            };
+            Some(TrendNight { id: e.id, title: e.title, raid_start_ms: e.raid_start_ms, report })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -243,6 +317,14 @@ mod tests {
         let list = list_in(&dir);
         assert_eq!(list.len(), 2);
         assert!(list[0].pinned && list[0].id == a.id, "fixadas primeiro");
+
+        // evolução: versão enxuta, sem recap, e em cache ao lado da completa
+        let trends = trends_in(&dir);
+        assert_eq!(trends.len(), 2);
+        let pulls = trends[0].report["pulls"].as_array().unwrap();
+        assert_eq!(pulls.len(), 3);
+        assert!(pulls.iter().flat_map(|p| p["deaths"].as_array().unwrap()).all(|d| d.get("recap").is_none()));
+        assert!(compact_path(&dir, &a.id).exists());
 
         // apagar não fixadas deixa só a fixada
         assert_eq!(delete_unpinned_in(&dir).unwrap(), 1);

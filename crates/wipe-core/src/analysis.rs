@@ -14,6 +14,10 @@ const MAX_RECAP_ENTRIES: usize = 150;
 const FEIGN_DEATH: u32 = 5384;
 /// Histórico de HP guardado por player (para slow death).
 const HP_HISTORY_MS: i64 = 60_000;
+/// Posição de player mais velha que isso não entra na foto (ele pode ter andado).
+const SNAPSHOT_PLAYER_MS: i64 = 5_000;
+/// Inimigos grandes mudam pouco de lugar (e nem sempre apanham a todo momento).
+const SNAPSHOT_ENEMY_MS: i64 = 15_000;
 /// Janela de dano/cura para classificar a morte.
 const DEATH_STATS_MS: i64 = 10_000;
 /// Uma mecânica "causou" a morte se deu o golpe final ou este % do dano recebido no recap.
@@ -50,6 +54,9 @@ struct Advanced<'a> {
     owner_guid: &'a str,
     hp: i64,
     max_hp: i64,
+    /// posição no mundo (jardas)
+    x: f32,
+    y: f32,
     /// quantidade de campos do bloco (varia entre patches)
     len: usize,
 }
@@ -76,7 +83,9 @@ fn advanced_at<'a>(f: &[&'a str], at: usize) -> Option<Advanced<'a>> {
                 && end[4].parse::<i64>().is_ok()
         }
     })?;
-    Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp, len })
+    let x = f[at + len - 5].parse().unwrap_or(0.0);
+    let y = f[at + len - 4].parse().unwrap_or(0.0);
+    Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp, x, y, len })
 }
 
 #[derive(Default)]
@@ -104,6 +113,8 @@ struct PlayerAcc {
     debuffs: HashMap<u32, ActiveDebuff>,
     interrupt_log: Vec<InterruptUse>,
     interrupt_attempts: u32,
+    /// última posição vista: (x, y, ms do pull)
+    pos: Option<(f32, f32, i64)>,
 }
 
 struct ActiveDebuff {
@@ -117,6 +128,7 @@ struct UnitHp {
     name: String,
     hp: i64,
     max_hp: i64,
+    pos: Option<(f32, f32, i64)>,
 }
 
 #[derive(Default)]
@@ -242,6 +254,7 @@ impl PullBuilder {
         }
         let rel = self.last_ms - self.start_ms;
         if let Some(p) = self.players.get_mut(adv.info_guid) {
+            p.pos = Some((adv.x, adv.y, rel));
             p.last_hp_pct = Some(pct);
             p.max_hp = Some(adv.max_hp);
             if p.hp_hist.back().is_none_or(|&(t, v)| t != rel || v != pct) {
@@ -265,10 +278,38 @@ impl PullBuilder {
                 name: name.to_string(),
                 hp: adv.hp,
                 max_hp: adv.max_hp,
+                pos: None,
             });
             e.hp = adv.hp;
             e.max_hp = adv.max_hp;
+            e.pos = Some((adv.x, adv.y, rel));
         }
+    }
+
+    /// Posições de todos agora: players vistos nos últimos segundos e os inimigos grandes
+    /// (bosses e adds com HP de boss), para o mini mapa.
+    fn snapshot(&self, rel: i64) -> Positions {
+        let mut units: Vec<UnitPos> = self
+            .players
+            .iter()
+            .filter_map(|(guid, p)| {
+                let (x, y, seen) = p.pos?;
+                (rel - seen <= SNAPSHOT_PLAYER_MS).then(|| UnitPos { guid: guid.clone(), name: p.name.clone(), kind: "player".into(), x, y, age_ms: rel - seen })
+            })
+            .collect();
+        let top = self.enemies.values().map(|e| e.max_hp).max().unwrap_or(0);
+        let mut enemies: Vec<(&String, &UnitHp)> = self
+            .enemies
+            .iter()
+            .filter(|(_, e)| e.hp > 0 && top > 0 && e.max_hp as f64 >= top as f64 * 0.3 && e.pos.is_some_and(|(_, _, seen)| rel - seen <= SNAPSHOT_ENEMY_MS))
+            .collect();
+        enemies.sort_by_key(|(_, e)| std::cmp::Reverse(e.max_hp));
+        for (guid, e) in enemies.into_iter().take(6) {
+            let (x, y, seen) = e.pos.unwrap_or_default();
+            units.push(UnitPos { guid: guid.clone(), name: e.name.clone(), kind: "enemy".into(), x, y, age_ms: rel - seen });
+        }
+        units.sort_by(|a, b| a.guid.cmp(&b.guid));
+        Positions { t: rel, units }
     }
 
     pub fn feed(&mut self, f: &[&str], t: i64, data: &GameData) {
@@ -303,6 +344,7 @@ impl PullBuilder {
             }
             "SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE" => self.aura_state(f, t),
             "SPELL_INTERRUPT" => self.interrupt(f, t),
+            "SPELL_DISPEL" => self.dispel(f, t),
             "SPELL_SUMMON" => {
                 if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
                     self.pet_owner.insert(f[5].to_string(), owner);
@@ -387,7 +429,7 @@ impl PullBuilder {
         let owner_name = if owner == f[1] { f[2] } else { "" };
         if let Some(r) = self.rules.as_mut() {
             let label = self.players.get(&owner).map(|p| p.name.clone()).filter(|n| !n.is_empty());
-            r.on_interrupt(cut_id, &owner, label.as_deref().unwrap_or(f[2]), rel);
+            r.on_interrupt(cut_id, &owner, label.as_deref().unwrap_or(f[2]), f[5], f[6], rel);
         }
         let kick = f[10].to_string();
         let kick_id: u32 = f[9].parse().unwrap_or(0);
@@ -405,6 +447,20 @@ impl PullBuilder {
                 target_spell_id: Some(cut_id),
                 target_spell: Some(cut_name),
             }),
+        }
+    }
+
+    /// SPELL_DISPEL: quem dispelou (f[1]), de quem (f[5]) e qual debuff (extraSpellId, f[12]).
+    fn dispel(&mut self, f: &[&str], t: i64) {
+        if !self.counting() {
+            return;
+        }
+        let Some(aura) = f.get(12).and_then(|v| v.parse::<u32>().ok()) else { return };
+        let rel = self.rel(t);
+        let Some(owner) = self.owner_of(f[1], hex(f[3])) else { return };
+        let name = self.players.get(&owner).map(|p| p.name.clone()).filter(|n| !n.is_empty()).unwrap_or_else(|| f[2].to_string());
+        if let Some(r) = self.rules.as_mut() {
+            r.on_dispel(aura, f[5], &owner, &name, rel);
         }
     }
 
@@ -485,8 +541,15 @@ impl PullBuilder {
             };
             let rel = self.rel(t);
             if counting {
-                if let Some(r) = self.rules.as_mut() {
-                    r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel);
+                let failed = self.rules.as_mut().map(|r| r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel)).unwrap_or_default();
+                // falha coletiva nova: guarda onde cada um estava
+                if !failed.is_empty() {
+                    let snap = self.snapshot(rel);
+                    if let Some(r) = self.rules.as_mut() {
+                        for i in failed {
+                            r.add_snapshot(i, snap.clone());
+                        }
+                    }
                 }
             }
             let p = self.player(dst_guid, dst_name);
@@ -580,7 +643,7 @@ impl PullBuilder {
                 return;
             }
             if let Some(r) = self.rules.as_mut() {
-                r.on_enemy_cast(spell_id, src_name, rel);
+                r.on_enemy_cast(spell_id, src_guid, src_name, rel);
             }
             let e = self.enemy_spells.entry(spell_id).or_default();
             e.name = spell_name;
@@ -687,6 +750,7 @@ impl PullBuilder {
         let order = self.deaths.len() as u32 + 1;
         // depois do corte a morte fica registrada (recap), mas não conta em nada
         let ignored = !self.counting();
+        let positions = (!ignored).then(|| self.snapshot(rel));
         let p = self.player(dst_guid, dst_name);
         if p.feigning {
             return;
@@ -742,6 +806,7 @@ impl PullBuilder {
             used_health_potion: p.health_potions.iter().any(|&x| x <= rel),
             used_healthstone: p.healthstones.iter().any(|&x| x <= rel),
             healthstone_known: false,
+            positions,
         };
         p.recap.clear();
         p.debuffs.clear();

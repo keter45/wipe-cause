@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Settings {
     /// vídeos do Warcraft Recorder
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -13,6 +13,23 @@ pub struct Settings {
     /// pasta Logs do WoW (onde ficam os WoWCombatLog*.txt)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub logs_dir: Option<String>,
+    /// webhook do Discord para o resumo dos pulls (modo ao vivo)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discord_webhook: Option<String>,
+    #[serde(default = "yes")]
+    pub discord_on_wipe: bool,
+    #[serde(default = "yes")]
+    pub discord_on_kill: bool,
+}
+
+fn yes() -> bool {
+    true
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true }
+    }
 }
 
 fn path(app: &AppHandle) -> Result<PathBuf, String> {

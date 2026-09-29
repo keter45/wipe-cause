@@ -16,6 +16,34 @@ Wipes com menos de 30s são ignorados.
 
 **Ignorar após N mortes** (topo da tela, padrão 4): depois de algumas mortes o wipe já está decidido. Erros de mecânica, falhas, interrupts e o gatilho só contam até a N-ésima morte de cada pull; o resto aparece esmaecido. Mudar o N é instantâneo (0 = conta tudo).
 
+## Modo ao vivo e Discord
+
+Com **Ao vivo** ligado (no topo), o app acompanha o `WoWCombatLog` mais recente da pasta de logs. Quando um pull termina, ele reanalisa o log em alguns segundos, abre o pull novo e mostra uma notificação — dá para ver o motivo do wipe antes do próximo pull.
+
+Em **Discord**, cole o webhook do canal da raid: cada wipe (e kill) chega lá com o gatilho, os erros de mecânica, as mortes decisivas e quem morreu sem defensivo. O pull e o resumo do boss também têm um botão para enviar na hora.
+
+Para testar sem estar em raid: `node scripts/simulate-live.mjs <log antigo> <pasta Logs>` escreve alguns pulls de um log real, aos poucos, num `WoWCombatLog` novo.
+
+## Compartilhar
+
+O pull e o resumo do boss têm **Compartilhar**: gera um cartão com o resumo (resultado, gatilho, o que deu errado, mortes decisivas, notas mais baixas e o mapa da falha) para **copiar como imagem** e colar no Discord/WhatsApp, **salvar como PNG ou HTML** ou **enviar a imagem ao Discord** pelo webhook configurado.
+
+## Nota por player
+
+Cada player recebe uma nota de 0 a 100 por pull: parte de 100, perde pontos por erros de mecânica (pela gravidade da regra, até 3 por mecânica), por deixar passar a própria vez na escala de interrupts e por morte decisiva (mais se tinha defensivo sobrando); no fim pesa o tempo vivo até a primeira morte. Aparece na aba Jogadores (passe o mouse para ver os descontos), como média no placar do boss e por noite na Evolução.
+
+## Escala de interrupts e dispels
+
+Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem.
+
+## Posições
+
+Com Advanced Combat Logging, cada morte (antes do corte) guarda onde todo mundo estava: o detalhe da morte mostra um mini mapa, a distância até o boss e quem estava a menos de 8 jardas. As falhas coletivas de mecânica (ex.: detonação do orb roxo, Execution da Guillotine) também guardam a foto do momento, com quem carregava o orb destacado.
+
+## Evolução
+
+Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando.
+
 ## Warcraft Logs
 
 Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Não usa a API do Warcraft Logs nem pede login.

@@ -12,6 +12,11 @@ import { openExternal, type WcrVideo } from '../lib/api';
 import { SeekContext } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
+import { SendToDiscord } from './SendToDiscord';
+import { ShareMenu } from './ShareMenu';
+import { PullShareCard } from './ShareCards';
+import { pullPayload } from '../lib/discord';
+import { scorePull } from '../lib/score';
 
 type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells';
 
@@ -27,6 +32,9 @@ interface Props {
 
 /** HP de um boss: no corte ("ignorar após N mortes"), se houver. */
 const bossHpOf = (pull: Pull) => (b: Pull['bosses'][number]) => (pull.cutoffT != null ? b.hpPctAtCutoff ?? b.hpPct : b.hpPct);
+
+/** guid -> classe (cores dos mini mapas). */
+const classesOf = (p: Pull) => new Map(p.players.map((x) => [x.guid, x.class] as const));
 
 export function PullView({ pull, wclCode, video }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
@@ -96,6 +104,8 @@ export function PullView({ pull, wclCode, video }: Props) {
               {videoOpen ? 'Fechar vídeo' : `Vídeo (${video.player ?? 'POV'})`}
             </button>
           )}
+          <SendToDiscord payload={() => pullPayload(pull, wclCode)} />
+          <ShareMenu card={() => <PullShareCard pull={pull} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
         </div>
         <div className="boss-bars">
           {pull.bosses.map((b) => (
@@ -150,9 +160,9 @@ export function PullView({ pull, wclCode, video }: Props) {
       </div>
 
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
-      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} />}
+      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
-      {tab === 'players' && <PlayersTable players={pull.players} />}
+      {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
     </div>
     </SeekContext.Provider>

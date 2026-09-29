@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { PlayerStats, Pull } from '../types';
 import { classColor, mmss, shortName } from '../lib/format';
 import { SpellIcon, SpellName } from './SpellIcon';
+import { AssignmentsPanel } from './AssignmentsPanel';
 
 /** Casts interrompíveis (cortados ao menos uma vez no log) e quem cortou / quem não. */
 export function InterruptsView({ pull }: { pull: Pull }) {
@@ -18,6 +19,7 @@ export function InterruptsView({ pull }: { pull: Pull }) {
 
   return (
     <div className="interrupts">
+      <AssignmentsPanel pull={pull} />
       {spells.length > 0 && (
         <table className="spells">
           <thead>

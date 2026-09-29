@@ -131,16 +131,32 @@ pub fn logs_detect_dir() -> Option<String> {
     detect().map(|p| p.display().to_string())
 }
 
-/// Logs da pasta cadastrada (ou detectada), com os encontros que já estão no índice.
-#[tauri::command]
-pub fn logs_list(app: AppHandle) -> LogsScan {
-    let (dir, source) = match settings::load(&app).logs_dir {
+/// Pasta de logs em uso: a cadastrada ou, sem cadastro, a detectada. Segundo valor = origem.
+pub fn current_dir(app: &AppHandle) -> (Option<PathBuf>, &'static str) {
+    match settings::load(app).logs_dir {
         Some(d) => (Some(PathBuf::from(d)), "settings"),
         None => match detect() {
             Some(d) => (Some(d), "detected"),
             None => (None, "none"),
         },
-    };
+    }
+}
+
+/// O log que o WoW está escrevendo agora: o `WoWCombatLog*.txt` mais recente da pasta (sem os
+/// arquivos do uploader do Warcraft Logs nem os divididos por boss).
+pub fn newest_live_log(dir: &Path) -> Option<PathBuf> {
+    list_dir(dir)
+        .into_iter()
+        .find(|(p, folder, _)| {
+            folder.is_none() && p.file_name().is_some_and(|n| n.to_string_lossy().to_lowercase().starts_with("wowcombatlog"))
+        })
+        .map(|(p, _, _)| p)
+}
+
+/// Logs da pasta cadastrada (ou detectada), com os encontros que já estão no índice.
+#[tauri::command]
+pub fn logs_list(app: AppHandle) -> LogsScan {
+    let (dir, source) = current_dir(&app);
     let Some(dir) = dir else {
         return LogsScan { dir: None, source: source.into(), files: Vec::new(), warning: None };
     };

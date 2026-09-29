@@ -235,3 +235,18 @@ fn death_cutoff_freezes_every_stat() {
     assert!(full.pulls.iter().all(|p| p.cutoff_t.is_none() && p.analyzed_ms == p.duration_ms));
     assert!(full.pulls.iter().flat_map(|p| &p.deaths).all(|d| !d.ignored));
 }
+
+#[test]
+fn deaths_carry_positions_until_the_cutoff() {
+    let r = report_with(1);
+    let p = r.pulls.iter().find(|p| p.deaths.len() >= 2).expect("pull com 2+ mortes");
+    let first = &p.deaths[0];
+    let snap = first.positions.as_ref().expect("morte antes do corte tem foto das posições");
+    assert_eq!(snap.t, first.t);
+    let me = snap.units.iter().find(|u| u.guid == first.guid).expect("quem morreu está na foto");
+    assert_eq!(me.kind, "player");
+    assert!(me.age_ms <= 5_000);
+    assert!(snap.units.iter().any(|u| u.kind == "enemy"), "boss na foto");
+    // depois do corte a morte não guarda posições
+    assert!(p.deaths[1..].iter().all(|d| d.ignored && d.positions.is_none()));
+}

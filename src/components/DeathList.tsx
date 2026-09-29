@@ -7,6 +7,7 @@ import { SpellIcon, SpellName } from './SpellIcon';
 import { openExternal } from '../lib/api';
 import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
+import { PositionMap, dist, mainEnemy } from './PositionMap';
 
 interface Props {
   deaths: Death[];
@@ -14,6 +15,8 @@ interface Props {
   decisive: Set<string>;
   /** momento da N-ésima morte: mortes depois disso são ignoradas */
   cutoffT: number | null;
+  /** guid -> classe, para as cores do mini mapa */
+  classes: Map<string, string | null>;
 }
 
 export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: string }> = {
@@ -23,7 +26,7 @@ export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: stri
   unknown: { label: '?', title: 'Sem dados de HP (Advanced Combat Logging desligado?)' },
 };
 
-export function DeathList({ deaths, decisive, cutoffT }: Props) {
+export function DeathList({ deaths, decisive, cutoffT, classes }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const seek = useSeek();
   if (deaths.length === 0) return <p className="muted pad">Ninguém morreu neste pull.</p>;
@@ -93,7 +96,7 @@ export function DeathList({ deaths, decisive, cutoffT }: Props) {
               </button>
               <PlayAt t={d.t} seek={seek} />
             </div>
-            {isOpen && <DeathDetail death={d} />}
+            {isOpen && <DeathDetail death={d} classes={classes} />}
           </div>
         );
       })}
@@ -130,7 +133,7 @@ const FILTERS: { key: RecapFilter; label: string }[] = [
   { key: 'aura', label: 'Defensivos e debuffs' },
 ];
 
-function DeathDetail({ death }: { death: Death }) {
+function DeathDetail({ death, classes }: { death: Death; classes: Map<string, string | null> }) {
   const s = death.stats;
   const [filter, setFilter] = useState<RecapFilter>('all');
   // mais recente primeiro: o que matou fica no topo
@@ -190,6 +193,8 @@ function DeathDetail({ death }: { death: Death }) {
         </>
       )}
 
+      {death.positions && <DeathPosition death={death} classes={classes} />}
+
       <div className="recap-toolbar">
         <h4 className="recap-title">
           Últimos 15s <span className="muted small">· mais recente primeiro</span>
@@ -226,6 +231,58 @@ function DeathDetail({ death }: { death: Death }) {
           )}
         </tbody>
       </table>
+      </div>
+    </div>
+  );
+}
+
+/** Players a até isso de quem morreu contam como "junto" (a maioria das explosões/poças). */
+const NEAR_YD = 8;
+
+/** Mini mapa da hora da morte + distâncias (boss, quem estava perto). */
+function DeathPosition({ death, classes }: { death: Death; classes: Map<string, string | null> }) {
+  const snap = death.positions!;
+  const me = snap.units.find((u) => u.guid === death.guid);
+  const boss = mainEnemy(snap);
+  const near = me
+    ? snap.units
+        .filter((u) => u.kind === 'player' && u.guid !== me.guid)
+        .map((u) => ({ u, d: dist(me, u) }))
+        .filter((x) => x.d <= NEAR_YD)
+        .sort((a, b) => a.d - b.d)
+    : [];
+  return (
+    <div className="death-pos">
+      <PositionMap snap={snap} classes={classes} marks={new Map([[death.guid, 'dead']])} size={220} />
+      <div className="death-pos-facts">
+        <h4 className="recap-title">Onde estava</h4>
+        {!me ? (
+          <p className="muted small">Posição de quem morreu não apareceu no log nos últimos segundos.</p>
+        ) : (
+          <>
+            {boss && (
+              <p>
+                A <strong>{dist(me, boss).toFixed(0)} jardas</strong> do {boss.name}
+              </p>
+            )}
+            <p>
+              {near.length === 0 ? (
+                <>Ninguém a menos de {NEAR_YD} jardas</>
+              ) : (
+                <>
+                  {near.length} player{near.length > 1 ? 's' : ''} a menos de {NEAR_YD} jd:{' '}
+                  {near.slice(0, 6).map((x, i) => (
+                    <span key={x.u.guid}>
+                      {i > 0 && ', '}
+                      <span style={{ color: classColor(classes.get(x.u.guid)) }}>{shortName(x.u.name)}</span> ({x.d.toFixed(0)})
+                    </span>
+                  ))}
+                </>
+              )}
+            </p>
+          </>
+        )}
+        <p className="muted small">Anéis a cada 10 jardas do boss. Pontos apagados: posição vista há mais de 2s. A orientação pode não bater com a do jogo; as distâncias batem.</p>
       </div>
     </div>
   );

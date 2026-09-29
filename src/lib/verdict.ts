@@ -2,6 +2,7 @@
 
 import type { Death, Pull } from '../types';
 import { mmss, pct, shortName } from './format';
+import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 
 export type Severity = 'wipe' | 'major' | 'minor' | 'info';
 
@@ -53,7 +54,8 @@ export function lowestBossHpAtEnd(p: Pull): number | null {
   return hps.length ? Math.min(...hps) : null;
 }
 
-export function analyzePull(p: Pull): Verdict {
+/** `assignments`: escala de interrupts (padrão: a salva para o boss). */
+export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p)): Verdict {
   const findings: Finding[] = [];
   const deaths = [...p.deaths].sort((a, b) => a.t - b.t);
   // com "ignorar após N mortes" ligado, as decisivas são as N primeiras; senão, janela de cascata
@@ -145,10 +147,21 @@ export function analyzePull(p: Pull): Verdict {
   const passed = p.enemySpells.filter((e) => e.interruptible && e.casts > 0);
   if (passed.length) {
     const idle = p.players.filter((x) => x.canInterrupt && x.interrupts === 0).map((x) => shortName(x.name));
+    // com escala: de quem era a vez em cada cast que passou
+    const missed = new Map<string, number>();
+    for (const m of p.mechanics.filter((m) => m.kind === 'interrupt')) {
+      const groups = assignments.get(m.key);
+      if (!groups?.length) continue;
+      for (const k of checkAssignments(m, groups).kickers) if (k.missed) missed.set(k.name, (missed.get(k.name) ?? 0) + k.missed);
+    }
     findings.push({
       severity: 'major',
       title: `${passed.reduce((n, e) => n + e.casts, 0)} cast(s) interrompível(is) passaram: ${passed.map((e) => `${e.name} ${e.casts}×`).join(', ')}`,
-      detail: idle.length ? `Não cortaram nada: ${idle.join(', ')}` : undefined,
+      detail: missed.size
+        ? `Passou na vez de: ${[...missed].map(([n, c]) => (c > 1 ? `${n} (${c})` : n)).join(', ')}`
+        : idle.length
+          ? `Não cortaram nada: ${idle.join(', ')}`
+          : undefined,
     });
   }
 

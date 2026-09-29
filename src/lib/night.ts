@@ -3,6 +3,8 @@
 
 import type { Pull } from '../types';
 import { analyzePull, lowestBossHp } from './verdict';
+import { PERSONAL_BLAME } from './blame';
+import { scorePull } from './score';
 
 /** Intervalo entre trys acima disso vira "pausa" (break, troca de boss, reset de estratégia). */
 export const BREAK_MS = 10 * 60_000;
@@ -25,12 +27,6 @@ export function groupByBoss(pulls: Pull[]): BossGroup[] {
 /** Peso de cada erro de mecânica pela severidade da regra. */
 const SEVERITY_WEIGHT: Record<string, number> = { wipe: 3, major: 2, minor: 0.5, none: 0 };
 
-/**
- * Regras em que o player listado é o culpado. Nas coletivas (soak, tank_soak, interrupt,
- * enrage) os listados são quem foi atingido pela falha, não quem errou; em failure_event
- * só aparece quem carregava o que explodiu.
- */
-const PERSONAL_BLAME = new Set(['avoidable_damage', 'tank_range', 'positioning', 'stack_limit', 'failure_event']);
 
 export interface Gap {
   after: Pull;
@@ -75,6 +71,8 @@ export interface PlayerNight {
   avgHps: number;
   villainScore: number;
   heroScore: number;
+  /** nota média (0-100) nos pulls em que jogou */
+  avgScore: number;
 }
 
 export interface NightSummary {
@@ -132,9 +130,10 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
   }
 
   // ---- players
-  const acc = new Map<string, PlayerNight & { dpsSum: number; hpsSum: number }>();
+  const acc = new Map<string, PlayerNight & { dpsSum: number; hpsSum: number; scoreSum: number }>();
   for (const p of pulls) {
     const verdict = analyzePull(p);
+    const scores = scorePull(p);
     const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
     const passedInterruptible = p.enemySpells.some((e) => e.interruptible && e.casts > 0);
     const errorsThisPull = new Map<string, number>();
@@ -164,6 +163,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
       a.interrupts += ps.interrupts;
       a.dpsSum += ps.dps;
       a.hpsSum += ps.hps;
+      a.scoreSum += scores.get(ps.guid)?.score ?? 100;
       if (passedInterruptible && ps.canInterrupt && ps.interrupts === 0) a.idleInterruptPulls++;
       const hadDecisive = p.deaths.some((d) => d.guid === ps.guid && decisive.has(`${d.guid}:${d.t}`));
       if (!hadDecisive && !errorsThisPull.get(ps.guid)) a.cleanPulls++;
@@ -183,7 +183,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
       a = {
         guid, name, class: null, role: null, pulls: 0, deaths: 0, decisiveDeaths: 0, mechanicErrors: 0,
         mechanicErrorsWeighted: 0, deathsNoDefensive: 0, interrupts: 0, idleInterruptPulls: 0, assists: 0,
-        cleanPulls: 0, avgDps: 0, avgHps: 0, villainScore: 0, heroScore: 0, dpsSum: 0, hpsSum: 0,
+        cleanPulls: 0, avgDps: 0, avgHps: 0, villainScore: 0, heroScore: 0, avgScore: 0, dpsSum: 0, hpsSum: 0, scoreSum: 0,
       };
       acc.set(guid, a);
     }
@@ -192,8 +192,8 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
 
   const players: PlayerNight[] = [...acc.values()]
     .filter((a) => a.pulls > 0)
-    .map(({ dpsSum, hpsSum, ...a }) => {
-      const out: PlayerNight = { ...a, avgDps: dpsSum / a.pulls, avgHps: hpsSum / a.pulls };
+    .map(({ dpsSum, hpsSum, scoreSum, ...a }) => {
+      const out: PlayerNight = { ...a, avgDps: dpsSum / a.pulls, avgHps: hpsSum / a.pulls, avgScore: scoreSum / a.pulls };
       out.villainScore = 3 * a.decisiveDeaths + a.mechanicErrorsWeighted + a.deathsNoDefensive + 0.5 * a.idleInterruptPulls;
       // pulls limpos decidem; interrupts e ajudas só desempatam
       out.heroScore = a.cleanPulls / a.pulls + (a.interrupts + a.assists) / 1e6;

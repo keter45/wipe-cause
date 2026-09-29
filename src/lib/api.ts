@@ -197,6 +197,39 @@ export const logsSetDir = (dir: string | null) => invoke<void>('logs_set_dir', {
 export const logsDetectDir = () => invoke<string | null>('logs_detect_dir');
 
 // ---------------------------------------------------------------------------
+// Modo ao vivo: o backend acompanha o log e reanalisa ao fim de cada pull
+
+export interface LiveStatus {
+  active: boolean;
+  state: 'watching' | 'in_combat' | 'analyzing' | 'error' | 'stopped';
+  file: string | null;
+  encounter: string | null;
+  analyzed: number;
+  message: string | null;
+}
+
+/** `path` null = WoWCombatLog mais recente da pasta de logs. */
+export const liveStart = (path: string | null, deathCutoff: number) => invoke<LiveStatus>('live_start', { path, deathCutoff });
+export const liveStop = () => invoke<void>('live_stop');
+export const liveStatus = () => invoke<LiveStatus>('live_status');
+export const onLiveStatus = (cb: (s: LiveStatus) => void) => listen<LiveStatus>('live-status', (e) => cb(e.payload));
+export const onLiveReport = (cb: (r: LogReport) => void) => listen<LogReport>('live-report', (e) => cb(e.payload));
+
+// ---------------------------------------------------------------------------
+// Discord (webhook do canal da raid)
+
+export interface DiscordConfig {
+  webhook: string | null;
+  onWipe: boolean;
+  onKill: boolean;
+}
+
+export const discordGetConfig = () => invoke<DiscordConfig>('discord_get_config');
+export const discordSetConfig = (config: DiscordConfig) => invoke<void>('discord_set_config', { config });
+/** `webhook` = testar outro destino antes de salvar; sem ele usa o salvo. */
+export const discordPost = (payload: unknown, webhook?: string) => invoke<void>('discord_post', { payload, webhook: webhook ?? null });
+
+// ---------------------------------------------------------------------------
 // Histórico de análises (salvas pelo backend a cada análise)
 
 export interface HistoryEntry {
@@ -223,6 +256,17 @@ const demoHistory = (): HistoryEntry[] =>
         { id: 'c', savedAt: Date.now() - 8 * 864e5, title: '17/09 · Sszorak Mythic +2', raidStartMs: 1789690000000, logPath: 'demo-17', pulls: 19, kills: 2, bestHp: 0, deathCutoff: 0, pinned: false, size: 2_400_000, logExists: false },
       ]
     : [];
+
+/** Análises salvas, enxutas (sem recap/eventos), da mais antiga para a mais nova — para a Evolução. */
+export async function historyTrends(): Promise<{ id: string; title: string; raidStartMs: number | null; report: LogReport }[]> {
+  if (import.meta.env.DEV && !inTauri && new URLSearchParams(window.location.search).has('demoTrends')) {
+    // dev no navegador: relatórios gerados com wipe-cli em samples/trends/n1..n3.json
+    const { logTitle } = await import('./format');
+    const reports = await Promise.all([1, 2, 3].map((i) => fetch(`/samples/trends/n${i}.json`).then((r) => r.json() as Promise<LogReport>)));
+    return reports.map((r, i) => ({ id: `n${i}`, title: logTitle(r.pulls), raidStartMs: r.pulls[0]?.startMs ?? null, report: r }));
+  }
+  return inTauri ? invoke('history_trends') : [];
+}
 
 export const historyList = () => (inTauri ? invoke<HistoryEntry[]>('history_list') : Promise.resolve(demoHistory()));
 export const historyLoad = (id: string) => invoke<LogReport>('history_load', { id });
