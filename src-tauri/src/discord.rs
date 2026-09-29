@@ -2,6 +2,7 @@
 //! A mensagem é montada na UI (mesma lógica do veredito do pull); aqui só se envia.
 
 use crate::settings;
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::AppHandle;
@@ -67,6 +68,47 @@ pub async fn discord_post(app: AppHandle, payload: serde_json::Value, webhook: O
     .map_err(|e| e.to_string())?
 }
 
+/// Envia uma imagem (PNG em base64) com a mensagem; o embed pode usar
+/// `attachment://<file_name>` como imagem.
+#[tauri::command]
+pub async fn discord_post_image(app: AppHandle, payload: serde_json::Value, file_name: String, data_b64: String, webhook: Option<String>) -> Result<(), String> {
+    let url = webhook
+        .or_else(|| settings::load(&app).discord_webhook)
+        .ok_or("Nenhum webhook do Discord configurado.")?;
+    if !valid_webhook(&url) {
+        return Err("Webhook do Discord inválido.".into());
+    }
+    let png = base64::engine::general_purpose::STANDARD.decode(data_b64).map_err(|e| e.to_string())?;
+    let (content_type, body) = multipart(&payload.to_string(), &file_name, &png);
+    tauri::async_runtime::spawn_blocking(move || {
+        let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(30)).build();
+        match agent.post(&url).set("Content-Type", &content_type).send_bytes(&body) {
+            Ok(_) => Ok(()),
+            Err(ureq::Error::Status(413, _)) => Err("Imagem grande demais para o Discord.".into()),
+            Err(ureq::Error::Status(code, r)) => Err(format!("O Discord recusou a imagem ({code}): {}", r.into_string().unwrap_or_default())),
+            Err(e) => Err(format!("Sem conexão com o Discord: {e}")),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// multipart/form-data com `payload_json` e `files[0]` (formato do webhook do Discord).
+fn multipart(payload_json: &str, file_name: &str, png: &[u8]) -> (String, Vec<u8>) {
+    let boundary = "----wipecause7f3a9c2e";
+    let safe_name: String = file_name.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')).collect();
+    let mut body = Vec::with_capacity(png.len() + payload_json.len() + 512);
+    body.extend_from_slice(
+        format!("--{boundary}\r\nContent-Disposition: form-data; name=\"payload_json\"\r\nContent-Type: application/json\r\n\r\n{payload_json}\r\n").as_bytes(),
+    );
+    body.extend_from_slice(
+        format!("--{boundary}\r\nContent-Disposition: form-data; name=\"files[0]\"; filename=\"{safe_name}\"\r\nContent-Type: image/png\r\n\r\n").as_bytes(),
+    );
+    body.extend_from_slice(png);
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    (format!("multipart/form-data; boundary={boundary}"), body)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,5 +119,19 @@ mod tests {
         assert!(valid_webhook("https://discordapp.com/api/webhooks/123/abc"));
         assert!(!valid_webhook("https://example.com/api/webhooks/123/abc"));
         assert!(!valid_webhook("http://discord.com/api/webhooks/123/abc"));
+    }
+
+    #[test]
+    fn multipart_has_payload_and_file() {
+        let (ct, body) = multipart(r#"{"content":"oi"}"#, "pull 12.png", b"PNGDATA");
+        let text = String::from_utf8_lossy(&body);
+        let boundary = ct.split("boundary=").nth(1).unwrap();
+        assert!(text.starts_with(&format!("--{boundary}")));
+        assert!(text.contains("name=\"payload_json\"") && text.contains(r#"{"content":"oi"}"#));
+        assert!(text.contains("filename=\"pull12.png\"") && text.contains("PNGDATA"));
+        assert!(text.ends_with(&format!("\r\n--{boundary}--\r\n")));
+        // o Discord exige CRLF entre cabeçalhos e corpo de cada parte
+        assert!(text.contains("Content-Type: image/png\r\n\r\nPNGDATA\r\n"));
+        assert!(!text.replace("\r\n", "").contains('\n'));
     }
 }

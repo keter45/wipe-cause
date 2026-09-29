@@ -3,6 +3,21 @@ import { classColor, shortName } from '../lib/format';
 
 export type Mark = 'dead' | 'culprit';
 
+/**
+ * Estilos também em linha: o gerador de imagem (Compartilhar) não aplica fill/stroke de SVG
+ * vindos de classes CSS.
+ */
+const STYLE = {
+  ring: { fill: 'none', stroke: 'var(--border)', strokeDasharray: '3 3' },
+  ringLabel: { fill: 'var(--muted)', fontSize: 9 },
+  enemy: { fill: 'var(--wipe)', stroke: 'var(--bg)', strokeWidth: 1.5 },
+  player: { stroke: 'var(--bg)', strokeWidth: 1.5 },
+  dead: { fill: 'none', stroke: 'var(--wipe)', strokeWidth: 2.5 },
+  culprit: { fill: 'none', stroke: 'var(--major)', strokeWidth: 2.5 },
+  label: { fill: 'var(--muted)', fontSize: 10 },
+  strong: { fill: 'var(--text)', fontSize: 10, fontWeight: 600 },
+} as const;
+
 interface Props {
   snap: Positions;
   /** guid -> classe (cor do ponto) */
@@ -54,18 +69,18 @@ export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
     <svg className="posmap" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Posições dos jogadores">
       {rings.map((r) => (
         <g key={r}>
-          <circle cx={sx(boss!)} cy={sy(boss!)} r={r * scale} className="posmap-ring" />
-          <text x={sx(boss!) + r * scale * 0.71 + 2} y={sy(boss!) - r * scale * 0.71 - 2} className="posmap-ring-label">
+          <circle cx={sx(boss!)} cy={sy(boss!)} r={r * scale} className="posmap-ring" style={STYLE.ring} />
+          <text x={sx(boss!) + r * scale * 0.71 + 2} y={sy(boss!) - r * scale * 0.71 - 2} className="posmap-ring-label" style={STYLE.ringLabel}>
             {r}
           </text>
         </g>
       ))}
       {enemies.map((e) => (
         <g key={e.guid}>
-          <rect x={sx(e) - 6} y={sy(e) - 6} width={12} height={12} transform={`rotate(45 ${sx(e)} ${sy(e)})`} className="posmap-enemy">
+          <rect x={sx(e) - 6} y={sy(e) - 6} width={12} height={12} transform={`rotate(45 ${sx(e)} ${sy(e)})`} className="posmap-enemy" style={STYLE.enemy}>
             <title>{e.name}</title>
           </rect>
-          <text x={sx(e)} y={sy(e) - 11} className="posmap-label" textAnchor="middle">
+          <text x={sx(e)} y={sy(e) - 11} className="posmap-label" style={STYLE.label} textAnchor="middle">
             {e.name}
           </text>
         </g>
@@ -75,12 +90,12 @@ export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
         const d = boss ? ` · ${dist(p, boss).toFixed(0)} jd do ${boss.name}` : '';
         return (
           <g key={p.guid} opacity={p.ageMs > STALE_MS && !mark ? 0.45 : 1}>
-            {mark && <circle cx={sx(p)} cy={sy(p)} r={9} className={`posmap-mark ${mark}`} />}
-            <circle cx={sx(p)} cy={sy(p)} r={5} fill={classColor(classes.get(p.guid))} className="posmap-player">
+            {mark && <circle cx={sx(p)} cy={sy(p)} r={9} className={`posmap-mark ${mark}`} style={mark === 'dead' ? STYLE.dead : STYLE.culprit} />}
+            <circle cx={sx(p)} cy={sy(p)} r={5} fill={classColor(classes.get(p.guid))} className="posmap-player" style={STYLE.player}>
               <title>{`${shortName(p.name)}${d}${p.ageMs > STALE_MS ? ` (posição de ${(p.ageMs / 1000).toFixed(1)}s antes)` : ''}`}</title>
             </circle>
             {mark && (
-              <text x={sx(p)} y={sy(p) + 19} className="posmap-label strong" textAnchor="middle">
+              <text x={sx(p)} y={sy(p) + 19} className="posmap-label strong" style={STYLE.strong} textAnchor="middle">
                 {shortName(p.name)}
               </text>
             )}

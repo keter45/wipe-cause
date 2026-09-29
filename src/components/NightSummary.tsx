@@ -7,6 +7,8 @@ import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
 import { SendToDiscord } from './SendToDiscord';
+import { ShareMenu } from './ShareMenu';
+import { BossShareCard } from './ShareCards';
 import { bossPayload } from '../lib/discord';
 
 interface Props {
@@ -112,7 +114,10 @@ export function BossSummary({ title, pulls, onSelectPull }: Props & { title: str
     <div className="night">
       <header className="night-head">
         <h2>{title}</h2>
-        <SendToDiscord payload={() => bossPayload(title, s)} label="Enviar resumo ao Discord" />
+        <span className="head-actions">
+          <SendToDiscord payload={() => bossPayload(title, s)} label="Enviar resumo ao Discord" />
+          <ShareMenu card={() => <BossShareCard title={title} pulls={pulls} />} name={`Resumo - ${title}`} />
+        </span>
       </header>
 
       <div className="tiles">

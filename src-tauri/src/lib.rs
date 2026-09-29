@@ -46,6 +46,14 @@ async fn analyze_log(app: AppHandle, path: String, death_cutoff: Option<u32>) ->
     .map_err(|e| e.to_string())?
 }
 
+/// Grava um arquivo escolhido pelo usuário no diálogo "Salvar" (imagem ou HTML do resumo).
+#[tauri::command]
+fn save_file(path: String, data_b64: String) -> Result<(), String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD.decode(data_b64).map_err(|e| e.to_string())?;
+    std::fs::write(&path, bytes).map_err(|e| format!("não foi possível salvar {path}: {e}"))
+}
+
 /// Caminho da pasta de regras do usuário, para mostrar na UI.
 #[tauri::command]
 fn rules_dir(app: AppHandle) -> Option<String> {
@@ -70,6 +78,8 @@ pub fn run() {
             discord::discord_get_config,
             discord::discord_set_config,
             discord::discord_post,
+            discord::discord_post_image,
+            save_file,
             logs::logs_list,
             logs::logs_peek,
             logs::logs_get_dir,

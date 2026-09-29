@@ -2599,3 +2599,121 @@ td.warn {
 .score-trail > span + span {
   margin-left: 4px;
 }
+
+/* ---------------------------------------------------------------- compartilhar */
+.share-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  margin: 8px 0 4px;
+}
+.share-actions .btn {
+  justify-content: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.head-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.share-card {
+  box-sizing: border-box;
+  width: 760px;
+  padding: 24px 26px 18px;
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text);
+  border-top: 4px solid var(--wipe);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.share-card.kill {
+  border-top-color: var(--kill);
+}
+.share-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.share-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+.share-sub,
+.share-muted {
+  color: var(--muted);
+}
+.share-big {
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.share-headline {
+  margin: 10px 0 14px;
+  font-weight: 600;
+}
+.share-cols {
+  display: flex;
+  gap: 22px;
+}
+.share-cols > * {
+  flex: 1;
+  min-width: 0;
+}
+.share-card h4 {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.share-card ul {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.share-card li.wipe strong {
+  color: var(--wipe);
+}
+.share-card li.major strong {
+  color: var(--major);
+}
+.share-map {
+  flex: 0 0 auto !important;
+}
+.share-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.share-bars {
+  display: block;
+  margin-top: 12px;
+}
+.share-bars rect {
+  fill: #3987e5;
+}
+.share-bars rect.kill {
+  fill: var(--kill);
+}
+.share-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.share-brand {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--muted);
+}

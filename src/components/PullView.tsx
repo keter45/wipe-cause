@@ -13,6 +13,8 @@ import { SeekContext } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
 import { SendToDiscord } from './SendToDiscord';
+import { ShareMenu } from './ShareMenu';
+import { PullShareCard } from './ShareCards';
 import { pullPayload } from '../lib/discord';
 import { scorePull } from '../lib/score';
 
@@ -103,6 +105,7 @@ export function PullView({ pull, wclCode, video }: Props) {
             </button>
           )}
           <SendToDiscord payload={() => pullPayload(pull, wclCode)} />
+          <ShareMenu card={() => <PullShareCard pull={pull} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
         </div>
         <div className="boss-bars">
           {pull.bosses.map((b) => (
