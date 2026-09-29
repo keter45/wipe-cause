@@ -9,6 +9,7 @@ import { mmss, shortName } from './format';
 import { PERSONAL_BLAME } from './blame';
 import { analyzePull } from './verdict';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
+import { getMarks } from './marks';
 
 /** Desconto por erro, pela gravidade da regra. */
 const PENALTY: Record<string, number> = { wipe: 25, major: 12, minor: 4, none: 0 };
@@ -49,6 +50,9 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
       add(mp.guid, n * per, `${m.focus ? '★ ' : ''}${m.name}${n > 1 ? ` (${n}×)` : ''}`);
     }
   }
+
+  // erros marcados à mão contam como um erro da gravidade escolhida
+  for (const mk of getMarks(p)) add(mk.guid, PENALTY[mk.severity], `✎ ${mk.what}`);
 
   for (const m of p.mechanics.filter((m) => m.kind === 'interrupt')) {
     const groups = assignments.get(m.key);

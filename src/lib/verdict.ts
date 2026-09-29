@@ -4,6 +4,7 @@ import type { Death, Pull } from '../types';
 import { mmss, pct, shortName } from './format';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { spellIdByName } from './spells';
+import { getMarks } from './marks';
 
 export type Severity = 'wipe' | 'major' | 'minor' | 'info';
 
@@ -82,6 +83,17 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
             .slice(0, 4)
             .map((x) => x.message || shortName(x.name))
             .join(' · ') + (blamed.length > 4 ? ` · +${blamed.length - 4}` : ''),
+    });
+  }
+
+  // 0b. Erros marcados à mão pelo raid leader (o que o log não prova)
+  for (const mk of getMarks(p)) {
+    findings.push({
+      severity: mk.severity,
+      spellId: mk.spellId ?? null,
+      title: `${shortName(mk.name)}: ${mk.what}`,
+      detail: `Marcado pelo raid${mk.t != null ? ` · ${mmss(mk.t)}` : ''}`,
+      player: mk.guid,
     });
   }
 

@@ -3782,3 +3782,47 @@ td.warn {
   background: var(--panel);
   margin-top: 4px;
 }
+.pull-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.mark-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--major) 14%, transparent);
+  color: var(--text);
+}
+.mark-chip.minor {
+  background: color-mix(in srgb, var(--minor) 14%, transparent);
+}
+.mark-chip > svg {
+  color: var(--major);
+}
+.mark-chip.minor > svg {
+  color: var(--minor);
+}
+.icon-btn.xs {
+  width: 18px;
+  height: 18px;
+}
+.mark-form {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.text-input.sm {
+  height: 28px;
+  width: 260px;
+  font-size: 12px;
+}
+.recap-actions {
+  margin: 0 0 8px;
+}

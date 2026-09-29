@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, Star, X } from 'lucide-react';
 import { useNote } from '../lib/notes';
+import { addMark, useMarks } from '../lib/marks';
+import { PullMarks } from './PullMarks';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
@@ -59,6 +61,7 @@ export function PullView(props: Props) {
 }
 
 function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Props) {
+  useMarks(pull);
   const [tab, setTabState] = useState<Tab>(lastTab);
   const setTab = (t: Tab) => {
     lastTab = t;
@@ -141,6 +144,7 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
 
       <div className="pull-toolbar">
         <PullNote pull={pull} />
+        <PullMarks pull={pull} />
         <span className="pull-actions">
           {video && (
             <button className="btn sm" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
@@ -219,7 +223,25 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
         resetKey={`${pull.id}:${tab}`}
       >
       {tab === 'mechanics' && <MechanicsView pull={pull} onRulesChanged={onRulesChanged} />}
-      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} mechanicSpells={mechanicSpellMap([pull])} />}
+      {tab === 'deaths' && (
+        <DeathList
+          deaths={pull.deaths}
+          decisive={decisive}
+          cutoffT={pull.cutoffT ?? null}
+          classes={classesOf(pull)}
+          mechanicSpells={mechanicSpellMap([pull])}
+          onMark={(d) =>
+            addMark(pull, {
+              guid: d.guid,
+              name: d.name,
+              what: `morreu para ${d.killingBlowMechanic ?? d.killingBlow?.spellName ?? 'dano'}`,
+              severity: 'major',
+              t: d.t,
+              spellId: d.killingBlow?.spellId ?? null,
+            })
+          }
+        />
+      )}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
