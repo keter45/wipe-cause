@@ -157,21 +157,26 @@ export interface CooldownRow {
 /** Cooldowns dos dois dentro da janela em que ambos estavam vivos. */
 export function compareCooldowns(me: Sample, ref: Sample, cds: Map<number, CooldownInfo>): { windowMs: number; rows: CooldownRow[] } {
   const windowMs = Math.min(aliveOf(me), aliveOf(ref));
-  const names = new Map<number, string>();
-  const timesOf = (s: Sample, id: number) =>
-    castsOf(s.player).find((c) => c.spellId === id)?.times.filter((t) => t <= windowMs).sort((a, b) => a - b) ?? [];
-  for (const s of [me, ref]) for (const c of castsOf(s.player)) if (cds.has(c.spellId)) names.set(c.spellId, c.name);
-  const rows: CooldownRow[] = [...names].map(([spellId, name]) => {
-    const mine = timesOf(me, spellId);
-    const refT = timesOf(ref, spellId);
-    const gapMs = cds.get(spellId)?.gapMs ?? null;
+  // por nome: o log e o Warcraft Logs às vezes usam IDs diferentes para a mesma magia
+  const byName = new Map<string, { spellId: number; info: CooldownInfo }>();
+  for (const s of [me, ref])
+    for (const c of castsOf(s.player)) {
+      const info = cds.get(c.spellId);
+      if (info && !byName.has(c.name)) byName.set(c.name, { spellId: c.spellId, info });
+    }
+  const timesOf = (s: Sample, name: string) =>
+    castsOf(s.player).find((c) => c.name === name)?.times.filter((t) => t <= windowMs).sort((a, b) => a - b) ?? [];
+  const rows: CooldownRow[] = [...byName].map(([name, { spellId, info }]) => {
+    const mine = timesOf(me, name);
+    const refT = timesOf(ref, name);
+    const gapMs = info.gapMs;
     return {
       spellId,
       name,
       mine,
       ref: refT,
       gapMs,
-      core: (cds.get(spellId)?.usage ?? 0) >= CORE_COOLDOWN_USAGE,
+      core: info.usage >= CORE_COOLDOWN_USAGE,
       firstDelta: mine.length && refT.length ? mine[0] - refT[0] : null,
       possible: gapMs ? Math.floor(windowMs / gapMs) + 1 : null,
     };
@@ -180,6 +185,102 @@ export function compareCooldowns(me: Sample, ref: Sample, cds: Map<number, Coold
   rows.sort((a, b) => Number(b.core) - Number(a.core) || b.ref.length - a.ref.length || b.mine.length - a.mine.length || a.name.localeCompare(b.name));
   return { windowMs, rows };
 }
+
+// ---- janelas de burst
+
+/** Cooldown "maior" (de burst): recarga de pelo menos isto (ou só um uso por pull). */
+export const MAJOR_CD_GAP_MS = 90_000;
+/** Duração da janela de burst a partir do uso do cooldown (a maioria dura 15-20s). */
+export const BURST_WINDOW_MS = 20_000;
+/** Casts um pouco antes do cooldown entram (pré-pot, preparação). */
+export const BURST_LEAD_MS = 3_000;
+
+export interface BurstCast {
+  spellId: number;
+  name: string;
+  /** ms desde o uso do cooldown (negativo = antes) */
+  dt: number;
+}
+
+export interface BurstSide {
+  /** ms do pull em que o cooldown foi usado */
+  start: number;
+  casts: BurstCast[];
+}
+
+export interface BurstWindow {
+  spellId: number;
+  name: string;
+  /** 1º, 2º… uso do cooldown */
+  index: number;
+  mine: BurstSide | null;
+  ref: BurstSide | null;
+}
+
+function burstSide(s: Sample, start: number): BurstSide {
+  const casts: BurstCast[] = [];
+  for (const c of castsOf(s.player))
+    for (const t of c.times) if (t >= start - BURST_LEAD_MS && t <= start + BURST_WINDOW_MS) casts.push({ spellId: c.spellId, name: c.name, dt: t - start });
+  casts.sort((a, b) => a.dt - b.dt || a.name.localeCompare(b.name));
+  return { start, casts };
+}
+
+/**
+ * Cada uso dos cooldowns maiores (os principais da spec, com recarga longa) vira uma janela:
+ * a sequência de casts dos 3s antes aos 20s depois, lado a lado com o mesmo uso da referência.
+ */
+export function burstWindows(me: Sample, ref: Sample, cds: Map<number, CooldownInfo>): BurstWindow[] {
+  const { rows } = compareCooldowns(me, ref, cds);
+  const major = rows.filter((r) => r.core && (r.gapMs == null || r.gapMs >= MAJOR_CD_GAP_MS) && !isCombatPotion(r.name));
+  const out: BurstWindow[] = [];
+  for (const r of major) {
+    // cada uso meu com o uso da referência mais perto no tempo (ela pode ter segurado o
+    // cooldown para outro momento: aí cada um fica sozinho)
+    for (const [i, [a, b]] of pairUses(castTimes(me, r.name), castTimes(ref, r.name)).entries())
+      out.push({
+        spellId: r.spellId,
+        name: r.name,
+        index: i + 1,
+        mine: a != null ? burstSide(me, a) : null,
+        ref: b != null ? burstSide(ref, b) : null,
+      });
+  }
+  // cooldowns usados juntos (Trueshot + trinket) são a mesma janela: vira uma só
+  const startOf = (w: BurstWindow) => w.mine?.start ?? w.ref?.start ?? 0;
+  const near = (a: BurstSide | null, b: BurstSide | null) => a == null || b == null || Math.abs(a.start - b.start) <= BURST_MERGE_MS;
+  const merged: BurstWindow[] = [];
+  for (const w of out) {
+    const same = merged.find((m) => near(m.mine, w.mine) && near(m.ref, w.ref) && (m.mine ?? m.ref) != null && Math.abs(startOf(m) - startOf(w)) <= BURST_MERGE_MS);
+    if (same) {
+      same.name = `${same.name} + ${w.name}`;
+      same.mine ??= w.mine;
+      same.ref ??= w.ref;
+    } else merged.push({ ...w });
+  }
+  return merged.sort((a, b) => startOf(a) - startOf(b));
+}
+
+/** Cooldowns usados com esta diferença contam como a mesma janela. */
+const BURST_MERGE_MS = 6_000;
+
+/** Usos a até esta distância são "o mesmo uso" nos dois. */
+const PAIR_MAX_MS = 45_000;
+
+/** Pareia usos pelo mais próximo no tempo; o que sobra fica sem par. Em ordem de tempo. */
+export function pairUses(mine: number[], ref: number[]): [number | null, number | null][] {
+  const pairs: [number | null, number | null][] = [];
+  const free = new Set(ref.map((_, j) => j));
+  for (const a of [...mine].sort((x, y) => x - y)) {
+    let best: number | null = null;
+    for (const j of free) if (Math.abs(ref[j] - a) <= PAIR_MAX_MS && (best == null || Math.abs(ref[j] - a) < Math.abs(ref[best] - a))) best = j;
+    if (best != null) free.delete(best);
+    pairs.push([a, best != null ? ref[best] : null]);
+  }
+  for (const j of free) pairs.push([null, ref[j]]);
+  return pairs.sort((x, y) => (x[0] ?? x[1]!) - (y[0] ?? y[1]!));
+}
+
+const castTimes = (s: Sample, name: string) => castsOf(s.player).find((c) => c.name === name)?.times ?? [];
 
 // ---- rotação
 
@@ -231,8 +332,9 @@ export function compareRotation(me: Sample, ref: Sample, cds: Map<number, Cooldo
       .get(spellId)!;
   // mesma magia com IDs diferentes entre os dois: casa pelo nome
   const idByName = new Map<string, number>();
+  const skipNames = new Set([me, ref].flatMap((s) => castsOf(s.player).filter((c) => skip.has(c.spellId)).map((c) => c.name)));
   const add = (c: SpellCasts, k: 'mineCasts' | 'refCasts') => {
-    if (skip.has(c.spellId)) return;
+    if (skip.has(c.spellId) || skipNames.has(c.name)) return;
     const id = idByName.get(c.name) ?? c.spellId;
     idByName.set(c.name, id);
     row(id, c.name)[k] = c.times.length;

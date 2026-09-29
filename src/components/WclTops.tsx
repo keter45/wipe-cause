@@ -8,16 +8,27 @@ import type { Sample } from '../lib/performance';
 
 const CLIENTS_URL = 'https://www.warcraftlogs.com/api/clients/';
 
-/** Configuração do client da API (uma vez) e botão para buscar os tops da spec. */
+/**
+ * Configuração do client da API (uma vez) e busca dos tops da spec, automática quando o client
+ * já está salvo (os rankings ficam em cache por dia).
+ */
 export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRanking[]) => void }) {
   const [config, setConfig] = useState<WclConfig | null>(null);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
 
   useEffect(() => {
     if (inTauri) wclGetConfig().then(setConfig).catch(() => setConfig({ configured: false, clientId: null }));
   }, []);
+
+  useEffect(() => {
+    if (config?.configured && !editing && !searched) {
+      setSearched(true);
+      void search();
+    }
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!inTauri) return <p className="muted small">Comparar com os top players do Warcraft Logs funciona no app instalado.</p>;
   if (!config) return null;
@@ -28,6 +39,7 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
         onCancel={config.configured ? () => setEditing(false) : undefined}
         onSaved={() => {
           setEditing(false);
+          setSearched(false);
           wclGetConfig().then(setConfig);
         }}
       />
@@ -50,10 +62,15 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
 
   return (
     <div className="wcl-tops">
-      <button className="btn sm" onClick={search} disabled={busy}>
-        <Trophy size={14} strokeWidth={1.5} aria-hidden />
-        {busy ? 'Buscando…' : 'Buscar top players no Warcraft Logs'}
-      </button>
+      {busy ? (
+        <span className="muted small">
+          <Trophy size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> Buscando os tops da spec no Warcraft Logs…
+        </span>
+      ) : (
+        <button className="link small" onClick={search}>
+          buscar de novo
+        </button>
+      )}
       <button className="link small" onClick={() => setEditing(true)}>
         trocar client
       </button>

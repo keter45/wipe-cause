@@ -6,6 +6,9 @@ import {
   SECONDARY,
   SLOT_NAMES,
   CD_LATE_MS,
+  BURST_LEAD_MS,
+  BURST_WINDOW_MS,
+  burstWindows,
   candidates,
   combatPotions,
   compareCooldowns,
@@ -19,9 +22,12 @@ import {
   statSplit,
   talentDiff,
   totalCpm,
+  type BurstSide,
+  type BurstWindow,
   type CooldownRow,
   type Sample,
 } from '../lib/performance';
+import { ShareMenu } from './ShareMenu';
 import { specLabel } from '../lib/specs';
 import { useTalentTree, type TalentTree } from '../lib/talents';
 import { useTooltip } from '../lib/wowhead';
@@ -101,15 +107,20 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
 
 const topKey = (t: Pick<TopRanking, 'code' | 'fightId'>) => `top:${t.code}:${t.fightId}`;
 
+type Mode = 'tops' | 'raid';
+
 function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[]; wclCode?: string }) {
   const list = useMemo(() => candidates(me, nightPulls), [me, nightPulls]);
-  const [refKey, setRefKey] = useState<string | null>(null);
-  const [tops, setTops] = useState<TopRanking[]>([]);
+  const [mode, setMode] = useState<Mode>('tops');
+  const [raidKey, setRaidKey] = useState<string | null>(null);
+  const [topSel, setTopSel] = useState<string | null>(null);
+  const [tops, setTops] = useState<TopRanking[] | null>(null);
   const [loaded, setLoaded] = useState<Map<string, TopSample>>(new Map());
   const [topError, setTopError] = useState<string | null>(null);
-  const wantTop = refKey?.startsWith('top:') ? tops.find((t) => topKey(t) === refKey) ?? null : null;
-  const topSample = refKey ? loaded.get(refKey) ?? null : null;
-  const ref: Sample | null = wantTop ? topSample : list.find((s) => sampleKey(s) === refKey) ?? defaultReference(me, list);
+  const wantTop = mode === 'tops' ? tops?.find((t) => topKey(t) === topSel) ?? tops?.[0] ?? null : null;
+  const topSample = wantTop ? loaded.get(topKey(wantTop)) ?? null : null;
+  const raidRef = list.find((s) => sampleKey(s) === raidKey) ?? defaultReference(me, list);
+  const ref: Sample | null = mode === 'tops' ? topSample : raidRef;
   const cds = useMemo(() => detectCooldowns([me, ...list, ...loaded.values()]), [me, list, loaded]);
 
   // top escolhido e ainda não baixado: busca o fight dele
@@ -117,7 +128,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
     if (!wantTop || loaded.has(topKey(wantTop))) return;
     let alive = true;
     setTopError(null);
-    loadTop(wantTop, me, tops.indexOf(wantTop))
+    loadTop(wantTop, me, tops?.indexOf(wantTop) ?? 0)
       .then((s) => alive && setLoaded((m) => new Map(m).set(topKey(wantTop), s)))
       .catch((e) => alive && setTopError(String(e)));
     return () => {
@@ -126,73 +137,86 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
   }, [wantTop, loaded, me, tops]);
 
   const healer = isHealer(me.player);
+  const unit = healer ? 'HPS' : 'DPS';
   const picker = (
     <>
-      <label className="perf-field">
-        <span className="muted small">Comparar com</span>
-        <select className="select" value={refKey ?? (ref ? sampleKey(ref) : '')} onChange={(e) => setRefKey(e.target.value)}>
-          {!ref && !wantTop && <option value="">—</option>}
-          {list.length > 0 && (
-            <optgroup label="Na noite (mesma spec)">
-              {list.map((s) => (
-                <option key={sampleKey(s)} value={sampleKey(s)}>
-                  {refLabel(me, s)} — {num(outputPerSec(s))} {healer ? 'HPS' : 'DPS'} vivo
-                </option>
-              ))}
-            </optgroup>
+      <div className="segmented" role="radiogroup" aria-label="Comparar com">
+        <button role="radio" aria-checked={mode === 'tops'} className={mode === 'tops' ? 'active' : ''} onClick={() => setMode('tops')}>
+          Top players (Warcraft Logs)
+        </button>
+        <button role="radio" aria-checked={mode === 'raid'} className={mode === 'raid' ? 'active' : ''} onClick={() => setMode('raid')}>
+          Na própria raid
+        </button>
+      </div>
+      {mode === 'tops' ? (
+        <>
+          <WclTopsButton me={me} onTops={setTops} />
+          {tops && tops.length > 0 && (
+            <div className="chips top-chips" role="radiogroup" aria-label="Top player">
+              {tops.map((t, i) => {
+                const k = topKey(t);
+                const active = wantTop != null && topKey(wantTop) === k;
+                return (
+                  <button key={k} role="radio" aria-checked={active} className={active ? 'active' : ''} onClick={() => setTopSel(k)}>
+                    <span className="top-rank">{i + 1}</span> {t.name}
+                    <span className="muted">
+                      {' '}
+                      {num(t.amount)} {unit}
+                      {t.itemLevel ? ` · ilvl ${t.itemLevel.toFixed(0)}` : ''} · {mmss(t.durationMs)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
-          {tops.length > 0 && (
-            <optgroup label="Top players (Warcraft Logs)">
-              {tops.map((t) => (
-                <option key={topKey(t)} value={topKey(t)}>
-                  {t.name}-{t.server} — {num(t.amount)} {healer ? 'HPS' : 'DPS'}
-                  {t.itemLevel ? ` · ilvl ${t.itemLevel.toFixed(0)}` : ''} · {mmss(t.durationMs)}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-      </label>
-      <WclTopsButton
-        me={me}
-        onTops={(t) => {
-          setTops(t);
-          if (t[0]) setRefKey(topKey(t[0]));
-        }}
-      />
-      <PerfLinks pull={me.pull} me={me} wclCode={wclCode} top={topSample ? { ...topSample.source, name: topSample.source.name } : null} />
+        </>
+      ) : (
+        <label className="perf-field">
+          <span className="muted small">Outro da mesma spec na noite (ou você em outra tentativa)</span>
+          <select className="select" value={raidRef ? sampleKey(raidRef) : ''} onChange={(e) => setRaidKey(e.target.value)}>
+            {!raidRef && <option value="">—</option>}
+            {list.map((s) => (
+              <option key={sampleKey(s)} value={sampleKey(s)}>
+                {refLabel(me, s)} — {num(outputPerSec(s))} {unit} vivo
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <PerfLinks pull={me.pull} me={me} wclCode={wclCode} top={mode === 'tops' && topSample ? topSample.source : null} />
     </>
   );
 
-  if (wantTop && !ref)
-    return (
-      <>
-        {picker}
-        <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? `Baixando o fight de ${wantTop.name} no Warcraft Logs…`}</p>
-      </>
-    );
   if (!ref)
     return (
       <>
         {picker}
-        <p className="muted pad">
-          Ninguém mais jogou de {specLabel(me.player.specId)} neste boss na noite (nem você em outro pull com 30s+ vivo). Busque os top players do
-          Warcraft Logs acima.
-        </p>
+        {mode === 'tops' ? (
+          wantTop && <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? `Baixando o fight de ${wantTop.name} no Warcraft Logs…`}</p>
+        ) : (
+          <p className="muted pad">Ninguém mais jogou de {specLabel(me.player.specId)} neste boss na noite (nem você em outro pull com 30s+ vivo).</p>
+        )}
       </>
     );
 
   const [mo, ro] = [outputPerSec(me), outputPerSec(ref)];
   const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
   const insights = perfInsights(me, ref, cds);
+  const refName = mode === 'tops' && topSample ? `${topSample.source.name} (top ${num(topSample.source.amount)} ${unit})` : refLabel(me, ref);
 
   return (
     <>
       {picker}
-      <p className="muted small perf-note">
-        Mesma spec, no mesmo boss e dificuldade. Tudo é por minuto vivo e os cooldowns são comparados só no tempo em que os dois estavam vivos, então
-        dá para comparar wipes de durações diferentes.
-      </p>
+      <div className="perf-bar">
+        <p className="muted small perf-note">
+          {mode === 'tops' ? 'Parse do Warcraft Logs com item level parecido' : 'Mesma spec, no mesmo boss e dificuldade'}. Tudo é por minuto vivo e os
+          cooldowns são comparados só no tempo em que os dois estavam vivos, então dá para comparar um wipe com um kill.
+        </p>
+        <ShareMenu
+          card={() => <PerfShareCard me={me} ref_={ref} refName={refName} cds={cds} />}
+          name={`${shortName(me.player.name)} - ${me.pull.encounterName} ${me.pull.difficultyName} - pull ${me.pull.pullNumber}`}
+        />
+      </div>
 
       <div className="death-stats perf-stats">
         <Stat label={`${healer ? 'Cura' : 'Dano'} por segundo vivo`} mine={num(mo)} ref={num(ro)} tone={diff <= -15 ? 'bad' : diff < -3 ? 'warn' : ''} extra={ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : undefined} />
@@ -215,6 +239,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
         </section>
       )}
 
+      <Bursts me={me} ref_={ref} cds={cds} />
       <Cooldowns me={me} ref_={ref} cds={cds} />
       <Rotation me={me} ref_={ref} cds={cds} />
       <Potions me={me} ref_={ref} />
@@ -231,6 +256,141 @@ function Stat({ label, mine, ref, tone = '', extra }: { label: string; mine: str
         {mine} {extra && <span className="small">({extra})</span>}
       </strong>
       <span className="muted small">referência: {ref}</span>
+    </div>
+  );
+}
+
+// ---- janelas de burst
+
+const burstKey = (w: BurstWindow) => `${w.name}#${w.index}`;
+
+/** Cada uso de cooldown maior vira uma janela (chip); dentro, a sequência de casts lado a lado. */
+function Bursts({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnType<typeof detectCooldowns> }) {
+  const windows = useMemo(() => burstWindows(me, ref_, cds), [me, ref_, cds]);
+  const [sel, setSel] = useState<string | null>(null);
+  if (windows.length === 0) return null;
+  const w = windows.find((x) => burstKey(x) === sel) ?? windows[0];
+  return (
+    <section className="perf-section">
+      <h4>
+        Janelas de burst <span className="muted small">sequência de casts de {BURST_LEAD_MS / 1000}s antes a {BURST_WINDOW_MS / 1000}s depois de cada cooldown maior</span>
+      </h4>
+      <div className="chips burst-chips" role="radiogroup" aria-label="Janela de burst">
+        {windows.map((x) => {
+          const k = burstKey(x);
+          const active = burstKey(w) === k;
+          return (
+            <button key={k} role="radio" aria-checked={active} className={`${active ? 'active' : ''} ${!x.mine ? 'missing' : ''}`} onClick={() => setSel(k)}>
+              <SpellIcon spellId={x.spellId} size={16} /> {x.name} {x.index}
+              <span className="muted"> {x.mine ? mmss(x.mine.start) : 'não usou'}</span>
+            </button>
+          );
+        })}
+      </div>
+      <BurstCompare w={w} />
+    </section>
+  );
+}
+
+export function BurstCompare({ w }: { w: BurstWindow }) {
+  return (
+    <div className="burst-compare">
+      <BurstLane label="Você" side={w.mine} />
+      <BurstLane label="Referência" side={w.ref} />
+      {w.mine && w.ref && (
+        <p className="muted small">
+          {w.mine.casts.length} casts contra {w.ref.casts.length} na janela · usado {signedSec(w.mine.start - w.ref.start)} em relação à referência (
+          {mmss(w.mine.start)} × {mmss(w.ref.start)})
+        </p>
+      )}
+    </div>
+  );
+}
+
+function BurstLane({ label, side }: { label: string; side: BurstSide | null }) {
+  return (
+    <div className="burst-lane">
+      <span className="muted small burst-who">{label}</span>
+      {side ? (
+        <ol className="burst-seq">
+          {side.casts.map((c, i) => (
+            <li key={i} className={c.dt < 0 ? 'pre' : ''} title={`${c.name} ${c.dt >= 0 ? '+' : '−'}${(Math.abs(c.dt) / 1000).toFixed(1)}s`}>
+              <SpellIcon spellId={c.spellId} size={24} />
+              <span className="burst-dt">{(c.dt / 1000).toFixed(0)}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <span className="small warn">não usou este cooldown</span>
+      )}
+    </div>
+  );
+}
+
+// ---- cartão para exportar e mandar ao jogador
+
+export function PerfShareCard({ me, ref_, refName, cds }: { me: Sample; ref_: Sample; refName: string; cds: ReturnType<typeof detectCooldowns> }) {
+  const healer = isHealer(me.player);
+  const [mo, ro] = [outputPerSec(me), outputPerSec(ref_)];
+  const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
+  const insights = perfInsights(me, ref_, cds).slice(0, 8);
+  const windows = burstWindows(me, ref_, cds).slice(0, 4);
+  const rotation = compareRotation(me, ref_, cds).filter((r) => r.core).slice(0, 8);
+  return (
+    <div className="share-card perf-card">
+      <header className="share-head">
+        <div>
+          <div className="share-title">
+            {shortName(me.player.name)} · {specLabel(me.player.specId)}
+          </div>
+          <div className="share-sub">
+            {me.pull.encounterName} {me.pull.difficultyName} · pull {me.pull.pullNumber} · comparado com {refName}
+          </div>
+        </div>
+        <div className={`share-big ${diff < -3 ? 'warn' : ''}`}>{ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : ''}</div>
+      </header>
+      <p className="share-headline">
+        {healer ? 'Cura' : 'Dano'} por segundo vivo: {num(mo)} × {num(ro)} · item level {me.player.setup?.itemLevel.toFixed(1) ?? '—'} ×{' '}
+        {ref_.player.setup?.itemLevel.toFixed(1) ?? '—'}
+      </p>
+      {insights.length > 0 && (
+        <section>
+          <h4>Pontos principais</h4>
+          <ul>
+            {insights.map((i, k) => (
+              <li key={k} className={i.tone === 'bad' ? 'wipe' : i.tone === 'warn' ? 'major' : ''}>
+                {i.spellId != null && <SpellIcon spellId={i.spellId} size={16} />} <strong>{i.text}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {windows.length > 0 && (
+        <section>
+          <h4>Janelas de burst</h4>
+          {windows.map((w) => (
+            <div key={burstKey(w)} className="perf-card-burst">
+              <SpellName spellId={w.spellId} name={`${w.name} ${w.index}`} size={16} />
+              <BurstCompare w={w} />
+            </div>
+          ))}
+        </section>
+      )}
+      {rotation.length > 0 && (
+        <section>
+          <h4>Rotação (casts por minuto: você × referência)</h4>
+          <ul>
+            {rotation.map((r) => (
+              <li key={r.spellId}>
+                <SpellName spellId={r.spellId} name={r.name} size={16} /> {r.mineCpm.toFixed(1)} × {r.refCpm.toFixed(1)}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <footer className="share-foot">
+        <span className="share-brand">Wipe Cause</span>
+      </footer>
     </div>
   );
 }

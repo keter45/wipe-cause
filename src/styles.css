@@ -3073,3 +3073,77 @@ td.warn {
   margin: 0;
   padding-left: 18px;
 }
+.perf > .segmented {
+  align-self: flex-start;
+}
+.top-chips button,
+.burst-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.top-rank {
+  color: var(--accent);
+  font-weight: 700;
+}
+.burst-chips button.missing {
+  border-style: dashed;
+}
+.perf-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.burst-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--panel-2);
+}
+.burst-compare p {
+  margin: 0;
+}
+.burst-lane {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.burst-who {
+  flex: 0 0 80px;
+  padding-top: 5px;
+}
+.burst-seq {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.burst-seq li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.burst-seq li.pre {
+  opacity: 0.55;
+}
+.burst-dt {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.perf-card .share-big.warn {
+  color: var(--major);
+}
+.perf-card-burst {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}

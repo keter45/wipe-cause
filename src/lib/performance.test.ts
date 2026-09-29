@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { GearItem, SpellCasts } from '../types';
 import {
+  burstWindows,
+  pairUses,
   candidates,
   compareCooldowns,
   compareItems,
@@ -79,6 +81,39 @@ describe('comparação de desempenho', () => {
     const rows = compareRotation({ pull: p, player: a }, { pull: p, player: b }, new Map());
     expect(rows).toHaveLength(1);
     expect(rows[0].mineCasts).toBe(3);
+  });
+});
+
+describe('janelas de burst', () => {
+  it('pareia usos pelo mais próximo no tempo', () => {
+    expect(pairUses([4_000, 124_000], [4_500, 120_000])).toEqual([
+      [4_000, 4_500],
+      [124_000, 120_000],
+    ]);
+    // a referência segurou o cooldown para depois: cada um fica sozinho
+    expect(pairUses([4_000], [120_000])).toEqual([
+      [4_000, null],
+      [null, 120_000],
+    ]);
+  });
+
+  it('cooldown maior vira janela com a sequência de casts; usados juntos viram uma', () => {
+    const casts = (cd: number, trinket: number) => [
+      cast(288613, 'Trueshot', [cd, cd + 120_000]),
+      cast(1, 'Voracious Heart', [trinket, trinket + 120_000]),
+      cast(19434, 'Aimed Shot', every(3000, 239_000)),
+    ];
+    const a = { pull: pull(0, 0, 240_000), player: player('A', { aliveMs: 240_000, casts: casts(4_000, 4_200) }) };
+    const b = { pull: pull(1, 0, 240_000), player: player('B', { aliveMs: 240_000, casts: casts(10_000, 10_300) }) };
+    const w = burstWindows(a, b, detectCooldowns([a, b]));
+    expect(w.map((x) => [x.name, x.index, x.mine?.start, x.ref?.start])).toEqual([
+      ['Trueshot + Voracious Heart', 1, 4_000, 10_000],
+      ['Trueshot + Voracious Heart', 2, 124_000, 130_000],
+    ]);
+    const seq = w[0].mine!.casts;
+    expect(seq[0].dt).toBeGreaterThanOrEqual(-3_000);
+    expect(seq.at(-1)!.dt).toBeLessThanOrEqual(20_000);
+    expect(seq.map((c) => c.name)).toContain('Aimed Shot');
   });
 });
 
