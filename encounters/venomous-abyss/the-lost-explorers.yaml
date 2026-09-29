@@ -1,0 +1,184 @@
+schema_version: 1
+raid: venomous-abyss
+boss: the-lost-explorers
+name: "The Lost Explorers"
+encounter_id: 3497
+source:
+  - https://www.mythictrap.com/en/venomous-abyss/the-lost-explorers/mythic
+  - "log: Archive-WoWCombatLog-092226 (1 kill mítico + 1 heroico) — IDs vistos no log, pouca amostra"
+updated: 2026-09-29
+difficulties: [normal, heroic, mythic]
+
+units:
+  - { key: gebbo, name: "Trader Gebbo", npc_id: null, boss: true }
+  - { key: nama, name: "First Mate Nama", npc_id: null, boss: true }
+  - { key: iku, name: "Scrollsage Iku", npc_id: null, boss: true }
+  - { key: morzahi, name: "Mor'zahi", npc_id: null }
+  - { key: useless_junk, name: "Useless Junk", npc_id: null }
+  - { key: creepy_statue, name: "Creepy Statue", npc_id: null }
+
+mechanics:
+  # ---------- Mor'zahi / peixe ----------
+  - key: final_ascension
+    name: "Final Ascension"
+    type: info
+    source_unit: morzahi
+    severity: wipe
+    detect: { cast_id: 1297075 }
+    tip: "Achar o peixe nas caixas e bater numa tartaruga antes da energia encher; a tartaruga escolhida ganha a ultimate."
+    message: "Final Ascension"
+    notes: "Nos logs só há kills: falta ver um Final Ascension que passou para saber o ID da falha (1292779 também aparece)."
+
+  - key: malevolent_presence
+    name: "Malevolent Presence"
+    type: unavoidable
+    source_unit: morzahi
+    severity: none
+    detect: { damage_ids: [1295450] }
+    tip: "Dano contínuo no raid."
+    message: "Malevolent Presence"
+
+  - key: kill_evenly
+    name: "Matar juntos"
+    type: info
+    severity: major
+    tip: "Cada tartaruga ganha um efeito de enrage se as outras morrerem antes: baixar as três juntas (no Heroico, só uma outra perto da Nama)."
+    message: "Matar as tartarugas juntas"
+    notes: "United Defense (Heroico+) e os enrages ainda sem ID no log."
+
+  # ---------- Gebbo: caixas ----------
+  - key: throw_junk
+    name: "Throw Junk"
+    type: avoidable_damage
+    source_unit: gebbo
+    severity: minor
+    detect: { damage_ids: [1291935] }
+    tip: "Sair das marcas onde as caixas caem."
+    message: "{player} foi atingido por uma caixa ({count}x)"
+
+  - key: relic_rupture
+    name: "Relic Rupture"
+    type: failure_event
+    source_unit: useless_junk
+    severity: major
+    detect: { fail_ids: [1310027] }
+    tip: "Pisar nas caixas antes dos 25s (uma delas tem o peixe)."
+    message: "{count} caixa(s) explodiram sem ninguém pisar"
+
+  - key: splinters
+    name: "Splinters"
+    type: unavoidable
+    source_unit: gebbo
+    severity: none
+    detect: { damage_ids: [1312853, 1308853], aura_id: 1312853 }
+    tip: "DoT de quem pisa nas caixas (no Mítico vai para o raid inteiro): dividir as caixas."
+    message: "Splinters"
+
+  - key: explosive_surprise
+    name: "Explosive Surprise"
+    type: avoidable_damage
+    source_unit: gebbo
+    severity: major
+    detect: { damage_ids: [1296245, 1297650] }
+    tip: "Levar a bomba para a borda e pular nos cogumelos para escapar da onda."
+    message: "{player} foi pego pela Explosive Surprise ({count}x)"
+    notes: "1296245 = onda, 1297650 = fogo que fica no chão. Poucos hits na amostra."
+
+  # ---------- Nama ----------
+  - key: mighty_thud
+    name: "Mighty Thud"
+    type: unavoidable
+    source_unit: nama
+    severity: none
+    detect: { damage_ids: [1300237, 1310500], cast_id: 1296095 }
+    tip: "Dividir o raid entre os três círculos de soak."
+    message: "Mighty Thud"
+    notes: "Sem ID de falha no log (não viu círculo sem soak)."
+
+  - key: shell_spin
+    name: "Shell Spin"
+    type: info
+    source_unit: nama
+    severity: minor
+    detect: { cast_id: 1296062, aura_id: 1291918 }
+    tip: "Melee leva as conchas para a borda, longe dos ranged."
+    message: "Shell Spin"
+
+  - key: steady_strikes
+    name: "Steady Strikes"
+    type: stack_limit
+    source_unit: nama
+    roles: [tank]
+    severity: minor
+    detect: { aura_id: 1291929 }
+    tip: "Vulnerabilidade física que sobe a cada ataque: acompanhar os stacks."
+    message: "{player} chegou a {stacks} stacks de Steady Strikes"
+    notes: "Chega a 58 stacks no log; sem warn_stacks até calibrar."
+
+  # ---------- Iku ----------
+  - key: icebound_flames
+    name: "Icebound Flames"
+    type: interrupt
+    source_unit: iku
+    severity: minor
+    detect: { cast_id: 1286922 }
+    accept: [interrupt, cc]
+    tip: "Cortar o bolt do Iku; se passar, dispelar o DoT."
+    message: "{count} Icebound Flames passaram sem interrupt"
+
+  - key: icebound_flames_dot
+    name: "Burning Flames / Piercing Frost"
+    type: unavoidable
+    source_unit: iku
+    severity: none
+    detect: { damage_ids: [1310667, 1310662] }
+    tip: "DoT do Icebound Flames que passou."
+    message: "Icebound Flames"
+
+  - key: blink_nova
+    name: "Blink Nova"
+    type: unavoidable
+    source_unit: iku
+    severity: none
+    detect: { damage_ids: [1294334], aura_id: 1296025 }
+    tip: "Marcado vai para longe do raid; o dano cai com a distância."
+    message: "Blink Nova"
+
+  - key: frostfire_volley
+    name: "Frostfire Volley"
+    type: info
+    source_unit: iku
+    severity: major
+    detect: { damage_ids: [1295893, 1295985], cast_id: 1295891 }
+    tip: "Fogo solta a poça de um lado e gelo do outro; depois entrar numa poça oposta para limpar o DoT (nunca encostar no debuff oposto)."
+    message: "Frostfire Volley"
+    notes: "Ainda sem separar a explosão (encostar no debuff oposto) do dano normal."
+
+  - key: frostfire_patches
+    name: "Fire / Frost Patch"
+    type: unavoidable
+    source_unit: iku
+    severity: none
+    detect: { damage_ids: [1297648, 1297649] }
+    tip: "Entrar numa poça oposta limpa o DoT: o dano é esperado."
+    message: "Fire / Frost Patch"
+
+  - key: shredding_shards
+    name: "Shredding Shards"
+    type: unavoidable
+    source_unit: iku
+    roles: [tank]
+    severity: none
+    detect: { damage_ids: [1310616], aura_id: 1295858 }
+    tip: "DoT e +50% de dano mágico no tank: trocar a cada cast."
+    message: "Shredding Shards"
+
+  # ---------- Sala ----------
+  - key: evil_eyes
+    name: "Evil Eyes"
+    type: avoidable_damage
+    source_unit: creepy_statue
+    severity: minor
+    detect: { damage_ids: [1292764] }
+    tip: "Desviar dos círculos das estátuas."
+    message: "{player} tomou Evil Eyes ({count}x)"
