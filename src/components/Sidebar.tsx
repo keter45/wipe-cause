@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronRight, FileX, Pin, PinOff, Plus, RefreshCw, Trash, TrendingUp } from 'lucide-react';
+import { ChevronRight, FileX, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
 import type { LogReport } from '../types';
 import { inTauri, readReportFile, sameLog, type HistoryEntry } from '../lib/api';
 import { logTitle, pct } from '../lib/format';
 import type { UpdateState } from '../lib/updater';
+import { missingRequired, useSetup } from '../lib/setup';
 import { NIGHT, PullList, type PullListProps } from './PullList';
 
 interface Props extends PullListProps {
@@ -11,10 +12,10 @@ interface Props extends PullListProps {
   report: LogReport | null;
   busy: boolean;
   onNew: () => void;
-  /** a lista de logs está aberta (destaca "Nova análise") */
-  browsing: boolean;
-  trendsActive: boolean;
+  /** página aberta na área principal (destaca o item da navegação) */
+  page: 'analysis' | 'browse' | 'trends' | 'settings';
   onTrends: () => void;
+  onSettings: () => void;
   appVersion: string | null;
   updateState: UpdateState;
   onCheckUpdates: () => void;
@@ -53,7 +54,7 @@ export function Sidebar(props: Props) {
     <aside className="sidebar" aria-label="Análises">
       <div className="sidebar-top">
         {inTauri ? (
-          <button className={`side-item new ${props.browsing ? 'active' : ''}`} onClick={props.onNew} aria-current={props.browsing ? 'page' : undefined}>
+          <button className={`side-item new ${props.page === 'browse' ? 'active' : ''}`} onClick={props.onNew} aria-current={props.page === 'browse' ? 'page' : undefined}>
             <Plus size={16} strokeWidth={2} aria-hidden /> Nova análise
           </button>
         ) : (
@@ -70,7 +71,7 @@ export function Sidebar(props: Props) {
             />
           </label>
         )}
-        <button className={`side-item ${props.trendsActive ? 'active' : ''}`} onClick={props.onTrends} aria-current={props.trendsActive ? 'page' : undefined}>
+        <button className={`side-item ${props.page === 'trends' ? 'active' : ''}`} onClick={props.onTrends} aria-current={props.page === 'trends' ? 'page' : undefined}>
           <TrendingUp size={16} strokeWidth={1.5} aria-hidden /> Evolução
         </button>
       </div>
@@ -127,7 +128,10 @@ export function Sidebar(props: Props) {
         )}
       </div>
 
-      {inTauri && <UpdateFooter version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
+      <div className="sidebar-foot">
+        <SettingsItem active={props.page === 'settings'} onClick={props.onSettings} />
+        {inTauri && <UpdateFooter version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
+      </div>
     </aside>
   );
 }
@@ -216,6 +220,22 @@ function EntryRow({
   );
 }
 
+/** Configurações no rodapé; um alerta quando falta algo essencial (a pasta de logs). */
+function SettingsItem({ active, onClick }: { active: boolean; onClick: () => void }) {
+  const { status } = useSetup();
+  const missing = missingRequired(status);
+  return (
+    <button className={`side-item ${active ? 'active' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
+      <Settings size={16} strokeWidth={1.5} aria-hidden /> Configurações
+      {missing && (
+        <span className="side-alert" title="Falta configurar a pasta de logs do WoW">
+          falta configurar
+        </span>
+      )}
+    </button>
+  );
+}
+
 function UpdateFooter({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
   const label =
     state.kind === 'checking'
@@ -228,7 +248,7 @@ function UpdateFooter({ version, state, onCheck }: { version: string | null; sta
             ? 'Baixando atualização…'
             : 'Procurar atualizações';
   return (
-    <div className="sidebar-foot">
+    <div className="update-foot">
       <span className="muted small">{version ? `Wipe Cause v${version}` : 'Wipe Cause'}</span>
       <button className="foot-check small" onClick={onCheck} disabled={state.kind === 'checking' || state.kind === 'downloading'} title="Procurar atualizações">
         <RefreshCw size={12} strokeWidth={1.5} className={state.kind === 'checking' ? 'spin' : ''} aria-hidden /> {label}

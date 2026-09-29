@@ -3,6 +3,7 @@ import { Check, ClipboardCopy, FileCode, ImageDown, MessageSquare, Share2 } from
 import { inTauri } from '../lib/api';
 import { cardHtml, cardPng, copyPng, fileSlug, saveHtml, savePng, sendPngToDiscord } from '../lib/share';
 import { Popover } from './Popover';
+import { useSetup } from '../lib/setup';
 
 type Action = 'copy' | 'png' | 'html' | 'discord';
 
@@ -25,6 +26,7 @@ const DONE: Record<Action, string> = {
  */
 export function ShareMenu({ card, name }: { card: () => ReactElement; name: string }) {
   const [open, setOpen] = useState(false);
+  const hasDiscord = !!useSetup().status?.discord?.webhook;
   const [busy, setBusy] = useState<Action | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const file = fileSlug(name) || 'wipe-cause';
@@ -49,7 +51,7 @@ export function ShareMenu({ card, name }: { card: () => ReactElement; name: stri
     }
   }
 
-  const actions: Action[] = inTauri ? ['copy', 'png', 'html', 'discord'] : ['copy', 'png', 'html'];
+  const actions: Action[] = inTauri && hasDiscord ? ['copy', 'png', 'html', 'discord'] : ['copy', 'png', 'html'];
   const icons = { copy: ClipboardCopy, png: ImageDown, html: FileCode, discord: MessageSquare };
 
   return (

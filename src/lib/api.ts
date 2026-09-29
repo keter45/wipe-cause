@@ -277,3 +277,13 @@ export const historyDeleteUnpinned = () => (inTauri ? invoke<number>('history_de
 /** O relatório aberto é esta entrada do histórico? (mesmo arquivo de log) */
 const normPath = (p: string) => p.replaceAll('\\', '/').toLowerCase();
 export const sameLog = (a: string, b: string) => normPath(a) === normPath(b);
+
+/** Pasta onde o usuário pode pôr regras de boss (*.yaml) que substituem as embutidas. */
+export const rulesDir = () => (inTauri ? invoke<string | null>('rules_dir') : Promise.resolve(null));
+
+/** Mostra o arquivo ou pasta no Explorador de Arquivos (permitido pelo opener:default). */
+export async function revealInExplorer(path: string) {
+  if (!inTauri) return;
+  const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
+  await revealItemInDir(path);
+}

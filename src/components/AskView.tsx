@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Bot, ExternalLink, FileText, RotateCcw, Send, Settings2 } from 'lucide-react';
+import { Bot, FileText, RotateCcw, Send, Settings2 } from 'lucide-react';
 import type { Pull } from '../types';
-import { inTauri, openExternal } from '../lib/api';
-import { PRESETS, aiChat, aiGetConfig, aiListModels, aiSetConfig, type AiConfig, type ChatMessage } from '../lib/ai';
+import { inTauri } from '../lib/api';
+import { PRESETS, aiChat, type ChatMessage } from '../lib/ai';
+import { useSetup } from '../lib/setup';
 import { SUGGESTED, SYSTEM_PROMPT, estimateTokens, pullContext } from '../lib/aiContext';
 import { spellIndex } from '../lib/spells';
 import { SpellName } from './SpellIcon';
@@ -15,8 +16,7 @@ const HISTORY = 10;
 
 /** "Perguntar à IA": conversa sobre este pull, com o dossiê da luta como contexto. */
 export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }) {
-  const [config, setConfig] = useState<AiConfig | null | undefined>(undefined);
-  const [settings, setSettings] = useState(false);
+  const { status, openSettings } = useSetup();
   const [messages, setMessages] = useState<ChatMessage[]>(() => conversations.get(convKey(pull)) ?? []);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -27,13 +27,6 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
   const context = useMemo(() => pullContext(pull, nightPulls), [pull, nightPulls]);
   const spells = useMemo(() => spellIndex(pull), [pull]);
 
-  useEffect(() => {
-    // navegador (dev): conversa de exemplo; ?demoAiSetup=1 mostra a configuração
-    if (!inTauri) return setConfig(new URLSearchParams(window.location.search).has('demoAiSetup') ? null : { provider: 'demo', baseUrl: '', model: 'demonstração', hasKey: true });
-    aiGetConfig()
-      .then(setConfig)
-      .catch(() => setConfig(null));
-  }, []);
   useEffect(() => {
     setMessages(conversations.get(convKey(pull)) ?? []);
     setError(null);
@@ -66,17 +59,22 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
     }
   }
 
-  if (config === undefined) return <p className="muted pad">Carregando…</p>;
-  if (config === null || settings) {
+  if (!status) return <p className="muted pad">Carregando…</p>;
+  const config = status.ai;
+  if (!config) {
     return (
-      <AiSettings
-        current={config}
-        onCancel={config ? () => setSettings(false) : undefined}
-        onSaved={(c) => {
-          setConfig(c);
-          setSettings(false);
-        }}
-      />
+      <div className="panel setup-cta">
+        <Bot size={20} strokeWidth={1.5} className="muted" aria-hidden />
+        <div>
+          <h3>Pergunte à IA sobre este pull</h3>
+          <p className="muted small">
+            Escolha um provedor gratuito (Gemini, Groq, OpenRouter) ou o Ollama no seu PC. A IA recebe um dossiê da luta e responde com base nele.
+          </p>
+        </div>
+        <button className="btn primary" onClick={() => openSettings('ai')}>
+          <Settings2 size={14} strokeWidth={1.5} aria-hidden /> Configurar a IA
+        </button>
+      </div>
     );
   }
 
@@ -100,8 +98,8 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
             </button>
           )}
           {inTauri && (
-            <button className="btn ghost sm" onClick={() => setSettings(true)}>
-              <Settings2 size={14} strokeWidth={1.5} aria-hidden /> Configurar
+            <button className="btn ghost sm" onClick={() => openSettings('ai')}>
+              <Settings2 size={14} strokeWidth={1.5} aria-hidden /> Trocar provedor
             </button>
           )}
         </span>
@@ -168,139 +166,6 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
 async function demoAnswer(q: string): Promise<string> {
   await new Promise((r) => setTimeout(r, 500));
   return `**Modo navegador** — resposta de exemplo para: _${q}_\n\n- No app, a pergunta vai para o provedor configurado junto com o dossiê do pull.\n- Exemplo com habilidades: a **Virulent Mutation (detonação)** matou 4; ninguém usou defensivo contra Venom Rupture.\n- Use **Ver dossiê** para conferir o que a IA recebe.`;
-}
-
-// ---------------------------------------------------------------------------
-// Configuração do provedor
-
-function AiSettings({ current, onSaved, onCancel }: { current: AiConfig | null; onSaved: (c: AiConfig) => void; onCancel?: () => void }) {
-  const [provider, setProvider] = useState(current?.provider ?? 'gemini');
-  const preset = PRESETS.find((p) => p.id === provider) ?? PRESETS[0];
-  const same = current?.provider === provider;
-  const [baseUrl, setBaseUrl] = useState(same ? current!.baseUrl : preset.baseUrl);
-  const [model, setModel] = useState(same ? current!.model : preset.model);
-  const [key, setKey] = useState('');
-  const [models, setModels] = useState<string[]>([]);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  function pick(id: string) {
-    const p = PRESETS.find((x) => x.id === id)!;
-    setProvider(id);
-    const keep = current?.provider === id;
-    setBaseUrl(keep ? current!.baseUrl : p.baseUrl);
-    setModel(keep ? current!.model : p.model);
-    setModels([]);
-    setMsg(null);
-  }
-
-  async function loadModels() {
-    setBusy(true);
-    setMsg(null);
-    try {
-      const list = await aiListModels(provider, baseUrl, key);
-      setModels(list);
-      setMsg({ ok: true, text: `${list.length} modelos disponíveis: escolha na lista do campo "Modelo".` });
-    } catch (e) {
-      setMsg({ ok: false, text: String(e) });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function save(test: boolean) {
-    setBusy(true);
-    setMsg(null);
-    try {
-      const cfg: AiConfig = { provider, baseUrl, model, hasKey: current?.hasKey ?? false };
-      await aiSetConfig(cfg, key ? key : undefined);
-      if (test) {
-        const r = await aiChat([{ role: 'user', content: 'Responda só: ok' }]);
-        setMsg({ ok: true, text: `Conectado. Resposta do modelo: "${r.trim().slice(0, 60)}"` });
-      }
-      const saved = await aiGetConfig();
-      if (!test && saved) onSaved(saved);
-      else if (saved) setKey('');
-    } catch (e) {
-      setMsg({ ok: false, text: String(e) });
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const needsKey = preset.keyUrl != null;
-  const keySaved = same && current?.hasKey;
-  return (
-    <div className="panel ai-settings">
-      <h3>
-        <Bot size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> Perguntar à IA — escolha o provedor
-      </h3>
-      <p className="muted small">Todos têm opção gratuita. A chave fica guardada no cofre de credenciais do Windows, não em arquivo.</p>
-
-      <div className="segmented wrap" role="radiogroup" aria-label="Provedor">
-        {PRESETS.map((p) => (
-          <button key={p.id} role="radio" aria-checked={provider === p.id} className={provider === p.id ? 'active' : ''} onClick={() => pick(p.id)}>
-            {p.label}
-          </button>
-        ))}
-      </div>
-      <p className="small">{preset.note}</p>
-
-      {needsKey && (
-        <label className="field">
-          Chave de API
-          <input
-            className="text-input"
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            value={key}
-            placeholder={keySaved ? '•••••••• (salva — deixe vazio para manter)' : 'cole a chave aqui'}
-            onChange={(e) => setKey(e.target.value)}
-          />
-          {preset.keyUrl && (
-            <button type="button" className="link small" onClick={() => openExternal(preset.keyUrl!)}>
-              Criar chave grátis <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
-            </button>
-          )}
-        </label>
-      )}
-      <label className="field">
-        URL da API
-        <input className="text-input" value={baseUrl} spellCheck={false} onChange={(e) => setBaseUrl(e.target.value)} />
-      </label>
-      <label className="field">
-        Modelo
-        <span className="model-row">
-          <input className="text-input" list="ai-models" value={model} spellCheck={false} placeholder="nome do modelo" onChange={(e) => setModel(e.target.value)} />
-          <button type="button" className="btn sm" onClick={loadModels} disabled={busy || !baseUrl}>
-            Carregar modelos
-          </button>
-        </span>
-        <datalist id="ai-models">
-          {models.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
-      </label>
-
-      {msg && <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>{msg.text}</p>}
-      <div className="dialog-actions">
-        <button className="btn" onClick={() => save(true)} disabled={busy || !model || (needsKey && !key && !keySaved)}>
-          Testar
-        </button>
-        <span className="topbar-spacer" />
-        {onCancel && (
-          <button className="btn" onClick={onCancel}>
-            Cancelar
-          </button>
-        )}
-        <button className="btn primary" onClick={() => save(false)} disabled={busy || !model || !baseUrl || (needsKey && !key && !keySaved)}>
-          Salvar
-        </button>
-      </div>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------

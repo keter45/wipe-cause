@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ExternalLink, NotebookPen, Play, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, X } from 'lucide-react';
 import { useNote } from '../lib/notes';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
@@ -25,6 +25,9 @@ import { scorePull } from '../lib/score';
 
 type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'ask';
 
+/** Aba aberta por último: continua nela ao trocar de pull ou voltar das Configurações. */
+let lastTab: Tab = 'deaths';
+
 const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info: 'Info' } as const;
 
 interface Props {
@@ -44,7 +47,11 @@ const bossHpOf = (pull: Pull) => (b: Pull['bosses'][number]) => (pull.cutoffT !=
 const classesOf = (p: Pull) => new Map(p.players.map((x) => [x.guid, x.class] as const));
 
 export function PullView({ pull, wclCode, video, nightPulls }: Props) {
-  const [tab, setTab] = useState<Tab>('deaths');
+  const [tab, setTabState] = useState<Tab>(lastTab);
+  const setTab = (t: Tab) => {
+    lastTab = t;
+    setTabState(t);
+  };
   const [videoOpen, setVideoOpen] = useState(false);
   const [showMinor, setShowMinor] = useState(false);
   const [seekReq, setSeekReq] = useState<{ t: number; n: number } | null>(null);
@@ -68,14 +75,24 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
   const main = verdict.findings.filter((f) => f.severity === 'wipe' || f.severity === 'major');
   const minor = verdict.findings.filter((f) => f.severity === 'minor' || f.severity === 'info');
   const deathCount = pull.deaths.filter((d) => !d.ignored).length;
-  const tabs: { key: Tab; label: string; count?: number }[] = [
-    { key: 'mechanics', label: 'Mecânicas', count: pull.rulesFile ? mechFailures : undefined },
-    { key: 'deaths', label: 'Mortes', count: deathCount },
-    { key: 'interrupts', label: 'Interrupts' },
-    { key: 'players', label: 'Jogadores', count: pull.players.length },
-    { key: 'perf', label: 'Desempenho' },
-    { key: 'spells', label: 'Habilidades do boss' },
-    { key: 'ask', label: 'Perguntar à IA' },
+  // abas por assunto: o que deu errado · quem jogou como · a luta · IA
+  const tabGroups: { label: string; tabs: { key: Tab; label: string; count?: number }[] }[] = [
+    {
+      label: 'O que aconteceu',
+      tabs: [
+        { key: 'deaths', label: 'Mortes', count: deathCount },
+        { key: 'mechanics', label: 'Mecânicas', count: pull.rulesFile ? mechFailures : undefined },
+        { key: 'interrupts', label: 'Interrupts' },
+      ],
+    },
+    {
+      label: 'Jogadores',
+      tabs: [
+        { key: 'players', label: 'Jogadores', count: pull.players.length },
+        { key: 'perf', label: 'Desempenho' },
+      ],
+    },
+    { label: 'Luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
   ];
 
   return (
@@ -97,25 +114,6 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
               </span>
             )}
           </div>
-          {wclCode && (
-            <button
-              className="btn sm"
-              onClick={() => openExternal(bossUrl(wclCode, pull))}
-              title={`Abre o report filtrado neste boss; a try é a "${wclPullLabel(pull)}" da lista`}
-            >
-              Warcraft Logs <span className="muted">{wclPullLabel(pull)}</span>
-              <ExternalLink size={14} strokeWidth={1.5} aria-hidden />
-            </button>
-          )}
-          {video && (
-            <button className="btn sm" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
-              {videoOpen ? <X size={14} strokeWidth={1.5} aria-hidden /> : <Play size={14} strokeWidth={1.5} aria-hidden />}
-              {videoOpen ? 'Fechar vídeo' : `Vídeo (${video.player ?? 'POV'})`}
-            </button>
-          )}
-          <SendToDiscord payload={() => pullPayload(pull, wclCode)} />
-          <ShareMenu card={() => <PullShareCard pull={pull} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
-          <PullNote pull={pull} />
         </div>
         <div className="boss-bars">
           {pull.bosses.map((b) => (
@@ -127,6 +125,31 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="pull-toolbar">
+        <PullNote pull={pull} />
+        <span className="pull-actions">
+          {video && (
+            <button className="btn sm" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
+              {videoOpen ? <X size={14} strokeWidth={1.5} aria-hidden /> : <Play size={14} strokeWidth={1.5} aria-hidden />}
+              {videoOpen ? 'Fechar vídeo' : `Vídeo (${video.player ?? 'POV'})`}
+            </button>
+          )}
+          {wclCode && (
+            <button
+              className="btn sm"
+              onClick={() => openExternal(bossUrl(wclCode, pull))}
+              title={`Abre o report filtrado neste boss; a try é a "${wclPullLabel(pull)}" da lista`}
+            >
+              Warcraft Logs <span className="muted">{wclPullLabel(pull)}</span>
+              <ExternalLink size={14} strokeWidth={1.5} aria-hidden />
+            </button>
+          )}
+          {(video || wclCode) && <span className="toolbar-divider" aria-hidden />}
+          <SendToDiscord payload={() => pullPayload(pull, wclCode)} />
+          <ShareMenu card={() => <PullShareCard pull={pull} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
+        </span>
       </div>
 
       {video && videoOpen && <VideoPanel video={video} seek={seekReq} onClose={() => setVideoOpen(false)} />}
@@ -161,13 +184,21 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
         )}
       </section>
 
-      <div className="tabs" role="tablist">
-        {tabs.map((t) => (
-          <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
-            {t.label}
-            {t.count != null && <span className="tab-count">{t.count}</span>}
-          </button>
+      <div className="tabs" role="tablist" aria-label="Detalhes do pull">
+        {tabGroups.map((g) => (
+          <div key={g.label} className="tab-group" role="presentation" title={g.label}>
+            {g.tabs.map((t) => (
+              <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
+                {t.label}
+                {t.count != null && <span className="tab-count">{t.count}</span>}
+              </button>
+            ))}
+          </div>
         ))}
+        <span className="topbar-spacer" />
+        <button role="tab" aria-selected={tab === 'ask'} className={`tab-ask ${tab === 'ask' ? 'active' : ''}`} onClick={() => setTab('ask')}>
+          <Sparkles size={14} strokeWidth={1.5} aria-hidden /> Perguntar à IA
+        </button>
       </div>
 
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
