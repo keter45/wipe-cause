@@ -1,3 +1,5 @@
+import type { Pull } from '../types';
+
 export function mmss(ms: number): string {
   const neg = ms < 0;
   const s = Math.floor(Math.abs(ms) / 1000);
@@ -44,3 +46,19 @@ export function classColor(cls: string | null | undefined): string {
 }
 
 export const ROLE_LABEL: Record<string, string> = { tank: 'Tank', healer: 'Healer', dps: 'DPS' };
+
+/** "24/09 · The Twin Fangs Mythic": data do 1º pull + boss com mais pulls. */
+export function logTitle(pulls: Pull[]): string {
+  if (!pulls.length) return 'Log sem pulls';
+  const [date] = pulls[0].startLocal.split(' ');
+  const [m, d] = date.split('/');
+  const count = new Map<string, number>();
+  for (const p of pulls) {
+    const k = `${p.encounterName} ${p.difficultyName}`;
+    count.set(k, (count.get(k) ?? 0) + 1);
+  }
+  const main = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const others = count.size - 1;
+  return `${d.padStart(2, '0')}/${m.padStart(2, '0')} · ${main}${others > 0 ? ` +${others}` : ''}`;
+}
+

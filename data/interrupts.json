@@ -1,0 +1,23 @@
+{
+  "_comment": "Interrupts por classe. specs: specs que têm o interrupt (vazio = todas). Um player também conta como 'pode interromper' se usou qualquer um destes no log.",
+  "interrupts": [
+    { "id": 47528, "name": "Mind Freeze", "class": "DeathKnight", "specs": [] },
+    { "id": 183752, "name": "Disrupt", "class": "DemonHunter", "specs": [] },
+    { "id": 106839, "name": "Skull Bash", "class": "Druid", "specs": [103, 104] },
+    { "id": 78675, "name": "Solar Beam", "class": "Druid", "specs": [102] },
+    { "id": 351338, "name": "Quell", "class": "Evoker", "specs": [] },
+    { "id": 147362, "name": "Counter Shot", "class": "Hunter", "specs": [253, 254] },
+    { "id": 187707, "name": "Muzzle", "class": "Hunter", "specs": [255] },
+    { "id": 2139, "name": "Counterspell", "class": "Mage", "specs": [] },
+    { "id": 116705, "name": "Spear Hand Strike", "class": "Monk", "specs": [268, 269] },
+    { "id": 96231, "name": "Rebuke", "class": "Paladin", "specs": [66, 70] },
+    { "id": 15487, "name": "Silence", "class": "Priest", "specs": [258] },
+    { "id": 1766, "name": "Kick", "class": "Rogue", "specs": [] },
+    { "id": 57994, "name": "Wind Shear", "class": "Shaman", "specs": [] },
+    { "id": 19647, "name": "Spell Lock", "class": "Warlock", "specs": [] },
+    { "id": 119910, "name": "Spell Lock", "class": "Warlock", "specs": [] },
+    { "id": 132409, "name": "Spell Lock", "class": "Warlock", "specs": [] },
+    { "id": 89766, "name": "Axe Toss", "class": "Warlock", "specs": [266] },
+    { "id": 6552, "name": "Pummel", "class": "Warrior", "specs": [] }
+  ]
+}

@@ -11,6 +11,12 @@ pub struct LogReport {
     pub lines: u64,
     pub parse_ms: u64,
     pub pulls: Vec<Pull>,
+    /// "Ignorar eventos após N mortes" usado na análise (0 = sem corte)
+    pub death_cutoff: u32,
+    /// Wipes com menos de 30s descartados (pull falso / reset)
+    pub ignored_short_pulls: u32,
+    /// Erros ao carregar regras de boss (YAML inválido etc.)
+    pub rule_errors: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -23,14 +29,20 @@ pub struct Pull {
     pub difficulty_id: u32,
     pub difficulty_name: String,
     pub group_size: u32,
-    /// Número do pull para este boss + dificuldade no log (1..)
+    /// Número do pull para este boss + dificuldade no log (1..), sem os pulls curtos descartados
     pub pull_number: u32,
+    /// Mesmo número contando os pulls curtos — é a numeração do Warcraft Logs ("Wipe N")
+    pub pull_number_all: u32,
     /// Epoch ms (UTC quando o log tem offset de fuso)
     pub start_ms: i64,
     /// Timestamp original da linha ENCOUNTER_START (hora local do jogo)
     pub start_local: String,
     pub tz_offset_hours: f64,
     pub duration_ms: i64,
+    /// Momento (ms do pull) da N-ésima morte: estatísticas param de contar aqui
+    pub cutoff_t: Option<i64>,
+    /// Tempo usado nas médias (DPS/HPS): até o corte, ou o pull inteiro
+    pub analyzed_ms: i64,
     pub success: bool,
     /// ENCOUNTER_END não encontrado (log cortado / desconectou)
     pub incomplete: bool,
@@ -38,6 +50,66 @@ pub struct Pull {
     pub players: Vec<PlayerStats>,
     pub deaths: Vec<Death>,
     pub enemy_spells: Vec<EnemySpell>,
+    /// Arquivo de regras usado (encounters/*.yaml), se houver para este boss
+    pub rules_file: Option<String>,
+    /// Resultado das regras do boss, falhas primeiro
+    pub mechanics: Vec<MechanicResult>,
+    /// Falha de mecânica que puxou as mortes do wipe, quando dá para apontar
+    pub trigger: Option<PullTrigger>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullTrigger {
+    pub key: String,
+    pub name: String,
+    /// momento da falha (ou da 1ª morte ligada a ela)
+    pub t: i64,
+    /// mortes atribuídas a esta mecânica
+    pub deaths: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicResult {
+    pub key: String,
+    pub name: String,
+    /// spell que representa a mecânica (para o ícone)
+    pub spell_id: Option<u32>,
+    /// tipo da regra (avoidable_damage, soak, interrupt, ...)
+    pub kind: String,
+    /// wipe | major | minor | none
+    pub severity: String,
+    pub tip: String,
+    /// false = tipo de regra que o motor ainda não avalia (só dica)
+    pub evaluated: bool,
+    pub failures: u32,
+    /// mensagem da falha coletiva (soak, interrupt, enrage), já renderizada
+    pub summary: String,
+    /// culpados primeiro; depois quem ajudou (`credit`: interrupts, soaks)
+    pub players: Vec<MechanicPlayer>,
+    pub events: Vec<MechanicEvent>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicPlayer {
+    pub guid: String,
+    pub name: String,
+    /// hits, stacks máximos ou vezes que ajudou
+    pub count: u32,
+    pub amount: i64,
+    pub first_t: Option<i64>,
+    pub credit: bool,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicEvent {
+    pub t: i64,
+    pub player: Option<String>,
+    pub detail: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,6 +121,8 @@ pub struct BossState {
     pub max_hp: i64,
     /// HP restante no fim do pull (0-100). None sem advanced logging.
     pub hp_pct: Option<f32>,
+    /// HP no momento do corte ("ignorar após N mortes")
+    pub hp_pct_at_cutoff: Option<f32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -69,6 +143,11 @@ pub struct PlayerStats {
     pub healthstones: u32,
     pub defensives_used: Vec<SpellUse>,
     pub taken_by_ability: Vec<AbilityDamage>,
+    pub interrupts: u32,
+    pub interrupt_attempts: u32,
+    /// spec tem interrupt ou o player usou um no log
+    pub can_interrupt: bool,
+    pub interrupt_log: Vec<InterruptUse>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -102,7 +181,20 @@ pub struct Death {
     pub class: Option<String>,
     pub role: Option<String>,
     pub t: i64,
+    /// Depois do corte ("ignorar após N mortes"): só para consulta, não conta em nada
+    pub ignored: bool,
     pub killing_blow: Option<RecapEntry>,
+    /// Mecânica do boss (regras) que deu o golpe final, se reconhecida
+    pub killing_blow_mechanic: Option<String>,
+    /// spike | slow | normal | unknown
+    pub death_kind: String,
+    pub stats: DeathStats,
+    /// Debuffs ativos no player no momento da morte
+    pub debuffs: Vec<DeathAura>,
+    /// Dano recebido no recap vindo de mecânicas com falha (regras), maior primeiro
+    pub mechanic_damage: Vec<MechanicShare>,
+    /// Mecânica que causou a morte: golpe final ou >= 35% do dano recebido
+    pub caused_by: Option<MechanicShare>,
     /// Eventos dos últimos segundos antes da morte, em ordem cronológica
     pub recap: Vec<RecapEntry>,
     /// Defensivos (pessoais ou externos) ativados nos últimos 10s
@@ -113,6 +205,60 @@ pub struct Death {
     pub used_healthstone: bool,
     /// Player usou healthstone em algum pull do log (logo provavelmente tinha)
     pub healthstone_known: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeathStats {
+    pub max_hp: Option<i64>,
+    /// tempo contínuo abaixo de 50% de HP antes de morrer
+    pub below_half_ms: Option<i64>,
+    /// maior HP% nos 3s antes da morte
+    pub max_hp_pct_last_3s: Option<f32>,
+    pub damage_taken_10s: i64,
+    pub healing_received_10s: i64,
+    /// cura recebida nos últimos 10s em % do HP máximo
+    pub healing_pct_of_max_10s: Option<f32>,
+    /// cura baixa: < 25% do HP máximo nos últimos 10s
+    pub underhealed: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeathAura {
+    pub spell_id: u32,
+    pub name: String,
+    pub stacks: u32,
+    pub source: String,
+    /// ms desde o início do pull
+    pub applied_t: i64,
+    /// mecânica do boss (regras) a que esse debuff pertence
+    pub mechanic: Option<String>,
+    pub tip: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicShare {
+    pub key: String,
+    pub name: String,
+    pub amount: i64,
+    /// % do dano recebido no recap
+    pub pct: f32,
+    /// última falha coletiva dessa mecânica antes da morte (soak, interrupt...)
+    pub fail_t: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InterruptUse {
+    pub t: i64,
+    /// interrupt usado (Kick, Pummel, ...)
+    pub spell_id: u32,
+    pub spell: String,
+    /// cast cortado; None = tentativa que não cortou nada
+    pub target_spell_id: Option<u32>,
+    pub target_spell: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -129,6 +275,7 @@ pub enum RecapKind {
     Damage,
     Heal,
     Buff,
+    Debuff,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -155,4 +302,8 @@ pub struct EnemySpell {
     pub casts: u32,
     pub hits_on_players: u32,
     pub damage_to_players: i64,
+    /// vezes que foi interrompido neste pull
+    pub interrupted: u32,
+    /// foi interrompido ao menos uma vez em algum pull do log
+    pub interruptible: bool,
 }

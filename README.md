@@ -6,7 +6,25 @@ Ferramenta local para descobrir **por que a try deu wipe** no World of Warcraft,
 
 1. Ative o log no jogo: `/combatlog` + *Advanced Combat Logging* nas opções de rede.
 2. Abra o arquivo `World of Warcraft\_retail_\Logs\WoWCombatLog-*.txt` no app.
-3. Escolha o pull e veja: ordem das mortes, o que matou cada player, uso de defensivos, poções e healthstone, dano tomado e causado.
+3. Escolha o pull e veja:
+   - o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e os erros de mecânica do boss;
+   - cada morte: spike ou morte lenta, se faltou cura, debuffs ativos (com stacks e descrição), golpe final, defensivos/poção/healthstone;
+   - **interrupts**: casts que passaram, quem cortou, quem tentou e errou, quem podia e não cortou;
+   - dano causado/tomado por player.
+
+Wipes com menos de 30s são ignorados.
+
+**Ignorar após N mortes** (topo da tela, padrão 4): depois de algumas mortes o wipe já está decidido. Erros de mecânica, falhas, interrupts e o gatilho só contam até a N-ésima morte de cada pull; o resto aparece esmaecido. Mudar o N é instantâneo (0 = conta tudo).
+
+## Warcraft Logs
+
+Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Não usa a API do Warcraft Logs nem pede login.
+
+## Warcraft Recorder
+
+Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com), cadastre a pasta onde ele salva os vídeos (botão 🎥 na barra: colar o caminho ou Procurar…). Ela fica salva no `settings.json` do app, porque varia de PC para PC. Sem cadastro, o app tenta detectar a pasta pela configuração do Recorder (lê só o caminho) e casa cada vídeo com o pull pelo boss e horário de início. No pull aparece o botão **▶ Vídeo** e cada morte, gatilho e evento de mecânica ganha um **▶** que abre o vídeo 5s antes do momento.
+
+Vídeos só na nuvem do Recorder ainda não são suportados (a API da nuvem é privada).
 
 ## Estrutura
 

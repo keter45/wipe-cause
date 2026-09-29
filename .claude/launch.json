@@ -4,8 +4,23 @@
     {
       "name": "ui",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 1420
+    },
+    {
+      "name": "ui-videos",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 1420,
+      "env": {
+        "WIPE_DEV_VIDEO_DIR": "D:/WowRecorder"
+      }
     }
   ]
 }

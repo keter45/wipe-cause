@@ -26,7 +26,29 @@ function cascadeThreshold(p: Pull): number {
   return Math.max(2, Math.ceil(raid * 0.2));
 }
 
+const CASCADE_WINDOW_MS = 20_000;
+const MAX_DECISIVE = 6;
+
+/**
+ * Mortes que importam: as isoladas antes da cascata + as 2 primeiras da cascata.
+ * Cascata = primeira janela de 20s com `threshold` mortes ou mais.
+ */
+export function decisiveDeaths(sorted: Death[], threshold: number): Death[] {
+  const start = sorted.findIndex((d) => sorted.filter((x) => x.t >= d.t && x.t - d.t <= CASCADE_WINDOW_MS).length >= threshold);
+  if (start < 0) return sorted.slice(0, threshold);
+  const isolated = sorted.slice(0, start).slice(0, MAX_DECISIVE - 2);
+  return [...isolated, ...sorted.slice(start, start + 2)];
+}
+
+/** HP do boss mais baixo: no corte ("ignorar após N mortes"), se houver; kill = 0. */
 export function lowestBossHp(p: Pull): number | null {
+  if (p.success) return 0;
+  const hps = p.bosses.map((b) => (p.cutoffT != null ? b.hpPctAtCutoff ?? b.hpPct : b.hpPct)).filter((x): x is number => x != null);
+  return hps.length ? Math.min(...hps) : null;
+}
+
+/** HP do boss mais baixo no fim do pull (depois da cascata), para referência. */
+export function lowestBossHpAtEnd(p: Pull): number | null {
   const hps = p.bosses.map((b) => b.hpPct).filter((x): x is number => x != null);
   return hps.length ? Math.min(...hps) : null;
 }
@@ -34,13 +56,30 @@ export function lowestBossHp(p: Pull): number | null {
 export function analyzePull(p: Pull): Verdict {
   const findings: Finding[] = [];
   const deaths = [...p.deaths].sort((a, b) => a.t - b.t);
-  const decisive = deaths.slice(0, cascadeThreshold(p));
+  // com "ignorar após N mortes" ligado, as decisivas são as N primeiras; senão, janela de cascata
+  const decisive = p.cutoffT != null ? deaths.filter((d) => !d.ignored) : decisiveDeaths(deaths, cascadeThreshold(p));
   const bossHp = lowestBossHp(p);
+
+  // 0. Regras do boss: falhas de mecânica graves entram primeiro
+  for (const m of p.mechanics) {
+    if (m.failures === 0 || (m.severity !== 'wipe' && m.severity !== 'major')) continue;
+    const blamed = m.players.filter((x) => !x.credit);
+    findings.push({
+      severity: m.severity,
+      title: m.summary || `${m.name}: ${blamed.length} jogador(es)`,
+      detail: m.summary
+        ? m.tip
+        : blamed
+            .slice(0, 4)
+            .map((x) => x.message || shortName(x.name))
+            .join(' · ') + (blamed.length > 4 ? ` · +${blamed.length - 4}` : ''),
+    });
+  }
 
   // 1. Mortes decisivas agrupadas pelo golpe final
   const byKiller = new Map<string, Death[]>();
   for (const d of decisive) {
-    const key = d.killingBlow?.spellName ?? 'Desconhecido';
+    const key = d.killingBlowMechanic ?? d.killingBlow?.spellName ?? 'Desconhecido';
     byKiller.set(key, [...(byKiller.get(key) ?? []), d]);
   }
   const ranked = [...byKiller.entries()].sort((a, b) => b[1].length - a[1].length);
@@ -64,8 +103,11 @@ export function analyzePull(p: Pull): Verdict {
     });
   }
 
-  // 3. Sobrevivência de cada morte decisiva
+  // 3. Sobrevivência de cada morte decisiva (uma vez por player, mesmo com battle rez)
+  const seen = new Set<string>();
   for (const d of decisive) {
+    if (seen.has(d.guid)) continue;
+    seen.add(d.guid);
     const who = shortName(d.name);
     if (d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0) {
       findings.push({
@@ -84,6 +126,32 @@ export function analyzePull(p: Pull): Verdict {
     }
   }
 
+  // 3b. Morte lenta: o player ficou muito tempo com pouca vida
+  const seenSlow = new Set<string>();
+  for (const d of decisive.filter((d) => d.deathKind === 'slow')) {
+    if (seenSlow.has(d.guid)) continue;
+    seenSlow.add(d.guid);
+    const below = d.stats.belowHalfMs != null ? `${Math.round(d.stats.belowHalfMs / 1000)}s abaixo de 50%` : '';
+    const heal = d.stats.healingPctOfMax10s != null ? `cura recebida: ${Math.round(d.stats.healingPctOfMax10s)}% do HP em 10s` : '';
+    findings.push({
+      severity: d.stats.underhealed ? 'major' : 'minor',
+      title: `${shortName(d.name)} morreu devagar${d.stats.underhealed ? ' e quase sem cura' : ''}`,
+      detail: [below, heal].filter(Boolean).join(' · '),
+      player: d.guid,
+    });
+  }
+
+  // 3c. Casts interrompíveis que passaram
+  const passed = p.enemySpells.filter((e) => e.interruptible && e.casts > 0);
+  if (passed.length) {
+    const idle = p.players.filter((x) => x.canInterrupt && x.interrupts === 0).map((x) => shortName(x.name));
+    findings.push({
+      severity: 'major',
+      title: `${passed.reduce((n, e) => n + e.casts, 0)} cast(s) interrompível(is) passaram: ${passed.map((e) => `${e.name} ${e.casts}×`).join(', ')}`,
+      detail: idle.length ? `Não cortaram nada: ${idle.join(', ')}` : undefined,
+    });
+  }
+
   // 4. Sem mortes relevantes e boss vivo: provavelmente dano (enrage/soft enrage) ou reset
   if (!p.success && deaths.length < 2 && bossHp != null && bossHp > 0) {
     findings.push({
@@ -97,6 +165,9 @@ export function analyzePull(p: Pull): Verdict {
   let headline: string;
   if (p.success) {
     headline = `Kill em ${mmss(p.durationMs)}${deaths.length ? ` com ${deaths.length} morte(s)` : ''}`;
+  } else if (p.trigger) {
+    const tr = p.trigger;
+    headline = `Wipe${bossHp != null ? ` com boss em ${pct(bossHp)}` : ''} — gatilho: ${tr.name} aos ${mmss(tr.t)} (${tr.deaths} morte${tr.deaths > 1 ? 's' : ''} ligada${tr.deaths > 1 ? 's' : ''})`;
   } else if (first) {
     const kb = first.killingBlow ? ` para ${first.killingBlow.spellName}` : '';
     headline = `Wipe${bossHp != null ? ` com boss em ${pct(bossHp)}` : ''} — começou com ${shortName(first.name)} morrendo${kb} aos ${mmss(first.t)}`;

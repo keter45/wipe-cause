@@ -1,5 +1,6 @@
 import type { EnemySpell } from '../types';
 import { num } from '../lib/format';
+import { SpellName } from './SpellIcon';
 
 export function EnemySpellsTable({ spells }: { spells: EnemySpell[] }) {
   if (spells.length === 0) return <p className="muted pad">Nenhuma habilidade inimiga registrada.</p>;
@@ -23,7 +24,9 @@ export function EnemySpellsTable({ spells }: { spells: EnemySpell[] }) {
         <tbody>
           {spells.map((s) => (
             <tr key={s.spellId}>
-              <td>{s.name}</td>
+              <td>
+                <SpellName spellId={s.spellId} name={s.name} />
+              </td>
               <td className="muted mono">{s.spellId}</td>
               <td className="muted">{s.sources.join(', ')}</td>
               <td className="num">{s.casts || ''}</td>

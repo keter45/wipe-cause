@@ -1,10 +1,11 @@
-//! Tabelas de dados do jogo (defensivos, specs, consumíveis) vindas de `data/*.json`.
+//! Tabelas de dados do jogo (defensivos, specs, consumíveis, interrupts) vindas de `data/*.json`.
 
 use serde::Deserialize;
 use std::collections::HashMap;
 
 const DEFENSIVES_JSON: &str = include_str!("../../../data/defensives.json");
 const CONSUMABLES_JSON: &str = include_str!("../../../data/consumables.json");
+const INTERRUPTS_JSON: &str = include_str!("../../../data/interrupts.json");
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SpecInfo {
@@ -39,6 +40,20 @@ struct ConsumablesFile {
     health_potion: ConsumableDef,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct Interrupt {
+    pub id: u32,
+    pub name: String,
+    pub class: String,
+    #[serde(default)]
+    pub specs: Vec<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct InterruptsFile {
+    interrupts: Vec<Interrupt>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Consumable {
     Healthstone,
@@ -48,6 +63,7 @@ pub enum Consumable {
 pub struct GameData {
     pub specs: HashMap<u32, SpecInfo>,
     pub defensives: HashMap<u32, Defensive>,
+    pub interrupts: HashMap<u32, Interrupt>,
     healthstone: ConsumableDef,
     health_potion: ConsumableDef,
 }
@@ -56,6 +72,7 @@ impl GameData {
     pub fn embedded() -> Self {
         let d: DefensivesFile = serde_json::from_str(DEFENSIVES_JSON).expect("data/defensives.json inválido");
         let c: ConsumablesFile = serde_json::from_str(CONSUMABLES_JSON).expect("data/consumables.json inválido");
+        let i: InterruptsFile = serde_json::from_str(INTERRUPTS_JSON).expect("data/interrupts.json inválido");
         GameData {
             specs: d
                 .specs
@@ -63,6 +80,7 @@ impl GameData {
                 .filter_map(|(k, v)| k.parse().ok().map(|id| (id, v)))
                 .collect(),
             defensives: d.defensives.into_iter().map(|x| (x.id, x)).collect(),
+            interrupts: i.interrupts.into_iter().map(|x| (x.id, x)).collect(),
             healthstone: lowercase_patterns(c.healthstone),
             health_potion: lowercase_patterns(c.health_potion),
         }
@@ -82,6 +100,14 @@ impl GameData {
         } else {
             None
         }
+    }
+}
+
+impl GameData {
+    /// A spec tem algum interrupt na tabela?
+    pub fn spec_can_interrupt(&self, spec_id: u32) -> bool {
+        let Some(spec) = self.specs.get(&spec_id) else { return false };
+        self.interrupts.values().any(|i| i.class == spec.class && (i.specs.is_empty() || i.specs.contains(&spec_id)))
     }
 }
 

@@ -1,11 +1,12 @@
 //! CLI para analisar um log sem abrir o app.
 //!
-//!   wipe-cli analyze <arquivo> [--json]   resumo dos pulls (ou o relatório completo em JSON)
+//!   wipe-cli analyze <arquivo> [--json] [--cutoff N]   resumo dos pulls (ou o relatório em JSON);
+//!                                                      --cutoff N ignora eventos após N mortes
 //!   wipe-cli spells <arquivo>             spells inimigas por encontro (para calibrar regras de boss)
 
 use std::path::PathBuf;
 use std::process::ExitCode;
-use wipe_core::{analyze_file, LogReport};
+use wipe_core::{analyze_file, AnalyzeOptions, LogReport};
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -13,7 +14,14 @@ fn main() -> ExitCode {
         eprintln!("uso: wipe-cli <analyze|spells> <WoWCombatLog.txt> [--json]");
         return ExitCode::from(2);
     };
-    let report = match analyze_file(&PathBuf::from(path), |_, _| {}) {
+    let death_cutoff = args
+        .iter()
+        .position(|a| a == "--cutoff")
+        .and_then(|i| args.get(i + 1))
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    let opts = AnalyzeOptions { rules_dir: None, death_cutoff };
+    let report = match analyze_file(&PathBuf::from(path), &opts, |_, _| {}) {
         Ok(r) => r,
         Err(e) => {
             eprintln!("erro ao ler {path}: {e}");
