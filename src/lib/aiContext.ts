@@ -7,6 +7,7 @@ import { mmss, num, pct, ROLE_LABEL, shortName } from './format';
 import { scorePull } from './score';
 import { analyzePull, lowestBossHp, lowestBossHpAtEnd } from './verdict';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
+import { getNote } from './notes';
 
 const SEVERITY: Record<string, string> = { wipe: 'causa wipe', major: 'grave', minor: 'leve', none: 'info' };
 const KIND: Record<string, string> = {
@@ -107,6 +108,8 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
       .filter(Boolean)
       .join(' '),
   );
+  const note = getNote(p).trim();
+  if (note) out.push(`Anotação da raid sobre este pull (o que eles perceberam na hora): "${note}"`);
   out.push(`Veredito do app: ${v.headline}`);
   if (v.findings.length) out.push('Achados do app:\n' + v.findings.slice(0, 12).map((f) => `- [${SEVERITY[f.severity] ?? f.severity}] ${f.title}${f.detail ? ` — ${f.detail}` : ''}`).join('\n'));
 

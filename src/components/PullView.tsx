@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ExternalLink, Play, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, NotebookPen, Play, X } from 'lucide-react';
+import { useNote } from '../lib/notes';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
@@ -114,6 +115,7 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
           )}
           <SendToDiscord payload={() => pullPayload(pull, wclCode)} />
           <ShareMenu card={() => <PullShareCard pull={pull} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
+          <PullNote pull={pull} />
         </div>
         <div className="boss-bars">
           {pull.bosses.map((b) => (
@@ -177,6 +179,23 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
     </div>
     </SeekContext.Provider>
+  );
+}
+
+/** Anotação livre do pull (a mesma do aviso do modo ao vivo). */
+function PullNote({ pull }: { pull: Pull }) {
+  const [note, setNote] = useNote(pull);
+  return (
+    <label className="pull-note">
+      <NotebookPen size={14} strokeWidth={1.5} className="muted" aria-hidden />
+      <input
+        className="text-input"
+        value={note}
+        placeholder={pull.success ? 'Anotação do kill…' : 'Motivo do wipe ou anotação…'}
+        aria-label="Anotação do pull"
+        onChange={(e) => setNote(e.target.value)}
+      />
+    </label>
   );
 }
 
