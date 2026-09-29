@@ -89,6 +89,31 @@ pub struct MechanicResult {
     /// culpados primeiro; depois quem ajudou (`credit`: interrupts, soaks)
     pub players: Vec<MechanicPlayer>,
     pub events: Vec<MechanicEvent>,
+    /// posições no momento das primeiras falhas coletivas (explosão, Execution...)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub snapshots: Vec<Positions>,
+}
+
+/// Foto das posições (advanced logging) num momento do pull. Coordenadas do mundo, em jardas.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Positions {
+    /// ms desde o início do pull
+    pub t: i64,
+    pub units: Vec<UnitPos>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnitPos {
+    pub guid: String,
+    pub name: String,
+    /// "player" | "enemy"
+    pub kind: String,
+    pub x: f32,
+    pub y: f32,
+    /// há quanto tempo a posição foi vista (a posição só vem com eventos da unidade)
+    pub age_ms: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -205,6 +230,9 @@ pub struct Death {
     pub used_healthstone: bool,
     /// Player usou healthstone em algum pull do log (logo provavelmente tinha)
     pub healthstone_known: bool,
+    /// onde cada um estava na hora da morte (só mortes antes do corte)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub positions: Option<Positions>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]

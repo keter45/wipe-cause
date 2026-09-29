@@ -2,7 +2,7 @@
 //!
 //! Formato documentado em `.claude/skills/boss-rules/references/schema.md`.
 
-use crate::report::{MechanicEvent, MechanicPlayer, MechanicResult};
+use crate::report::{MechanicEvent, MechanicPlayer, MechanicResult, Positions};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -15,6 +15,8 @@ mod embedded {
 /// Hits do mesmo spell com menos que isso de intervalo são a mesma "rajada".
 const BURST_MS: i64 = 1_500;
 const MAX_EVENTS: usize = 60;
+/// Fotos de posição guardadas por mecânica (as primeiras falhas bastam para ver o padrão).
+const MAX_SNAPSHOTS: usize = 3;
 /// Aura aplicada no mesmo instante do hit (vulnerabilidade do próprio soak) não conta como
 /// "já estava com a aura"; e aura removida logo antes do hit (a explosão consome o debuff do
 /// portador ~20ms antes do dano) ainda conta como "tinha a aura".
@@ -290,6 +292,7 @@ struct MechState {
     last_fail_t: Option<i64>,
     last_burst_t: Option<i64>,
     events: Vec<MechanicEvent>,
+    snapshots: Vec<Positions>,
 }
 
 pub struct RuleTracker {
@@ -399,8 +402,10 @@ impl RuleTracker {
         out
     }
 
-    pub fn on_damage(&mut self, spell_id: u32, guid: &str, name: &str, amount: i64, t: i64) {
-        let Some(hooks) = self.hooks.get(&spell_id) else { return };
+    /// Devolve as mecânicas (índices) que registraram uma falha coletiva nova com este hit.
+    pub fn on_damage(&mut self, spell_id: u32, guid: &str, name: &str, amount: i64, t: i64) -> Vec<usize> {
+        let mut failed = Vec::new();
+        let Some(hooks) = self.hooks.get(&spell_id) else { return failed };
         for &(i, hook) in hooks {
             let m = &self.mechs[i];
             if m.detect.min_amount.is_some_and(|min| amount < min) {
@@ -426,6 +431,7 @@ impl RuleTracker {
                         st.failures += 1;
                         st.fail_times.push(t);
                         push_event(st, t, None, format!("{} (falha)", m.name));
+                        failed.push(i);
                     }
                     st.last_fail_t = Some(t);
                     // failure_event / culprit_auras: a lista é só de culpados (resolvidos no finish),
@@ -451,6 +457,15 @@ impl RuleTracker {
                 }
                 _ => {}
             }
+        }
+        failed
+    }
+
+    /// Guarda as posições no momento de uma falha coletiva (só as primeiras de cada mecânica).
+    pub fn add_snapshot(&mut self, mech: usize, snap: Positions) {
+        let st = &mut self.state[mech];
+        if st.snapshots.len() < MAX_SNAPSHOTS {
+            st.snapshots.push(snap);
         }
     }
 
@@ -626,6 +641,7 @@ impl RuleTracker {
                 summary: if collective { render(&m.message, "", st.failures, lethal) } else { String::new() },
                 players,
                 events: st.events,
+                snapshots: st.snapshots,
             });
         }
         let rank = |s: &str| match s {

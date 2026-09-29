@@ -24,6 +24,10 @@ Em **Discord**, cole o webhook do canal da raid: cada wipe (e kill) chega lá co
 
 Para testar sem estar em raid: `node scripts/simulate-live.mjs <log antigo> <pasta Logs>` escreve alguns pulls de um log real, aos poucos, num `WoWCombatLog` novo.
 
+## Posições
+
+Com Advanced Combat Logging, cada morte (antes do corte) guarda onde todo mundo estava: o detalhe da morte mostra um mini mapa, a distância até o boss e quem estava a menos de 8 jardas. As falhas coletivas de mecânica (ex.: detonação do orb roxo, Execution da Guillotine) também guardam a foto do momento, com quem carregava o orb destacado.
+
 ## Evolução
 
 Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando.

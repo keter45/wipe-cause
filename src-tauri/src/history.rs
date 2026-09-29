@@ -239,10 +239,10 @@ pub fn compact(mut report: serde_json::Value) -> serde_json::Value {
     if let Some(pulls) = report.get_mut("pulls").and_then(|p| p.as_array_mut()) {
         for p in pulls {
             for d in p.get_mut("deaths").and_then(|x| x.as_array_mut()).into_iter().flatten() {
-                strip(d, &["recap", "debuffs", "mechanicDamage"]);
+                strip(d, &["recap", "debuffs", "mechanicDamage", "positions"]);
             }
             for m in p.get_mut("mechanics").and_then(|x| x.as_array_mut()).into_iter().flatten() {
-                strip(m, &["events"]);
+                strip(m, &["events", "snapshots"]);
             }
             for pl in p.get_mut("players").and_then(|x| x.as_array_mut()).into_iter().flatten() {
                 strip(pl, &["takenByAbility", "interruptLog"]);

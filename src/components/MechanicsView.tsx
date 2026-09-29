@@ -4,6 +4,7 @@ import { mmss, num, shortName } from '../lib/format';
 import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
 import { SpellName } from './SpellIcon';
+import { PositionMap, type Mark } from './PositionMap';
 
 const SEVERITY_LABEL: Record<string, string> = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', none: 'Info' };
 
@@ -34,6 +35,7 @@ export function MechanicsView({ pull }: { pull: Pull }) {
     );
   }
   const failed = pull.mechanics.filter((m) => m.failures > 0);
+  const classes = new Map(pull.players.map((x) => [x.guid, x.class] as const));
   const clean = pull.mechanics.filter((m) => m.failures === 0 && m.evaluated);
   const notEvaluated = pull.mechanics.filter((m) => !m.evaluated);
 
@@ -44,7 +46,7 @@ export function MechanicsView({ pull }: { pull: Pull }) {
       )}
       {failed.length === 0 && <p className="muted pad">Nenhuma falha de mecânica detectada neste pull.</p>}
       {failed.map((m) => (
-        <MechanicCard key={m.key} m={m} />
+        <MechanicCard key={m.key} m={m} classes={classes} />
       ))}
       {clean.length > 0 && (
         <p className="muted small">
@@ -61,8 +63,10 @@ export function MechanicsView({ pull }: { pull: Pull }) {
   );
 }
 
-function MechanicCard({ m }: { m: MechanicResult }) {
+function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, string | null> }) {
   const [showEvents, setShowEvents] = useState(false);
+  const [snapIdx, setSnapIdx] = useState<number | null>(null);
+  const snaps = m.snapshots ?? [];
   const seek = useSeek();
   const blamed = m.players.filter((p) => !p.credit);
   const credits = m.players.filter((p) => p.credit);
@@ -106,6 +110,30 @@ function MechanicCard({ m }: { m: MechanicResult }) {
           {credits.map((p) => `${shortName(p.name)} (${p.count})`).join(', ')}
         </p>
       )}
+      {snaps.length > 0 && (
+        <div className="mechanic-snaps">
+          <span className="muted small">Posições na falha:</span>
+          {snaps.map((sn, i) => (
+            <button key={sn.t} className={`link small ${snapIdx === i ? 'active' : ''}`} onClick={() => setSnapIdx(snapIdx === i ? null : i)} aria-expanded={snapIdx === i}>
+              {mmss(sn.t)}
+            </button>
+          ))}
+        </div>
+      )}
+      {snapIdx != null && snaps[snapIdx] && (
+        <div className="death-pos">
+          <PositionMap snap={snaps[snapIdx]} classes={classes} marks={culpritMarks(m)} size={240} />
+          <div className="death-pos-facts">
+            <p className="small">
+              {m.kind === 'failure_event' && blamed.length > 0
+                ? 'Anel laranja: quem carregava o que explodiu.'
+                : 'Onde cada um estava no instante da falha.'}{' '}
+              <PlayAt t={snaps[snapIdx].t} seek={seek} label="ver no vídeo" />
+            </p>
+            <p className="muted small">Anéis a cada 10 jardas do boss. A orientação pode não bater com a do jogo; as distâncias batem.</p>
+          </div>
+        </div>
+      )}
       {m.events.length > 0 && (
         <>
           <button className="link small" onClick={() => setShowEvents(!showEvents)}>
@@ -125,4 +153,10 @@ function MechanicCard({ m }: { m: MechanicResult }) {
       )}
     </section>
   );
+}
+
+/** Em failure_event os listados são os culpados (portadores): destaca no mapa. */
+function culpritMarks(m: MechanicResult): Map<string, Mark> {
+  if (m.kind !== 'failure_event') return new Map();
+  return new Map(m.players.filter((p) => !p.credit).map((p) => [p.guid, 'culprit' as Mark]));
 }

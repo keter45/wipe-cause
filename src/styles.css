@@ -2455,3 +2455,75 @@ table.heat td {
 .spark-none {
   fill: var(--panel-2);
 }
+
+/* ---------------------------------------------------------------- mini mapa de posições */
+.death-pos {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.death-pos-facts {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.death-pos-facts p {
+  margin: 0;
+  line-height: 1.5;
+}
+.posmap {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+}
+.posmap-ring {
+  fill: none;
+  stroke: var(--border);
+  stroke-dasharray: 3 3;
+}
+.posmap-ring-label {
+  fill: var(--muted);
+  font-size: 9px;
+}
+.posmap-enemy {
+  fill: var(--wipe);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+.posmap-player {
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+.posmap-mark {
+  fill: none;
+  stroke-width: 2.5;
+}
+.posmap-mark.dead {
+  stroke: var(--wipe);
+}
+.posmap-mark.culprit {
+  stroke: var(--major);
+}
+.posmap-label {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.posmap-label.strong {
+  fill: var(--text);
+  font-weight: 600;
+}
+.mechanic-snaps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.mechanic-snaps .link.active {
+  font-weight: 600;
+  text-decoration: underline;
+}
