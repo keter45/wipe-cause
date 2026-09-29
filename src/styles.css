@@ -3218,6 +3218,42 @@ td.warn {
   gap: 4px;
   margin-bottom: 8px;
 }
+/* relatório completo: mais largo que os outros cartões (tabelas e linhas do tempo) */
+.share-card.perf-card {
+  width: 920px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.perf-card .share-head,
+.perf-card .share-foot {
+  margin: 0;
+}
+.perf-card-burst-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.perf-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+}
+/* no cartão tudo aparece inteiro: sem rolagem nas tabelas */
+.perf-card .table-scroll {
+  max-height: none;
+  overflow: visible;
+}
+/* o último rótulo da linha do tempo (+20s) não passa da borda */
+.burst-ticks span:last-child {
+  transform: translateX(-100%);
+}
+.perf-card-links a {
+  color: var(--info);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 
 /* ---- erros */
 .error-box {
