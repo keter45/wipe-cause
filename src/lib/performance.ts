@@ -5,6 +5,7 @@
 // dentro da janela em que os dois estavam vivos (0 até o menor tempo vivo).
 
 import type { GearItem, PlayerStats, Pull, SetupStats, SpellCasts } from '../types';
+import { COMBAT_POTION_NAMES, isMajorCooldown, knowsClass } from './cooldowns';
 
 export interface Sample {
   pull: Pull;
@@ -84,7 +85,7 @@ export function defaultReference(me: Sample, list: Sample[]): Sample | null {
 const POTION = /potion|poção|pocao|elixir|flask|frasco/i;
 const HEALTH = /health|healing|vida|cura|healthstone|pedra de vida/i;
 
-export const isCombatPotion = (name: string) => POTION.test(name) && !HEALTH.test(name);
+export const isCombatPotion = (name: string) => (POTION.test(name) && !HEALTH.test(name)) || COMBAT_POTION_NAMES.includes(name);
 const isHealthConsumable = (name: string) => HEALTH.test(name) && (POTION.test(name) || /healthstone|pedra de vida/i.test(name));
 
 /** Magias fora da comparação de rotação: defensivos, interrupts e consumíveis. */
@@ -230,8 +231,17 @@ function burstSide(s: Sample, start: number): BurstSide {
  * a sequência de casts dos 3s antes aos 20s depois, lado a lado com o mesmo uso da referência.
  */
 export function burstWindows(me: Sample, ref: Sample, cds: Map<number, CooldownInfo>): BurstWindow[] {
-  const { rows } = compareCooldowns(me, ref, cds);
-  const major = rows.filter((r) => r.core && (r.gapMs == null || r.gapMs >= MAJOR_CD_GAP_MS) && !isCombatPotion(r.name));
+  // só cooldowns de dano (de cura, para healer) da lista da classe; classe fora da lista cai no
+  // padrão de uso (recarga longa, usado na maioria dos pulls)
+  const { class: cls, role } = me.player;
+  let major: { spellId: number; name: string }[];
+  if (knowsClass(cls)) {
+    const seen = new Map<string, number>();
+    for (const s of [me, ref])
+      for (const c of castsOf(s.player)) if (!seen.has(c.name) && isMajorCooldown(cls, role, c.spellId, c.name)) seen.set(c.name, c.spellId);
+    major = [...seen].map(([name, spellId]) => ({ name, spellId }));
+  } else
+    major = compareCooldowns(me, ref, cds).rows.filter((r) => r.core && (r.gapMs == null || r.gapMs >= MAJOR_CD_GAP_MS) && !isCombatPotion(r.name));
   const out: BurstWindow[] = [];
   for (const r of major) {
     // cada uso meu com o uso da referência mais perto no tempo (ela pode ter segurado o

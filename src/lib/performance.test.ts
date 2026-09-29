@@ -97,18 +97,22 @@ describe('janelas de burst', () => {
     ]);
   });
 
-  it('cooldown maior vira janela com a sequência de casts; usados juntos viram uma', () => {
-    const casts = (cd: number, trinket: number) => [
+  it('só cooldown de dano da classe vira janela; usados juntos viram uma', () => {
+    const casts = (cd: number, racial: number) => [
       cast(288613, 'Trueshot', [cd, cd + 120_000]),
-      cast(1, 'Voracious Heart', [trinket, trinket + 120_000]),
+      cast(26297, 'Berserking', [racial, racial + 180_000]),
+      cast(1, 'Voracious Heart', [cd, cd + 120_000]), // trinket: aparece na sequência, não abre janela
+      cast(192077, 'Wind Rush Totem', [50_000, 170_000]), // utilidade: fora
       cast(19434, 'Aimed Shot', every(3000, 239_000)),
     ];
-    const a = { pull: pull(0, 0, 240_000), player: player('A', { aliveMs: 240_000, casts: casts(4_000, 4_200) }) };
-    const b = { pull: pull(1, 0, 240_000), player: player('B', { aliveMs: 240_000, casts: casts(10_000, 10_300) }) };
+    const hunter = { class: 'Hunter', specId: 254 };
+    const a = { pull: pull(0, 0, 240_000), player: player('A', { ...hunter, aliveMs: 240_000, casts: casts(4_000, 4_200) }) };
+    const b = { pull: pull(1, 0, 240_000), player: player('B', { ...hunter, aliveMs: 240_000, casts: casts(10_000, 10_300) }) };
     const w = burstWindows(a, b, detectCooldowns([a, b]));
     expect(w.map((x) => [x.name, x.index, x.mine?.start, x.ref?.start])).toEqual([
-      ['Trueshot + Voracious Heart', 1, 4_000, 10_000],
-      ['Trueshot + Voracious Heart', 2, 124_000, 130_000],
+      ['Trueshot + Berserking', 1, 4_000, 10_000],
+      ['Trueshot', 2, 124_000, 130_000],
+      ['Berserking', 2, 184_200, 190_300],
     ]);
     const seq = w[0].mine!.casts;
     expect(seq[0].dt).toBeGreaterThanOrEqual(-3_000);

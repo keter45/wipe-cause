@@ -3147,36 +3147,54 @@ td.warn {
 .burst-compare p {
   margin: 0;
 }
-.burst-lane {
-  display: flex;
-  align-items: flex-start;
+.burst-lane,
+.burst-axis {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  align-items: start;
   gap: 10px;
 }
 .burst-who {
-  flex: 0 0 80px;
   padding-top: 5px;
 }
-.burst-seq {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 0;
+/* margem lateral: o ícone é centrado no tempo e não pode sair da faixa */
+.burst-track,
+.burst-ticks {
+  position: relative;
+  margin: 0 12px;
   padding: 0;
   list-style: none;
 }
-.burst-seq li {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
+.burst-track {
+  background: linear-gradient(var(--border), var(--border)) no-repeat center / 100% 1px;
 }
-.burst-seq li.pre {
+.burst-track li {
+  position: absolute;
+  transform: translateX(-50%);
+  line-height: 0;
+}
+.burst-track li.pre {
   opacity: 0.55;
 }
-.burst-dt {
+.burst-zero {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--accent);
+  opacity: 0.6;
+  transform: translateX(-50%);
+}
+.burst-ticks {
+  height: 14px;
+}
+.burst-ticks span {
+  position: absolute;
+  transform: translateX(-50%);
   font-size: 10px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .perf-card .share-big.warn {
   color: var(--major);

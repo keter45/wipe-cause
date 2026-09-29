@@ -292,9 +292,26 @@ function Bursts({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnType<t
   );
 }
 
+/** Posição (%) na janela de −3s a +20s. */
+const burstPos = (dt: number) => ((dt + BURST_LEAD_MS) / (BURST_LEAD_MS + BURST_WINDOW_MS)) * 100;
+/** Ícones mais perto que isto (em % da largura) vão para a linha de baixo. */
+const ICON_GAP_PCT = 3.6;
+const BURST_TICKS = [0, 5_000, 10_000, 15_000, 20_000];
+
+/** Casts da janela no tempo, como a linha do tempo dos cooldowns: você em cima, referência embaixo. */
 export function BurstCompare({ w }: { w: BurstWindow }) {
   return (
     <div className="burst-compare">
+      <div className="burst-axis" aria-hidden>
+        <span />
+        <div className="burst-ticks">
+          {BURST_TICKS.map((t) => (
+            <span key={t} style={{ left: `${burstPos(t)}%` }}>
+              {t === 0 ? 'uso' : `+${t / 1000}s`}
+            </span>
+          ))}
+        </div>
+      </div>
       <BurstLane label="Você" side={w.mine} />
       <BurstLane label="Referência" side={w.ref} />
       {w.mine && w.ref && (
@@ -308,15 +325,29 @@ export function BurstCompare({ w }: { w: BurstWindow }) {
 }
 
 function BurstLane({ label, side }: { label: string; side: BurstSide | null }) {
+  // casts colados no tempo não se cobrem: cada um vai para a primeira linha livre
+  const rows: number[] = [];
+  const placed = (side?.casts ?? []).map((c) => {
+    const pos = burstPos(c.dt);
+    let row = rows.findIndex((last) => pos - last >= ICON_GAP_PCT);
+    if (row < 0) row = rows.push(pos) - 1;
+    else rows[row] = pos;
+    return { c, pos, row };
+  });
   return (
     <div className="burst-lane">
       <span className="muted small burst-who">{label}</span>
       {side ? (
-        <ol className="burst-seq">
-          {side.casts.map((c, i) => (
-            <li key={i} className={c.dt < 0 ? 'pre' : ''} title={`${c.name} ${c.dt >= 0 ? '+' : '−'}${(Math.abs(c.dt) / 1000).toFixed(1)}s`}>
-              <SpellIcon spellId={c.spellId} size={24} />
-              <span className="burst-dt">{(c.dt / 1000).toFixed(0)}</span>
+        <ol className="burst-track" style={{ height: Math.max(1, rows.length) * 26 + 4 }} aria-label={`${label}: ${side.casts.map((c) => c.name).join(', ')}`}>
+          <span className="burst-zero" style={{ left: `${burstPos(0)}%` }} aria-hidden />
+          {placed.map(({ c, pos, row }, i) => (
+            <li
+              key={i}
+              className={c.dt < 0 ? 'pre' : ''}
+              style={{ left: `${pos}%`, top: row * 26 + 2 }}
+              title={`${c.name} · ${c.dt >= 0 ? '+' : '−'}${(Math.abs(c.dt) / 1000).toFixed(1)}s`}
+            >
+              <SpellIcon spellId={c.spellId} size={22} />
             </li>
           ))}
         </ol>
