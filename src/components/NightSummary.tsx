@@ -6,6 +6,7 @@ import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummar
 import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
+import { mechanicSpellId } from '../lib/spells';
 import { SendToDiscord } from './SendToDiscord';
 import { ShareMenu } from './ShareMenu';
 import { BossShareCard } from './ShareCards';
@@ -141,7 +142,9 @@ export function BossSummary({ title, pulls, onSelectPull }: Props & { title: str
       {topCause && (
         <section className="panel hero-cause">
           <span className="muted small">Maior causa dos wipes</span>
-          <div className="hero-figure">{topCause.name}</div>
+          <div className="hero-figure">
+            <SpellName spellId={mechanicSpellIds.get(topCause.key)} name={topCause.name} size={30} />
+          </div>
           <p className="muted">
             {topCause.triggers > 0 && (
               <>
@@ -275,7 +278,11 @@ function pullTip(p: Pull, hp: number) {
       <span>
         {pullName(p, true)} · {clock(p)} · {mmss(p.durationMs)}
       </span>
-      {p.trigger && <span>Gatilho: {p.trigger.name}</span>}
+      {p.trigger && (
+        <span>
+          Gatilho: <SpellName spellId={mechanicSpellId(p, p.trigger.key)} name={p.trigger.name} size={14} />
+        </span>
+      )}
       <span>{p.deaths.filter((d) => !d.ignored).length} mortes</span>
     </>
   );

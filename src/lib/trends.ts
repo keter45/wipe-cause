@@ -4,6 +4,7 @@
 import type { Pull } from '../types';
 import { shortName } from './format';
 import { bossKey, summarizeNight, type NightSummary } from './night';
+import { mechanicSpellId } from './spells';
 
 export interface NightInput {
   id: string;
@@ -23,6 +24,7 @@ export interface TrendNight {
 export interface CauseRow {
   key: string;
   name: string;
+  spellId: number | null;
   /** por noite (mesma ordem de `nights`): wipes em que foi o gatilho; null = boss não jogado */
   perNight: (number | null)[];
   total: number;
@@ -42,6 +44,7 @@ export interface PlayerTrend {
   deathsNoDefensive: number;
   /** o que mais o matou: [nome, vezes] */
   topKiller: [string, number] | null;
+  topKillerSpellId: number | null;
   /** noites em que morreu para `topKiller` */
   topKillerNights: number;
   /** mortes para `topKiller` com defensivo disponível e nenhum usado */
@@ -92,7 +95,7 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
   nights.forEach((n, i) => {
     for (const c of n.summary.causes) {
       if (!c.triggers) continue;
-      const row = causeMap.get(c.key) ?? { key: c.key, name: c.name, perNight: nights.map(() => 0), total: 0 };
+      const row = causeMap.get(c.key) ?? { key: c.key, name: c.name, spellId: mechanicSpellId(n.summary.pulls, c.key), perNight: nights.map(() => 0), total: 0 };
       row.perNight[i] = c.triggers;
       row.total += c.triggers;
       causeMap.set(c.key, row);
@@ -102,11 +105,13 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
 
   // players
   const acc = new Map<string, PlayerTrend & { killers: Map<string, Set<number>>; killerCount: Map<string, number>; killerNoDef: Map<string, number> }>();
+  // nome do que matou -> spell (ícone)
+  const killerSpell = new Map<string, number>();
   nights.forEach((n, i) => {
     for (const pn of n.summary.players) {
       const a = acc.get(pn.guid) ?? {
         guid: pn.guid, name: pn.name, class: pn.class, deathsPerPull: nights.map(() => null), scorePerNight: nights.map(() => null), pulls: 0, deaths: 0,
-        deathsNoDefensive: 0, topKiller: null, topKillerNights: 0, topKillerNoDefensive: 0, mechanicErrors: 0, killers: new Map(), killerCount: new Map(), killerNoDef: new Map(),
+        deathsNoDefensive: 0, topKiller: null, topKillerSpellId: null, topKillerNights: 0, topKillerNoDefensive: 0, mechanicErrors: 0, killers: new Map(), killerCount: new Map(), killerNoDef: new Map(),
       };
       a.class ??= pn.class;
       a.pulls += pn.pulls;
@@ -124,6 +129,10 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
         const noDef = d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0;
         if (noDef) a.deathsNoDefensive++;
         const k = killerOf(d);
+        if (k && !killerSpell.has(k)) {
+          const id = d.causedBy ? mechanicSpellId(p, d.causedBy.key) : d.killingBlow?.spellId;
+          if (id != null) killerSpell.set(k, id);
+        }
         if (k) {
           if (noDef) a.killerNoDef.set(k, (a.killerNoDef.get(k) ?? 0) + 1);
           a.killerCount.set(k, (a.killerCount.get(k) ?? 0) + 1);
@@ -139,7 +148,7 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
   });
   const players: PlayerTrend[] = [...acc.values()].map(({ killers, killerCount, killerNoDef, ...a }) => {
     const top = [...killerCount.entries()].sort((x, y) => y[1] - x[1])[0] ?? null;
-    return { ...a, topKiller: top, topKillerNights: top ? killers.get(top[0])!.size : 0, topKillerNoDefensive: top ? killerNoDef.get(top[0]) ?? 0 : 0 };
+    return { ...a, topKiller: top, topKillerSpellId: top ? killerSpell.get(top[0]) ?? null : null, topKillerNights: top ? killers.get(top[0])!.size : 0, topKillerNoDefensive: top ? killerNoDef.get(top[0]) ?? 0 : 0 };
   });
   // quem mais morreu no total (taxa por pull desempata: quem jogou pouco não vai para o topo)
   players.sort((a, b) => b.deaths - a.deaths || b.deaths / Math.max(1, b.pulls) - a.deaths / Math.max(1, a.pulls));

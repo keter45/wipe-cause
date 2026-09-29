@@ -3,6 +3,8 @@ import { X } from 'lucide-react';
 import type { Pull } from '../types';
 import { pct } from '../lib/format';
 import { lowestBossHp } from '../lib/verdict';
+import { mechanicSpellId } from '../lib/spells';
+import { SpellName } from './SpellIcon';
 
 /** Tempo na tela: dá para ler entre um pull e outro sem ficar no caminho. */
 const SHOW_MS = 20_000;
@@ -21,7 +23,11 @@ export function LiveToast({ pull: p, discord, onOpen, onClose }: { pull: Pull; d
     <div className={`live-toast ${p.success ? 'kill' : 'wipe'}`} role="status">
       <div className="live-toast-body">
         <strong>{p.success ? `Kill! ${p.encounterName}` : `Pull ${p.pullNumber} · ${p.encounterName}${hp != null ? ` — ${pct(hp)}` : ''}`}</strong>
-        {!p.success && p.trigger && <span className="small">Gatilho: {p.trigger.name}</span>}
+        {!p.success && p.trigger && (
+          <span className="small">
+            Gatilho: <SpellName spellId={mechanicSpellId(p, p.trigger.key)} name={p.trigger.name} size={14} />
+          </span>
+        )}
         {discord && <span className="small muted">{discord}</span>}
       </div>
       <button className="btn sm" onClick={onOpen}>

@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost https://nether.wowhead.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://wow.zamimg.com; media-src 'self' asset: http://asset.localhost",
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost https://nether.wowhead.com https://wow.zamimg.com data:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://wow.zamimg.com; media-src 'self' asset: http://asset.localhost",
       "assetProtocol": {
         "enable": true,
         "scope": []

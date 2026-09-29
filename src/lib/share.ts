@@ -1,11 +1,12 @@
 // Compartilhar sem o app: gera um cartão (PNG ou HTML) a partir de um componente React
 // renderizado fora da tela, e copia, salva ou envia ao Discord.
 
-import type { ReactElement } from 'react';
+import { createElement, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toPng } from 'html-to-image';
 import { invoke } from '@tauri-apps/api/core';
 import { inTauri } from './api';
+import { EagerIcons } from '../components/SpellIcon';
 
 /** Renderiza `node` fora da tela e devolve o elemento pronto (e como desmontar). */
 async function mount(node: ReactElement): Promise<{ el: HTMLElement; done: () => void }> {
@@ -13,10 +14,11 @@ async function mount(node: ReactElement): Promise<{ el: HTMLElement; done: () =>
   host.style.cssText = 'position:fixed;left:-10000px;top:0;pointer-events:none;';
   document.body.appendChild(host);
   const root = createRoot(host);
-  root.render(node);
+  root.render(createElement(EagerIcons.Provider, { value: true }, node));
   // dois frames: o React monta e o navegador faz o layout
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   const el = host.firstElementChild as HTMLElement;
+  await iconsLoaded(el);
   return {
     el,
     done: () => {
@@ -24,6 +26,22 @@ async function mount(node: ReactElement): Promise<{ el: HTMLElement; done: () =>
       host.remove();
     },
   };
+}
+
+/**
+ * Espera os ícones das habilidades: cada um busca o tooltip no Wowhead e depois a imagem.
+ * Para quando nada novo aparece por alguns instantes (ou em até 5s).
+ */
+async function iconsLoaded(el: HTMLElement) {
+  let stable = 0;
+  let last = -1;
+  for (let i = 0; i < 50 && stable < 4; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    const imgs = [...el.querySelectorAll('img')];
+    const done = imgs.every((img) => img.complete);
+    stable = done && imgs.length === last ? stable + 1 : 0;
+    last = imgs.length;
+  }
 }
 
 /** PNG (data URL) do cartão, em 2x para ficar nítido no Discord. */

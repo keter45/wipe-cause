@@ -1,3 +1,4 @@
+mod ai;
 mod discord;
 mod history;
 mod live;
@@ -72,6 +73,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             analyze_log,
             rules_dir,
+            ai::ai_get_config,
+            ai::ai_set_config,
+            ai::ai_list_models,
+            ai::ai_chat,
             live::live_start,
             live::live_stop,
             live::live_status,

@@ -15,10 +15,13 @@ import { PlayAt, VideoPanel } from './VideoPanel';
 import { SendToDiscord } from './SendToDiscord';
 import { ShareMenu } from './ShareMenu';
 import { PullShareCard } from './ShareCards';
+import { AskView } from './AskView';
+import { SpellIcon } from './SpellIcon';
+import { mechanicSpellId, mechanicSpellMap } from '../lib/spells';
 import { pullPayload } from '../lib/discord';
 import { scorePull } from '../lib/score';
 
-type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells';
+type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells' | 'ask';
 
 const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info: 'Info' } as const;
 
@@ -28,6 +31,8 @@ interface Props {
   wclCode?: string;
   /** vídeo do Warcraft Recorder casado com o pull */
   video?: WcrVideo;
+  /** pulls do mesmo boss na noite (contexto da IA) */
+  nightPulls?: Pull[];
 }
 
 /** HP de um boss: no corte ("ignorar após N mortes"), se houver. */
@@ -36,7 +41,7 @@ const bossHpOf = (pull: Pull) => (b: Pull['bosses'][number]) => (pull.cutoffT !=
 /** guid -> classe (cores dos mini mapas). */
 const classesOf = (p: Pull) => new Map(p.players.map((x) => [x.guid, x.class] as const));
 
-export function PullView({ pull, wclCode, video }: Props) {
+export function PullView({ pull, wclCode, video, nightPulls }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
   const [videoOpen, setVideoOpen] = useState(false);
   const [showMinor, setShowMinor] = useState(false);
@@ -67,6 +72,7 @@ export function PullView({ pull, wclCode, video }: Props) {
     { key: 'interrupts', label: 'Interrupts' },
     { key: 'players', label: 'Jogadores', count: pull.players.length },
     { key: 'spells', label: 'Habilidades do boss' },
+    { key: 'ask', label: 'Perguntar à IA' },
   ];
 
   return (
@@ -123,6 +129,7 @@ export function PullView({ pull, wclCode, video }: Props) {
 
       <section className={`verdict ${pull.success ? 'kill' : 'wipe'}`}>
         <h3>
+          {pull.trigger && <SpellIcon spellId={mechanicSpellId(pull, pull.trigger.key)} size={20} />}
           {verdict.headline}
           {pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label="ver gatilho" />}
         </h3>
@@ -160,10 +167,11 @@ export function PullView({ pull, wclCode, video }: Props) {
       </div>
 
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
-      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} />}
+      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} mechanicSpells={mechanicSpellMap([pull])} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
+      {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
     </div>
     </SeekContext.Provider>
   );
@@ -174,6 +182,7 @@ function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] 
     <li className={`finding ${f.severity}`}>
       <span className="badge">{SEVERITY_LABEL[f.severity]}</span>
       <span>
+        {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}
         <strong>{f.title}</strong>
         {f.detail && <span className="muted"> — {f.detail}</span>}
       </span>

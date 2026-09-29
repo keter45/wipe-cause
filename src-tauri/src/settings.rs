@@ -20,6 +20,13 @@ pub struct Settings {
     pub discord_on_wipe: bool,
     #[serde(default = "yes")]
     pub discord_on_kill: bool,
+    /// "Pergunte à IA": provedor, URL (compatível com OpenAI) e modelo; a chave fica no cofre do sistema
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_base_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ai_model: Option<String>,
 }
 
 fn yes() -> bool {
@@ -28,7 +35,7 @@ fn yes() -> bool {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true }
+        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, ai_provider: None, ai_base_url: None, ai_model: None }
     }
 }
 

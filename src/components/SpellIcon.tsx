@@ -1,10 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Mountain, Swords } from 'lucide-react';
 import { iconUrl, useTooltip } from '../lib/wowhead';
 
 /** No wipe-core, Melee é o spell 1 e dano de ambiente (queda, lava) é o 0. */
 const MELEE = 1;
 const ENVIRONMENT = 0;
+
+/**
+ * Carregar os ícones já, sem esperar entrar na tela: para os cartões de compartilhar, que
+ * são renderizados fora da tela e viram imagem.
+ */
+export const EagerIcons = createContext(false);
 
 interface Props {
   spellId: number | null | undefined;
@@ -17,7 +23,8 @@ interface Props {
  */
 export function SpellIcon({ spellId, size = 18 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [visible, setVisible] = useState(false);
+  const eager = useContext(EagerIcons);
+  const [visible, setVisible] = useState(eager);
   const special = spellId === MELEE || spellId === ENVIRONMENT || spellId == null;
   const tip = useTooltip(spellId ?? -1, visible && !special);
 
@@ -52,7 +59,9 @@ export function SpellIcon({ spellId, size = 18 }: Props) {
     );
   return (
     <span ref={ref} className="spell-icon" style={style} aria-hidden>
-      {tip?.icon && <img src={iconUrl(tip.icon)} alt="" width={size} height={size} loading="lazy" decoding="async" />}
+      {tip?.icon && (
+        <img src={iconUrl(tip.icon)} alt="" width={size} height={size} loading={eager ? 'eager' : 'lazy'} decoding="async" crossOrigin="anonymous" />
+      )}
     </span>
   );
 }
