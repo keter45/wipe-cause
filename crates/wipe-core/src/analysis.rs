@@ -390,6 +390,7 @@ impl PullBuilder {
             r.on_interrupt(cut_id, &owner, label.as_deref().unwrap_or(f[2]), rel);
         }
         let kick = f[10].to_string();
+        let kick_id: u32 = f[9].parse().unwrap_or(0);
         let p = self.player(&owner, owner_name);
         // a tentativa (SPELL_CAST_SUCCESS) vem logo antes: completa ela em vez de duplicar
         match p.interrupt_log.iter_mut().rev().find(|u| u.target_spell_id.is_none() && rel - u.t <= 500) {
@@ -397,7 +398,13 @@ impl PullBuilder {
                 u.target_spell_id = Some(cut_id);
                 u.target_spell = Some(cut_name);
             }
-            None => p.interrupt_log.push(InterruptUse { t: rel, spell: kick, target_spell_id: Some(cut_id), target_spell: Some(cut_name) }),
+            None => p.interrupt_log.push(InterruptUse {
+                t: rel,
+                spell_id: kick_id,
+                spell: kick,
+                target_spell_id: Some(cut_id),
+                target_spell: Some(cut_name),
+            }),
         }
     }
 
@@ -586,7 +593,7 @@ impl PullBuilder {
                 let owner_name = if owner == src_guid { src_name } else { "" };
                 let p = self.player(&owner, owner_name);
                 p.interrupt_attempts += 1;
-                p.interrupt_log.push(InterruptUse { t: rel, spell: spell_name.clone(), target_spell_id: None, target_spell: None });
+                p.interrupt_log.push(InterruptUse { t: rel, spell_id, spell: spell_name.clone(), target_spell_id: None, target_spell: None });
             }
         }
         if !Self::is_group_player(src_guid, src_flags) {

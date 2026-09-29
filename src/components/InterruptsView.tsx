@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { PlayerStats, Pull } from '../types';
 import { classColor, mmss, shortName } from '../lib/format';
+import { SpellIcon, SpellName } from './SpellIcon';
 
 /** Casts interrompíveis (cortados ao menos uma vez no log) e quem cortou / quem não. */
 export function InterruptsView({ pull }: { pull: Pull }) {
@@ -33,7 +34,7 @@ export function InterruptsView({ pull }: { pull: Pull }) {
               return (
                 <tr key={s.spellId}>
                   <td>
-                    {s.name} <span className="muted small">({s.sources.join(', ')})</span>
+                    <SpellName spellId={s.spellId} name={s.name} /> <span className="muted small">({s.sources.join(', ')})</span>
                   </td>
                   <td className="num">{s.interrupted}</td>
                   <td className={`num ${s.casts ? 'bad' : ''}`}>{s.casts}</td>
@@ -95,8 +96,12 @@ function KickerRow({ p, open, onToggle }: { p: PlayerStats; open: boolean; onTog
             <ul className="plain small">
               {p.interruptLog.map((u, i) => (
                 <li key={i}>
-                  <span className="muted">{mmss(u.t)}</span> {u.spell} →{' '}
-                  {u.targetSpell ? u.targetSpell : <span className="muted">não cortou nada</span>}
+                  <span className="muted">{mmss(u.t)}</span> <SpellIcon spellId={u.spellId} size={16} /> {u.spell} →{' '}
+                  {u.targetSpell ? (
+                    <SpellName spellId={u.targetSpellId} name={u.targetSpell} size={16} />
+                  ) : (
+                    <span className="muted">não cortou nada</span>
+                  )}
                 </li>
               ))}
             </ul>

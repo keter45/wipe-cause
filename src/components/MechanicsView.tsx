@@ -3,6 +3,7 @@ import type { MechanicResult, Pull } from '../types';
 import { mmss, num, shortName } from '../lib/format';
 import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
+import { SpellName } from './SpellIcon';
 
 const SEVERITY_LABEL: Record<string, string> = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', none: 'Info' };
 
@@ -69,7 +70,9 @@ function MechanicCard({ m }: { m: MechanicResult }) {
     <section className={`mechanic finding ${m.severity === 'none' ? 'info' : m.severity}`}>
       <header className="mechanic-head">
         <span className="badge">{SEVERITY_LABEL[m.severity] ?? m.severity}</span>
-        <strong>{m.name}</strong>
+        <strong>
+          <SpellName spellId={m.spellId} name={m.name} size={20} />
+        </strong>
         <span className="muted small">{KIND_LABEL[m.kind] ?? m.kind}</span>
         <span className="mechanic-count">{m.failures}×</span>
       </header>

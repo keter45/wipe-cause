@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { PlayerStats } from '../types';
 import { classColor, mmss, num, ROLE_LABEL, shortName } from '../lib/format';
+import { SpellIcon, SpellName } from './SpellIcon';
 
 type SortKey = 'name' | 'dps' | 'hps' | 'damageTaken' | 'deaths' | 'defensives';
 
@@ -78,7 +79,9 @@ function PlayerRow({ p, open, onToggle }: { p: PlayerStats; open: boolean; onTog
                   <tbody>
                     {p.takenByAbility.map((a) => (
                       <tr key={`${a.spellId}:${a.source}`}>
-                        <td>{a.name}</td>
+                        <td>
+                          <SpellName spellId={a.spellId} name={a.name} />
+                        </td>
                         <td className="muted">{a.source}</td>
                         <td className="num">{a.hits}×</td>
                         <td className="num">{num(a.amount)}</td>
@@ -95,7 +98,7 @@ function PlayerRow({ p, open, onToggle }: { p: PlayerStats; open: boolean; onTog
                   <ul className="plain">
                     {p.defensivesUsed.map((d, i) => (
                       <li key={i}>
-                        <span className="muted">{mmss(d.t)}</span> {d.name}
+                        <span className="muted">{mmss(d.t)}</span> <SpellIcon spellId={d.spellId} size={16} /> {d.name}
                       </li>
                     ))}
                   </ul>

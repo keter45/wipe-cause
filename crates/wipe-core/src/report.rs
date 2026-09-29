@@ -74,6 +74,8 @@ pub struct PullTrigger {
 pub struct MechanicResult {
     pub key: String,
     pub name: String,
+    /// spell que representa a mecânica (para o ícone)
+    pub spell_id: Option<u32>,
     /// tipo da regra (avoidable_damage, soak, interrupt, ...)
     pub kind: String,
     /// wipe | major | minor | none
@@ -252,6 +254,7 @@ pub struct MechanicShare {
 pub struct InterruptUse {
     pub t: i64,
     /// interrupt usado (Kick, Pummel, ...)
+    pub spell_id: u32,
     pub spell: String,
     /// cast cortado; None = tentativa que não cortou nada
     pub target_spell_id: Option<u32>,

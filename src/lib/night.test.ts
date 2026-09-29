@@ -25,7 +25,7 @@ const pull = (id: number, startMs: number, durationMs: number, over: Partial<Pul
 const cause = { key: 'orb', name: 'Orb', amount: 1, pct: 100, failT: 1000 };
 /** Orb (soak): A foi atingido pela explosão 2x (vítima, não culpado), B ajudou a soakar 3x */
 const orbMech: MechanicResult = {
-  key: 'orb', name: 'Orb', kind: 'soak', severity: 'wipe', tip: '', evaluated: true, failures: 1, summary: '',
+  key: 'orb', name: 'Orb', spellId: null, kind: 'soak', severity: 'wipe', tip: '', evaluated: true, failures: 1, summary: '',
   players: [
     { guid: 'A', name: 'A-Realm', count: 2, amount: 0, firstT: 0, credit: false, message: '' },
     { guid: 'B', name: 'B-Realm', count: 3, amount: 0, firstT: 0, credit: true, message: '' },
@@ -35,7 +35,7 @@ const orbMech: MechanicResult = {
 
 /** poça (dano evitável): A pisou 2x — erro pessoal */
 const puddle: MechanicResult = {
-  key: 'puddle', name: 'Poça', kind: 'avoidable_damage', severity: 'minor', tip: '', evaluated: true, failures: 2, summary: '',
+  key: 'puddle', name: 'Poça', spellId: null, kind: 'avoidable_damage', severity: 'minor', tip: '', evaluated: true, failures: 2, summary: '',
   players: [{ guid: 'A', name: 'A-Realm', count: 2, amount: 0, firstT: 0, credit: false, message: '' }],
   events: [],
 };

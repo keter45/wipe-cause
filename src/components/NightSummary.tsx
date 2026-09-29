@@ -4,6 +4,7 @@ import type { Pull } from '../types';
 import { classColor, mmss, num, pct, shortName } from '../lib/format';
 import { summarizeNight, topBy, type NightSummary as Summary, type PlayerNight } from '../lib/night';
 import { lowestBossHp } from '../lib/verdict';
+import { SpellName } from './SpellIcon';
 
 interface Props {
   pulls: Pull[];
@@ -34,6 +35,12 @@ export function NightSummary({ pulls, onSelectPull }: Props) {
   const [group, setGroup] = useState<string>(() => [...groups.entries()].sort((a, b) => b[1].length - a[1].length)[0]?.[0] ?? 'all');
   const selected = group === 'all' ? pulls : groups.get(group) ?? pulls;
   const s = useMemo(() => summarizeNight(selected), [selected]);
+  // ícone de cada mecânica (vem das regras do boss)
+  const mechanicSpellIds = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of pulls) for (const x of p.mechanics) if (x.spellId != null) m.set(x.key, x.spellId);
+    return m;
+  }, [pulls]);
 
   if (!pulls.length) return <p className="muted pad">Nenhum pull no log.</p>;
   const topCause = s.causes.find((c) => c.triggers > 0) ?? s.causes[0];
@@ -96,7 +103,7 @@ export function NightSummary({ pulls, onSelectPull }: Props) {
       <div className="two-col">
         <section className="panel">
           <h3>Causas dos wipes</h3>
-          <CausesTable s={s} />
+          <CausesTable s={s} spellIds={mechanicSpellIds} />
         </section>
         <section className="panel">
           <h3>Linha do tempo da noite</h3>
@@ -299,7 +306,7 @@ function GapList({ s }: { s: Summary }) {
   );
 }
 
-function CausesTable({ s }: { s: Summary }) {
+function CausesTable({ s, spellIds }: { s: Summary; spellIds: Map<string, number> }) {
   const rows = s.causes.filter((c) => c.triggers || c.deaths).slice(0, 8);
   if (!rows.length) return <p className="muted small">Sem regras de boss para apontar causas.</p>;
   const max = Math.max(...rows.map((c) => c.triggers), 1);
@@ -316,7 +323,9 @@ function CausesTable({ s }: { s: Summary }) {
       <tbody>
         {rows.map((c) => (
           <tr key={c.key}>
-            <td>{c.name}</td>
+            <td>
+              <SpellName spellId={spellIds.get(c.key)} name={c.name} />
+            </td>
             <td>
               <span className="inline-bar">
                 <span style={{ width: `${(c.triggers / max) * 100}%` }} />

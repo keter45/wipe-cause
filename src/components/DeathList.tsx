@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { ChevronRight, ExternalLink, FlaskConical, Gem, Shield } from 'lucide-react';
 import type { Death, DeathAura, RecapEntry } from '../types';
 import { classColor, mmss, num, relSeconds, shortName } from '../lib/format';
-import { iconUrl, useTooltip, wowheadUrl } from '../lib/wowhead';
+import { useTooltip, wowheadUrl } from '../lib/wowhead';
+import { SpellIcon, SpellName } from './SpellIcon';
 import { openExternal } from '../lib/api';
 import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
@@ -49,7 +50,9 @@ export function DeathList({ deaths, decisive, cutoffT }: Props) {
                   {d.killingBlow ? (
                     <>
                       <span className="kb-line">
-                        <span className="kb-spell">{d.killingBlow.spellName}</span>
+                        <span className="kb-spell">
+                          <SpellName spellId={d.killingBlow.spellId} name={d.killingBlow.spellName} size={20} />
+                        </span>
                         <span className="dmg">{num(d.killingBlow.amount)}</span>
                       </span>
                       <span className="kb-sub">
@@ -166,7 +169,8 @@ function DeathDetail({ death }: { death: Death }) {
             <p className="recap-note">
               <span className="muted">Defensivos disponíveis e não usados</span>
               {death.defensivesAvailable.map((a) => (
-                <span key={a.spellId} className="chip">
+                <span key={a.spellId} className="chip with-icon">
+                  <SpellIcon spellId={a.spellId} size={14} />
                   {a.name}
                 </span>
               ))}
@@ -242,7 +246,7 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
   return (
     <li className="debuff">
       <button className="debuff-head" onClick={() => setShow(!show)} aria-expanded={show}>
-        {tip?.icon && <img src={iconUrl(tip.icon)} alt="" width={18} height={18} />}
+        <SpellIcon spellId={a.spellId} size={20} />
         <strong>{a.name}</strong>
         {a.stacks > 1 && <span className="stacks">×{a.stacks}</span>}
         {a.mechanic && <span className="chip mech">{a.mechanic}</span>}
@@ -272,7 +276,7 @@ function RecapRow({ e, deathT, killingBlow }: { e: RecapEntry; deathT: number; k
     <tr className={`recap-${e.kind} ${killingBlow ? 'kb-row' : ''}`} title={killingBlow ? 'Golpe final' : undefined}>
       <td className="muted num-cell">{relSeconds(e.t - deathT)}</td>
       <td>
-        {e.spellName}
+        <SpellName spellId={e.spellId} name={e.spellName} size={16} />
         {e.overkill > 0 && <span className="muted"> (overkill {num(e.overkill)})</span>}
       </td>
       <td className="muted">{e.source}</td>

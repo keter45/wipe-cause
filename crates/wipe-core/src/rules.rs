@@ -516,7 +516,21 @@ impl RuleTracker {
             credits.sort_by(|a, b| b.count.cmp(&a.count).then(a.name.cmp(&b.name)));
             players.extend(credits);
 
+            let d = &m.detect;
+            // ícone: o que o jogador vê — dano, depois a aura, o cast, a falha
+            let spell_id = d
+                .damage_ids
+                .iter()
+                .flatten()
+                .next()
+                .copied()
+                .or(d.aura_id)
+                .or(d.cast_id)
+                .or_else(|| d.fail_ids.iter().flatten().next().copied())
+                .or(d.soak_aura_id)
+                .or(d.enrage_aura_id);
             out.push(MechanicResult {
+                spell_id,
                 key: m.key,
                 name: m.name,
                 kind: m.kind.as_str().to_string(),

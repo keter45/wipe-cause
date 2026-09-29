@@ -111,6 +111,7 @@ fn boss_rules_are_applied() {
     // Vile Flood: priest pegou 2 hits do feixe (dano evitável)
     let vf = p1.mechanics.iter().find(|m| m.key == "vile_flood").unwrap();
     assert_eq!(vf.failures, 2);
+    assert_eq!(vf.spell_id, Some(1294605), "ícone da mecânica = spell de dano");
     assert_eq!(vf.players[0].name, "Curandeira-Azralon");
     assert_eq!(vf.players[0].message, "Curandeira foi atingido pelo feixe do Vile Flood (2x)");
     // a morte fica ligada à mecânica
@@ -173,6 +174,7 @@ fn tracks_interrupts_per_player() {
     let mage = p2.players.iter().find(|p| p.name == "Magozin-Azralon").unwrap();
     assert_eq!((mage.interrupts, mage.interrupt_attempts), (1, 1));
     assert_eq!(mage.interrupt_log[0].target_spell.as_deref(), Some("Visceral Burst"));
+    assert_eq!(mage.interrupt_log[0].spell_id, 2139, "Counterspell");
     assert!(mage.can_interrupt);
     let priest = p2.players.iter().find(|p| p.name == "Curandeira-Azralon").unwrap();
     assert!(!priest.can_interrupt, "disc priest não tem interrupt");

@@ -85,6 +85,7 @@ export interface PlayerStats {
 
 export interface InterruptUse {
   t: number;
+  spellId: number;
   spell: string;
   targetSpellId: number | null;
   targetSpell: string | null;
@@ -191,6 +192,8 @@ export type MechanicSeverity = 'wipe' | 'major' | 'minor' | 'none';
 export interface MechanicResult {
   key: string;
   name: string;
+  /** spell que representa a mecânica (para o ícone) */
+  spellId: number | null;
   kind: string;
   severity: MechanicSeverity;
   tip: string;
