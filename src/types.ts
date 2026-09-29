@@ -81,6 +81,58 @@ export interface PlayerStats {
   interruptAttempts: number;
   canInterrupt: boolean;
   interruptLog: InterruptUse[];
+  /** Casts do próprio player (sem pets) até o corte. Ausente em análises antigas. */
+  casts?: SpellCasts[];
+  damageBySpell?: SpellAmount[];
+  healingBySpell?: SpellAmount[];
+  /** Tempo vivo dentro do tempo analisado */
+  aliveMs?: number;
+  setup?: Setup | null;
+}
+
+export interface SpellCasts {
+  spellId: number;
+  name: string;
+  /** ms desde o início do pull */
+  times: number[];
+}
+
+export interface SpellAmount {
+  spellId: number;
+  name: string;
+  amount: number;
+  pet: boolean;
+}
+
+export interface Setup {
+  stats: SetupStats;
+  itemLevel: number;
+  items: GearItem[];
+  /** [nó, entrada, rank] */
+  talents: [number, number, number][];
+}
+
+export interface SetupStats {
+  strength: number;
+  agility: number;
+  stamina: number;
+  intellect: number;
+  crit: number;
+  haste: number;
+  mastery: number;
+  versatility: number;
+  leech: number;
+  avoidance: number;
+  speed: number;
+}
+
+export interface GearItem {
+  /** 0 = cabeça … 15 = arma, 16 = mão secundária */
+  slot: number;
+  itemId: number;
+  ilvl: number;
+  enchant: number | null;
+  gems: number[];
 }
 
 export interface InterruptUse {

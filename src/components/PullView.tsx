@@ -16,12 +16,13 @@ import { SendToDiscord } from './SendToDiscord';
 import { ShareMenu } from './ShareMenu';
 import { PullShareCard } from './ShareCards';
 import { AskView } from './AskView';
+import { PerformanceView } from './PerformanceView';
 import { SpellIcon } from './SpellIcon';
 import { mechanicSpellId, mechanicSpellMap } from '../lib/spells';
 import { pullPayload } from '../lib/discord';
 import { scorePull } from '../lib/score';
 
-type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells' | 'ask';
+type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'ask';
 
 const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info: 'Info' } as const;
 
@@ -71,6 +72,7 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
     { key: 'deaths', label: 'Mortes', count: deathCount },
     { key: 'interrupts', label: 'Interrupts' },
     { key: 'players', label: 'Jogadores', count: pull.players.length },
+    { key: 'perf', label: 'Desempenho' },
     { key: 'spells', label: 'Habilidades do boss' },
     { key: 'ask', label: 'Perguntar à IA' },
   ];
@@ -170,6 +172,7 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
       {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} mechanicSpells={mechanicSpellMap([pull])} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
+      {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
     </div>
