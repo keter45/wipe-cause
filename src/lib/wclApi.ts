@@ -44,8 +44,13 @@ export function parseRankings(json: unknown): TopRanking[] {
   if (!Array.isArray(list)) return [];
   return list.flatMap((r: any) => {
     if (!r?.report?.code || r.report.fightID == null || !r.name) return [];
-    const ci = r.combatantInfo ?? null;
-    const ilvl = typeof r.bracketData === 'number' ? r.bracketData : gearItemLevel(ci?.gear);
+    // os rankings trazem `gear` e `talents` ({talentID = entrada, points}) direto na entrada;
+    // vira o mesmo formato do combatantInfo do playerDetails (os status só vêm de lá)
+    const ci = {
+      gear: r.gear,
+      talentTree: Array.isArray(r.talents) ? r.talents.map((t: any) => ({ id: t?.talentID, rank: t?.points, nodeID: 0 })) : [],
+    };
+    const ilvl = Number(r.bracketData) || gearItemLevel(r.gear);
     return [
       {
         name: String(r.name),
@@ -120,15 +125,19 @@ const FIGHT_QUERY = `query Fight($code: String!, $fight: Int!) {
   } }
 }`;
 
-const CASTS_QUERY = `query Casts($code: String!, $fight: Int!, $source: Int!, $start: Float) {
+// startTime sem endTime devolve lista vazia: os dois vão sempre juntos
+const CASTS_QUERY = `query Casts($code: String!, $fight: Int!, $source: Int!, $start: Float!, $end: Float!) {
   reportData { report(code: $code) {
-    events(fightIDs: [$fight], sourceID: $source, dataType: Casts, startTime: $start, limit: 10000) { data nextPageTimestamp }
+    events(fightIDs: [$fight], sourceID: $source, dataType: Casts, startTime: $start, endTime: $end, limit: 10000) { data nextPageTimestamp }
   } }
 }`;
 
-const TABLE_QUERY = `query Table($code: String!, $fight: Int!, $source: Int!, $type: TableDataType!) {
-  reportData { report(code: $code) { table(fightIDs: [$fight], sourceID: $source, dataType: $type) } }
+const TABLE_QUERY = `query Table($code: String!, $fight: Int!, $source: Int!, $type: TableDataType!, $start: Float!, $end: Float!) {
+  reportData { report(code: $code) { table(fightIDs: [$fight], sourceID: $source, dataType: $type, startTime: $start, endTime: $end) } }
 }`;
+
+/** Tempo vivo do nosso player: a parte da luta que dá para comparar. */
+const windowOf = (me: Sample) => Math.max(30_000, me.player.aliveMs ?? me.pull.analyzedMs);
 
 /** COMBATANT_INFO do WCL -> nosso Setup. */
 export function parseCombatantInfo(ci: any): Setup | null {
@@ -233,20 +242,30 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
   const events: any[] = [];
   let start: number | null = fight.startTime;
   for (let page = 0; start != null && page < 10; page++) {
-    const d = await query<any>(CASTS_QUERY, { code: top.code, fight: top.fightId, source: actor.id, start }, `casts-${key}-${actor.id}-${page}`);
+    const d = await query<any>(CASTS_QUERY, { code: top.code, fight: top.fightId, source: actor.id, start, end: fight.endTime }, `casts2-${key}-${actor.id}-${page}`);
     const ev = d?.reportData?.report?.events;
     events.push(...(ev?.data ?? []));
     start = ev?.nextPageTimestamp ?? null;
   }
   const healer = me.player.role === 'healer';
-  const table = await query<any>(TABLE_QUERY, { code: top.code, fight: top.fightId, source: actor.id, type: healer ? 'Healing' : 'DamageDone' }, `table-${key}-${actor.id}-${healer ? 'h' : 'd'}`);
+  const fullMs = Number(fight.endTime) - Number(fight.startTime);
+  // mesma janela do nosso tempo vivo (arredondada a 5s, para o cache servir a pulls parecidos):
+  // compara a mesma parte da luta, sem o execute e as fases que o wipe não viu
+  const durationMs = Math.min(fullMs, Math.ceil(windowOf(me) / 5000) * 5000);
+  const table = await query<any>(
+    TABLE_QUERY,
+    { code: top.code, fight: top.fightId, source: actor.id, type: healer ? 'Healing' : 'DamageDone', start: fight.startTime, end: fight.startTime + durationMs },
+    `table2-${key}-${actor.id}-${healer ? 'h' : 'd'}-${durationMs}`,
+  );
   const amounts = tableAmounts(table?.reportData?.report?.table);
 
-  const durationMs = Number(fight.endTime) - Number(fight.startTime);
   const details = report.playerDetails?.data?.playerDetails ?? report.playerDetails?.playerDetails ?? {};
   const detail = [...(details.dps ?? []), ...(details.healers ?? []), ...(details.tanks ?? [])].find((p: any) => p?.id === actor.id);
   const setup = parseCombatantInfo(detail?.combatantInfo ?? top.combatantInfo);
   const total = amounts.reduce((a, x) => a + x.amount, 0) || (top.amount * durationMs) / 1000;
+  const casts = groupCasts(events, Number(fight.startTime), names)
+    .map((c) => ({ ...c, times: c.times.filter((t) => t <= durationMs) }))
+    .filter((c) => c.times.length > 0);
 
   const player: PlayerStats = {
     ...me.player,
@@ -254,15 +273,15 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
     name: `${top.name}-${top.server}`,
     damageDone: healer ? 0 : total,
     healingDone: healer ? total : 0,
-    dps: healer ? 0 : top.amount,
-    hps: healer ? top.amount : 0,
+    dps: healer ? 0 : total / (durationMs / 1000),
+    hps: healer ? total / (durationMs / 1000) : 0,
     deaths: 0,
     defensivesUsed: [],
     takenByAbility: [],
     interruptLog: [],
     interrupts: 0,
     interruptAttempts: 0,
-    casts: groupCasts(events, Number(fight.startTime), names),
+    casts,
     damageBySpell: healer ? [] : amounts,
     healingBySpell: healer ? amounts : [],
     aliveMs: durationMs,
@@ -273,7 +292,8 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
     id: -1 - index,
     pullNumber: 0,
     success: !!fight.kill,
-    durationMs,
+    // duração real do kill (a janela comparada está em analyzedMs)
+    durationMs: fullMs,
     analyzedMs: durationMs,
     cutoffT: null,
     players: [player],
