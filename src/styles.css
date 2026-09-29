@@ -2273,3 +2273,103 @@ ul.plain {
 .foot-check:disabled {
   cursor: default;
 }
+
+/* ---------------------------------------------------------------- ao vivo */
+.live-off {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.live-error {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.live-on {
+  gap: 8px;
+}
+.live-state {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kill);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--kill) 60%, transparent);
+  animation: live-pulse 1.8s var(--ease-out) infinite;
+}
+.live-on.in_combat .live-dot {
+  background: var(--wipe);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--wipe) 60%, transparent);
+}
+.live-on.analyzing .live-dot {
+  background: var(--minor);
+}
+.live-on.error .live-dot {
+  background: var(--major);
+  animation: none;
+}
+@keyframes live-pulse {
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+  }
+}
+.live-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 10px 10px 10px 14px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card), 0 8px 24px rgb(0 0 0 / 0.35);
+  border-left: 3px solid var(--wipe);
+  animation: toast-in 200ms var(--ease-out);
+}
+.live-toast.kill {
+  border-left-color: var(--kill);
+}
+.live-toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+.check-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+  font-size: 13px;
+}
+.check-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}

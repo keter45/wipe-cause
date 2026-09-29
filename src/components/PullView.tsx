@@ -12,6 +12,8 @@ import { openExternal, type WcrVideo } from '../lib/api';
 import { SeekContext } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
+import { SendToDiscord } from './SendToDiscord';
+import { pullPayload } from '../lib/discord';
 
 type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells';
 
@@ -96,6 +98,7 @@ export function PullView({ pull, wclCode, video }: Props) {
               {videoOpen ? 'Fechar vídeo' : `Vídeo (${video.player ?? 'POV'})`}
             </button>
           )}
+          <SendToDiscord payload={() => pullPayload(pull, wclCode)} />
         </div>
         <div className="boss-bars">
           {pull.bosses.map((b) => (

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Crosshair } from 'lucide-react';
-import type { LogReport } from './types';
+import type { LogReport, Pull } from './types';
 import {
   analyzeLog,
   historyDelete,
@@ -8,6 +8,8 @@ import {
   historyList,
   historyLoad,
   historySetPinned,
+  discordGetConfig,
+  discordPost,
   inTauri,
   pickLogFile,
   rememberFile,
@@ -18,6 +20,9 @@ import { BossSummary, NightOverview } from './components/NightSummary';
 import { LogBrowser } from './components/LogBrowser';
 import { UpdateBanner } from './components/UpdateBanner';
 import { useUpdater, type UpdateState } from './lib/updater';
+import { useLive } from './lib/live';
+import { pullPayload } from './lib/discord';
+import { LiveToast } from './components/LiveToast';
 import { NIGHT } from './components/PullList';
 import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
@@ -57,6 +62,49 @@ export default function App() {
   const [wclCode, setWclCode] = useState<string | null>(null);
   const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
   const updater = useUpdater();
+  // pull que acabou de ser analisado no modo ao vivo (aviso no canto)
+  const [liveToast, setLiveToast] = useState<{ pull: Pull; discord: string | null } | null>(null);
+  const live = useLive(onLiveReport);
+  // dev no navegador: ?demoLive=1 mostra o botão e o aviso do modo ao vivo (só visual)
+  useEffect(() => {
+    if (demoLive && report && !liveToast) setLiveToast({ pull: report.pulls[report.pulls.length - 1], discord: 'enviado ao Discord' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report]);
+
+  /** Nova análise do modo ao vivo: atualiza a tela e, se o usuário acompanha o último pull, abre o novo. */
+  function onLiveReport(r: LogReport, fresh: Pull[]) {
+    const sameFile = report != null && sameLog(report.file, r.file);
+    const lastId = report?.pulls[report.pulls.length - 1]?.id;
+    const following = !sameFile || summary === NIGHT || browsing || selected === lastId;
+    if (sameFile) setReport(r);
+    else showReport(r);
+    setStatus({ kind: 'idle' });
+    refreshHistory();
+    const newest = fresh[fresh.length - 1];
+    if (!newest) return;
+    if (following) {
+      setSelected(newest.id);
+      setSummary(null);
+      setBrowsing(false);
+    }
+    setLiveToast({ pull: newest, discord: null });
+    postToDiscord(fresh);
+  }
+
+  /** Envia os pulls novos para o Discord, conforme a configuração (wipes e/ou kills). */
+  async function postToDiscord(fresh: Pull[]) {
+    const cfg = await discordGetConfig().catch(() => null);
+    if (!cfg?.webhook) return;
+    for (const p of fresh) {
+      if (p.success ? !cfg.onKill : !cfg.onWipe) continue;
+      try {
+        await discordPost(pullPayload(p, wclCode));
+        setLiveToast((t) => (t && t.pull.startMs === p.startMs ? { ...t, discord: 'enviado ao Discord' } : t));
+      } catch (e) {
+        setLiveToast((t) => (t && t.pull.startMs === p.startMs ? { ...t, discord: `Discord: ${e}` } : t));
+      }
+    }
+  }
   // dev no navegador: ?demoUpdate=1 mostra o aviso de versão nova (só visual)
   const updateState: UpdateState = demoUpdate ? { kind: 'available', version: '0.4.0', notes: '- Exemplo de novidade\n- Outra novidade' } : updater.state;
 
@@ -144,7 +192,9 @@ export default function App() {
     setDeathCutoff(n);
     saveDeathCutoff(n);
     window.clearTimeout(cutoffTimer.current);
-    if (inTauri && report) cutoffTimer.current = window.setTimeout(() => load(report.file, true, n), 600);
+    // ao vivo: reinicia o acompanhamento com o corte novo (ele já reanalisa o log)
+    if (inTauri && live.status.active) cutoffTimer.current = window.setTimeout(() => live.start(n), 600);
+    else if (inTauri && report) cutoffTimer.current = window.setTimeout(() => load(report.file, true, n), 600);
   }
 
   async function openEntry(e: HistoryEntry) {
@@ -201,6 +251,11 @@ export default function App() {
         onVideos={setVideos}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
+        live={demoLive ? { active: true, state: 'in_combat', file: 'WoWCombatLog-092826_204129.txt', encounter: 'The Coiled Altar', analyzed: 3, message: null } : live.status}
+        showLive={inTauri || demoLive}
+        liveError={live.error}
+        onLiveStart={() => live.start(deathCutoff)}
+        onLiveStop={live.stop}
       />
 
       {status.kind === 'loading' && (
@@ -257,6 +312,18 @@ export default function App() {
           ) : (
             <p className="muted">Nenhum pull no log.</p>
           )}
+          {liveToast && (
+            <LiveToast
+              pull={liveToast.pull}
+              discord={liveToast.discord}
+              onOpen={() => {
+                const p = report?.pulls.find((x) => x.startMs === liveToast.pull.startMs);
+                if (p) selectPull(p.id);
+                setLiveToast(null);
+              }}
+              onClose={() => setLiveToast(null)}
+            />
+          )}
         </main>
       </div>
     </div>
@@ -264,6 +331,7 @@ export default function App() {
 }
 
 /** Dev no navegador: `?demoLogs=1` mostra a lista de logs de exemplo. */
+const demoLive = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoLive');
 const demoUpdate = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoUpdate');
 const demoLogs = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoLogs');
 

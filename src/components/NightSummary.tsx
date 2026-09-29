@@ -5,6 +5,8 @@ import { classColor, mmss, num, pct, shortName } from '../lib/format';
 import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummary as Summary, type PlayerNight } from '../lib/night';
 import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
+import { SendToDiscord } from './SendToDiscord';
+import { bossPayload } from '../lib/discord';
 
 interface Props {
   pulls: Pull[];
@@ -109,7 +111,7 @@ export function BossSummary({ title, pulls, onSelectPull }: Props & { title: str
     <div className="night">
       <header className="night-head">
         <h2>{title}</h2>
-        <span className="muted small">Resumo do boss</span>
+        <SendToDiscord payload={() => bossPayload(title, s)} label="Enviar resumo ao Discord" />
       </header>
 
       <div className="tiles">

@@ -197,6 +197,39 @@ export const logsSetDir = (dir: string | null) => invoke<void>('logs_set_dir', {
 export const logsDetectDir = () => invoke<string | null>('logs_detect_dir');
 
 // ---------------------------------------------------------------------------
+// Modo ao vivo: o backend acompanha o log e reanalisa ao fim de cada pull
+
+export interface LiveStatus {
+  active: boolean;
+  state: 'watching' | 'in_combat' | 'analyzing' | 'error' | 'stopped';
+  file: string | null;
+  encounter: string | null;
+  analyzed: number;
+  message: string | null;
+}
+
+/** `path` null = WoWCombatLog mais recente da pasta de logs. */
+export const liveStart = (path: string | null, deathCutoff: number) => invoke<LiveStatus>('live_start', { path, deathCutoff });
+export const liveStop = () => invoke<void>('live_stop');
+export const liveStatus = () => invoke<LiveStatus>('live_status');
+export const onLiveStatus = (cb: (s: LiveStatus) => void) => listen<LiveStatus>('live-status', (e) => cb(e.payload));
+export const onLiveReport = (cb: (r: LogReport) => void) => listen<LogReport>('live-report', (e) => cb(e.payload));
+
+// ---------------------------------------------------------------------------
+// Discord (webhook do canal da raid)
+
+export interface DiscordConfig {
+  webhook: string | null;
+  onWipe: boolean;
+  onKill: boolean;
+}
+
+export const discordGetConfig = () => invoke<DiscordConfig>('discord_get_config');
+export const discordSetConfig = (config: DiscordConfig) => invoke<void>('discord_set_config', { config });
+/** `webhook` = testar outro destino antes de salvar; sem ele usa o salvo. */
+export const discordPost = (payload: unknown, webhook?: string) => invoke<void>('discord_post', { payload, webhook: webhook ?? null });
+
+// ---------------------------------------------------------------------------
 // Histórico de análises (salvas pelo backend a cada análise)
 
 export interface HistoryEntry {

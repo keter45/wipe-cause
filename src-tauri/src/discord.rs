@@ -1,0 +1,81 @@
+//! Resumo dos pulls no Discord por webhook (o líder cola a URL do webhook do canal da raid).
+//! A mensagem é montada na UI (mesma lógica do veredito do pull); aqui só se envia.
+
+use crate::settings;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use tauri::AppHandle;
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscordConfig {
+    pub webhook: Option<String>,
+    /// postar automaticamente no modo ao vivo
+    pub on_wipe: bool,
+    pub on_kill: bool,
+}
+
+/// Aceita só webhooks do Discord (a URL vai direto para uma requisição HTTP).
+pub fn valid_webhook(url: &str) -> bool {
+    ["https://discord.com/api/webhooks/", "https://discordapp.com/api/webhooks/", "https://ptb.discord.com/api/webhooks/", "https://canary.discord.com/api/webhooks/"]
+        .iter()
+        .any(|p| url.starts_with(p))
+}
+
+#[tauri::command]
+pub fn discord_get_config(app: AppHandle) -> DiscordConfig {
+    let s = settings::load(&app);
+    DiscordConfig { webhook: s.discord_webhook, on_wipe: s.discord_on_wipe, on_kill: s.discord_on_kill }
+}
+
+#[tauri::command]
+pub fn discord_set_config(app: AppHandle, config: DiscordConfig) -> Result<(), String> {
+    let webhook = settings::clean_dir(config.webhook);
+    if let Some(w) = &webhook {
+        if !valid_webhook(w) {
+            return Err("Isso não parece um webhook do Discord (https://discord.com/api/webhooks/…).".into());
+        }
+    }
+    settings::update(&app, |s| {
+        s.discord_webhook = webhook;
+        s.discord_on_wipe = config.on_wipe;
+        s.discord_on_kill = config.on_kill;
+    })
+}
+
+/// Envia a mensagem (JSON do webhook: content/embeds). `webhook` = outro destino (ex.: testar
+/// antes de salvar); sem ele, usa o salvo.
+#[tauri::command]
+pub async fn discord_post(app: AppHandle, payload: serde_json::Value, webhook: Option<String>) -> Result<(), String> {
+    let url = webhook
+        .or_else(|| settings::load(&app).discord_webhook)
+        .ok_or("Nenhum webhook do Discord configurado.")?;
+    if !valid_webhook(&url) {
+        return Err("Webhook do Discord inválido.".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(15)).build();
+        match agent.post(&url).send_json(payload) {
+            Ok(_) => Ok(()),
+            Err(ureq::Error::Status(404, _)) => Err("O Discord não achou esse webhook (foi apagado?).".into()),
+            Err(ureq::Error::Status(429, _)) => Err("O Discord limitou os envios; tente de novo em alguns segundos.".into()),
+            Err(ureq::Error::Status(code, r)) => Err(format!("O Discord recusou a mensagem ({code}): {}", r.into_string().unwrap_or_default())),
+            Err(e) => Err(format!("Sem conexão com o Discord: {e}")),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_discord_webhooks() {
+        assert!(valid_webhook("https://discord.com/api/webhooks/123/abc"));
+        assert!(valid_webhook("https://discordapp.com/api/webhooks/123/abc"));
+        assert!(!valid_webhook("https://example.com/api/webhooks/123/abc"));
+        assert!(!valid_webhook("http://discord.com/api/webhooks/123/abc"));
+    }
+}
