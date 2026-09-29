@@ -14,6 +14,18 @@ Ferramenta local para descobrir **por que a try deu wipe** no World of Warcraft,
 
 Wipes com menos de 30s são ignorados.
 
+## Ajustar as regras do boss
+
+Cada raid tem sua estratégia, então as regras dos bosses podem ser ajustadas sem mexer em arquivo:
+
+- **Ajustar regras deste boss** (aba Mecânicas): ligar/desligar cada mecânica, mudar a gravidade, quantos hits por player são tolerados, com quantos stacks avisar, o tempo máximo até o dispel, quem pode ser culpado e os textos de dica e mensagem. Só o que muda em relação ao padrão é salvo, então os ajustes continuam valendo quando o app atualiza as regras. Tem "voltar ao padrão" por mecânica e de tudo.
+- **Foco da progressão (★)**: as mecânicas que estão segurando a progressão entram no veredito mesmo quando leves, vêm primeiro e pesam 1,5× na nota.
+- **Criar regra** (aba Habilidades do boss): para algo que as regras não pegam, escolha em linguagem simples o que aquela habilidade significa ("tomar isso é erro", "tem que ser cortado", "stack que mata"…); o ID vem do log e a prévia mostra o que ela marcaria no pull.
+- **Marcar erro**: para o que o log não prova (posição, bait, escala), marque no pull quem errou e o quê — ou "essa morte foi erro do player" no detalhe da morte. Entra no veredito, na nota e no contexto da IA.
+- **Exportar / Importar**: mande os ajustes de um boss para os officers usarem a mesma configuração.
+
+Salvar reanalisa o log aberto. Os ajustes ficam em `rule-tuning/<encounter>.json` na pasta de dados do app (`wipe-cli analyze <log> --tuning <pasta>` também aplica).
+
 ## Configurações
 
 Tudo o que o app precisa fica em **Configurações** (rodapé da barra lateral), cada item com o status (pronto, falta configurar, desligado):
