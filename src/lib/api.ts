@@ -257,6 +257,17 @@ const demoHistory = (): HistoryEntry[] =>
       ]
     : [];
 
+/** Análises salvas, enxutas (sem recap/eventos), da mais antiga para a mais nova — para a Evolução. */
+export async function historyTrends(): Promise<{ id: string; title: string; raidStartMs: number | null; report: LogReport }[]> {
+  if (import.meta.env.DEV && !inTauri && new URLSearchParams(window.location.search).has('demoTrends')) {
+    // dev no navegador: relatórios gerados com wipe-cli em samples/trends/n1..n3.json
+    const { logTitle } = await import('./format');
+    const reports = await Promise.all([1, 2, 3].map((i) => fetch(`/samples/trends/n${i}.json`).then((r) => r.json() as Promise<LogReport>)));
+    return reports.map((r, i) => ({ id: `n${i}`, title: logTitle(r.pulls), raidStartMs: r.pulls[0]?.startMs ?? null, report: r }));
+  }
+  return inTauri ? invoke('history_trends') : [];
+}
+
 export const historyList = () => (inTauri ? invoke<HistoryEntry[]>('history_list') : Promise.resolve(demoHistory()));
 export const historyLoad = (id: string) => invoke<LogReport>('history_load', { id });
 export const historySetPinned = (id: string, pinned: boolean) => (inTauri ? invoke<void>('history_set_pinned', { id, pinned }) : Promise.resolve());

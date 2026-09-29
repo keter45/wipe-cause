@@ -23,6 +23,7 @@ import { useUpdater, type UpdateState } from './lib/updater';
 import { useLive } from './lib/live';
 import { pullPayload } from './lib/discord';
 import { LiveToast } from './components/LiveToast';
+import { TrendsView } from './components/TrendsView';
 import { NIGHT } from './components/PullList';
 import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
@@ -54,6 +55,8 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   // lista de logs da pasta do WoW ("Nova análise"); sem relatório aberto ela é a tela inicial
   const [browsing, setBrowsing] = useState(false);
+  // tela de evolução entre noites (histórico)
+  const [trends, setTrends] = useState(() => import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoTrends'));
   const [sidebarOpen, setSidebarOpen] = useState(savedSidebarOpen);
   // corte da análise na tela; a preferência (para logs novos) fica salva à parte
   const [deathCutoff, setDeathCutoff] = useState(savedDeathCutoff);
@@ -199,6 +202,7 @@ export default function App() {
 
   async function openEntry(e: HistoryEntry) {
     setBrowsing(false);
+    setTrends(false);
     if (report && sameLog(e.logPath, report.file)) {
       setSummary(NIGHT);
       return;
@@ -229,6 +233,7 @@ export default function App() {
   }
 
   const selectPull = (id: number) => {
+    setTrends(false);
     setSelected(id);
     setSummary(null);
   };
@@ -276,8 +281,13 @@ export default function App() {
             history={history}
             report={report}
             busy={status.kind === 'loading'}
-            onNew={() => setBrowsing(true)}
-            browsing={browsing || !report}
+            onNew={() => {
+              setTrends(false);
+              setBrowsing(true);
+            }}
+            browsing={!trends && (browsing || !report)}
+            trendsActive={trends}
+            onTrends={() => setTrends(true)}
             appVersion={updater.version}
             updateState={updateState}
             onCheckUpdates={() => updater.checkNow(true)}
@@ -290,11 +300,17 @@ export default function App() {
             selected={selected}
             onSelect={selectPull}
             summary={summary}
-            onSummary={setSummary}
+            onSummary={(k) => {
+              setTrends(false);
+              setBrowsing(false);
+              setSummary(k);
+            }}
           />
         )}
         <main className="content">
-          {!report || browsing ? (
+          {trends ? (
+            <TrendsView />
+          ) : !report || browsing ? (
             inTauri || demoLogs ? (
               <>
                 {!report && <Intro />}

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronRight, FileX, Pin, PinOff, Plus, RefreshCw, Trash } from 'lucide-react';
+import { ChevronRight, FileX, Pin, PinOff, Plus, RefreshCw, Trash, TrendingUp } from 'lucide-react';
 import type { LogReport } from '../types';
 import { inTauri, readReportFile, sameLog, type HistoryEntry } from '../lib/api';
 import { logTitle, pct } from '../lib/format';
@@ -13,6 +13,8 @@ interface Props extends PullListProps {
   onNew: () => void;
   /** a lista de logs está aberta (destaca "Nova análise") */
   browsing: boolean;
+  trendsActive: boolean;
+  onTrends: () => void;
   appVersion: string | null;
   updateState: UpdateState;
   onCheckUpdates: () => void;
@@ -68,6 +70,9 @@ export function Sidebar(props: Props) {
             />
           </label>
         )}
+        <button className={`side-item ${props.trendsActive ? 'active' : ''}`} onClick={props.onTrends} aria-current={props.trendsActive ? 'page' : undefined}>
+          <TrendingUp size={16} strokeWidth={1.5} aria-hidden /> Evolução
+        </button>
       </div>
 
       <div className="sidebar-scroll">

@@ -83,7 +83,8 @@ pub fn run() {
             history::history_load,
             history::history_set_pinned,
             history::history_delete,
-            history::history_delete_unpinned
+            history::history_delete_unpinned,
+            history::history_trends
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Wipe Cause");
