@@ -1,0 +1,192 @@
+schema_version: 1
+raid: venomous-abyss
+boss: entombed-sentinels
+name: "Entombed Sentinels"
+encounter_id: 3445
+source:
+  - https://www.mythictrap.com/en/venomous-abyss/entombed-sentinels/mythic
+  - "log: Archive-WoWCombatLog-091626 (4 pulls míticos) e 092226 (5 míticos + heroico) — IDs calibrados"
+updated: 2026-09-29
+difficulties: [normal, heroic, mythic]
+
+units:
+  - { key: breath, name: "Breath of Ula'tek", npc_id: 258557, boss: true }
+  - { key: blood, name: "Blood of Ula'tek", npc_id: 258558, boss: true }
+  - { key: venom_coagulation, name: "Venom Coagulation", npc_id: null }
+  - { key: vashnik, name: "Vashnik", npc_id: null }
+
+phases:
+  - { key: p1, name: "Sentinels", start: pull }
+  - { key: intermission, name: "Vitriolic Stasis", start: { cast: vitriolic_stasis } }
+
+mechanics:
+  # ---------- Posicionamento dos dois ----------
+  - key: ulateks_dominance
+    name: "Ula'tek's Dominance"
+    type: enrage
+    source_unit: breath
+    severity: major
+    detect: { enrage_aura_id: 1290193 }
+    tip: "Manter as duas sentinelas a 40 jardas uma da outra; perto, elas quase não tomam dano."
+    message: "Sentinelas ficaram perto demais ({count}x) — dano reduzido"
+    notes: "Os bosses aplicam 1290193/1290189 um no outro quando se aproximam (1-9s)."
+
+  - key: berserk
+    name: "Berserk"
+    type: enrage
+    severity: wipe
+    detect: { enrage_aura_id: 26662 }
+    tip: "Hard enrage: dano insuficiente."
+    message: "Berserk — as sentinelas enfureceram"
+
+  - key: mark_of_acid
+    name: "Mark of Acid"
+    type: unavoidable
+    source_unit: breath
+    severity: none
+    detect: { damage_ids: [1284500], aura_id: 1284500 }
+    tip: "DoT acumulado de quem está perto do Breath; tanks trocam de boss a cada intermissão para os grupos zerarem."
+    message: "Mark of Acid"
+
+  - key: mark_of_blood
+    name: "Mark of Blood"
+    type: unavoidable
+    source_unit: blood
+    severity: none
+    detect: { damage_ids: [1284506], aura_id: 1284506 }
+    tip: "DoT acumulado de quem está perto do Blood; trocar de lado a cada intermissão."
+    message: "Mark of Blood"
+
+  # ---------- Breath of Ula'tek ----------
+  - key: toxic_droplets
+    name: "Toxic Droplets"
+    type: soak
+    source_unit: breath
+    severity: major
+    detect:
+      damage_ids: [1284451]     # quem pisa na gota
+      fail_ids: [1284452]       # Noxious Blast: gota não pisada explode no raid todo
+    tip: "Pisar em todas as gotinhas verdes antes de explodirem."
+    message: "{count} Noxious Blast — gota sem ninguém pisar"
+
+  - key: venom_coagulation
+    name: "Venom Coagulation"
+    type: unavoidable
+    source_unit: venom_coagulation
+    severity: none
+    detect: { damage_ids: [1284258], cast_id: 1284251 }
+    tip: "Matar o slime rápido: ele pulsa dano no raid enquanto vive."
+    message: "Contaminate"
+
+  - key: living_venom
+    name: "Living Venom"
+    type: avoidable_damage
+    source_unit: breath
+    difficulty: [heroic, mythic]
+    severity: minor
+    detect: { damage_ids: [1284209] }
+    tip: "Sair do caminho dos projéteis que voltam para o Breath."
+    message: "{player} foi atingido por Living Venom ({count}x)"
+
+  - key: empowering_slam
+    name: "Empowering Slam"
+    type: unavoidable
+    source_unit: breath
+    roles: [tank]
+    severity: none
+    detect: { damage_ids: [1284458], cast_id: 1284458 }
+    tip: "Tankbuster do Breath: defensivo."
+    message: "Empowering Slam"
+
+  # ---------- Blood of Ula'tek ----------
+  - key: blighted_blood
+    name: "Blighted Blood"
+    type: dispel
+    source_unit: blood
+    severity: minor
+    detect: { aura_id: 1284471 }
+    max_delay: 6
+    tip: "Dispelar os DoTs; quem não for dispelado solta a poça na borda."
+    message: "{count} Blighted Blood sem dispel a tempo"
+    notes: "Calibrar max_delay com pulls reais."
+
+  - key: blood_venom
+    name: "Blood Venom"
+    type: unavoidable
+    source_unit: blood
+    difficulty: [heroic, mythic]
+    severity: none
+    detect: { damage_ids: [1284210], aura_id: 1284210 }
+    tip: "Soltar as poças de sangue na borda e não ficar em cima delas."
+    message: "Blood Venom"
+    notes: "Como evitável marcava quase todo mundo até no kill (os ticks são do próprio debuff). Falta achar o ID do dano da poça no chão."
+
+  - key: clinging_murk
+    name: "Clinging Murk"
+    type: unavoidable
+    source_unit: blood
+    severity: none
+    detect: { damage_ids: [1303097], aura_id: 1288297 }
+    tip: "Dano das poças deixadas pelo soak do Unstable Miasma."
+    message: "Clinging Murk"
+    notes: "Muitos hits por pull; confirmar se dá para evitar antes de culpar."
+
+  - key: unstable_miasma
+    name: "Unstable Miasma"
+    type: unavoidable
+    source_unit: blood
+    severity: none
+    detect: { damage_ids: [1288282], aura_id: 1288260, cast_id: 1288232 }
+    tip: "Todo mundo junto no soak perto da borda, depois espalhar."
+    message: "Unstable Miasma"
+    notes: "5-10 players por soak no log; poucos soakers deixam o hit mais forte."
+
+  - key: bloodvenom_injection
+    name: "Bloodvenom Injection"
+    type: unavoidable
+    source_unit: blood
+    roles: [tank]
+    severity: none
+    detect: { damage_ids: [1284487, 1310126], aura_id: 1284491 }
+    tip: "Tankbuster do Blood com DoT acumulado: defensivo."
+    message: "Bloodvenom Injection"
+
+  # ---------- Mítico ----------
+  - key: shifting_protovenom
+    name: "Shifting Protovenom"
+    type: unavoidable
+    source_unit: vashnik
+    difficulty: [mythic]
+    severity: none
+    detect: { damage_ids: [1296882], aura_id: 1296880 }
+    tip: "Marcados encostam em outro marcado e ficam longe de quem não tem o debuff."
+    message: "Shifting Protovenom"
+
+  - key: protovenom_eruption
+    name: "Protovenom Eruption"
+    type: avoidable_damage
+    source_unit: vashnik
+    difficulty: [mythic]
+    severity: minor
+    detect: { damage_ids: [1296962], excludes_aura: 1296880 }
+    tip: "Sem o debuff, ficar longe dos marcados."
+    message: "{player} foi pego por Protovenom Eruption ({count}x)"
+    notes: "Hipótese: a erupção é o esbarrão num player sem debuff. Confirmar no vídeo."
+
+  # ---------- Intermissão ----------
+  - key: vitriolic_stasis
+    name: "Vitriolic Stasis"
+    type: info
+    severity: none
+    detect: { cast_id: 1284588 }
+    tip: "Com 100 de energia as duas vão para o centro e ficam imunes: hora do puzzle."
+    message: "Vitriolic Stasis"
+
+  - key: helical_toxins
+    name: "Helical Toxins"
+    type: info
+    severity: major
+    detect: { aura_id: 1284590, damage_ids: [1284813] }
+    tip: "Parear para somar exatamente 4 stacks (orbes verdes); errar dá um hit enorme e DoT."
+    message: "Helical Toxins"
+    notes: "O dano 1284813 pega quase todo o raid em cada puzzle; ainda sem forma de separar o erro do dano normal."
