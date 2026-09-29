@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { CircleAlert, Crosshair, ExternalLink, FileText, FolderOpen, Link2, Minus, Plus, RotateCw, Skull, Unlink, Video } from 'lucide-react';
+import { CircleAlert, Crosshair, ExternalLink, FileText, FolderOpen, Link2, Minus, PanelLeftClose, PanelLeftOpen, Plus, RotateCw, Skull, Unlink, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
 import {
   inTauri,
   migrateWcrDir,
   openExternal,
   pickFolder,
-  readReportFile,
   savedWclLink,
   saveWclLink,
   wcrDetectDir,
@@ -17,6 +16,7 @@ import {
   type WcrVideo,
 } from '../lib/api';
 import { reportCode } from '../lib/wcl';
+import { logTitle } from '../lib/format';
 import { matchVideos } from '../lib/wcr';
 import { Popover } from './Popover';
 
@@ -27,13 +27,14 @@ interface Props {
   report: LogReport | null;
   busy: boolean;
   deathCutoff: number;
+  /** false quando o log original não existe mais (análise vinda do histórico) */
+  canReanalyze: boolean;
   onCutoff: (n: number) => void;
-  onOpenLog: () => void;
   onReanalyze: () => void;
-  /** navegador (dev): abre um relatório JSON gerado pelo wipe-cli */
-  onOpenJson: (r: LogReport) => void;
   onWcl: (code: string | null) => void;
   onVideos: (videos: Map<number, WcrVideo>) => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
 /**
@@ -44,6 +45,15 @@ export function Header(props: Props) {
   const { report } = props;
   return (
     <header className="topbar">
+      <button
+        className="icon-btn"
+        onClick={props.onToggleSidebar}
+        title={props.sidebarOpen ? 'Recolher barra lateral' : 'Mostrar barra lateral'}
+        aria-label={props.sidebarOpen ? 'Recolher barra lateral' : 'Mostrar barra lateral'}
+        aria-expanded={props.sidebarOpen}
+      >
+        {props.sidebarOpen ? <PanelLeftClose {...ICON} /> : <PanelLeftOpen {...ICON} />}
+      </button>
       <div className="brand">
         <Crosshair size={18} strokeWidth={2} className="brand-mark" aria-hidden />
         Wipe Cause
@@ -54,7 +64,12 @@ export function Header(props: Props) {
       {report && (
         <>
           <span className="topbar-spacer" />
-          <CutoffStepper value={inTauri ? props.deathCutoff : report.deathCutoff} disabled={!inTauri || props.busy} onChange={props.onCutoff} />
+          <CutoffStepper
+            value={inTauri ? props.deathCutoff : report.deathCutoff}
+            disabled={!inTauri || props.busy || !props.canReanalyze}
+            missingLog={!props.canReanalyze}
+            onChange={props.onCutoff}
+          />
           <span className="topbar-divider" aria-hidden />
           <div className="topbar-group" aria-label="Integrações">
             <WclButton logFile={report.file} onWcl={props.onWcl} />
@@ -69,44 +84,8 @@ export function Header(props: Props) {
 // ---------------------------------------------------------------------------
 // Log aberto
 
-/** "24/09 · The Twin Fangs Mythic": data do 1º pull + boss com mais pulls. */
-function logTitle(pulls: Pull[]): string {
-  if (!pulls.length) return 'Log sem pulls';
-  const [date] = pulls[0].startLocal.split(' ');
-  const [m, d] = date.split('/');
-  const count = new Map<string, number>();
-  for (const p of pulls) {
-    const k = `${p.encounterName} ${p.difficultyName}`;
-    count.set(k, (count.get(k) ?? 0) + 1);
-  }
-  const main = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0];
-  const others = count.size - 1;
-  return `${d.padStart(2, '0')}/${m.padStart(2, '0')} · ${main}${others > 0 ? ` +${others}` : ''}`;
-}
-
-function LogGroup({ report, busy, onOpenLog, onReanalyze, onOpenJson }: Props) {
-  const openButton = inTauri ? (
-    <button className={report ? 'icon-btn' : 'btn primary'} onClick={onOpenLog} disabled={busy} title="Abrir combat log">
-      <FolderOpen {...ICON} />
-      {!report && 'Abrir combat log'}
-    </button>
-  ) : (
-    <label className={report ? 'icon-btn' : 'btn primary'} title="Abrir relatório JSON (gerado pelo wipe-cli)">
-      <FolderOpen {...ICON} />
-      {!report && 'Abrir relatório JSON'}
-      <input
-        type="file"
-        accept=".json"
-        hidden
-        onChange={async (e) => {
-          const f = e.target.files?.[0];
-          if (f) onOpenJson(await readReportFile(f));
-        }}
-      />
-    </label>
-  );
-
-  if (!report) return <div className="topbar-group">{openButton}</div>;
+function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
+  if (!report) return null;
 
   const fileName = report.file.split(/[\\/]/).pop();
   return (
@@ -128,8 +107,7 @@ function LogGroup({ report, busy, onOpenLog, onReanalyze, onOpenJson }: Props) {
           </span>
         )}
       </div>
-      {openButton}
-      {inTauri && (
+      {inTauri && canReanalyze && (
         <button className="icon-btn" onClick={onReanalyze} disabled={busy} title="Reanalisar o log">
           <RotateCw {...ICON} />
         </button>
@@ -141,7 +119,7 @@ function LogGroup({ report, busy, onOpenLog, onReanalyze, onOpenJson }: Props) {
 // ---------------------------------------------------------------------------
 // Análise: ignorar eventos após N mortes
 
-function CutoffStepper({ value, disabled, onChange }: { value: number; disabled: boolean; onChange: (n: number) => void }) {
+function CutoffStepper({ value, disabled, missingLog, onChange }: { value: number; disabled: boolean; missingLog: boolean; onChange: (n: number) => void }) {
   const set = (n: number) => onChange(Math.max(0, Math.min(40, n)));
   return (
     <div
@@ -149,7 +127,9 @@ function CutoffStepper({ value, disabled, onChange }: { value: number; disabled:
       role="group"
       aria-label="Ignorar eventos após N mortes"
       title={
-        inTauri
+        missingLog
+          ? 'O log original não existe mais: esta análise salva usa o corte com que foi feita.'
+          : inTauri
           ? 'Depois de algumas mortes o wipe já está decidido: nada depois da N-ésima morte conta (dano, cura, erros, falhas, interrupts). 0 = conta tudo. Mudar reanalisa o log.'
           : 'No navegador o corte vem do JSON (wipe-cli analyze --cutoff N)'
       }

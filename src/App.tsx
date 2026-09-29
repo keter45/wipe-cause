@@ -1,42 +1,65 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Crosshair, FolderOpen, History } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Crosshair, FolderOpen } from 'lucide-react';
 import type { LogReport } from './types';
-import { analyzeLog, inTauri, lastFile, pickLogFile, rememberFile } from './lib/api';
-import { PullList } from './components/PullList';
+import {
+  analyzeLog,
+  historyDelete,
+  historyDeleteUnpinned,
+  historyList,
+  historyLoad,
+  historySetPinned,
+  inTauri,
+  pickLogFile,
+  rememberFile,
+  sameLog,
+  type HistoryEntry,
+} from './lib/api';
 import { NightSummary } from './components/NightSummary';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { PullView } from './components/PullView';
 import { Header } from './components/Header';
+import { Sidebar } from './components/Sidebar';
 import type { WcrScan, WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
 
 type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string } | { kind: 'error'; message: string };
 
+const SIDEBAR_KEY = 'wipe-cause:sidebar-open';
+function savedSidebarOpen(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
 export default function App() {
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [showSummary, setShowSummary] = useState(true);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(savedSidebarOpen);
+  // corte da análise na tela; a preferência (para logs novos) fica salva à parte
   const [deathCutoff, setDeathCutoff] = useState(savedDeathCutoff);
-  const changeCutoff = (n: number) => {
-    setDeathCutoff(n);
-    saveDeathCutoff(n);
-  };
-
-  // mudou o N: reanalisa o log (o corte é feito no núcleo), mantendo o pull aberto
-  useEffect(() => {
-    if (!inTauri || !report || report.deathCutoff === deathCutoff) return;
-    const timer = setTimeout(() => load(report.file, true), 600);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deathCutoff]);
-  const selectPull = (id: number) => {
-    setSelected(id);
-    setShowSummary(false);
-  };
+  const cutoffTimer = useRef<number | undefined>(undefined);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [wclCode, setWclCode] = useState<string | null>(null);
   const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
-  const previous = lastFile();
+
+  const refreshHistory = () => historyList().then(setHistory).catch(() => {});
+  useEffect(() => {
+    refreshHistory();
+  }, []);
+
+  function toggleSidebar() {
+    const next = !sidebarOpen;
+    setSidebarOpen(next);
+    try {
+      localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0');
+    } catch {
+      /* sem storage */
+    }
+  }
 
   // Dev no navegador: ?report=/samples/report.json carrega um relatório gerado pelo wipe-cli;
   // &videos=/samples/wcr-scan.json casa vídeos do Warcraft Recorder (arquivos servidos pelo vite).
@@ -58,14 +81,15 @@ export default function App() {
     }
   }, []);
 
-  async function load(path: string, keepView = false) {
+  async function load(path: string, keepView = false, cutoff = deathCutoff) {
     setStatus({ kind: 'loading', progress: 0, path });
     try {
-      const r = await analyzeLog(path, deathCutoff, (progress) => setStatus({ kind: 'loading', progress, path }));
+      const r = await analyzeLog(path, cutoff, (progress) => setStatus({ kind: 'loading', progress, path }));
       rememberFile(path);
       if (keepView) setReport(r);
       else showReport(r);
       setStatus({ kind: 'idle' });
+      refreshHistory(); // o backend salvou no histórico
     } catch (e) {
       setStatus({ kind: 'error', message: String(e) });
     }
@@ -73,6 +97,7 @@ export default function App() {
 
   function showReport(r: LogReport) {
     setReport(r);
+    setDeathCutoff(r.deathCutoff);
     // abre no último wipe (normalmente o que a raid quer ver)
     const lastWipe = [...r.pulls].reverse().find((p) => !p.success) ?? r.pulls[r.pulls.length - 1];
     setSelected(lastWipe?.id ?? null);
@@ -81,11 +106,59 @@ export default function App() {
 
   async function openFile() {
     const path = await pickLogFile();
-    if (path) await load(path);
+    if (!path) return;
+    const pref = savedDeathCutoff();
+    setDeathCutoff(pref);
+    await load(path, false, pref);
   }
 
+  /** Mudou o N: salva como preferência e reanalisa o log aberto (o corte é feito no núcleo). */
+  function changeCutoff(n: number) {
+    setDeathCutoff(n);
+    saveDeathCutoff(n);
+    window.clearTimeout(cutoffTimer.current);
+    if (inTauri && report) cutoffTimer.current = window.setTimeout(() => load(report.file, true, n), 600);
+  }
+
+  async function openEntry(e: HistoryEntry) {
+    if (report && sameLog(e.logPath, report.file)) {
+      setShowSummary(true);
+      return;
+    }
+    if (!inTauri) return; // navegador: o histórico de exemplo é só visual
+    try {
+      showReport(await historyLoad(e.id));
+      setStatus({ kind: 'idle' });
+    } catch (err) {
+      setStatus({ kind: 'error', message: String(err) });
+    }
+  }
+
+  async function togglePin(e: HistoryEntry) {
+    await historySetPinned(e.id, !e.pinned);
+    setHistory((h) => h.map((x) => (x.id === e.id ? { ...x, pinned: !e.pinned } : x)));
+    refreshHistory();
+  }
+
+  async function deleteEntry(e: HistoryEntry) {
+    await historyDelete(e.id);
+    setHistory((h) => h.filter((x) => x.id !== e.id));
+  }
+
+  async function deleteUnpinned() {
+    await historyDeleteUnpinned();
+    setHistory((h) => h.filter((x) => x.pinned));
+  }
+
+  const selectPull = (id: number) => {
+    setSelected(id);
+    setShowSummary(false);
+  };
   const pulls = report?.pulls ?? [];
   const pull = useMemo(() => report?.pulls.find((p) => p.id === selected) ?? null, [report, selected]);
+  const entry = report ? history.find((e) => sameLog(e.logPath, report.file)) : undefined;
+  // análise do histórico cujo log sumiu: dá para ver, mas não para reanalisar
+  const logMissing = entry != null && !entry.logExists;
 
   return (
     <div className="app">
@@ -93,12 +166,13 @@ export default function App() {
         report={report}
         busy={status.kind === 'loading'}
         deathCutoff={deathCutoff}
+        canReanalyze={!logMissing}
         onCutoff={changeCutoff}
-        onOpenLog={openFile}
         onReanalyze={() => report && load(report.file, true)}
-        onOpenJson={showReport}
         onWcl={setWclCode}
         onVideos={setVideos}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
       />
 
       {status.kind === 'loading' && (
@@ -112,41 +186,42 @@ export default function App() {
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
       )}
 
-      {!report ? (
-        <Empty previous={inTauri ? previous : null} onReopen={load} onOpen={openFile} />
-      ) : (
-        <div className="layout">
-          <PullList
-            pulls={report.pulls}
+      <div className="layout">
+        {sidebarOpen && (
+          <Sidebar
+            history={history}
+            report={report}
+            busy={status.kind === 'loading'}
+            onNew={openFile}
+            onOpenJson={showReport}
+            onOpenEntry={openEntry}
+            onTogglePin={togglePin}
+            onDelete={deleteEntry}
+            onDeleteUnpinned={deleteUnpinned}
+            pulls={pulls}
             selected={selected}
             onSelect={selectPull}
             summaryActive={showSummary}
             onSummary={() => setShowSummary(true)}
           />
-          <main className="content">
-            {showSummary ? (
-              <NightSummary pulls={pulls} onSelectPull={selectPull} />
-            ) : (
-              <>
-            {pull ? (
-              <PullView
-                pull={pull}
-                wclCode={wclCode ?? undefined}
-                video={videos.get(pull.id)}
-              />
-            ) : (
-              <p className="muted">Nenhum pull no log.</p>
-            )}
-          </>
-            )}
-          </main>
-        </div>
-      )}
+        )}
+        <main className="content">
+          {!report ? (
+            <Empty onOpen={openFile} hasHistory={history.length > 0} />
+          ) : showSummary ? (
+            <NightSummary pulls={pulls} onSelectPull={selectPull} />
+          ) : pull ? (
+            <PullView pull={pull} wclCode={wclCode ?? undefined} video={videos.get(pull.id)} />
+          ) : (
+            <p className="muted">Nenhum pull no log.</p>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
 
-function Empty({ previous, onReopen, onOpen }: { previous: string | null; onReopen: (p: string) => void; onOpen: () => void }) {
+function Empty({ onOpen, hasHistory }: { onOpen: () => void; hasHistory: boolean }) {
   return (
     <div className="empty">
       <Crosshair size={40} strokeWidth={1.5} className="empty-mark" aria-hidden />
@@ -155,12 +230,12 @@ function Empty({ previous, onReopen, onOpen }: { previous: string | null; onReop
       <ol className="empty-steps">
         <li>
           <span>
-          No jogo, digite <code>/combatlog</code> antes do pull e ative <em>Advanced Combat Logging</em> em Opções → Rede.
+            No jogo, digite <code>/combatlog</code> antes do pull e ative <em>Advanced Combat Logging</em> em Opções → Rede.
           </span>
         </li>
         <li>
           <span>
-          Depois das trys, abra o <code>WoWCombatLog-*.txt</code> em <code>World of Warcraft\_retail_\Logs</code>.
+            Depois das trys, abra o <code>WoWCombatLog-*.txt</code> em <code>World of Warcraft\_retail_\Logs</code>.
           </span>
         </li>
         <li>
@@ -172,17 +247,13 @@ function Empty({ previous, onReopen, onOpen }: { previous: string | null; onReop
           <button className="btn primary" onClick={onOpen}>
             <FolderOpen size={16} strokeWidth={2} aria-hidden /> Abrir combat log
           </button>
-          {previous && (
-            <button className="btn" onClick={() => onReopen(previous)} title={previous}>
-              <History size={16} strokeWidth={1.5} aria-hidden /> Reabrir {previous.split(/[\/]/).pop()}
-            </button>
-          )}
         </div>
       ) : (
         <p className="muted small">
-          Modo navegador: gere o relatório com <code>wipe-cli analyze log.txt --json</code> e abra o JSON no topo.
+          Modo navegador: gere o relatório com <code>wipe-cli analyze log.txt --json</code> e abra o JSON pela barra lateral.
         </p>
       )}
+      {hasHistory && <p className="muted small">Ou abra uma análise salva na barra lateral.</p>}
     </div>
   );
 }

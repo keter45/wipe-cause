@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
+flate2 = "1"
 serde.workspace = true
 serde_json.workspace = true
 wipe-core = { path = "../crates/wipe-core" }

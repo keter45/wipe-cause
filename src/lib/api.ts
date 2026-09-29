@@ -128,3 +128,41 @@ export async function migrateWcrDir() {
     /* sem storage */
   }
 }
+
+// ---------------------------------------------------------------------------
+// Histórico de análises (salvas pelo backend a cada análise)
+
+export interface HistoryEntry {
+  id: string;
+  savedAt: number;
+  title: string;
+  raidStartMs: number | null;
+  logPath: string;
+  pulls: number;
+  kills: number;
+  bestHp: number | null;
+  deathCutoff: number;
+  pinned: boolean;
+  size: number;
+  logExists: boolean;
+}
+
+/** Dev no navegador: `?demoHistory=1` mostra um histórico de exemplo (só visual). */
+const demoHistory = (): HistoryEntry[] =>
+  import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoHistory')
+    ? [
+        { id: 'a', savedAt: Date.now(), title: '24/09 · The Twin Fangs Mythic', raidStartMs: 1790294668000, logPath: 'demo-24', pulls: 27, kills: 0, bestHp: 5.8, deathCutoff: 4, pinned: true, size: 3_100_000, logExists: true },
+        { id: 'b', savedAt: Date.now() - 3 * 864e5, title: '21/09 · The Twin Fangs Mythic +5', raidStartMs: 1790035631000, logPath: 'demo-21', pulls: 31, kills: 6, bestHp: 14.5, deathCutoff: 4, pinned: false, size: 3_900_000, logExists: true },
+        { id: 'c', savedAt: Date.now() - 8 * 864e5, title: '17/09 · Sszorak Mythic +2', raidStartMs: 1789690000000, logPath: 'demo-17', pulls: 19, kills: 2, bestHp: 0, deathCutoff: 0, pinned: false, size: 2_400_000, logExists: false },
+      ]
+    : [];
+
+export const historyList = () => (inTauri ? invoke<HistoryEntry[]>('history_list') : Promise.resolve(demoHistory()));
+export const historyLoad = (id: string) => invoke<LogReport>('history_load', { id });
+export const historySetPinned = (id: string, pinned: boolean) => (inTauri ? invoke<void>('history_set_pinned', { id, pinned }) : Promise.resolve());
+export const historyDelete = (id: string) => (inTauri ? invoke<void>('history_delete', { id }) : Promise.resolve());
+export const historyDeleteUnpinned = () => (inTauri ? invoke<number>('history_delete_unpinned') : Promise.resolve(0));
+
+/** O relatório aberto é esta entrada do histórico? (mesmo arquivo de log) */
+const normPath = (p: string) => p.replaceAll('\\', '/').toLowerCase();
+export const sameLog = (a: string, b: string) => normPath(a) === normPath(b);

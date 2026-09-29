@@ -3,7 +3,7 @@ import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { lowestBossHp } from '../lib/verdict';
 
-interface Props {
+export interface PullListProps {
   pulls: Pull[];
   selected: number | null;
   onSelect: (id: number) => void;
@@ -11,7 +11,8 @@ interface Props {
   onSummary: () => void;
 }
 
-export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }: Props) {
+/** Resumo da noite + pulls agrupados por boss (dentro da análise aberta na barra lateral). */
+export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }: PullListProps) {
   // agrupa por boss + dificuldade, na ordem em que apareceram
   const groups = new Map<string, Pull[]>();
   for (const p of pulls) {
@@ -20,7 +21,7 @@ export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }
   }
 
   return (
-    <nav className="pull-list" aria-label="Pulls">
+    <nav className="pull-tree" aria-label="Pulls">
       <button className={`summary-link ${summaryActive ? 'active' : ''}`} onClick={onSummary} aria-current={summaryActive ? 'page' : undefined}>
         <ChartColumn size={16} strokeWidth={2} aria-hidden /> Resumo da noite
       </button>
