@@ -230,18 +230,35 @@ function burstSide(s: Sample, start: number): BurstSide {
  * Cada uso dos cooldowns maiores (os principais da spec, com recarga longa) vira uma janela:
  * a sequência de casts dos 3s antes aos 20s depois, lado a lado com o mesmo uso da referência.
  */
-export function burstWindows(me: Sample, ref: Sample, cds: Map<number, CooldownInfo>): BurstWindow[] {
-  // só cooldowns de dano (de cura, para healer) da lista da classe; classe fora da lista cai no
-  // padrão de uso (recarga longa, usado na maioria dos pulls)
+export interface BurstCandidate {
+  spellId: number;
+  name: string;
+  /** vem marcado de início (cooldown de dano da lista da classe, ou recarga longa) */
+  preset: boolean;
+}
+
+/**
+ * Cooldowns que podem abrir janela: os cooldowns vistos nos dois (e os da lista da classe),
+ * sem poções. O usuário escolhe quais quer ver; `preset` é só o ponto de partida.
+ */
+export function burstCandidates(me: Sample, ref: Sample, cds: Map<number, CooldownInfo>): BurstCandidate[] {
   const { class: cls, role } = me.player;
-  let major: { spellId: number; name: string }[];
-  if (knowsClass(cls)) {
-    const seen = new Map<string, number>();
-    for (const s of [me, ref])
-      for (const c of castsOf(s.player)) if (!seen.has(c.name) && isMajorCooldown(cls, role, c.spellId, c.name)) seen.set(c.name, c.spellId);
-    major = [...seen].map(([name, spellId]) => ({ name, spellId }));
-  } else
-    major = compareCooldowns(me, ref, cds).rows.filter((r) => r.core && (r.gapMs == null || r.gapMs >= MAJOR_CD_GAP_MS) && !isCombatPotion(r.name));
+  const out = new Map<string, BurstCandidate>();
+  for (const r of compareCooldowns(me, ref, cds).rows) {
+    if (isCombatPotion(r.name)) continue;
+    const preset = knowsClass(cls) ? isMajorCooldown(cls, role, r.spellId, r.name) : r.core && (r.gapMs == null || r.gapMs >= MAJOR_CD_GAP_MS);
+    out.set(r.name, { spellId: r.spellId, name: r.name, preset });
+  }
+  // da lista da classe, mesmo que o padrão de uso não tenha visto como cooldown (cargas, 60s)
+  for (const s of [me, ref])
+    for (const c of castsOf(s.player))
+      if (!out.has(c.name) && isMajorCooldown(cls, role, c.spellId, c.name)) out.set(c.name, { spellId: c.spellId, name: c.name, preset: true });
+  return [...out.values()].sort((a, b) => Number(b.preset) - Number(a.preset) || a.name.localeCompare(b.name));
+}
+
+/** `anchors`: nomes dos cooldowns escolhidos; sem ele, os marcados de início. */
+export function burstWindows(me: Sample, ref: Sample, cds: Map<number, CooldownInfo>, anchors?: Set<string>): BurstWindow[] {
+  const major = burstCandidates(me, ref, cds).filter((c) => (anchors ? anchors.has(c.name) : c.preset));
   const out: BurstWindow[] = [];
   for (const r of major) {
     // cada uso meu com o uso da referência mais perto no tempo (ela pode ter segurado o
@@ -259,7 +276,8 @@ export function burstWindows(me: Sample, ref: Sample, cds: Map<number, CooldownI
   const startOf = (w: BurstWindow) => w.mine?.start ?? w.ref?.start ?? 0;
   const near = (a: BurstSide | null, b: BurstSide | null) => a == null || b == null || Math.abs(a.start - b.start) <= BURST_MERGE_MS;
   const merged: BurstWindow[] = [];
-  for (const w of out) {
+  // o usado primeiro dá o nome e o início da janela
+  for (const w of [...out].sort((a, b) => startOf(a) - startOf(b))) {
     const same = merged.find((m) => near(m.mine, w.mine) && near(m.ref, w.ref) && (m.mine ?? m.ref) != null && Math.abs(startOf(m) - startOf(w)) <= BURST_MERGE_MS);
     if (same) {
       same.name = `${same.name} + ${w.name}`;

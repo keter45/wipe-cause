@@ -3130,6 +3130,19 @@ td.warn {
 .burst-chips button.missing {
   border-style: dashed;
 }
+.burst-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.burst-pick .chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.burst-pick .chips button:not(.active) {
+  opacity: 0.6;
+}
 .perf-bar {
   display: flex;
   align-items: flex-start;

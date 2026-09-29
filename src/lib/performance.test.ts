@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GearItem, SpellCasts } from '../types';
 import {
+  burstCandidates,
   burstWindows,
   pairUses,
   candidates,
@@ -114,6 +115,12 @@ describe('janelas de burst', () => {
       ['Trueshot', 2, 124_000, 130_000],
       ['Berserking', 2, 184_200, 190_300],
     ]);
+    // o usuário escolhe: utilidade aparece como opção desmarcada e vira janela se marcada
+    const cds = detectCooldowns([a, b]);
+    const cands = burstCandidates(a, b, cds);
+    expect(cands.find((c) => c.name === 'Wind Rush Totem')?.preset).toBe(false);
+    expect(cands.find((c) => c.name === 'Trueshot')?.preset).toBe(true);
+    expect(burstWindows(a, b, cds, new Set(['Wind Rush Totem'])).map((x) => x.name)).toEqual(['Wind Rush Totem', 'Wind Rush Totem']);
     const seq = w[0].mine!.casts;
     expect(seq[0].dt).toBeGreaterThanOrEqual(-3_000);
     expect(seq.at(-1)!.dt).toBeLessThanOrEqual(20_000);

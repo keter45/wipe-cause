@@ -8,6 +8,7 @@ import {
   CD_LATE_MS,
   BURST_LEAD_MS,
   BURST_WINDOW_MS,
+  burstCandidates,
   burstWindows,
   candidates,
   combatPotions,
@@ -265,16 +266,63 @@ function Stat({ label, mine, ref, tone = '', extra }: { label: string; mine: str
 const burstKey = (w: BurstWindow) => `${w.name}#${w.index}`;
 
 /** Cada uso de cooldown maior vira uma janela (chip); dentro, a sequência de casts lado a lado. */
+const PICK_KEY = 'wipe-cause:burst-cds:';
+
+/** Cooldowns escolhidos para abrir janela, por spec (null = ainda não escolheu: usa os marcados de início). */
+export function loadBurstPick(specId: number | null): Set<string> | null {
+  try {
+    const raw = specId != null ? localStorage.getItem(PICK_KEY + specId) : null;
+    return raw ? new Set(JSON.parse(raw) as string[]) : null;
+  } catch {
+    return null;
+  }
+}
+function saveBurstPick(specId: number | null, names: Set<string>) {
+  try {
+    if (specId != null) localStorage.setItem(PICK_KEY + specId, JSON.stringify([...names]));
+  } catch {
+    /* sem storage: vale só nesta sessão */
+  }
+}
+
 function Bursts({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnType<typeof detectCooldowns> }) {
-  const windows = useMemo(() => burstWindows(me, ref_, cds), [me, ref_, cds]);
+  const specId = me.player.specId;
+  const candidates = useMemo(() => burstCandidates(me, ref_, cds), [me, ref_, cds]);
+  const [pick, setPick] = useState<Set<string> | null>(() => loadBurstPick(specId));
+  const chosen = pick ?? new Set(candidates.filter((c) => c.preset).map((c) => c.name));
+  const windows = useMemo(() => burstWindows(me, ref_, cds, chosen), [me, ref_, cds, [...chosen].join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
   const [sel, setSel] = useState<string | null>(null);
-  if (windows.length === 0) return null;
+  if (candidates.length === 0) return null;
   const w = windows.find((x) => burstKey(x) === sel) ?? windows[0];
+  const toggle = (name: string) => {
+    const next = new Set(chosen);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    setPick(next);
+    saveBurstPick(specId, next);
+  };
   return (
     <section className="perf-section">
       <h4>
-        Janelas de burst <span className="muted small">sequência de casts de {BURST_LEAD_MS / 1000}s antes a {BURST_WINDOW_MS / 1000}s depois de cada cooldown maior</span>
+        Janelas de burst <span className="muted small">sequência de casts de {BURST_LEAD_MS / 1000}s antes a {BURST_WINDOW_MS / 1000}s depois de cada uso</span>
       </h4>
+      <div className="burst-pick">
+        <span className="muted small">Cooldowns para comparar ({specLabel(specId)}):</span>
+        <div className="chips">
+          {candidates.map((c) => {
+            const on = chosen.has(c.name);
+            return (
+              <button key={c.name} aria-pressed={on} className={on ? 'active' : ''} onClick={() => toggle(c.name)}>
+                <SpellIcon spellId={c.spellId} size={14} /> {c.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {windows.length === 0 ? (
+        <p className="muted small">Marque acima os cooldowns que abrem uma janela de burst.</p>
+      ) : (
+        <>
       <div className="chips burst-chips" role="radiogroup" aria-label="Janela de burst">
         {windows.map((x) => {
           const k = burstKey(x);
@@ -288,6 +336,8 @@ function Bursts({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnType<t
         })}
       </div>
       <BurstCompare w={w} />
+        </>
+      )}
     </section>
   );
 }
@@ -365,7 +415,7 @@ export function PerfShareCard({ me, ref_, refName, cds }: { me: Sample; ref_: Sa
   const [mo, ro] = [outputPerSec(me), outputPerSec(ref_)];
   const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
   const insights = perfInsights(me, ref_, cds).slice(0, 8);
-  const windows = burstWindows(me, ref_, cds).slice(0, 4);
+  const windows = burstWindows(me, ref_, cds, loadBurstPick(me.player.specId) ?? undefined).slice(0, 4);
   const rotation = compareRotation(me, ref_, cds).filter((r) => r.core).slice(0, 8);
   return (
     <div className="share-card perf-card">
