@@ -39,3 +39,29 @@ describe('scorePull', () => {
     expect(clean.get('D')).toEqual({ score: 100, parts: [] });
   });
 });
+
+describe('wipe geral', () => {
+  it('mais de 5 mortes juntas não contam na nota', () => {
+    const names = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const def = [{ spellId: 1, name: 'Ice Block', kind: 'personal' as const }];
+    const p = pull(0, 0, 100_000, {
+      analyzedMs: 100_000,
+      players: [...names, 'G'].map((n) => player(n)),
+      // 6 mortes em 0,5s aos 20s (wipe geral) e G morre sozinho aos 50s
+      deaths: [...names.map((n, i) => death(n, 20_000 + i * 100, { defensivesAvailable: def })), death('G', 50_000)],
+    });
+    const s = scorePull(p, new Map());
+    expect(s.get('A')!.score).toBe(100);
+    expect(s.get('A')!.parts).toEqual(['morreu no wipe geral aos 0:20 (6+ mortes juntas: não conta)']);
+    // G morreu sozinho: continua descontando (decisiva e tempo vivo)
+    expect(s.get('G')!.score).toBeLessThan(100);
+  });
+
+  it('5 mortes juntas ainda contam', async () => {
+    const { massDeathKeys } = await import('./massDeaths');
+    const ds = ['A', 'B', 'C', 'D', 'E'].map((n, i) => death(n, 1000 + i * 100));
+    expect(massDeathKeys(ds).size).toBe(0);
+    expect(massDeathKeys([...ds, death('F', 2400)]).size).toBe(6);
+    expect(massDeathKeys([...ds, death('F', 2600)]).size).toBe(0); // fora da janela de 1,5s
+  });
+});

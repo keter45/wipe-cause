@@ -2852,3 +2852,7 @@ td.warn {
   vertical-align: -4px;
   margin-right: 4px;
 }
+.role-tag.mass {
+  color: var(--wipe);
+  border-color: color-mix(in srgb, var(--wipe) 40%, transparent);
+}

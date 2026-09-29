@@ -1,12 +1,14 @@
 // Nota de 0 a 100 por player e pull (inspirada no Wipefest): parte de 100, perde pontos por
 // erros de mecânica (pela gravidade), por deixar passar a própria vez na escala de interrupts
-// e por morte decisiva; no fim, pesa o tempo vivo até a primeira morte.
+// e por morte decisiva; no fim, pesa o tempo vivo até a primeira morte. Mortes num "wipe geral"
+// (mais de 5 juntas) não contam: são consequência do wipe, não erro de cada um.
 
 import type { Pull } from '../types';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { mmss, shortName } from './format';
 import { PERSONAL_BLAME } from './blame';
 import { analyzePull } from './verdict';
+import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
 
 /** Desconto por erro, pela gravidade da regra. */
 const PENALTY: Record<string, number> = { wipe: 25, major: 12, minor: 4, none: 0 };
@@ -56,8 +58,14 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
   }
 
   const firstDeath = new Map<string, number>();
+  const mass = massDeathKeys(p.deaths);
+  const massNote = new Map<string, string>();
   for (const d of p.deaths) {
     if (d.ignored) continue;
+    if (mass.has(deathKey(d))) {
+      massNote.set(d.guid, `morreu no wipe geral aos ${mmss(d.t)} (${MASS_DEATH_MIN}+ mortes juntas: não conta)`);
+      continue;
+    }
     if (!firstDeath.has(d.guid)) firstDeath.set(d.guid, d.t);
     if (!decisive.has(`${d.guid}:${d.t}`)) continue;
     add(d.guid, DECISIVE_DEATH, `morte decisiva aos ${mmss(d.t)}`);
@@ -72,6 +80,8 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
     const factor = 0.5 + 0.5 * alive;
     const parts = [...(pen?.parts ?? [])];
     if (died != null) parts.push(`vivo ${Math.round(alive * 100)}% do pull (×${factor.toFixed(2).replace('.', ',')})`);
+    const note = massNote.get(x.guid);
+    if (note && died == null) parts.push(note);
     const score = Math.round(Math.max(0, 100 - (pen?.total ?? 0)) * factor);
     out.set(x.guid, { score: Math.max(0, Math.min(100, score)), parts });
   }

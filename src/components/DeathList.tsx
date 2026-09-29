@@ -8,6 +8,7 @@ import { openExternal } from '../lib/api';
 import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
 import { PositionMap, dist, mainEnemy } from './PositionMap';
+import { deathKey, massDeathKeys, MASS_DEATH_MIN } from '../lib/massDeaths';
 
 interface Props {
   deaths: Death[];
@@ -31,6 +32,7 @@ export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: stri
 export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const seek = useSeek();
+  const mass = massDeathKeys(deaths);
   if (deaths.length === 0) return <p className="muted pad">Ninguém morreu neste pull.</p>;
 
   return (
@@ -50,6 +52,11 @@ export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells }
                   </span>
                   {d.role === 'tank' && <span className="role-tag">tank</span>}
                   {d.ignored && <span className="role-tag">ignorada</span>}
+                  {mass.has(deathKey(d)) && (
+                    <span className="role-tag mass" title={`${MASS_DEATH_MIN} ou mais mortes ao mesmo tempo: consequência do wipe, não conta na nota do player`}>
+                      wipe geral
+                    </span>
+                  )}
                 </span>
                 <span className="death-kb">
                   {d.killingBlow ? (

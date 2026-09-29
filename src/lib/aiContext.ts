@@ -6,6 +6,7 @@ import { assignmentsFor, checkAssignments, type Assignments } from './assignment
 import { mmss, num, pct, ROLE_LABEL, shortName } from './format';
 import { scorePull } from './score';
 import { analyzePull, lowestBossHp, lowestBossHpAtEnd } from './verdict';
+import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
 
 const SEVERITY: Record<string, string> = { wipe: 'causa wipe', major: 'grave', minor: 'leve', none: 'info' };
 const KIND: Record<string, string> = {
@@ -41,6 +42,7 @@ Regras:
 - Ao sugerir melhorias, seja específico: quem, quando e o que fazer diferente. Priorize o que mais pesou no wipe.
 - As "dicas" das mecânicas vêm das regras do boss no app: use-as para explicar o que deveria ter acontecido.
 - Mortes depois do corte ("ignorar após N mortes") são efeito cascata: não culpe ninguém por elas.
+- Mortes marcadas [wipe geral] (muita gente morrendo junta) são consequência de uma falha coletiva: aponte a falha e quem a causou, não cada morto.
 - Seja conciso (até ~250 palavras), a menos que peçam detalhes. Use listas curtas quando ajudar.`;
 
 function deathLine(d: Death, byGuid: Map<string, Pull['players'][number]>): string {
@@ -150,7 +152,9 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
   const ignored = p.deaths.filter((d) => d.ignored);
   if (counted.length) {
     out.push(`\n## Mortes que contam (${counted.length})`);
-    out.push(counted.slice(0, MAX_DEATHS_DETAILED).map((d) => `- ${deathLine(d, byGuid)}`).join('\n'));
+    const mass = massDeathKeys(p.deaths);
+    const tag = (d: Death) => (mass.has(deathKey(d)) ? `[wipe geral: ${MASS_DEATH_MIN}+ mortes juntas] ` : '');
+    out.push(counted.slice(0, MAX_DEATHS_DETAILED).map((d) => `- ${tag(d)}${deathLine(d, byGuid)}`).join('\n'));
   }
   if (ignored.length) out.push(`Mortes depois do corte (cascata, não contam): ${ignored.map((d) => `${shortName(d.name)} ${mmss(d.t)}`).join(', ')}`);
 
@@ -163,7 +167,7 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
   if (timeline.length) out.push('\n## Linha do tempo\n' + timeline.slice(0, MAX_TIMELINE).map(([t, s]) => `${mmss(t)} ${s}`).join('\n'));
 
   // jogadores
-  out.push('\n## Jogadores (nota 0-100 do app: desconta erros, vez perdida na escala e morte decisiva)');
+  out.push('\n## Jogadores (nota 0-100 do app: desconta erros, vez perdida na escala e morte decisiva; morte em wipe geral não conta)');
   const players = [...p.players].sort((a, b) => (scores.get(a.guid)?.score ?? 100) - (scores.get(b.guid)?.score ?? 100));
   for (const x of players) {
     const s = scores.get(x.guid);
