@@ -1,0 +1,99 @@
+schema_version: 1
+raid: venomous-abyss
+boss: nymrissa-wavecaller
+name: "Nymrissa Wavecaller"
+encounter_id: 3379
+source:
+  - https://www.mythictrap.com/en/venomous-abyss/nymrissa-wavecaller
+  - "log: Archive-WoWCombatLog-092226 (1 kill, dificuldade 233, 25 players) — IDs vistos no log"
+updated: 2026-09-29
+# dificuldade única (233 no log); mecânicas sem `difficulty` valem para ela
+difficulties: [normal, heroic, mythic]
+
+units:
+  - { key: nymrissa, name: "Nymrissa Wavecaller", npc_id: null, boss: true }
+  - { key: murlocs, name: "Bubblefin Frostscale / Shorerunner", npc_id: null }
+
+mechanics:
+  - key: unending_tides
+    name: "Unending Tides"
+    type: info
+    source_unit: nymrissa
+    severity: wipe
+    tip: "Enrage aos 6 minutos: matar antes."
+    message: "Unending Tides"
+    notes: "Ainda sem o ID do enrage no log (o kill veio antes)."
+
+  - key: alluring_bubble
+    name: "Alluring Bubble"
+    type: info
+    source_unit: murlocs
+    severity: major
+    detect: { cast_id: 1257717 }
+    tip: "Matar os murlocs antes de chegarem na bolha do centro."
+    message: "Alluring Bubble"
+
+  - key: pop
+    name: "Pop!"
+    type: unavoidable
+    severity: none
+    detect: { damage_ids: [1266340] }
+    tip: "A bolha estoura no raid com knockback quando os redemoinhos chegam ao centro."
+    message: "Pop!"
+
+  - key: swirling_whirlpools
+    name: "Swirling Whirlpools"
+    type: avoidable_damage
+    source_unit: nymrissa
+    severity: major
+    detect: { damage_ids: [1258677] }
+    tip: "Achar o espaço sem redemoinho e ficar nele."
+    message: "{player} foi pego por um redemoinho ({count}x)"
+
+  - key: chilling_frost
+    name: "Chilling Frost"
+    type: unavoidable
+    source_unit: nymrissa
+    severity: none
+    detect: { damage_ids: [1313448, 1313450] }
+    tip: "Passar por cima dos Frost Orbs antes de explodirem (dividir: cada orb dá lentidão)."
+    message: "Chilling Frost"
+    notes: "Frost Burst (1313450) pega o raid inteiro 36 vezes num kill: é dano normal, não a explosão do orb perdido. Falta o ID da falha."
+
+  - key: chilling_frost_dot
+    name: "Chilling Frost (DoT)"
+    type: unavoidable
+    source_unit: nymrissa
+    severity: none
+    detect: { damage_ids: [1313393], aura_id: 1313393 }
+    tip: "DoT que solta os orbs."
+    message: "Chilling Frost"
+
+  - key: lingering_frost
+    name: "Lingering Frost"
+    type: avoidable_damage
+    source_unit: nymrissa
+    severity: minor
+    detect: { damage_ids: [1257654] }
+    tolerance: 1
+    tip: "Não ficar nas poças de gelo que os orbs deixam."
+    message: "{player} tomou {count} ticks de Lingering Frost"
+
+  - key: abyssal_rain
+    name: "Abyssal Rain"
+    type: unavoidable
+    source_unit: nymrissa
+    severity: none
+    detect: { damage_ids: [1260843], aura_id: 1260843, cast_id: 1260837 }
+    tip: "Pulso no raid seguido de DoT longo: cura."
+    message: "Abyssal Rain"
+
+  - key: water_jet
+    name: "Water Jet"
+    type: unavoidable
+    source_unit: nymrissa
+    severity: none
+    detect: { damage_ids: [1271458], aura_id: 1260637, cast_id: 1281951 }
+    tip: "Jato em 1-2 players com stacks."
+    message: "Water Jet"
+    notes: "Não está no guia; no log pega 1-2 players por cast. O tankbuster do guia (Iceblade Flurry) não apareceu."
