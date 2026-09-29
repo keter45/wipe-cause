@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Mountain, Swords } from 'lucide-react';
-import { iconUrl, useTooltip } from '../lib/wowhead';
+import { iconUrl, useTooltip, type TooltipKind } from '../lib/wowhead';
 
 /** No wipe-core, Melee é o spell 1 e dano de ambiente (queda, lava) é o 0. */
 const MELEE = 1;
@@ -15,18 +15,23 @@ export const EagerIcons = createContext(false);
 interface Props {
   spellId: number | null | undefined;
   size?: number;
+  /** item em vez de spell (mesmo endpoint do Wowhead) */
+  kind?: TooltipKind;
+  /** nome do ícone já conhecido (ex.: talentos): não busca o tooltip */
+  icon?: string | null;
 }
 
 /**
  * Ícone da habilidade (Wowhead), carregado só quando entra na tela. Enquanto carrega, ou se o
  * spell não existe no Wowhead, fica um quadrado neutro do mesmo tamanho (sem pulo de layout).
  */
-export function SpellIcon({ spellId, size = 18 }: Props) {
+export function SpellIcon({ spellId, size = 18, kind = 'spell', icon }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
   const eager = useContext(EagerIcons);
   const [visible, setVisible] = useState(eager);
-  const special = spellId === MELEE || spellId === ENVIRONMENT || spellId == null;
-  const tip = useTooltip(spellId ?? -1, visible && !special);
+  const special = kind === 'spell' && (spellId === MELEE || spellId === ENVIRONMENT || spellId == null);
+  const tip = useTooltip(spellId ?? -1, visible && !special && !icon && spellId != null, kind);
+  const iconName = icon ?? tip?.icon;
 
   useEffect(() => {
     const el = ref.current;
@@ -59,18 +64,18 @@ export function SpellIcon({ spellId, size = 18 }: Props) {
     );
   return (
     <span ref={ref} className="spell-icon" style={style} aria-hidden>
-      {tip?.icon && (
-        <img src={iconUrl(tip.icon)} alt="" width={size} height={size} loading={eager ? 'eager' : 'lazy'} decoding="async" crossOrigin="anonymous" />
+      {iconName && (
+        <img src={iconUrl(iconName)} alt="" width={size} height={size} loading={eager ? 'eager' : 'lazy'} decoding="async" crossOrigin="anonymous" />
       )}
     </span>
   );
 }
 
 /** Ícone + nome da habilidade numa linha. */
-export function SpellName({ spellId, name, size = 18 }: { spellId: number | null | undefined; name: string; size?: number }) {
+export function SpellName({ spellId, name, size = 18, icon }: { spellId: number | null | undefined; name: string; size?: number; icon?: string | null }) {
   return (
     <span className="spell-name">
-      <SpellIcon spellId={spellId} size={size} />
+      <SpellIcon spellId={spellId} size={size} icon={icon} />
       <span className="spell-name-text">{name}</span>
     </span>
   );

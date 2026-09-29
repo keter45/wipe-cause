@@ -4,6 +4,7 @@ mod history;
 mod live;
 mod logs;
 mod settings;
+mod talents;
 mod wcr;
 
 use serde::Serialize;
@@ -77,6 +78,7 @@ pub fn run() {
             ai::ai_set_config,
             ai::ai_list_models,
             ai::ai_chat,
+            talents::talent_tree,
             live::live_start,
             live::live_stop,
             live::live_status,
