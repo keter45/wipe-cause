@@ -29,11 +29,12 @@ import {
   type Sample,
 } from '../lib/performance';
 import { ShareMenu } from './ShareMenu';
+import { ErrorBoundary } from './ErrorBoundary';
 import { specLabel } from '../lib/specs';
 import { useTalentTree, type TalentTree } from '../lib/talents';
 import { useTooltip } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
-import { PerfLinks, WclTopsButton } from './WclTops';
+import { PerfLinks, WclTopsButton, perfLinks, useOwnFight, type PerfLink } from './WclTops';
 import { loadTop, type TopRanking, type TopSample } from '../lib/wclApi';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
@@ -101,7 +102,10 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
           ))}
         </select>
       </label>
-      <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
+      {/* erro na comparação de um jogador não some com o seletor: dá para escolher outro */}
+      <ErrorBoundary label={`na comparação de ${shortName(player.name)}`} resetKey={player.guid}>
+        <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
+      </ErrorBoundary>
     </div>
   );
 }
@@ -137,6 +141,8 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
     };
   }, [wantTop, loaded, me, tops]);
 
+  const own = useOwnFight(me.pull, me.player.name, wclCode);
+  const links = perfLinks(me.player.name, own, wclCode, mode === 'tops' && topSample ? topSample.source : null);
   const healer = isHealer(me.player);
   const unit = healer ? 'HPS' : 'DPS';
   const picker = (
@@ -184,7 +190,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
           </select>
         </label>
       )}
-      <PerfLinks pull={me.pull} me={me} wclCode={wclCode} top={mode === 'tops' && topSample ? topSample.source : null} />
+      <PerfLinks links={links} />
     </>
   );
 
@@ -214,7 +220,8 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
           cooldowns são comparados só no tempo em que os dois estavam vivos, então dá para comparar um wipe com um kill.
         </p>
         <ShareMenu
-          card={() => <PerfShareCard me={me} ref_={ref} refName={refName} cds={cds} />}
+          card={() => <PerfShareCard me={me} ref_={ref} refName={refName} cds={cds} links={links} />}
+          pdf
           name={`${shortName(me.player.name)} - ${me.pull.encounterName} ${me.pull.difficultyName} - pull ${me.pull.pullNumber}`}
         />
       </div>
@@ -410,13 +417,28 @@ function BurstLane({ label, side }: { label: string; side: BurstSide | null }) {
 
 // ---- cartão para exportar e mandar ao jogador
 
-export function PerfShareCard({ me, ref_, refName, cds }: { me: Sample; ref_: Sample; refName: string; cds: ReturnType<typeof detectCooldowns> }) {
+/**
+ * Relatório completo do jogador para mandar a quem não tem o app (PNG, HTML ou PDF): tudo o que a
+ * aba mostra, aberto, com os links do fight (clicáveis no PDF e no HTML).
+ */
+export function PerfShareCard({
+  me,
+  ref_,
+  refName,
+  cds,
+  links = [],
+}: {
+  me: Sample;
+  ref_: Sample;
+  refName: string;
+  cds: ReturnType<typeof detectCooldowns>;
+  links?: PerfLink[];
+}) {
   const healer = isHealer(me.player);
   const [mo, ro] = [outputPerSec(me), outputPerSec(ref_)];
   const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
-  const insights = perfInsights(me, ref_, cds).slice(0, 8);
-  const windows = burstWindows(me, ref_, cds, loadBurstPick(me.player.specId) ?? undefined).slice(0, 4);
-  const rotation = compareRotation(me, ref_, cds).filter((r) => r.core).slice(0, 8);
+  const insights = perfInsights(me, ref_, cds);
+  const windows = burstWindows(me, ref_, cds, loadBurstPick(me.player.specId) ?? undefined);
   return (
     <div className="share-card perf-card">
       <header className="share-head">
@@ -425,52 +447,67 @@ export function PerfShareCard({ me, ref_, refName, cds }: { me: Sample; ref_: Sa
             {shortName(me.player.name)} · {specLabel(me.player.specId)}
           </div>
           <div className="share-sub">
-            {me.pull.encounterName} {me.pull.difficultyName} · pull {me.pull.pullNumber} · comparado com {refName}
+            {me.pull.encounterName} {me.pull.difficultyName} · pull {me.pull.pullNumber} ({me.pull.success ? 'kill' : 'wipe'}, {mmss(me.pull.durationMs)}) ·
+            comparado com {refName}
           </div>
         </div>
         <div className={`share-big ${diff < -3 ? 'warn' : ''}`}>{ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : ''}</div>
       </header>
-      <p className="share-headline">
-        {healer ? 'Cura' : 'Dano'} por segundo vivo: {num(mo)} × {num(ro)} · item level {me.player.setup?.itemLevel.toFixed(1) ?? '—'} ×{' '}
-        {ref_.player.setup?.itemLevel.toFixed(1) ?? '—'}
-      </p>
+
+      <div className="death-stats perf-stats">
+        <Stat label={`${healer ? 'Cura' : 'Dano'} por segundo vivo`} mine={num(mo)} ref={num(ro)} />
+        <Stat label="Tempo vivo" mine={mmss(me.player.aliveMs ?? 0)} ref={mmss(ref_.player.aliveMs ?? 0)} />
+        <Stat label="Casts por minuto" mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref_).toFixed(1)} />
+        <Stat label="Item level" mine={me.player.setup?.itemLevel.toFixed(1) ?? '—'} ref={ref_.player.setup?.itemLevel.toFixed(1) ?? '—'} />
+      </div>
+
+      {links.length > 0 && (
+        <p className="perf-card-links small">
+          {links.map((l) => (
+            <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer">
+              {l.who}: {l.label}
+            </a>
+          ))}
+        </p>
+      )}
+
       {insights.length > 0 && (
-        <section>
+        <section className="perf-section">
           <h4>Pontos principais</h4>
-          <ul>
+          <ul className="perf-insights">
             {insights.map((i, k) => (
-              <li key={k} className={i.tone === 'bad' ? 'wipe' : i.tone === 'warn' ? 'major' : ''}>
-                {i.spellId != null && <SpellIcon spellId={i.spellId} size={16} />} <strong>{i.text}</strong>
+              <li key={k} className={`tone-${i.tone}`}>
+                {i.spellId != null && <SpellIcon spellId={i.spellId} size={16} />}
+                {i.text}
               </li>
             ))}
           </ul>
         </section>
       )}
+
       {windows.length > 0 && (
-        <section>
+        <section className="perf-section">
           <h4>Janelas de burst</h4>
           {windows.map((w) => (
             <div key={burstKey(w)} className="perf-card-burst">
-              <SpellName spellId={w.spellId} name={`${w.name} ${w.index}`} size={16} />
+              <span className="perf-card-burst-title">
+                <SpellName spellId={w.spellId} name={`${w.name} ${w.index}`} size={16} />
+                <span className="muted small"> {w.mine ? mmss(w.mine.start) : 'não usou'}</span>
+              </span>
               <BurstCompare w={w} />
             </div>
           ))}
         </section>
       )}
-      {rotation.length > 0 && (
-        <section>
-          <h4>Rotação (casts por minuto: você × referência)</h4>
-          <ul>
-            {rotation.map((r) => (
-              <li key={r.spellId}>
-                <SpellName spellId={r.spellId} name={r.name} size={16} /> {r.mineCpm.toFixed(1)} × {r.refCpm.toFixed(1)}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+
+      <Cooldowns me={me} ref_={ref_} cds={cds} expanded />
+      <Rotation me={me} ref_={ref_} cds={cds} expanded />
+      <Potions me={me} ref_={ref_} />
+      <SetupView me={me.player} ref_={ref_.player} />
+
       <footer className="share-foot">
         <span className="share-brand">Wipe Cause</span>
+        <span className="muted">Por minuto vivo; cooldowns no tempo em que os dois estavam vivos.</span>
       </footer>
     </div>
   );
@@ -478,9 +515,11 @@ export function PerfShareCard({ me, ref_, refName, cds }: { me: Sample; ref_: Sa
 
 // ---- cooldowns
 
-function Cooldowns({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnType<typeof detectCooldowns> }) {
+/** `expanded`: tudo aberto e sem botões (cartão para exportar). */
+function Cooldowns({ me, ref_, cds, expanded = false }: { me: Sample; ref_: Sample; cds: ReturnType<typeof detectCooldowns>; expanded?: boolean }) {
   const { windowMs, rows } = compareCooldowns(me, ref_, cds);
-  const [showAll, setShowAll] = useState(false);
+  const [open, setShowAll] = useState(false);
+  const showAll = open || expanded;
   if (rows.length === 0) return null;
   const core = rows.filter((r) => r.core);
   const shown = showAll || core.length === 0 ? rows : core;
@@ -497,7 +536,7 @@ function Cooldowns({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnTyp
           <CooldownLine key={r.spellId} r={r} windowMs={windowMs} />
         ))}
       </div>
-      {core.length > 0 && core.length < rows.length && (
+      {!expanded && core.length > 0 && core.length < rows.length && (
         <button className="link small more-toggle" onClick={() => setShowAll(!showAll)} aria-expanded={showAll}>
           <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${showAll ? 'open' : ''}`} aria-hidden />
           {showAll ? 'Só os principais' : `Mostrar ${rows.length - core.length} de uso ocasional`}
@@ -538,9 +577,10 @@ function CooldownLine({ r, windowMs }: { r: CooldownRow; windowMs: number }) {
 
 // ---- rotação
 
-function Rotation({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnType<typeof detectCooldowns> }) {
+function Rotation({ me, ref_, cds, expanded = false }: { me: Sample; ref_: Sample; cds: ReturnType<typeof detectCooldowns>; expanded?: boolean }) {
   const rows = compareRotation(me, ref_, cds);
-  const [showAll, setShowAll] = useState(false);
+  const [open, setShowAll] = useState(false);
+  const showAll = open || expanded;
   if (rows.length === 0) return null;
   const core = rows.filter((r) => r.core);
   const shown = showAll ? rows : core;
@@ -577,7 +617,7 @@ function Rotation({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnType
           </tbody>
         </table>
       </div>
-      {core.length < rows.length && (
+      {!expanded && core.length < rows.length && (
         <button className="link small more-toggle" onClick={() => setShowAll(!showAll)} aria-expanded={showAll}>
           <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${showAll ? 'open' : ''}`} aria-hidden />
           {showAll ? 'Só a rotação' : `Mostrar ${rows.length - core.length} utilitária${rows.length - core.length > 1 ? 's' : ''} (movimento, buffs)`}

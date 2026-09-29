@@ -38,7 +38,7 @@ export function spellIndex(p: Pull): Map<string, number> {
   for (const e of p.enemySpells) add(e.name, e.spellId);
   for (const d of p.deaths) {
     add(d.killingBlow?.spellName, d.killingBlow?.spellId);
-    for (const a of d.debuffs) add(a.name, a.spellId);
+    for (const a of d.debuffs ?? []) add(a.name, a.spellId);
     for (const a of d.defensivesAvailable) add(a.name, a.spellId);
     for (const a of d.defensivesRecent) add(a.name, a.spellId);
   }

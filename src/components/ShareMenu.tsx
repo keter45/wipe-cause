@@ -1,30 +1,32 @@
 import { useState, type ReactElement } from 'react';
-import { Check, ClipboardCopy, FileCode, ImageDown, MessageSquare, Share2 } from 'lucide-react';
+import { Check, ClipboardCopy, FileCode, FileText, ImageDown, MessageSquare, Share2 } from 'lucide-react';
 import { inTauri } from '../lib/api';
-import { cardHtml, cardPng, copyPng, fileSlug, saveHtml, savePng, sendPngToDiscord } from '../lib/share';
+import { cardHtml, cardPng, copyPng, fileSlug, printPdf, saveHtml, savePng, sendPngToDiscord } from '../lib/share';
 import { Popover } from './Popover';
 import { useSetup } from '../lib/setup';
 
-type Action = 'copy' | 'png' | 'html' | 'discord';
+type Action = 'copy' | 'png' | 'html' | 'pdf' | 'discord';
 
 const LABEL: Record<Action, string> = {
   copy: 'Copiar imagem',
   png: 'Salvar imagem (PNG)',
   html: 'Salvar página (HTML)',
+  pdf: 'Salvar PDF (com links)',
   discord: 'Enviar imagem ao Discord',
 };
 const DONE: Record<Action, string> = {
   copy: 'Imagem copiada: cole no Discord ou WhatsApp',
   png: 'Imagem salva',
   html: 'Página salva',
+  pdf: 'Na janela que abriu, escolha “Salvar como PDF”',
   discord: 'Imagem enviada ao Discord',
 };
 
 /**
  * "Compartilhar": gera o cartão (`card()`) como imagem ou página, para quem não tem o app.
- * `name`: base do nome do arquivo e título.
+ * `name`: base do nome do arquivo e título. `pdf`: oferece PDF (links clicáveis).
  */
-export function ShareMenu({ card, name }: { card: () => ReactElement; name: string }) {
+export function ShareMenu({ card, name, pdf = false }: { card: () => ReactElement; name: string; pdf?: boolean }) {
   const [open, setOpen] = useState(false);
   const hasDiscord = !!useSetup().status?.discord?.webhook;
   const [busy, setBusy] = useState<Action | null>(null);
@@ -37,6 +39,8 @@ export function ShareMenu({ card, name }: { card: () => ReactElement; name: stri
     try {
       if (a === 'html') {
         if (!(await saveHtml(await cardHtml(card(), name), `${file}.html`))) return;
+      } else if (a === 'pdf') {
+        await printPdf(await cardHtml(card(), name));
       } else {
         const png = await cardPng(card());
         if (a === 'copy') await copyPng(png);
@@ -51,8 +55,14 @@ export function ShareMenu({ card, name }: { card: () => ReactElement; name: stri
     }
   }
 
-  const actions: Action[] = inTauri && hasDiscord ? ['copy', 'png', 'html', 'discord'] : ['copy', 'png', 'html'];
-  const icons = { copy: ClipboardCopy, png: ImageDown, html: FileCode, discord: MessageSquare };
+  const actions: Action[] = [
+    'copy',
+    'png',
+    ...(pdf ? (['pdf'] as const) : []),
+    'html',
+    ...(inTauri && hasDiscord ? (['discord'] as const) : []),
+  ];
+  const icons = { copy: ClipboardCopy, png: ImageDown, html: FileCode, pdf: FileText, discord: MessageSquare };
 
   return (
     <Popover

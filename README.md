@@ -51,6 +51,18 @@ O pull e o resumo do boss têm **Compartilhar**: gera um cartão com o resumo (r
 
 Cada player recebe uma nota de 0 a 100 por pull: parte de 100, perde pontos por erros de mecânica (pela gravidade da regra, até 3 por mecânica), por deixar passar a própria vez na escala de interrupts e por morte decisiva (mais se tinha defensivo sobrando); no fim pesa o tempo vivo até a primeira morte. Morte em **wipe geral** (mais de 5 mortes em até 1,5s — explosão, Execution, enrage) não conta: é consequência do wipe, e a culpa fica com a mecânica e quem a causou. Aparece na aba Jogadores (passe o mouse para ver os descontos), como média no placar do boss e por noite na Evolução.
 
+## Desempenho
+
+A aba **Desempenho** de cada pull compara um player com os **top players da mesma spec no Warcraft Logs**, com item level parecido (e tempo de kill parecido, se o pull foi kill). Na progressão não há tempo de kill: o fight do top é recortado no mesmo tempo que o player ficou vivo, então um wipe de 2:30 é comparado com os 2:30 iniciais do kill (sem o execute e sem as fases que o wipe não viu).
+
+- **Janelas de burst**: marque os cooldowns que quer comparar (os de dano da classe vêm marcados); cada uso vira um chip e mostra os casts de 3s antes a 20s depois numa linha do tempo, lado a lado com o mesmo uso do top.
+- **Cooldowns**: quando cada um foi usado, quantas vezes e se o 1º uso veio atrasado ou adiantado.
+- **Rotação**: casts por minuto e % do dano de cada habilidade, apontando o que ficou abaixo ou não foi usado.
+- **Setup**: poção de combate, distribuição de status, talentos diferentes (com nome e ícone) e itens lado a lado, com encantamentos e gemas que faltam.
+- **Exportar**: o relatório do jogador vira um cartão para copiar, salvar (PNG/HTML) ou mandar ao Discord — para quem não tem o app.
+
+Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) e cole o client ID e o secret na aba (ficam no Gerenciador de Credenciais do Windows). As consultas enviam só boss, spec e códigos de report; as respostas ficam em cache. A comparação com a própria raid (outro da mesma spec, ou você mesmo em outra tentativa) fica na aba **Na própria raid**. Se o link do report da noite estiver cadastrado, o pull também ganha links para o seu fight no Warcraft Logs e no WoWAnalyzer.
+
 ## Escala de interrupts e dispels
 
 Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem.
@@ -65,7 +77,7 @@ Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melh
 
 ## Warcraft Logs
 
-Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Não usa a API do Warcraft Logs nem pede login.
+Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Isso não usa a API nem pede login; a API (com client próprio) só entra na aba Desempenho.
 
 ## Warcraft Recorder
 

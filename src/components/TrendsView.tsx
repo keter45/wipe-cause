@@ -6,13 +6,14 @@ import { buildTrends, trendBosses, type NightInput, type Trends } from '../lib/t
 import { scoreTone } from '../lib/score';
 import { SpellName } from './SpellIcon';
 import { Markdown } from './AskView';
+import { withErrorBoundary } from './ErrorBoundary';
 import { spellIndex } from '../lib/spells';
 
 /**
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
  * cada player. Usa todas as análises salvas no histórico.
  */
-export function TrendsView() {
+function TrendsViewInner() {
   const [nights, setNights] = useState<NightInput[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [boss, setBoss] = useState<string | null>(null);
@@ -213,3 +214,5 @@ function Spark({ values, labels }: { values: (number | null)[]; labels: string[]
     </svg>
   );
 }
+
+export const TrendsView = withErrorBoundary(TrendsViewInner, 'na Evolução');

@@ -3499,3 +3499,103 @@ td.warn {
     display: none;
   }
 }
+/* relatório completo: mais largo que os outros cartões (tabelas e linhas do tempo) */
+.share-card.perf-card {
+  width: 920px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.perf-card .share-head,
+.perf-card .share-foot {
+  margin: 0;
+}
+.perf-card-burst-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.perf-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+}
+/* no cartão tudo aparece inteiro: sem rolagem nas tabelas */
+.perf-card .table-scroll {
+  max-height: none;
+  overflow: visible;
+}
+/* o último rótulo da linha do tempo (+20s) não passa da borda */
+.burst-ticks span:last-child {
+  transform: translateX(-100%);
+}
+.perf-card-links a {
+  color: var(--info);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---- erros */
+.error-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--wipe) 8%, var(--panel));
+  border-left: 3px solid var(--wipe);
+}
+.error-box h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--wipe);
+}
+.error-box p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.error-box.full {
+  max-width: 560px;
+  margin: 15vh auto;
+}
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+/* em cima, à direita: não cobre a lista de pulls nem o aviso do modo ao vivo (embaixo) */
+.error-toasts {
+  position: fixed;
+  right: 20px;
+  top: 64px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, calc(100vw - 32px));
+}
+.error-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card), 0 8px 24px rgb(0 0 0 / 0.35);
+  border-left: 3px solid var(--wipe);
+  animation: toast-in 200ms var(--ease-out);
+}
+.error-toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

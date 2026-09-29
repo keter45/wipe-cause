@@ -75,12 +75,16 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
   );
 }
 
-/** Links do fight: do top (WCL + WoWAnalyzer) e do próprio pull, se o report estiver no WCL. */
-export function PerfLinks({ pull, me, top, wclCode }: { pull: Pull; me: Sample; top?: { code: string; fightId: number; actorId: number; name: string } | null; wclCode?: string }) {
-  const [own, setOwn] = useState<{ fightId: number; actorId: number | null } | null>(null);
-  const configured = !!useSetup().status?.wcl?.configured;
-  const myName = shortName(me.player.name);
+export interface OwnFightRef {
+  fightId: number;
+  actorId: number | null;
+}
 
+/** O fight deste pull no report do WCL (se o link da noite estiver cadastrado e o client configurado). */
+export function useOwnFight(pull: Pull, playerName: string, wclCode?: string): OwnFightRef | null {
+  const [own, setOwn] = useState<OwnFightRef | null>(null);
+  const configured = !!useSetup().status?.wcl?.configured;
+  const myName = shortName(playerName);
   useEffect(() => {
     setOwn(null);
     if (!inTauri || !wclCode) return;
@@ -92,34 +96,48 @@ export function PerfLinks({ pull, me, top, wclCode }: { pull: Pull; me: Sample; 
       alive = false;
     };
   }, [wclCode, pull, myName, configured]);
+  return own;
+}
 
-  if (!top && !own) return null;
+export interface PerfLink {
+  who: 'Você' | 'Referência';
+  label: string;
+  url: string;
+}
+
+/** Links do fight: do próprio pull (se o report estiver no WCL) e do top. */
+export function perfLinks(
+  playerName: string,
+  own: OwnFightRef | null,
+  wclCode: string | undefined,
+  top: { code: string; fightId: number; actorId: number; name: string } | null | undefined,
+): PerfLink[] {
+  const out: PerfLink[] = [];
+  const myName = shortName(playerName);
+  if (own && wclCode) {
+    if (own.actorId != null) out.push({ who: 'Você', label: 'Warcraft Logs', url: wclFightUrl({ code: wclCode, fightId: own.fightId, actorId: own.actorId }) });
+    out.push({ who: 'Você', label: 'WoWAnalyzer', url: wowAnalyzerUrl({ code: wclCode, fightId: own.fightId, name: myName }) });
+  }
+  if (top) {
+    out.push({ who: 'Referência', label: `Warcraft Logs (${top.name})`, url: wclFightUrl(top) });
+    out.push({ who: 'Referência', label: `WoWAnalyzer (${top.name})`, url: wowAnalyzerUrl(top) });
+  }
+  return out;
+}
+
+/** Links na tela (abrem no navegador padrão). */
+export function PerfLinks({ links }: { links: PerfLink[] }) {
+  if (links.length === 0) return null;
   return (
     <p className="perf-links small">
-      {own && wclCode && (
-        <>
-          <span className="muted">Você:</span>
-          {own.actorId != null && (
-            <button className="link" onClick={() => openExternal(wclFightUrl({ code: wclCode, fightId: own.fightId, actorId: own.actorId! }))}>
-              Warcraft Logs <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
-            </button>
-          )}
-          <button className="link" onClick={() => openExternal(wowAnalyzerUrl({ code: wclCode, fightId: own.fightId, name: myName }))}>
-            WoWAnalyzer <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
+      {links.map((l, i) => (
+        <span key={l.url}>
+          {(i === 0 || links[i - 1].who !== l.who) && <span className="muted">{l.who}: </span>}
+          <button className="link" onClick={() => openExternal(l.url)}>
+            {l.label} <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
           </button>
-        </>
-      )}
-      {top && (
-        <>
-          <span className="muted">Referência ({top.name}):</span>
-          <button className="link" onClick={() => openExternal(wclFightUrl(top))}>
-            Warcraft Logs <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
-          </button>
-          <button className="link" onClick={() => openExternal(wowAnalyzerUrl(top))}>
-            WoWAnalyzer <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
-          </button>
-        </>
-      )}
+        </span>
+      ))}
     </p>
   );
 }
