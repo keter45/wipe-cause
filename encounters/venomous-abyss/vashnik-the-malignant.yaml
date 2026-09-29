@@ -1,0 +1,185 @@
+schema_version: 1
+raid: venomous-abyss
+boss: vashnik-the-malignant
+name: "Vashnik the Malignant"
+encounter_id: 3455
+source:
+  - https://www.mythictrap.com/en/venomous-abyss/vashnik-the-malignant/mythic
+  - "log: Archive-WoWCombatLog-091626 (6 pulls míticos) e 092226 (mítico + heroico) — IDs calibrados"
+updated: 2026-09-29
+difficulties: [normal, heroic, mythic]
+
+units:
+  - { key: vashnik, name: "Vashnik the Malignant", npc_id: null, boss: true }
+  - { key: burning_venom, name: "Burning Venom", npc_id: null }
+  - { key: shrouded_venom, name: "Shrouded Venom", npc_id: null }
+  - { key: clotting_venom, name: "Clotting Venom", npc_id: null }
+  - { key: malignant_totem, name: "Malignant Totem", npc_id: null }
+
+mechanics:
+  # ---------- Fontes ----------
+  - key: imbibe
+    name: "Imbibe"
+    type: info
+    source_unit: vashnik
+    severity: none
+    detect: { cast_id: 1284663 }
+    tip: "Levar o boss às fontes escolhidas: ele ganha as habilidades das duas mais próximas."
+    message: "Imbibe"
+
+  - key: fountain_expulsion
+    name: "Conflagrating / Gloom Expulsion"
+    type: unavoidable
+    source_unit: vashnik
+    severity: none
+    detect: { damage_ids: [1298587, 1298583] }
+    tip: "Dano no raid quando uma fonte é ativada."
+    message: "Expulsion"
+
+  - key: toxic_vapor
+    name: "Toxic Vapor"
+    type: unavoidable
+    source_unit: vashnik
+    severity: none
+    detect: { damage_ids: [1284561] }
+    tip: "Dano contínuo que sobe a cada Imbibe: a luta aperta com o tempo."
+    message: "Toxic Vapor"
+
+  # ---------- Mítico: tumores ----------
+  - key: malignance
+    name: "Malignance"
+    type: failure_event
+    source_unit: malignant_totem
+    difficulty: [mythic]
+    severity: wipe
+    detect: { fail_ids: [1304459] }
+    tip: "Destruir todos os Malignant Tumors com as ondas da Plague Froth; tumor que sobra pulsa no raid até wipar."
+    message: "{count} pulso(s) de Malignance — tumor não destruído"
+
+  # ---------- Plague Froth ----------
+  - key: plague_froth
+    name: "Plague Froth"
+    type: unavoidable
+    source_unit: vashnik
+    severity: none
+    detect: { damage_ids: [1281925], aura_id: 1281913 }
+    tip: "Marcados com a cruz se espalham; as ondas saem nas direções marcadas."
+    message: "Plague Froth"
+
+  - key: plague_wave
+    name: "Plague Wave"
+    type: avoidable_damage
+    source_unit: vashnik
+    severity: minor
+    detect: { damage_ids: [1295798] }
+    tip: "Espalhar e sair da direção das ondas (no Mítico, mirar as ondas nos tumores)."
+    message: "{player} foi atingido por Plague Wave ({count}x)"
+
+  # ---------- Malignant Catalyst (Heroico+) ----------
+  - key: malignant_catalyst
+    name: "Malignant Catalyst"
+    type: soak
+    source_unit: vashnik
+    difficulty: [heroic, mythic]
+    severity: major
+    detect:
+      damage_ids: [1282602]     # Catalytic Bile em quem soaka
+      fail_ids: [1282616]       # círculo sem ninguém: explode no raid todo
+    tip: "Ter alguém em cada círculo de soak."
+    message: "{count} círculo(s) do Malignant Catalyst sem soak"
+
+  - key: malignant_catalyst_burst
+    name: "Malignant Catalyst (pulso)"
+    type: unavoidable
+    source_unit: vashnik
+    difficulty: [heroic, mythic]
+    severity: none
+    detect: { damage_ids: [1282525], cast_id: 1282509 }
+    tip: "Pulso no raid que cria os círculos de soak."
+    message: "Malignant Catalyst"
+
+  # ---------- Infecções ----------
+  - key: exploding_infection
+    name: "Exploding Infection"
+    type: unavoidable
+    source_unit: vashnik
+    severity: none
+    detect: { damage_ids: [1295209, 1295173], aura_id: 1295173 }
+    tip: "Marcado sai para longe do raid antes de explodir (o dano cai com a distância)."
+    message: "Caustic Explosion"
+    notes: "Caustic Explosion (1295209) pega o raid inteiro com queda por distância: sem culpa pelo log."
+
+  - key: stygian_infection
+    name: "Stygian Infection"
+    type: info
+    source_unit: vashnik
+    severity: none
+    detect: { aura_id: 1294994, damage_ids: [1294994] }
+    tip: "Absorção de cura enorme: curar o quanto antes para parar os swirlies."
+    message: "Stygian Infection"
+
+  - key: stygian_burst
+    name: "Stygian Burst"
+    type: avoidable_damage
+    source_unit: vashnik
+    severity: minor
+    detect: { damage_ids: [1302489] }
+    tip: "Desviar dos swirlies em volta de quem tem Stygian Infection."
+    message: "{player} tomou Stygian Burst ({count}x)"
+
+  - key: virulent_fumes
+    name: "Virulent Fumes"
+    type: unavoidable
+    source_unit: vashnik
+    severity: none
+    detect: { damage_ids: [1291467], aura_id: 1291461 }
+    tip: "Dano leve no raid."
+    message: "Virulent Fumes"
+
+  # ---------- Adds ----------
+  - key: burning_presence
+    name: "Burning Presence"
+    type: unavoidable
+    source_unit: burning_venom
+    severity: none
+    detect: { damage_ids: [1305901, 1285979, 1280189], aura_id: 1285979 }
+    tip: "Burning Venom pulsa no raid e explode ao morrer: matar um de cada vez, com alguns segundos entre eles."
+    message: "Burning Presence"
+
+  - key: congealing_bolt
+    name: "Congealing Bolt"
+    type: unavoidable
+    source_unit: shrouded_venom
+    severity: none
+    detect: { damage_ids: [1305833], aura_id: 1305833 }
+    tip: "Matar os Shrouded Venom atravessando o escudo; os stacks do bolt somam."
+    message: "Congealing Bolt"
+
+  - key: umbral_ejection
+    name: "Umbral Ejection"
+    type: avoidable_damage
+    source_unit: shrouded_venom
+    severity: minor
+    detect: { damage_ids: [1286737] }
+    tip: "Desviar dos swirlies quando o Shrouded Venom morre."
+    message: "{player} tomou Umbral Ejection ({count}x)"
+
+  - key: clotting_venom
+    name: "Splitting Clot"
+    type: info
+    source_unit: clotting_venom
+    severity: minor
+    detect: { cast_id: 1291530 }
+    tip: "Clotting Venom se divide ao morrer: matar também os pedaços antes de chegarem ao centro."
+    message: "Clotting Venom"
+
+  # ---------- Tank ----------
+  - key: dripping_fangs
+    name: "Dripping Fangs"
+    type: unavoidable
+    source_unit: vashnik
+    roles: [tank]
+    severity: none
+    detect: { damage_ids: [1280934, 1280935], aura_id: 1280934 }
+    tip: "Tankbuster com 100% de vulnerabilidade: trocar de tank a cada um."
+    message: "Dripping Fangs"
