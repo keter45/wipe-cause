@@ -1,4 +1,6 @@
 mod history;
+mod logs;
+mod settings;
 mod wcr;
 
 use serde::Serialize;
@@ -49,9 +51,17 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        // atualização automática: latest.json da última release no GitHub, assinado
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             analyze_log,
             rules_dir,
+            logs::logs_list,
+            logs::logs_peek,
+            logs::logs_get_dir,
+            logs::logs_set_dir,
+            logs::logs_detect_dir,
             wcr::wcr_videos,
             wcr::wcr_get_dir,
             wcr::wcr_set_dir,

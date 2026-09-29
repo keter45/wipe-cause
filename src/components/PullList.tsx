@@ -1,40 +1,36 @@
 import { ChartColumn, Skull } from 'lucide-react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
+import { groupByBoss } from '../lib/night';
 import { lowestBossHp } from '../lib/verdict';
+
+/** `summary`: NIGHT = visão geral da noite; chave de boss = resumo daquele boss; null = um pull. */
+export const NIGHT = 'night';
 
 export interface PullListProps {
   pulls: Pull[];
   selected: number | null;
   onSelect: (id: number) => void;
-  summaryActive: boolean;
-  onSummary: () => void;
+  summary: string | null;
+  onSummary: (key: string) => void;
 }
 
-/** Resumo da noite + pulls agrupados por boss (dentro da análise aberta na barra lateral). */
-export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }: PullListProps) {
-  // agrupa por boss + dificuldade, na ordem em que apareceram
-  const groups = new Map<string, Pull[]>();
-  for (const p of pulls) {
-    const key = `${p.encounterName} · ${p.difficultyName}`;
-    groups.set(key, [...(groups.get(key) ?? []), p]);
-  }
-
+/** Resumo da noite + pulls agrupados por boss, cada boss com o próprio resumo. */
+export function PullList({ pulls, selected, onSelect, summary, onSummary }: PullListProps) {
   return (
     <nav className="pull-tree" aria-label="Pulls">
-      <button className={`summary-link ${summaryActive ? 'active' : ''}`} onClick={onSummary} aria-current={summaryActive ? 'page' : undefined}>
-        <ChartColumn size={16} strokeWidth={2} aria-hidden /> Resumo da noite
-      </button>
-      {[...groups.entries()].map(([title, ps]) => (
-        <section key={title}>
+      <SummaryLink active={summary === NIGHT} onClick={() => onSummary(NIGHT)} label="Resumo da noite" />
+      {groupByBoss(pulls).map(({ key, pulls: ps }) => (
+        <section key={key}>
           <h3>
-            {title}
+            {key}
             <span className="group-count">{ps.length}</span>
           </h3>
+          <SummaryLink active={summary === key} onClick={() => onSummary(key)} label="Resumo do boss" />
           {ps.map((p) => {
             const hp = lowestBossHp(p);
             const deaths = p.deaths.filter((d) => !d.ignored).length;
-            const active = !summaryActive && selected === p.id;
+            const active = summary == null && selected === p.id;
             return (
               <button
                 key={p.id}
@@ -60,5 +56,13 @@ export function PullList({ pulls, selected, onSelect, summaryActive, onSummary }
         </section>
       ))}
     </nav>
+  );
+}
+
+function SummaryLink({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button className={`summary-link ${active ? 'active' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
+      <ChartColumn size={16} strokeWidth={2} aria-hidden /> {label}
+    </button>
   );
 }

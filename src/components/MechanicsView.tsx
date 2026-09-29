@@ -16,6 +16,7 @@ const KIND_LABEL: Record<string, string> = {
   tank_range: 'Alcance do tank',
   positioning: 'Posicionamento',
   enrage: 'Enrage',
+  failure_event: 'Falha do raid',
   hp_balance: 'HP dos bosses',
   cc_required: 'CC',
   spread: 'Espalhar',

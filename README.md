@@ -5,7 +5,7 @@ Ferramenta local para descobrir **por que a try deu wipe** no World of Warcraft,
 ## Como funciona
 
 1. Ative o log no jogo: `/combatlog` + *Advanced Combat Logging* nas opções de rede.
-2. Abra o arquivo `World of Warcraft\_retail_\Logs\WoWCombatLog-*.txt` no app.
+2. No app, escolha o log da noite na lista: ele encontra a pasta `World of Warcraft\_retail_\Logs` sozinho (ou você escolhe a pasta uma vez) e mostra os bosses de cada log.
 3. Escolha o pull e veja:
    - o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e os erros de mecânica do boss;
    - cada morte: spike ou morte lenta, se faltou cura, debuffs ativos (com stacks e descrição), golpe final, defensivos/poção/healthstone;
@@ -54,3 +54,13 @@ cargo run -p wipe-core --bin wipe-cli -- analyze caminho/do/WoWCombatLog.txt
 ## Versionamento
 
 Versões seguem semver. Cada feature grande é fechada em uma release (`vX.Y.Z`) depois de aprovada.
+
+## Atualização automática
+
+O app instalado procura versão nova ao abrir (e a cada 6h): lê o `latest.json` da última release do GitHub, baixa o instalador, confere a assinatura e reinstala sozinho. Na barra lateral, "Procurar atualizações" força a checagem.
+
+Publicar uma versão:
+
+1. Suba a versão em `Cargo.toml`, `package.json` e `src-tauri/tauri.conf.json`.
+2. `npm run release:build` — build assinado com a chave privada em `~/.tauri/wipe-cause.key` (fora do repo; sem ela não dá para publicar atualizações, guarde um backup).
+3. `node scripts/release.mjs notas.md` — gera `target/release/upload/` com o instalador e o `latest.json` e mostra o `gh release create` para publicar os dois.

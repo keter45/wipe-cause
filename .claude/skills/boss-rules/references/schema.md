@@ -52,12 +52,17 @@ Opções extras:
 | campo | descrição |
 |---|---|
 | `ignore_first_hit_in_burst` | `avoidable_damage`: o 1º hit de cada rajada (hits a <1,5s um do outro) é o alvo da mecânica e não conta como erro. Ex.: linha mirada em um player. |
+| `detect.requires_aura` | o dano só conta se o player **já** tinha a aura há 0,5s+ (a vulnerabilidade aplicada pelo próprio hit não conta). Ex.: soak duplo. |
+| `detect.excludes_aura` | o dano não conta em quem tem a aura ou a perdeu há <0,5s: é o portador. Ex.: bomba/orb que machuca quem está perto. |
+| `detect.min_amount` | hits abaixo do valor não contam (nem para culpa no recap). Ex.: separar a explosão do tick normal do mesmo spell. |
+| `detect.culprit_auras` | falha coletiva: culpa quem perdeu uma destas auras entre 0,5s antes e 50ms depois do 1º hit da falha (quem carregava o orb que explodiu). |
+| `blame_message` | texto por jogador numa regra coletiva (`{player}`); `message` fica para o resumo. |
 
 > **IDs do Journal ≠ IDs do log.** O cast, o dano, o debuff e a explosão da mesma habilidade costumam ter IDs diferentes, e o Encounter Journal (wiki/wowhead) mostra só um deles. Calibre sempre com `wipe-cli spells <log>` ou a aba "Habilidades do boss" do app.
 
 ### O que o motor avalia hoje
 
-`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
+`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
 
 ## Tipos
 
@@ -97,6 +102,17 @@ detect: { cast_id: .. }
 accept: [interrupt, cc, kill]   # o que conta como sucesso
 ```
 Log: `SPELL_CAST_SUCCESS` do inimigo = falha; `SPELL_INTERRUPT` credita quem cortou. Relatório: quem cortou, quantos passaram, quem estava designado (se houver atribuição).
+
+### `failure_event`
+Evento que só acontece quando o raid erra, sem "soak" envolvido (explosão por contato, timer estourado).
+```yaml
+detect:
+  fail_ids: [..]
+  min_amount: 800000          # opcional: quando o mesmo spell também tem tick normal
+  culprit_auras: [..]         # opcional: auras de portador consumidas na falha
+blame_message: "{player} carregava o orb"
+```
+Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `culprit_auras`); sem elas, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.
 
 ### `cc_required`
 Precisa de CC/stop para quebrar algo (escudo, cast).

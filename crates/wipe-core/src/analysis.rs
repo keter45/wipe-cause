@@ -967,7 +967,7 @@ fn attribute_death(d: &mut Death, rules: &RuleTracker) {
     let total: i64 = d.recap.iter().filter(|e| e.kind == RecapKind::Damage).map(dmg).sum();
     let mut by_mech: Vec<(String, String, i64)> = Vec::new();
     for e in d.recap.iter().filter(|e| e.kind == RecapKind::Damage) {
-        if let Some((key, name)) = rules.failure_mechanic(e.spell_id) {
+        if let Some((key, name)) = rules.failure_mechanic(e.spell_id, dmg(e)) {
             match by_mech.iter_mut().find(|m| m.0 == key) {
                 Some(m) => m.2 += dmg(e),
                 None => by_mech.push((key.to_string(), name.to_string(), dmg(e))),
@@ -985,7 +985,7 @@ fn attribute_death(d: &mut Death, rules: &RuleTracker) {
             amount,
         })
         .collect();
-    let kb_mech = d.killing_blow.as_ref().and_then(|kb| rules.failure_mechanic(kb.spell_id)).map(|(k, _)| k.to_string());
+    let kb_mech = d.killing_blow.as_ref().and_then(|kb| rules.failure_mechanic(kb.spell_id, dmg(kb))).map(|(k, _)| k.to_string());
     for a in &mut d.debuffs {
         if let Some((name, tip)) = rules.aura_mechanic(a.spell_id) {
             a.mechanic = Some(name.to_string());

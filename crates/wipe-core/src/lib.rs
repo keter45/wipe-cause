@@ -2,6 +2,7 @@
 
 pub mod analysis;
 pub mod data;
+pub mod peek;
 pub mod report;
 pub mod rules;
 pub mod timestamp;
@@ -126,7 +127,7 @@ pub fn analyze_reader<R: BufRead>(
     })
 }
 
-fn current_year() -> i32 {
+pub(crate) fn current_year() -> i32 {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())

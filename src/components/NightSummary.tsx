@@ -1,14 +1,18 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { EyeOff, Hand, Handshake, HeartPulse, ShieldCheck, ShieldOff, Skull, Swords, TriangleAlert, type LucideIcon } from 'lucide-react';
+import { ChevronRight, EyeOff, Hand, Handshake, HeartPulse, ShieldCheck, ShieldOff, Skull, Swords, TriangleAlert, type LucideIcon } from 'lucide-react';
 import type { Pull } from '../types';
 import { classColor, mmss, num, pct, shortName } from '../lib/format';
-import { summarizeNight, topBy, type NightSummary as Summary, type PlayerNight } from '../lib/night';
+import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummary as Summary, type PlayerNight } from '../lib/night';
 import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
 
 interface Props {
   pulls: Pull[];
   onSelectPull: (id: number) => void;
+}
+
+function endClock(s: Summary): string {
+  return s.pulls.length ? new Date(s.endMs + (s.pulls[0].tzOffsetHours ?? 0) * 3_600_000).toISOString().slice(11, 16) : '';
 }
 
 function duration(ms: number): string {
@@ -20,45 +24,92 @@ function clock(p: Pull): string {
   return p.startLocal.split(' ')[1]?.slice(0, 5) ?? '';
 }
 
-/** Painel da noite inteira: stats, maior causa, progresso, vilões/mocinhos, downtime e placar. */
-export function NightSummary({ pulls, onSelectPull }: Props) {
-  // filtro por boss + dificuldade
-  const groups = useMemo(() => {
-    const m = new Map<string, Pull[]>();
-    for (const p of pulls) {
-      const k = `${p.encounterName} · ${p.difficultyName}`;
-      m.set(k, [...(m.get(k) ?? []), p]);
-    }
-    return m;
-  }, [pulls]);
-  // abre no boss com mais pulls (normalmente o de progressão)
-  const [group, setGroup] = useState<string>(() => [...groups.entries()].sort((a, b) => b[1].length - a[1].length)[0]?.[0] ?? 'all');
-  const selected = group === 'all' ? pulls : groups.get(group) ?? pulls;
-  const s = useMemo(() => summarizeNight(selected), [selected]);
-  // ícone de cada mecânica (vem das regras do boss)
-  const mechanicSpellIds = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const p of pulls) for (const x of p.mechanics) if (x.spellId != null) m.set(x.key, x.spellId);
-    return m;
-  }, [pulls]);
+/** Visão geral da noite: tempo e downtime da raid inteira e um card por boss. */
+export function NightOverview({ pulls, onSelectPull, onSelectBoss }: Props & { onSelectBoss: (key: string) => void }) {
+  const s = useMemo(() => summarizeNight(pulls), [pulls]);
+  const bosses = useMemo(() => groupByBoss(pulls).map((g) => ({ ...g, s: summarizeNight(g.pulls) })), [pulls]);
+  const spellIds = useMechanicSpellIds(pulls);
 
   if (!pulls.length) return <p className="muted pad">Nenhum pull no log.</p>;
-  const topCause = s.causes.find((c) => c.triggers > 0) ?? s.causes[0];
 
   return (
     <div className="night">
       <header className="night-head">
         <h2>Resumo da noite</h2>
-        <div className="chips" role="tablist" aria-label="Filtrar por boss">
-          <button role="tab" aria-selected={group === 'all'} className={group === 'all' ? 'active' : ''} onClick={() => setGroup('all')}>
-            Todos ({pulls.length})
-          </button>
-          {[...groups.entries()].map(([k, ps]) => (
-            <button key={k} role="tab" aria-selected={group === k} className={group === k ? 'active' : ''} onClick={() => setGroup(k)}>
-              {k} ({ps.length})
+        <span className="muted small">
+          {bosses.length} boss{bosses.length > 1 ? 'es' : ''} · {s.pulls.length} pulls · {s.kills} kill{s.kills === 1 ? '' : 's'}
+        </span>
+      </header>
+
+      <div className="tiles">
+        <Tile label="Tempo de raid" value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
+        <Tile label="Em combate" value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
+        <Tile label="Downtime" value={duration(s.downtimeMs)} sub={`${s.gaps.filter((g) => g.isBreak).length} pausa(s) de 10min+`} />
+        <Tile label="Entre trys (média)" value={mmss(s.avgGapMs)} sub={`mediana ${mmss(s.medianGapMs)}`} />
+        <Tile
+          label="Maior intervalo"
+          value={s.longestGap ? mmss(s.longestGap.ms) : '—'}
+          sub={s.longestGap ? `após ${pullName(s.longestGap.after, true)}${s.longestGap.isBreak ? ' (pausa)' : ''}` : undefined}
+        />
+      </div>
+
+      <section className="boss-cards" aria-label="Bosses da noite">
+        {bosses.map(({ key, s: b }) => {
+          const top = b.causes.find((c) => c.triggers > 0);
+          return (
+            <button key={key} className="panel boss-card" onClick={() => onSelectBoss(key)}>
+              <span className="boss-card-title">{key}</span>
+              <span className="boss-card-result">{b.kills ? 'Kill' : b.best ? `melhor ${pct(b.best.hp)}` : '—'}</span>
+              <span className="muted small">
+                {b.pulls.length} pulls · {b.wipes} wipes · {duration(b.combatMs)} em combate · {clock(b.pulls[0])} → {endClock(b)}
+              </span>
+              {top ? (
+                <span className="small boss-card-cause">
+                  Maior causa: <SpellName spellId={spellIds.get(top.key)} name={top.name} /> ({top.triggers}/{b.wipes} wipes)
+                </span>
+              ) : (
+                <span className="muted small">Sem gatilho apontado</span>
+              )}
+              <span className="boss-card-open small">
+                Ver resumo do boss <ChevronRight size={14} strokeWidth={1.5} aria-hidden />
+              </span>
             </button>
-          ))}
-        </div>
+          );
+        })}
+      </section>
+
+      <section className="panel">
+        <h3>Linha do tempo da noite</h3>
+        <p className="muted small">Blocos = pulls; espaços = downtime. Intervalos de 10min ou mais contam como pausa.</p>
+        <Timeline s={s} onSelect={onSelectPull} />
+        <GapList s={s} />
+      </section>
+    </div>
+  );
+}
+
+function useMechanicSpellIds(pulls: Pull[]) {
+  // ícone de cada mecânica (vem das regras do boss)
+  return useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of pulls) for (const x of p.mechanics) if (x.spellId != null) m.set(x.key, x.spellId);
+    return m;
+  }, [pulls]);
+}
+
+/** Resumo de um boss: stats, maior causa, progresso, vilões/mocinhos, downtime e placar. */
+export function BossSummary({ title, pulls, onSelectPull }: Props & { title: string }) {
+  const s = useMemo(() => summarizeNight(pulls), [pulls]);
+  const mechanicSpellIds = useMechanicSpellIds(pulls);
+
+  if (!pulls.length) return <p className="muted pad">Nenhum pull de {title} nesta análise.</p>;
+  const topCause = s.causes.find((c) => c.triggers > 0) ?? s.causes[0];
+
+  return (
+    <div className="night">
+      <header className="night-head">
+        <h2>{title}</h2>
+        <span className="muted small">Resumo do boss</span>
       </header>
 
       <div className="tiles">
@@ -69,7 +120,7 @@ export function NightSummary({ pulls, onSelectPull }: Props) {
           sub={s.best ? `pull ${s.best.pull.pullNumber} · ${clock(s.best.pull)}` : undefined}
           onClick={s.best ? () => onSelectPull(s.best!.pull.id) : undefined}
         />
-        <Tile label="Tempo de raid" value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${s.pulls.length ? new Date(s.endMs + (s.pulls[0].tzOffsetHours ?? 0) * 3_600_000).toISOString().slice(11, 16) : ''}`} />
+        <Tile label="Tempo no boss" value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
         <Tile label="Em combate" value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
         <Tile label="Entre trys (média)" value={mmss(s.avgGapMs)} sub={`mediana ${mmss(s.medianGapMs)}`} />
         <Tile
@@ -106,7 +157,7 @@ export function NightSummary({ pulls, onSelectPull }: Props) {
           <CausesTable s={s} spellIds={mechanicSpellIds} />
         </section>
         <section className="panel">
-          <h3>Linha do tempo da noite</h3>
+          <h3>Linha do tempo</h3>
           <p className="muted small">Blocos = pulls; espaços = downtime. Intervalos de 10min ou mais contam como pausa.</p>
           <Timeline s={s} onSelect={onSelectPull} />
           <GapList s={s} />
@@ -114,12 +165,12 @@ export function NightSummary({ pulls, onSelectPull }: Props) {
       </div>
 
       <div className="two-col">
-        <Awards title="Vilões" tone="bad" players={s.players} awards={VILLAIN_AWARDS} overall={(p) => p.villainScore} overallLabel="Vilão da noite" reasons={villainReasons} />
-        <Awards title="Mocinhos" tone="good" players={s.players} awards={HERO_AWARDS} overall={(p) => p.heroScore} overallLabel="Mocinho da noite" reasons={heroReasons} />
+        <Awards title="Vilões" tone="bad" players={s.players} awards={VILLAIN_AWARDS} overall={(p) => p.villainScore} overallLabel="Vilão neste boss" reasons={villainReasons} />
+        <Awards title="Mocinhos" tone="good" players={s.players} awards={HERO_AWARDS} overall={(p) => p.heroScore} overallLabel="Mocinho neste boss" reasons={heroReasons} />
       </div>
 
       <section className="panel">
-        <h3>Placar da noite</h3>
+        <h3>Placar</h3>
         <Scoreboard players={s.players} />
       </section>
     </div>
@@ -214,7 +265,7 @@ function pullTip(p: Pull, hp: number) {
     <>
       <strong>{p.success ? 'Kill' : `${pct(hp)} de HP`}</strong>
       <span>
-        Pull {p.pullNumber} · {clock(p)} · {mmss(p.durationMs)}
+        {pullName(p, true)} · {clock(p)} · {mmss(p.durationMs)}
       </span>
       {p.trigger && <span>Gatilho: {p.trigger.name}</span>}
       <span>{p.deaths.filter((d) => !d.ignored).length} mortes</span>
@@ -288,6 +339,16 @@ function Timeline({ s, onSelect }: { s: Summary; onSelect: (id: number) => void 
   );
 }
 
+/** "pull 12" dentro de um boss; "The Twin Fangs 12" quando a tela mistura bosses. */
+function pullName(p: Pull, withBoss: boolean): string {
+  return withBoss ? `${p.encounterName} ${p.pullNumber}` : `pull ${p.pullNumber}`;
+}
+
+function gapLabel(g: Gap): string {
+  if (bossKey(g.after) !== bossKey(g.before)) return `troca de boss: ${pullName(g.after, true)} → ${pullName(g.before, true)}`;
+  return `entre o pull ${g.after.pullNumber} e o ${g.before.pullNumber}`;
+}
+
 function GapList({ s }: { s: Summary }) {
   const longest = [...s.gaps].sort((a, b) => b.ms - a.ms).slice(0, 3);
   if (!longest.length) return null;
@@ -298,7 +359,7 @@ function GapList({ s }: { s: Summary }) {
           <span className="muted">
             {clock(g.after)} → {clock(g.before)}
           </span>{' '}
-          <strong>{mmss(g.ms)}</strong> entre o pull {g.after.pullNumber} e o {g.before.pullNumber}
+          <strong>{mmss(g.ms)}</strong> {gapLabel(g)}
           {g.isBreak && <span className="chip">pausa</span>}
         </li>
       ))}

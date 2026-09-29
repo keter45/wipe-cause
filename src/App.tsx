@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Crosshair, FolderOpen } from 'lucide-react';
+import { Crosshair } from 'lucide-react';
 import type { LogReport } from './types';
 import {
   analyzeLog,
@@ -14,7 +14,12 @@ import {
   sameLog,
   type HistoryEntry,
 } from './lib/api';
-import { NightSummary } from './components/NightSummary';
+import { BossSummary, NightOverview } from './components/NightSummary';
+import { LogBrowser } from './components/LogBrowser';
+import { UpdateBanner } from './components/UpdateBanner';
+import { useUpdater, type UpdateState } from './lib/updater';
+import { NIGHT } from './components/PullList';
+import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { PullView } from './components/PullView';
 import { Header } from './components/Header';
@@ -23,6 +28,9 @@ import type { WcrScan, WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
 
 type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string } | { kind: 'error'; message: string };
+
+/** Analisar e escolher arquivos/pastas só funciona no app (o navegador é só para desenvolver a UI). */
+const NEEDS_APP = 'No navegador não dá para ler os logs: abra o app (npm run tauri dev) ou carregue um relatório JSON pela barra lateral.';
 
 const SIDEBAR_KEY = 'wipe-cause:sidebar-open';
 function savedSidebarOpen(): boolean {
@@ -36,8 +44,11 @@ function savedSidebarOpen(): boolean {
 export default function App() {
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
-  const [showSummary, setShowSummary] = useState(true);
+  // NIGHT = visão geral; chave de boss = resumo do boss; null = pull selecionado
+  const [summary, setSummary] = useState<string | null>(NIGHT);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  // lista de logs da pasta do WoW ("Nova análise"); sem relatório aberto ela é a tela inicial
+  const [browsing, setBrowsing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(savedSidebarOpen);
   // corte da análise na tela; a preferência (para logs novos) fica salva à parte
   const [deathCutoff, setDeathCutoff] = useState(savedDeathCutoff);
@@ -45,6 +56,9 @@ export default function App() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [wclCode, setWclCode] = useState<string | null>(null);
   const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
+  const updater = useUpdater();
+  // dev no navegador: ?demoUpdate=1 mostra o aviso de versão nova (só visual)
+  const updateState: UpdateState = demoUpdate ? { kind: 'available', version: '0.4.0', notes: '- Exemplo de novidade\n- Outra novidade' } : updater.state;
 
   const refreshHistory = () => historyList().then(setHistory).catch(() => {});
   useEffect(() => {
@@ -82,12 +96,17 @@ export default function App() {
   }, []);
 
   async function load(path: string, keepView = false, cutoff = deathCutoff) {
+    if (!inTauri) {
+      setStatus({ kind: 'error', message: NEEDS_APP });
+      return;
+    }
     setStatus({ kind: 'loading', progress: 0, path });
     try {
       const r = await analyzeLog(path, cutoff, (progress) => setStatus({ kind: 'loading', progress, path }));
       rememberFile(path);
       if (keepView) setReport(r);
       else showReport(r);
+      setBrowsing(false);
       setStatus({ kind: 'idle' });
       refreshHistory(); // o backend salvou no histórico
     } catch (e) {
@@ -101,15 +120,23 @@ export default function App() {
     // abre no último wipe (normalmente o que a raid quer ver)
     const lastWipe = [...r.pulls].reverse().find((p) => !p.success) ?? r.pulls[r.pulls.length - 1];
     setSelected(lastWipe?.id ?? null);
-    setShowSummary(true); // abre no resumo da noite
+    setSummary(NIGHT); // abre no resumo da noite
   }
 
-  async function openFile() {
-    const path = await pickLogFile();
-    if (!path) return;
+  /** Log novo: usa o corte salvo como preferência. */
+  async function analyzePath(path: string) {
     const pref = savedDeathCutoff();
     setDeathCutoff(pref);
     await load(path, false, pref);
+  }
+
+  async function openFile() {
+    if (!inTauri) {
+      setStatus({ kind: 'error', message: NEEDS_APP });
+      return;
+    }
+    const path = await pickLogFile();
+    if (path) await analyzePath(path);
   }
 
   /** Mudou o N: salva como preferência e reanalisa o log aberto (o corte é feito no núcleo). */
@@ -121,8 +148,9 @@ export default function App() {
   }
 
   async function openEntry(e: HistoryEntry) {
+    setBrowsing(false);
     if (report && sameLog(e.logPath, report.file)) {
-      setShowSummary(true);
+      setSummary(NIGHT);
       return;
     }
     if (!inTauri) return; // navegador: o histórico de exemplo é só visual
@@ -152,7 +180,7 @@ export default function App() {
 
   const selectPull = (id: number) => {
     setSelected(id);
-    setShowSummary(false);
+    setSummary(null);
   };
   const pulls = report?.pulls ?? [];
   const pull = useMemo(() => report?.pulls.find((p) => p.id === selected) ?? null, [report, selected]);
@@ -181,6 +209,7 @@ export default function App() {
           <span>Analisando {status.path.split(/[\\/]/).pop()}… {Math.round(status.progress * 100)}%</span>
         </div>
       )}
+      <UpdateBanner state={updateState} onInstall={updater.install} onDismiss={updater.dismiss} />
       {status.kind === 'error' && <div className="error">Erro: {status.message}</div>}
       {report && report.ruleErrors?.length > 0 && (
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
@@ -192,7 +221,11 @@ export default function App() {
             history={history}
             report={report}
             busy={status.kind === 'loading'}
-            onNew={openFile}
+            onNew={() => setBrowsing(true)}
+            browsing={browsing || !report}
+            appVersion={updater.version}
+            updateState={updateState}
+            onCheckUpdates={() => updater.checkNow(true)}
             onOpenJson={showReport}
             onOpenEntry={openEntry}
             onTogglePin={togglePin}
@@ -201,15 +234,24 @@ export default function App() {
             pulls={pulls}
             selected={selected}
             onSelect={selectPull}
-            summaryActive={showSummary}
-            onSummary={() => setShowSummary(true)}
+            summary={summary}
+            onSummary={setSummary}
           />
         )}
         <main className="content">
-          {!report ? (
-            <Empty onOpen={openFile} hasHistory={history.length > 0} />
-          ) : showSummary ? (
-            <NightSummary pulls={pulls} onSelectPull={selectPull} />
+          {!report || browsing ? (
+            inTauri || demoLogs ? (
+              <>
+                {!report && <Intro />}
+                <LogBrowser history={history} busy={status.kind === 'loading'} onAnalyze={analyzePath} onOpenFile={openFile} />
+              </>
+            ) : (
+              <Empty hasHistory={history.length > 0} />
+            )
+          ) : summary === NIGHT ? (
+            <NightOverview pulls={pulls} onSelectPull={selectPull} onSelectBoss={setSummary} />
+          ) : summary != null ? (
+            <BossSummary key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} />
           ) : pull ? (
             <PullView pull={pull} wclCode={wclCode ?? undefined} video={videos.get(pull.id)} />
           ) : (
@@ -221,38 +263,34 @@ export default function App() {
   );
 }
 
-function Empty({ onOpen, hasHistory }: { onOpen: () => void; hasHistory: boolean }) {
+/** Dev no navegador: `?demoLogs=1` mostra a lista de logs de exemplo. */
+const demoUpdate = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoUpdate');
+const demoLogs = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoLogs');
+
+/** Tela inicial do app, acima da lista de logs. */
+function Intro() {
+  return (
+    <div className="intro">
+      <Crosshair size={32} strokeWidth={1.5} className="empty-mark" aria-hidden />
+      <div>
+        <h1>Por que deu wipe?</h1>
+        <p className="muted">
+          Escolha o log da raid e veja o gatilho de cada wipe, as mortes e quem errou o quê. No jogo, use <code>/combatlog</code> antes do pull,
+          com <em>Advanced Combat Logging</em> ligado (Opções → Rede).
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Empty({ hasHistory }: { hasHistory: boolean }) {
   return (
     <div className="empty">
       <Crosshair size={40} strokeWidth={1.5} className="empty-mark" aria-hidden />
       <h1>Por que deu wipe?</h1>
-      <p className="muted">Abra o combat log da raid e veja o gatilho de cada wipe, as mortes e quem errou o quê.</p>
-      <ol className="empty-steps">
-        <li>
-          <span>
-            No jogo, digite <code>/combatlog</code> antes do pull e ative <em>Advanced Combat Logging</em> em Opções → Rede.
-          </span>
-        </li>
-        <li>
-          <span>
-            Depois das trys, abra o <code>WoWCombatLog-*.txt</code> em <code>World of Warcraft\_retail_\Logs</code>.
-          </span>
-        </li>
-        <li>
-          <span>Opcional: cole o link do report do Warcraft Logs e ligue a pasta de vídeos do Warcraft Recorder.</span>
-        </li>
-      </ol>
-      {inTauri ? (
-        <div className="empty-actions">
-          <button className="btn primary" onClick={onOpen}>
-            <FolderOpen size={16} strokeWidth={2} aria-hidden /> Abrir combat log
-          </button>
-        </div>
-      ) : (
-        <p className="muted small">
-          Modo navegador: gere o relatório com <code>wipe-cli analyze log.txt --json</code> e abra o JSON pela barra lateral.
-        </p>
-      )}
+      <p className="muted small">
+        Modo navegador: gere o relatório com <code>wipe-cli analyze log.txt --json</code> e abra o JSON pela barra lateral.
+      </p>
       {hasHistory && <p className="muted small">Ou abra uma análise salva na barra lateral.</p>}
     </div>
   );

@@ -7,14 +7,30 @@ import { analyzePull, lowestBossHp } from './verdict';
 /** Intervalo entre trys acima disso vira "pausa" (break, troca de boss, reset de estratégia). */
 export const BREAK_MS = 10 * 60_000;
 
+/** Boss + dificuldade: a unidade dos resumos (causas e placar não se misturam entre bosses). */
+export const bossKey = (p: Pull) => `${p.encounterName} · ${p.difficultyName}`;
+
+export interface BossGroup {
+  key: string;
+  pulls: Pull[];
+}
+
+/** Pulls por boss, na ordem em que o boss apareceu na noite. */
+export function groupByBoss(pulls: Pull[]): BossGroup[] {
+  const m = new Map<string, Pull[]>();
+  for (const p of pulls) m.set(bossKey(p), [...(m.get(bossKey(p)) ?? []), p]);
+  return [...m.entries()].map(([key, ps]) => ({ key, pulls: ps }));
+}
+
 /** Peso de cada erro de mecânica pela severidade da regra. */
 const SEVERITY_WEIGHT: Record<string, number> = { wipe: 3, major: 2, minor: 0.5, none: 0 };
 
 /**
  * Regras em que o player listado é o culpado. Nas coletivas (soak, tank_soak, interrupt,
- * enrage) os listados são quem foi atingido pela falha, não quem errou.
+ * enrage) os listados são quem foi atingido pela falha, não quem errou; em failure_event
+ * só aparece quem carregava o que explodiu.
  */
-const PERSONAL_BLAME = new Set(['avoidable_damage', 'tank_range', 'positioning', 'stack_limit']);
+const PERSONAL_BLAME = new Set(['avoidable_damage', 'tank_range', 'positioning', 'stack_limit', 'failure_event']);
 
 export interface Gap {
   after: Pull;

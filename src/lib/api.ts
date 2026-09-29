@@ -130,6 +130,73 @@ export async function migrateWcrDir() {
 }
 
 // ---------------------------------------------------------------------------
+// Pasta de logs do WoW (lista de combat logs para escolher)
+
+export interface EncounterPeek {
+  encounterId: number;
+  name: string;
+  difficultyId: number;
+  difficultyName: string;
+  pulls: number;
+  kills: number;
+}
+
+export interface LogPeek {
+  firstMs: number | null;
+  lastMs: number | null;
+  encounters: EncounterPeek[];
+}
+
+export interface LogFile {
+  path: string;
+  name: string;
+  size: number;
+  modifiedMs: number;
+  /** subpasta (ex.: warcraftlogsarchive) */
+  folder: string | null;
+  /** encontros do log; null = ainda não lidos (pedir com logsPeek) */
+  peek: LogPeek | null;
+}
+
+export interface LogsScan {
+  dir: string | null;
+  source: 'settings' | 'detected' | 'none';
+  files: LogFile[];
+  warning: string | null;
+}
+
+/** Dev no navegador: `?demoLogs=1` mostra uma pasta de exemplo (só visual). */
+const demoLogs = (): LogsScan | null => {
+  if (!import.meta.env.DEV || !new URLSearchParams(window.location.search).has('demoLogs')) return null;
+  const enc = (name: string, pulls: number, kills: number, d = 'Mythic', id = 16): EncounterPeek => ({ encounterId: 0, name, difficultyId: id, difficultyName: d, pulls, kills });
+  const h = 3_600_000;
+  const now = Date.now();
+  return {
+    dir: 'A:\\World of Warcraft\\_retail_\\Logs',
+    source: 'detected',
+    warning: null,
+    files: [
+      { path: 'demo-28', name: 'WoWCombatLog-092826_204129.txt', size: 818e6, modifiedMs: now - 5 * 60_000, folder: null, peek: { firstMs: now - 2.5 * h, lastMs: now - 0.1 * h, encounters: [enc('The Twin Fangs', 12, 1), enc('The Coiled Altar', 11, 0)] } },
+      { path: 'demo-27', name: 'WoWCombatLog-092726_145511.txt', size: 7.7e6, modifiedMs: now - 30 * h, folder: null, peek: { firstMs: null, lastMs: null, encounters: [] } },
+      { path: 'demo-26', name: 'WoWCombatLog-092626_130731.txt', size: 221e6, modifiedMs: now - 52 * h, folder: null, peek: null },
+      { path: 'demo-24', name: 'Archive-WoWCombatLog-092426_204015.txt', size: 1364e6, modifiedMs: now - 4 * 24 * h, folder: 'warcraftlogsarchive', peek: { firstMs: now - 4 * 24 * h, lastMs: now - 4 * 24 * h + 3 * h, encounters: [enc('The Twin Fangs', 28, 0)] } },
+      { path: 'demo-22', name: 'Archive-WoWCombatLog-092226_180441.txt', size: 1338e6, modifiedMs: now - 6 * 24 * h, folder: 'warcraftlogsarchive', peek: { firstMs: now - 6 * 24 * h, lastMs: now - 6 * 24 * h + 4 * h, encounters: [enc('Nymrissa Wavecaller', 1, 1, 'Heroic', 15), enc('Sszorak', 1, 1, 'Heroic', 15), enc('The Coiled Altar', 1, 1, 'Heroic', 15), enc('Entombed Sentinels', 5, 1), enc('Vashnik the Malignant', 1, 1)] } },
+    ],
+  };
+};
+
+export const logsList = () => {
+  const demo = demoLogs();
+  if (demo) return Promise.resolve(demo);
+  return inTauri ? invoke<LogsScan>('logs_list') : Promise.resolve<LogsScan>({ dir: null, source: 'none', files: [], warning: null });
+};
+export const logsPeek = (path: string) => invoke<LogPeek>('logs_peek', { path });
+/** Pasta cadastrada (null = detecção automática). Fica no settings.json do app. */
+export const logsGetDir = () => invoke<string | null>('logs_get_dir');
+export const logsSetDir = (dir: string | null) => invoke<void>('logs_set_dir', { dir });
+export const logsDetectDir = () => invoke<string | null>('logs_detect_dir');
+
+// ---------------------------------------------------------------------------
 // Histórico de análises (salvas pelo backend a cada análise)
 
 export interface HistoryEntry {

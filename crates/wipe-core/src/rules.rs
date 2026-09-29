@@ -15,6 +15,14 @@ mod embedded {
 /// Hits do mesmo spell com menos que isso de intervalo são a mesma "rajada".
 const BURST_MS: i64 = 1_500;
 const MAX_EVENTS: usize = 60;
+/// Aura aplicada no mesmo instante do hit (vulnerabilidade do próprio soak) não conta como
+/// "já estava com a aura"; e aura removida logo antes do hit (a explosão consome o debuff do
+/// portador ~20ms antes do dano) ainda conta como "tinha a aura".
+const AURA_GRACE_MS: i64 = 500;
+/// Janela em volta do 1º hit de uma falha em que perder uma `culprit_auras` culpa o player.
+/// Depois disso a remoção costuma ser pela morte na própria explosão.
+const CULPRIT_BEFORE_MS: i64 = 500;
+const CULPRIT_AFTER_MS: i64 = 50;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -32,6 +40,7 @@ pub enum MechanicType {
     Positioning,
     Unavoidable,
     Enrage,
+    FailureEvent,
     Info,
 }
 
@@ -51,6 +60,7 @@ impl MechanicType {
             Self::Positioning => "positioning",
             Self::Unavoidable => "unavoidable",
             Self::Enrage => "enrage",
+            Self::FailureEvent => "failure_event",
             Self::Info => "info",
         }
     }
@@ -76,8 +86,16 @@ pub struct Detect {
     pub fail_ids: Vec<Option<u32>>,
     pub soak_aura_id: Option<u32>,
     pub enrage_aura_id: Option<u32>,
-    /// dano só conta se o player estiver com esta aura (ex.: soak com Feasted)
+    /// dano só conta se o player já estava com esta aura antes do hit (ex.: soak com Feasted)
     pub requires_aura: Option<u32>,
+    /// dano não conta em quem tem (ou acabou de perder) esta aura: o portador da mecânica
+    pub excludes_aura: Option<u32>,
+    /// hits abaixo deste valor não contam (ex.: separar a explosão do tick normal do mesmo spell)
+    pub min_amount: Option<i64>,
+    /// falha coletiva: culpa quem perdeu uma destas auras no instante da falha (ex.: quem
+    /// carregava o orb que explodiu); sem elas, a lista é de quem foi atingido
+    #[serde(default)]
+    pub culprit_auras: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -96,6 +114,8 @@ pub struct Mechanic {
     pub tip: String,
     #[serde(default)]
     pub message: String,
+    /// texto por jogador numa falha coletiva (ex.: culpado da explosão); padrão = `message`
+    pub blame_message: Option<String>,
     #[serde(default)]
     pub detect: Detect,
     #[serde(default)]
@@ -278,9 +298,12 @@ pub struct RuleTracker {
     mechs: Vec<Mechanic>,
     state: Vec<MechState>,
     hooks: HashMap<u32, Vec<(usize, Hook)>>,
-    /// auras que alguma regra precisa acompanhar (requires_aura)
+    /// auras que alguma regra precisa acompanhar (requires_aura, excludes_aura, culprit_auras)
     watched_auras: HashSet<u32>,
-    active_auras: HashSet<(String, u32)>,
+    /// (guid, aura) -> (aplicada em, removida em)
+    auras: HashMap<(String, u32), (i64, Option<i64>)>,
+    /// remoções de auras acompanhadas: (t, aura, guid, nome) — para achar culpados depois
+    removals: Vec<(i64, u32, String, String)>,
 }
 
 impl RuleTracker {
@@ -304,13 +327,25 @@ impl RuleTracker {
             add(d.soak_aura_id, Hook::SoakAura);
             add(d.cast_id, Hook::Cast);
             add(d.enrage_aura_id, Hook::Enrage);
-            if let Some(a) = d.requires_aura {
-                watched_auras.insert(a);
-            }
+            watched_auras.extend(d.requires_aura.iter().chain(&d.excludes_aura).chain(&d.culprit_auras));
         }
         let state = mechs.iter().map(|_| MechState::default()).collect();
         let files = sets.iter().map(|s| s.file.clone()).collect();
-        Ok(RuleTracker { files, mechs, state, hooks, watched_auras, active_auras: HashSet::new() })
+        Ok(RuleTracker { files, mechs, state, hooks, watched_auras, auras: HashMap::new(), removals: Vec::new() })
+    }
+
+    /// O player já estava com a aura antes de `t` (aplicada há pelo menos AURA_GRACE_MS)?
+    fn had_aura_before(&self, guid: &str, aura: u32, t: i64) -> bool {
+        self.auras
+            .get(&(guid.to_string(), aura))
+            .is_some_and(|&(applied, removed)| removed.is_none() && t - applied >= AURA_GRACE_MS)
+    }
+
+    /// O player está com a aura ou a perdeu há menos de AURA_GRACE_MS?
+    fn has_or_just_lost(&self, guid: &str, aura: u32, t: i64) -> bool {
+        self.auras
+            .get(&(guid.to_string(), aura))
+            .is_some_and(|&(_, removed)| removed.is_none_or(|r| t - r <= AURA_GRACE_MS))
     }
 
     /// Chave e nome da mecânica que causa dano com este spell (para anotar golpes finais).
@@ -323,9 +358,15 @@ impl RuleTracker {
 
     /// Mecânica cuja falha este spell representa: `fail_ids`, dano de mecânica evitável
     /// ou dano do debuff acumulativo (stack_limit). Unavoidable não conta.
-    pub fn failure_mechanic(&self, spell_id: u32) -> Option<(&str, &str)> {
+    /// `amount` = dano do hit (com absorvido), para regras com `min_amount`.
+    pub fn failure_mechanic(&self, spell_id: u32, amount: i64) -> Option<(&str, &str)> {
         self.hooks.get(&spell_id)?.iter().find_map(|(i, h)| {
             let m = &self.mechs[*i];
+            // regra que depende de aura não dá para confirmar só pelo spell
+            let d = &m.detect;
+            if d.requires_aura.is_some() || d.excludes_aura.is_some() || d.min_amount.is_some_and(|min| amount < min) {
+                return None;
+            }
             let is_failure = *h == Hook::Fail
                 || (*h == Hook::Damage && (m.kind.per_hit_blame() || m.kind == MechanicType::StackLimit));
             is_failure.then_some((m.key.as_str(), m.name.as_str()))
@@ -362,6 +403,21 @@ impl RuleTracker {
         let Some(hooks) = self.hooks.get(&spell_id) else { return };
         for &(i, hook) in hooks {
             let m = &self.mechs[i];
+            if m.detect.min_amount.is_some_and(|min| amount < min) {
+                continue;
+            }
+            if let Some(aura) = m.detect.excludes_aura {
+                if self.has_or_just_lost(guid, aura, t) {
+                    continue;
+                }
+            }
+            if hook == Hook::Damage {
+                if let Some(aura) = m.detect.requires_aura {
+                    if !self.had_aura_before(guid, aura, t) {
+                        continue;
+                    }
+                }
+            }
             let st = &mut self.state[i];
             match hook {
                 Hook::Fail => {
@@ -372,14 +428,13 @@ impl RuleTracker {
                         push_event(st, t, None, format!("{} (falha)", m.name));
                     }
                     st.last_fail_t = Some(t);
-                    bump(&mut st.players, guid, name, amount, t);
+                    // failure_event / culprit_auras: a lista é só de culpados (resolvidos no finish),
+                    // não de quem foi atingido
+                    if m.detect.culprit_auras.is_empty() && m.kind != MechanicType::FailureEvent {
+                        bump(&mut st.players, guid, name, amount, t);
+                    }
                 }
                 Hook::Damage => {
-                    if let Some(aura) = m.detect.requires_aura {
-                        if !self.active_auras.contains(&(guid.to_string(), aura)) {
-                            continue;
-                        }
-                    }
                     if m.ignore_first_hit_in_burst {
                         let new_burst = st.last_burst_t.is_none_or(|last| t - last > BURST_MS);
                         st.last_burst_t = Some(t);
@@ -404,9 +459,20 @@ impl RuleTracker {
         if self.watched_auras.contains(&spell_id) {
             let key = (guid.to_string(), spell_id);
             if stacks > 0 {
-                self.active_auras.insert(key);
+                // dose nova não muda quando a aura começou
+                match self.auras.get_mut(&key) {
+                    Some(span) if span.1.is_none() => {}
+                    _ => {
+                        self.auras.insert(key, (t, None));
+                    }
+                }
             } else {
-                self.active_auras.remove(&key);
+                if let Some(span) = self.auras.get_mut(&key) {
+                    span.1 = Some(t);
+                }
+                if is_player {
+                    self.removals.push((t, spell_id, guid.to_string(), name.to_string()));
+                }
             }
         }
         let Some(hooks) = self.hooks.get(&spell_id) else { return };
@@ -464,9 +530,20 @@ impl RuleTracker {
     /// `roles`: guid -> role, para não culpar quem a mecânica não envolve.
     pub fn finish(self, roles: &HashMap<String, String>) -> Vec<MechanicResult> {
         let mut out = Vec::new();
-        for (m, st) in self.mechs.into_iter().zip(self.state) {
+        let removals = self.removals;
+        for (m, mut st) in self.mechs.into_iter().zip(self.state) {
             if m.kind == MechanicType::Unavoidable {
                 continue;
+            }
+            // culpados de falha coletiva: quem perdeu a aura de portador junto com a falha
+            if !m.detect.culprit_auras.is_empty() {
+                for &ft in &st.fail_times {
+                    for (t, aura, guid, name) in &removals {
+                        if m.detect.culprit_auras.contains(aura) && (ft - CULPRIT_BEFORE_MS..=ft + CULPRIT_AFTER_MS).contains(t) {
+                            bump(&mut st.players, guid, name, 0, *t);
+                        }
+                    }
+                }
             }
             let role_ok = |guid: &str| m.roles.is_empty() || roles.get(guid).is_some_and(|r| m.roles.contains(r));
             let lethal = m.lethal_stacks;
@@ -487,11 +564,19 @@ impl RuleTracker {
                         amount: p.amount,
                         first_t: p.first_t,
                         credit: false,
-                        message: render(&m.message, &p.name, if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count }, lethal),
+                        message: render(
+                            m.blame_message.as_deref().unwrap_or(&m.message),
+                            &p.name,
+                            if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count },
+                            lethal,
+                        ),
                     })
                 })
                 .collect();
-            let collective = matches!(m.kind, MechanicType::Soak | MechanicType::TankSoak | MechanicType::Interrupt | MechanicType::Enrage | MechanicType::HpBalance);
+            let collective = matches!(
+                m.kind,
+                MechanicType::Soak | MechanicType::TankSoak | MechanicType::Interrupt | MechanicType::Enrage | MechanicType::HpBalance | MechanicType::FailureEvent
+            );
             let failures = match m.kind {
                 _ if collective => st.failures,
                 // quantos players passaram do limite de stacks
@@ -645,6 +730,58 @@ mechanics:
         let int = get("mythic_only");
         assert_eq!(int.failures, 1);
         assert!(int.players[0].credit);
+    }
+
+    #[test]
+    fn aura_options_amount_and_culprits() {
+        let yaml = r#"
+name: "Boss"
+encounter_id: 43
+mechanics:
+  - key: detonation
+    name: Detonation
+    type: failure_event
+    detect: { fail_ids: [50], min_amount: 800000, culprit_auras: [51] }
+    message: "{count} detonação(ões)"
+    blame_message: "{player} carregava o orb"
+  - key: bomb
+    name: Bomb
+    type: avoidable_damage
+    detect: { damage_ids: [60], excludes_aura: 61 }
+  - key: double
+    name: Double
+    type: avoidable_damage
+    detect: { damage_ids: [70], requires_aura: 71 }
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        // tick normal não é falha; explosão sim — culpado é quem perdeu a aura junto
+        tr.on_aura(51, "C", "Carrier-R", 1, true, 1_000);
+        tr.on_aura(51, "D", "Other-R", 1, true, 1_000);
+        tr.on_damage(50, "P1", "Um-R", 300_000, 2_000);
+        tr.on_aura(51, "C", "Carrier-R", 0, true, 4_990);
+        tr.on_damage(50, "P1", "Um-R", 1_200_000, 5_000);
+        tr.on_damage(50, "P2", "Dois-R", 1_100_000, 5_010);
+        tr.on_aura(51, "D", "Other-R", 0, true, 9_000); // expirou depois: não é culpado
+        // bomba: o portador perdeu a aura 20ms antes do dano e não conta; quem estava perto conta
+        tr.on_aura(61, "B", "Bomber-R", 1, true, 10_000);
+        tr.on_aura(61, "B", "Bomber-R", 0, true, 15_000);
+        tr.on_damage(60, "B", "Bomber-R", 500, 15_020);
+        tr.on_damage(60, "P1", "Um-R", 500, 15_020);
+        // soak duplo: aura aplicada no próprio hit não conta; a de antes conta
+        tr.on_aura(71, "P1", "Um-R", 1, true, 20_000);
+        tr.on_damage(70, "P1", "Um-R", 500, 20_000);
+        tr.on_damage(70, "P1", "Um-R", 500, 60_000);
+
+        let res = tr.finish(&HashMap::new());
+        let get = |k: &str| res.iter().find(|r| r.key == k).unwrap();
+        let det = get("detonation");
+        assert_eq!(det.failures, 1);
+        assert_eq!(det.summary, "1 detonação(ões)");
+        assert_eq!(det.players.iter().map(|p| p.message.as_str()).collect::<Vec<_>>(), ["Carrier carregava o orb"]);
+        let bomb = get("bomb");
+        assert_eq!(bomb.players.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Um-R"]);
+        assert_eq!(get("double").players[0].count, 1);
     }
 
     #[test]

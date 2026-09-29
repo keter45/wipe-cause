@@ -26,6 +26,7 @@ Leia `references/schema.md` antes de escrever qualquer arquivo. `encounters/veno
    - "interrompa todos" → `interrupt` (cast do inimigo com sucesso = falha).
    - "saia para a borda com o debuff" → `spread` (dano do spell em player *sem* o debuff = erro de quem tinha).
    - "morre com N stacks" → `stack_limit`.
+   - "se o orb encostar em outro, explode e wipa" → `failure_event` (a explosão é a falha; `culprit_auras` culpa quem carregava; `min_amount` se o mesmo spell tem tick normal).
    - "mate os dois juntos" → `hp_balance`.
    - Dano de raid que só se cura → `unavoidable` (serve de contexto, nunca culpa ninguém).
    Se nenhum evento de log prova a falha, use `type: info` e explique em `notes` — não invente detecção.

@@ -3,6 +3,7 @@
 //!   wipe-cli analyze <arquivo> [--json] [--cutoff N]   resumo dos pulls (ou o relatório em JSON);
 //!                                                      --cutoff N ignora eventos após N mortes
 //!   wipe-cli spells <arquivo>             spells inimigas por encontro (para calibrar regras de boss)
+//!   wipe-cli peek <arquivo>               só os encontros do log (leitura rápida, como a lista de logs do app)
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -11,7 +12,7 @@ use wipe_core::{analyze_file, AnalyzeOptions, LogReport};
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let (Some(cmd), Some(path)) = (args.first(), args.get(1)) else {
-        eprintln!("uso: wipe-cli <analyze|spells> <WoWCombatLog.txt> [--json]");
+        eprintln!("uso: wipe-cli <analyze|spells|peek> <WoWCombatLog.txt> [--json]");
         return ExitCode::from(2);
     };
     let death_cutoff = args
@@ -20,6 +21,18 @@ fn main() -> ExitCode {
         .and_then(|i| args.get(i + 1))
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
+    if cmd == "peek" {
+        return match wipe_core::peek::peek_file(&PathBuf::from(path)) {
+            Ok(p) => {
+                println!("{}", serde_json::to_string_pretty(&p).unwrap());
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("erro ao ler {path}: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     let opts = AnalyzeOptions { rules_dir: None, death_cutoff };
     let report = match analyze_file(&PathBuf::from(path), &opts, |_, _| {}) {
         Ok(r) => r,
