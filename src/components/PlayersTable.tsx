@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import type { PlayerStats } from '../types';
+import { scoreTone, type PlayerScore } from '../lib/score';
 import { classColor, mmss, num, ROLE_LABEL, shortName } from '../lib/format';
 import { SpellIcon, SpellName } from './SpellIcon';
 
-type SortKey = 'name' | 'dps' | 'hps' | 'damageTaken' | 'deaths' | 'defensives';
+type SortKey = 'name' | 'score' | 'dps' | 'hps' | 'damageTaken' | 'deaths' | 'defensives';
 
 const COLUMNS: { key: SortKey; label: string; num?: boolean }[] = [
   { key: 'name', label: 'Jogador' },
+  { key: 'score', label: 'Nota', num: true },
   { key: 'dps', label: 'DPS', num: true },
   { key: 'hps', label: 'HPS', num: true },
   { key: 'damageTaken', label: 'Dano tomado', num: true },
@@ -14,18 +16,21 @@ const COLUMNS: { key: SortKey; label: string; num?: boolean }[] = [
   { key: 'defensives', label: 'Defensivos', num: true },
 ];
 
-function value(p: PlayerStats, k: SortKey): number | string {
+function value(p: PlayerStats, k: SortKey, scores: Map<string, PlayerScore>): number | string {
   if (k === 'name') return p.name;
+  if (k === 'score') return scores.get(p.guid)?.score ?? 100;
   if (k === 'defensives') return p.defensivesUsed.length;
   return p[k];
 }
 
-export function PlayersTable({ players }: { players: PlayerStats[] }) {
-  const [sort, setSort] = useState<SortKey>('dps');
+export function PlayersTable({ players, scores }: { players: PlayerStats[]; scores: Map<string, PlayerScore> }) {
+  const [sort, setSort] = useState<SortKey>('score');
   const [open, setOpen] = useState<string | null>(null);
   const sorted = [...players].sort((a, b) => {
-    const va = value(a, sort);
-    const vb = value(b, sort);
+    const va = value(a, sort, scores);
+    const vb = value(b, sort, scores);
+    // nota: pior primeiro (quem precisa de atenção)
+    if (sort === 'score') return (va as number) - (vb as number);
     return typeof va === 'string' ? va.localeCompare(vb as string) : (vb as number) - va;
   });
 
@@ -45,20 +50,27 @@ export function PlayersTable({ players }: { players: PlayerStats[] }) {
       </thead>
       <tbody>
         {sorted.map((p) => (
-          <PlayerRow key={p.guid} p={p} open={open === p.guid} onToggle={() => setOpen(open === p.guid ? null : p.guid)} />
+          <PlayerRow key={p.guid} p={p} score={scores.get(p.guid)} open={open === p.guid} onToggle={() => setOpen(open === p.guid ? null : p.guid)} />
         ))}
       </tbody>
     </table>
   );
 }
 
-function PlayerRow({ p, open, onToggle }: { p: PlayerStats; open: boolean; onToggle: () => void }) {
+function PlayerRow({ p, score, open, onToggle }: { p: PlayerStats; score?: PlayerScore; open: boolean; onToggle: () => void }) {
   return (
     <>
       <tr className="player-row" onClick={onToggle}>
         <td>
           <span style={{ color: classColor(p.class) }}>{shortName(p.name)}</span>
           {p.role && <span className="role-tag">{ROLE_LABEL[p.role]}</span>}
+        </td>
+        <td className="num">
+          {score && (
+            <span className={`score-pill ${scoreTone(score.score)}`} title={score.parts.length ? score.parts.join('\n') : 'Sem descontos'}>
+              {score.score}
+            </span>
+          )}
         </td>
         <td className="num">{num(p.dps)}</td>
         <td className="num">{num(p.hps)}</td>
@@ -71,7 +83,7 @@ function PlayerRow({ p, open, onToggle }: { p: PlayerStats; open: boolean; onTog
       </tr>
       {open && (
         <tr className="player-detail">
-          <td colSpan={7}>
+          <td colSpan={8}>
             <div className="detail-grid">
               <div>
                 <h4>Dano tomado por habilidade</h4>

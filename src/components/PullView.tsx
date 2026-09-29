@@ -14,6 +14,7 @@ import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
 import { SendToDiscord } from './SendToDiscord';
 import { pullPayload } from '../lib/discord';
+import { scorePull } from '../lib/score';
 
 type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'spells';
 
@@ -158,7 +159,7 @@ export function PullView({ pull, wclCode, video }: Props) {
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
       {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
-      {tab === 'players' && <PlayersTable players={pull.players} />}
+      {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
     </div>
     </SeekContext.Provider>

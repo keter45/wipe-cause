@@ -3,6 +3,7 @@ import { TrendingUp } from 'lucide-react';
 import { historyTrends } from '../lib/api';
 import { classColor, pct, shortName } from '../lib/format';
 import { buildTrends, trendBosses, type NightInput, type Trends } from '../lib/trends';
+import { scoreTone } from '../lib/score';
 
 /**
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
@@ -136,6 +137,7 @@ function TrendsBody({ t }: { t: Trends }) {
               <tr>
                 <th>Jogador</th>
                 <th title="Mortes por pull em cada noite (antes do corte)">Mortes por pull</th>
+                <th title="Nota média de cada noite (0-100)">Nota por noite</th>
                 <th className="num">Total</th>
                 <th>Mais morre para</th>
                 <th className="num" title="Mortes com defensivo disponível e nenhum usado">Sem def.</th>
@@ -148,6 +150,13 @@ function TrendsBody({ t }: { t: Trends }) {
                   <td style={{ color: classColor(p.class) }}>{shortName(p.name)}</td>
                   <td>
                     <Spark values={p.deathsPerPull} labels={t.nights.map((n) => n.label)} />
+                  </td>
+                  <td className="score-trail">
+                    {p.scorePerNight.map((s, i) => (
+                      <span key={i} className={s == null ? 'muted' : `score-pill ${scoreTone(s)}`} title={t.nights[i].label}>
+                        {s ?? '—'}
+                      </span>
+                    ))}
                   </td>
                   <td className="num">
                     {p.deaths}/{p.pulls}

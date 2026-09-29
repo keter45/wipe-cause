@@ -2568,3 +2568,34 @@ td.warn {
 .dispel-line {
   line-height: 1.7;
 }
+
+/* ---------------------------------------------------------------- nota por player */
+.score-pill {
+  display: inline-block;
+  min-width: 30px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+.score-pill.good {
+  background: color-mix(in srgb, var(--kill) 22%, transparent);
+  color: var(--kill);
+}
+.score-pill.mid {
+  background: color-mix(in srgb, var(--minor) 22%, transparent);
+  color: var(--minor);
+}
+.score-pill.bad {
+  background: color-mix(in srgb, var(--wipe) 22%, transparent);
+  color: var(--wipe);
+}
+.score-trail {
+  white-space: nowrap;
+}
+.score-trail > span + span {
+  margin-left: 4px;
+}

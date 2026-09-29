@@ -34,6 +34,8 @@ export interface PlayerTrend {
   class: string | null;
   /** por noite: mortes (antes do corte) por pull; null = não jogou */
   deathsPerPull: (number | null)[];
+  /** por noite: nota média; null = não jogou */
+  scorePerNight: (number | null)[];
   pulls: number;
   deaths: number;
   /** mortes com defensivo disponível e nenhum usado */
@@ -103,7 +105,7 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
   nights.forEach((n, i) => {
     for (const pn of n.summary.players) {
       const a = acc.get(pn.guid) ?? {
-        guid: pn.guid, name: pn.name, class: pn.class, deathsPerPull: nights.map(() => null), pulls: 0, deaths: 0,
+        guid: pn.guid, name: pn.name, class: pn.class, deathsPerPull: nights.map(() => null), scorePerNight: nights.map(() => null), pulls: 0, deaths: 0,
         deathsNoDefensive: 0, topKiller: null, topKillerNights: 0, topKillerNoDefensive: 0, mechanicErrors: 0, killers: new Map(), killerCount: new Map(), killerNoDef: new Map(),
       };
       a.class ??= pn.class;
@@ -130,7 +132,9 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
       }
     }
     for (const pn of n.summary.players) {
-      acc.get(pn.guid)!.deathsPerPull[i] = pn.pulls ? (deathsThisNight.get(pn.guid) ?? 0) / pn.pulls : null;
+      const a = acc.get(pn.guid)!;
+      a.deathsPerPull[i] = pn.pulls ? (deathsThisNight.get(pn.guid) ?? 0) / pn.pulls : null;
+      a.scorePerNight[i] = pn.pulls ? Math.round(pn.avgScore) : null;
     }
   });
   const players: PlayerTrend[] = [...acc.values()].map(({ killers, killerCount, killerNoDef, ...a }) => {
@@ -167,6 +171,18 @@ function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend
     if (Math.abs(pa - pb) < 15) continue;
     out.push(`${c.name}: gatilho em ${pa}% dos wipes em ${first.label} → ${pb}% em ${last.label}${pb < pa ? ' (melhorou)' : ' (piorou)'}.`);
   }
+
+  // quem mais melhorou / piorou de nota entre a primeira e a última noite em que jogou
+  const deltas = players
+    .map((p) => {
+      const s = p.scorePerNight.filter((x): x is number => x != null);
+      return { p, a: s[0], b: s[s.length - 1], n: s.length };
+    })
+    .filter((x) => x.n >= 2 && Math.abs(x.b - x.a) >= 10)
+    .sort((x, y) => y.b - y.a - (x.b - x.a));
+  if (deltas[0] && deltas[0].b > deltas[0].a) out.push(`${shortName(deltas[0].p.name)} foi quem mais melhorou: nota ${deltas[0].a} → ${deltas[0].b}.`);
+  const worst = deltas[deltas.length - 1];
+  if (worst && worst.b < worst.a) out.push(`${shortName(worst.p.name)} caiu de nota: ${worst.a} → ${worst.b}.`);
 
   // o que se repete com cada player
   const repeat = players
