@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronRight, FileX, Pin, PinOff, Plus, Trash } from 'lucide-react';
+import { ChevronRight, FileX, Pin, PinOff, Plus, RefreshCw, Trash } from 'lucide-react';
 import type { LogReport } from '../types';
 import { inTauri, readReportFile, sameLog, type HistoryEntry } from '../lib/api';
 import { logTitle, pct } from '../lib/format';
+import type { UpdateState } from '../lib/updater';
 import { NIGHT, PullList, type PullListProps } from './PullList';
 
 interface Props extends PullListProps {
@@ -12,6 +13,9 @@ interface Props extends PullListProps {
   onNew: () => void;
   /** a lista de logs está aberta (destaca "Nova análise") */
   browsing: boolean;
+  appVersion: string | null;
+  updateState: UpdateState;
+  onCheckUpdates: () => void;
   /** navegador (dev): abre um relatório JSON gerado pelo wipe-cli */
   onOpenJson: (r: LogReport) => void;
   onOpenEntry: (e: HistoryEntry) => void;
@@ -117,6 +121,8 @@ export function Sidebar(props: Props) {
           <p className="sidebar-empty">As análises ficam salvas aqui, com data. Abra um combat log para começar.</p>
         )}
       </div>
+
+      {inTauri && <UpdateFooter version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
     </aside>
   );
 }
@@ -201,6 +207,27 @@ function EntryRow({
         )}
       </div>
       {expanded && <PullList {...props} />}
+    </div>
+  );
+}
+
+function UpdateFooter({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
+  const label =
+    state.kind === 'checking'
+      ? 'Procurando…'
+      : state.kind === 'none'
+        ? 'Você está na versão mais recente'
+        : state.kind === 'available'
+          ? `Versão ${state.version} disponível`
+          : state.kind === 'downloading'
+            ? 'Baixando atualização…'
+            : 'Procurar atualizações';
+  return (
+    <div className="sidebar-foot">
+      <span className="muted small">{version ? `Wipe Cause v${version}` : 'Wipe Cause'}</span>
+      <button className="foot-check small" onClick={onCheck} disabled={state.kind === 'checking' || state.kind === 'downloading'} title="Procurar atualizações">
+        <RefreshCw size={12} strokeWidth={1.5} className={state.kind === 'checking' ? 'spin' : ''} aria-hidden /> {label}
+      </button>
     </div>
   );
 }

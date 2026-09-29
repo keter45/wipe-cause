@@ -142,11 +142,11 @@ mod tests {
     fn reads_recorder_metadata() {
         let dir = std::env::temp_dir().join(format!("wcr-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let base = dir.join("2026-09-21 21-49-41 - Limamaria - The Twin Fangs [M] (Wipe)");
+        let base = dir.join("2026-09-21 21-49-41 - Magozin - The Twin Fangs [M] (Wipe)");
         std::fs::write(
             base.with_extension("json"),
             r#"{"category":"Raids","encounterID":3421,"difficultyID":16,"duration":53,"result":false,
-               "player":{"_name":"Limamaria"},"start":1790038180000,"bossPercent":88}"#,
+               "player":{"_name":"Magozin"},"start":1790038180000,"bossPercent":88}"#,
         )
         .unwrap();
         std::fs::write(base.with_extension("mp4"), b"").unwrap();
@@ -159,7 +159,7 @@ mod tests {
         assert_eq!(videos.len(), 1);
         let v = &videos[0];
         assert_eq!((v.encounter_id, v.start_ms, v.duration_s), (3421, 1790038180000, 53.0));
-        assert_eq!(v.player.as_deref(), Some("Limamaria"));
+        assert_eq!(v.player.as_deref(), Some("Magozin"));
         assert!(v.video_path.ends_with(".mp4"));
     }
 }

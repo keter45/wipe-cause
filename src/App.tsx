@@ -16,6 +16,8 @@ import {
 } from './lib/api';
 import { BossSummary, NightOverview } from './components/NightSummary';
 import { LogBrowser } from './components/LogBrowser';
+import { UpdateBanner } from './components/UpdateBanner';
+import { useUpdater, type UpdateState } from './lib/updater';
 import { NIGHT } from './components/PullList';
 import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
@@ -54,6 +56,9 @@ export default function App() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [wclCode, setWclCode] = useState<string | null>(null);
   const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
+  const updater = useUpdater();
+  // dev no navegador: ?demoUpdate=1 mostra o aviso de versão nova (só visual)
+  const updateState: UpdateState = demoUpdate ? { kind: 'available', version: '0.4.0', notes: '- Exemplo de novidade\n- Outra novidade' } : updater.state;
 
   const refreshHistory = () => historyList().then(setHistory).catch(() => {});
   useEffect(() => {
@@ -204,6 +209,7 @@ export default function App() {
           <span>Analisando {status.path.split(/[\\/]/).pop()}… {Math.round(status.progress * 100)}%</span>
         </div>
       )}
+      <UpdateBanner state={updateState} onInstall={updater.install} onDismiss={updater.dismiss} />
       {status.kind === 'error' && <div className="error">Erro: {status.message}</div>}
       {report && report.ruleErrors?.length > 0 && (
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
@@ -217,6 +223,9 @@ export default function App() {
             busy={status.kind === 'loading'}
             onNew={() => setBrowsing(true)}
             browsing={browsing || !report}
+            appVersion={updater.version}
+            updateState={updateState}
+            onCheckUpdates={() => updater.checkNow(true)}
             onOpenJson={showReport}
             onOpenEntry={openEntry}
             onTogglePin={togglePin}
@@ -255,6 +264,7 @@ export default function App() {
 }
 
 /** Dev no navegador: `?demoLogs=1` mostra a lista de logs de exemplo. */
+const demoUpdate = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoUpdate');
 const demoLogs = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoLogs');
 
 /** Tela inicial do app, acima da lista de logs. */
