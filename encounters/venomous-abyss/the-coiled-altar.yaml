@@ -1,0 +1,449 @@
+schema_version: 1
+raid: venomous-abyss
+boss: the-coiled-altar
+name: "The Coiled Altar"
+encounter_id: 3429
+source:
+  - https://www.mythictrap.com/en/venomous-abyss/the-coiled-altar/mythic
+  - https://www.youtube.com/watch?v=vGMDl0hIc48   # Dratnos, guia Mythic
+  - https://warcraft.wiki.gg/wiki/The_Coiled_Altar  # IDs do Encounter Journal
+  - "log: WoWCombatLog-092826_204129 (6 wipes Mythic, só P1) — IDs de P1 calibrados"
+  - "log: Archive-WoWCombatLog-092226_180441 (kill Heroic) — IDs de P2/intermissão/P3"
+updated: 2026-09-28
+difficulties: [normal, heroic, mythic]
+
+units:
+  - { key: zuljan, name: "Zul'jan", npc_id: 257911, boss: true }
+  - { key: malacrass, name: "Hex Lord Malacrass", npc_id: 259854, boss: true }
+  - { key: coalesced_venom, name: "Coalesced Venom Stalker", npc_id: 268042 }
+  - { key: virulent_mutation, name: "Virulent Mutation", npc_id: 271982 }
+  - { key: axegrinder, name: "Axegrinder", npc_id: 260474 }
+  - { key: manifestation, name: "Manifestation of Dread", npc_id: 261218 }
+  - { key: soulcoiler, name: "Spiteful Soulcoiler", npc_id: 261521 }
+
+phases:
+  - { key: p1, name: "Serpent's Bargain", start: pull }
+  - { key: p2, name: "Usurper's Reprisal", start: { cast: dreadmarch } }
+  - { key: intermission, name: "The Claimed Vessel", start: { cast: soulbinding } }
+  - { key: p3, name: "Coiled Union", start: { cast: defilement } }
+
+mechanics:
+  # =====================================================================
+  # Fase 1 — orbs (Coalesced Venom verde / Virulent Mutation roxo)
+  # =====================================================================
+
+  # A falha que mais wipa: orb roxo encosta em outro orb (ou é carregado para perto de um)
+  # e dispara 20 Venom Ruptures de uma vez. Também acontece se sobrar roxo no timer da
+  # fase. No log só aparece como tick gigante de Venom Rupture (normal < 400k, explosão > 1M).
+  - key: purple_detonation
+    name: "Virulent Mutation (detonação)"
+    type: failure_event
+    source_unit: virulent_mutation
+    difficulty: [mythic]
+    severity: wipe
+    detect:
+      fail_ids: [1299838]         # Venom Rupture
+      min_amount: 800000          # só a explosão; tick normal fica bem abaixo
+      culprit_auras: [1310498, 1282419]  # Mutagenic Venom (roxo) / Volatile Venom (verde) consumidos na explosão
+    tip: "Nunca levar orb (verde ou roxo) para perto de um roxo; roxos só morrem no frontal."
+    message: "{count} detonação(ões) de orb roxo (Venom Rupture em massa)"
+    blame_message: "{player} carregava um orb que detonou junto com um roxo"
+    notes: >
+      Calibrado em 6 pulls Mythic de 28/09: 4 wipes vieram disso. Culpado = quem perdeu a
+      aura de portador até 0,5s antes do 1º tick gigante. Se sobrar roxo até o timer
+      (boss explode todos), não há portador e a lista fica vazia.
+
+  - key: mutagenic_venom_splash
+    name: "Mutagenic Venom (perto do portador)"
+    type: avoidable_damage
+    source_unit: virulent_mutation
+    difficulty: [mythic]
+    severity: minor
+    detect: { damage_ids: [1310691], excludes_aura: 1310498 }
+    tolerance: 1
+    tip: "Ficar a mais de 8 jardas de quem carrega o roxo."
+    message: "{player} tomou {count} ticks de Mutagenic Venom de outro portador"
+    notes: "O portador também toma o dano; excludes_aura tira ele da conta."
+
+  - key: volatile_venom_splash
+    name: "Volatile Venom (perto do portador)"
+    type: avoidable_damage
+    source_unit: coalesced_venom
+    severity: minor
+    detect: { damage_ids: [1282288], excludes_aura: 1282419 }
+    tolerance: 2
+    tip: "Quem não carrega orb verde fica a mais de 5 jardas de quem carrega."
+    message: "{player} tomou {count} ticks de Volatile Venom de outro portador"
+
+  - key: venom_rupture
+    name: "Venom Rupture"
+    type: unavoidable
+    source_unit: zuljan
+    severity: none
+    detect: { damage_ids: [1299838], aura_id: 1299838 }
+    tip: "Cada orb quebrado no frontal dá 1 stack de DoT no raid; quebrar ~7 no 1º frontal de cada leva."
+    message: "Venom Rupture"
+    notes: "Stacks normais: 2-12 por leva. No Mythic, 20+ de uma vez = detonação (regra acima)."
+
+  - key: coalesced_venom_pulse
+    name: "Coalesced Venom (pulso)"
+    type: unavoidable
+    source_unit: coalesced_venom
+    severity: none
+    detect: { damage_ids: [1282408] }
+    tip: "Orb vivo pulsa no raid; quanto mais orb sobrando, mais dano."
+    message: "Coalesced Venom"
+
+  - key: fangs_of_the_coiled_altar
+    name: "Fangs of the Coiled Altar"
+    type: unavoidable
+    source_unit: zuljan
+    severity: none
+    detect: { damage_ids: [1282512], cast_id: 1282487 }
+    tip: "Dano no raid; o boss ganha Twinfang Toxin e o chão enche de poça."
+    message: "Fangs of the Coiled Altar"
+
+  - key: noxious_ground
+    name: "Noxious Ground"
+    type: avoidable_damage
+    source_unit: zuljan
+    severity: minor
+    detect: { damage_ids: [1283290] }
+    tolerance: 1
+    tip: "Sair das poças que saem das bocas do altar."
+    message: "{player} tomou {count} ticks de Noxious Ground"
+
+  - key: toxic_deluge
+    name: "Toxic Deluge"
+    type: avoidable_damage
+    source_unit: zuljan
+    severity: minor
+    detect: { damage_ids: [1309279], cast_id: 1299960 }
+    tip: "Sair do círculo onde o orb vai cair."
+    message: "{player} foi atingido pela queda do orb ({count}x)"
+
+  - key: twinfang_toxin
+    name: "Twinfang Toxin"
+    type: unavoidable
+    source_unit: zuljan
+    roles: [tank]
+    severity: none
+    detect: { damage_ids: [1300322], aura_id: 1282520 }
+    tip: "Auto do boss consome os stacks do Fangs: defensivo do tank logo depois do Fangs."
+    message: "Twinfang Toxin"
+
+  - key: sever
+    name: "Sever"
+    type: avoidable_damage
+    source_unit: zuljan
+    roles: [healer, dps]
+    severity: major
+    detect: { damage_ids: [1299684], aura_id: 1301690, cast_id: 1299684 }
+    tip: "Só o tank no frontal; ele é mirado nos orbs."
+    message: "{player} foi atingido pelo Sever ({count}x)"
+    notes: "Pull 3 de 28/09: Sever matou 3 não-tanks de uma vez."
+
+  - key: axegrinder
+    name: "Axegrinder"
+    type: avoidable_damage
+    source_unit: axegrinder
+    severity: minor
+    detect: { damage_ids: [1285017], cast_id: 1283832 }
+    tolerance: 4
+    tip: "Desviar dos machados que giram pela sala (no Heroic+ eles não somem)."
+    message: "{player} tomou {count} hits de Axegrinder"
+    notes: "Tick a cada 0,25s: 4 hits = ~1s encostado. Nos wipes de 28/09 vários players passaram de 10."
+
+  - key: guillotine
+    name: "Guillotine"
+    type: soak
+    source_unit: zuljan
+    severity: wipe
+    detect:
+      damage_ids: [1283594]      # dano dividido em quem soakou
+      soak_aura_id: 1307425      # vulnerabilidade de quem soakou
+      fail_ids: [1283606]        # Execution: menos de 5 no soak → raid inteiro
+    min_soakers: 5
+    tip: "Pelo menos 5 no círculo do alvo (imunidades contam); depois sair para longe."
+    message: "{count} Guillotine sem 5 pessoas (Execution no raid)"
+    blame_message: "{player} foi atingido pela Execution"
+    notes: >
+      Pull 4 de 28/09: só 2 soakaram → Execution matou o raid. No Mythic, mesmo com 5 o hit
+      dividido passa de 1M: sem defensivo, soaker morre (pull 6).
+
+  - key: guillotine_double_soak
+    name: "Guillotine (soak duplo)"
+    type: avoidable_damage
+    source_unit: zuljan
+    difficulty: [heroic, mythic]
+    severity: major
+    detect: { damage_ids: [1283594], requires_aura: 1307425 }
+    tip: "Quem soakou uma Guillotine fica fora da próxima: grupos alternados."
+    message: "{player} soakou Guillotine ainda com a vulnerabilidade ({count}x)"
+
+  - key: widows_kiss
+    name: "Widow's Kiss"
+    type: avoidable_damage
+    source_unit: zuljan
+    severity: minor
+    overrides:
+      mythic: { severity: major }
+    detect: { damage_ids: [1283623] }
+    tip: "Depois do soak, correr para mais de 40 jardas do machado antes de ele explodir."
+    message: "{player} estava perto do machado no Widow's Kiss"
+    notes: "No kill Heroic o raid inteiro tomou (dá para curar); no Mythic mata. Pull 6 de 28/09: matou 3. Widow's Touch (1283631) é o dano pequeno de quem está longe."
+
+  - key: widows_touch
+    name: "Widow's Touch"
+    type: unavoidable
+    source_unit: zuljan
+    severity: none
+    detect: { damage_ids: [1283631] }
+    tip: "Dano leve em quem saiu do raio do machado."
+    message: "Widow's Touch"
+
+  - key: venomfang
+    name: "Venomfang"
+    type: info
+    source_unit: zuljan
+    severity: minor
+    detect: { damage_ids: [1306906], aura_id: 1306906, cast_id: 1282287 }
+    tip: "DoT de veneno em alguns players: dispel."
+    message: "Venomfang"
+    notes: "Motor ainda não mede tempo até o dispel."
+
+  # =====================================================================
+  # Fase 2 — Malacrass
+  # =====================================================================
+  - key: dreadmarch
+    name: "Dreadmarch"
+    type: info
+    source_unit: malacrass
+    severity: major
+    detect: { cast_id: 1285643, aura_id: 1297445 }
+    tip: "Quebrar o absorb dos possuídos na hora (tank ajuda com burst); senão eles caem da plataforma."
+    message: "Dreadmarch"
+    notes: "Falha vira morte por queda (regra global de ambiente). Sem ID de 'possuído caiu'."
+
+  - key: unnerving_fixation
+    name: "Manifestation of Dread"
+    type: info
+    source_unit: manifestation
+    severity: major
+    detect: { aura_id: 1285911 }
+    tip: "Olhar para o seu fantasma para ele parar; não mover fantasma. No Mythic, dois fantasmas se encostando matam os dois alvos."
+    message: "Manifestation of Dread"
+    notes: "Fantasma que alcança o alvo aplica Dreadmarch. Colisão de fantasmas no Mythic: ID ainda não visto em log."
+    needs_id: true
+
+  - key: soul_sever
+    name: "Soul Sever"
+    type: avoidable_damage
+    source_unit: malacrass
+    roles: [healer, dps]
+    severity: major
+    detect: { damage_ids: [1286620], aura_id: 1307959 }
+    tip: "Só o tank no frontal; ele é mirado nos fantasmas."
+    message: "{player} foi atingido pelo Soul Sever"
+
+  - key: soul_sever_dot
+    name: "Soul Sever (DoT)"
+    type: unavoidable
+    source_unit: malacrass
+    severity: none
+    detect: { damage_ids: [1312630] }
+    tip: "DoT de quem foi atingido pelo frontal."
+    message: "Soul Sever"
+
+  - key: gravebound
+    name: "Gravebound"
+    type: info
+    source_unit: malacrass
+    severity: major
+    detect: { damage_ids: [1308330], aura_id: 1286837 }
+    tip: "Quem recebe Gravebound pega os próprios fragmentos antes do debuff acabar, senão morre."
+    message: "Gravebound"
+
+  - key: eternal_nightfall
+    name: "Eternal Nightfall"
+    type: interrupt
+    source_unit: malacrass
+    severity: wipe
+    detect: { cast_id: 1286918 }
+    accept: [interrupt]
+    tip: "Quebrar o escudo (Veil of Twilight) e cortar o cast; se passar, wipe."
+    message: "Eternal Nightfall completou {count}x"
+
+  - key: suffocating_darkness
+    name: "Suffocating Darkness"
+    type: info
+    source_unit: malacrass
+    severity: minor
+    detect: { aura_id: 1286947 }
+    tip: "Absorb de cura em stacks durante o escudo; desviar das poças escuras."
+    message: "Suffocating Darkness"
+
+  - key: wail_of_terror
+    name: "Wail of Terror"
+    type: interrupt
+    source_unit: soulcoiler
+    difficulty: [heroic, mythic]
+    severity: major
+    detect: { cast_id: 1286399 }
+    accept: [interrupt, kill]
+    tip: "Escala de interrupt nos dois adds: corte assim que os Gloombombs aparecerem."
+    message: "{count} Wail of Terror passaram (fear no raid)"
+    notes: "No Heroic 5 casts, 4 cortados, 0 SPELL_CAST_SUCCESS; 1308011 aparece 4x como 'sucesso' — confirmar qual ID é o fear."
+
+  - key: retaliatory_malice
+    name: "Retaliatory Malice"
+    type: unavoidable
+    source_unit: soulcoiler
+    severity: none
+    detect: { damage_ids: [1308323] }
+    tip: "Dano em players aleatórios enquanto o add está vivo."
+    message: "Retaliatory Malice"
+
+  - key: gloombomb
+    name: "Gloombomb"
+    type: avoidable_damage
+    source_unit: malacrass
+    severity: minor
+    detect: { damage_ids: [1310883], excludes_aura: 1310881 }
+    tip: "Marcados levam a bomba até o add (Mythic: quebra o Spirit Shield); o resto fica a 15 jardas."
+    message: "{player} foi atingido pelo Gloombomb de outro ({count}x)"
+    notes: "Quem é atingido ganha Gravebound."
+
+  - key: spirit_shield
+    name: "Spirit Shield"
+    type: info
+    source_unit: soulcoiler
+    difficulty: [mythic]
+    severity: wipe
+    detect: { aura_id: 1309105 }
+    tip: "Cada Gloombomb no add tira um stack do escudo; add sem escudo quebrado = wipe."
+    message: "Spirit Shield"
+    notes: "ID do guia; não visto em log (só Heroic). Regra de CC/escudo ainda não avaliada."
+
+  - key: dreadful_presence
+    name: "Dreadful Presence"
+    type: unavoidable
+    source_unit: malacrass
+    severity: none
+    detect: { damage_ids: [1288635], aura_id: 1288624 }
+    tip: "Rot no raid a fase inteira."
+    message: "Dreadful Presence"
+
+  - key: dread_bolt
+    name: "Dread Bolt"
+    type: unavoidable
+    source_unit: malacrass
+    roles: [tank]
+    severity: none
+    detect: { damage_ids: [1307184] }
+    tip: "Bolt no alvo principal do Malacrass."
+    message: "Dread Bolt"
+
+  # =====================================================================
+  # Intermissão
+  # =====================================================================
+  - key: soulbinding
+    name: "Soulbinding"
+    type: info
+    source_unit: malacrass
+    severity: minor
+    detect: { cast_id: 1304032 }
+    tip: "Zul'jan toma o dobro de dano: bloodlust e tudo nele, nunca no Malacrass."
+    message: "Soulbinding"
+
+  - key: spirit_erasure
+    name: "Fragment of Malacrass (Spirit Erasure)"
+    type: unavoidable
+    source_unit: malacrass
+    severity: none
+    detect: { damage_ids: [1287722] }
+    tip: "Bloquear os fragmentos antes do boss, mas deixar o stack cair (cuidado a partir de 4)."
+    message: "Spirit Erasure"
+    notes: "Fragmento que chega no Zul'jan cura os bosses; ID da cura ainda não identificado."
+
+  # =====================================================================
+  # Fase 3 — os dois juntos
+  # =====================================================================
+  - key: defilement
+    name: "Defilement of the Coiled Altar"
+    type: unavoidable
+    source_unit: zuljan
+    severity: none
+    detect: { cast_id: 1298381, aura_id: 1298594 }
+    tip: "Absorb de cura no raid; boss passa a ter Corrupted Toxin."
+    message: "Defilement"
+
+  - key: corrupted_toxin
+    name: "Corrupted Toxin"
+    type: stack_limit
+    source_unit: zuljan
+    roles: [tank]
+    severity: minor
+    detect: { aura_id: 1298795, damage_ids: [1298795] }
+    tip: "DoT acumulativo dos autos no tank: trocar de tank."
+    message: "{player} chegou a {stacks} stacks de Corrupted Toxin"
+    notes: "Sem warn_stacks: no kill Heroic chegou a 12. Calibrar com pulls de P3."
+
+  - key: blighted_sever
+    name: "Blighted Sever"
+    type: avoidable_damage
+    source_unit: zuljan
+    roles: [healer, dps]
+    severity: major
+    detect: { damage_ids: [1307292], aura_id: 1307403 }
+    tip: "Só o tank no frontal; ele quebra orbs e fantasmas juntos."
+    message: "{player} foi atingido pelo Blighted Sever"
+
+  - key: grim_guillotine
+    name: "Grim Guillotine"
+    type: soak
+    source_unit: zuljan
+    severity: wipe
+    detect:
+      damage_ids: [1299296]
+      soak_aura_id: 1307652
+      fail_ids: [null]           # Grim Execution: ainda não visto em log
+    min_soakers: 5
+    tip: "Mesmo esquema da Guillotine: 5+ no círculo, depois sair."
+    message: "{count} Grim Guillotine sem 5 pessoas"
+    blame_message: "{player} foi atingido pela Grim Execution"
+    needs_id: true
+
+  - key: grim_guillotine_double_soak
+    name: "Grim Guillotine (soak duplo)"
+    type: avoidable_damage
+    source_unit: zuljan
+    difficulty: [heroic, mythic]
+    severity: major
+    detect: { damage_ids: [1299296], requires_aura: 1307652 }
+    tip: "Quem soakou a anterior fica fora."
+    message: "{player} soakou Grim Guillotine ainda com a vulnerabilidade ({count}x)"
+
+  - key: deaths_embrace
+    name: "Death's Embrace"
+    type: avoidable_damage
+    source_unit: zuljan
+    severity: minor
+    overrides:
+      mythic: { severity: major }
+    detect: { damage_ids: [1299396] }
+    tip: "Sair para mais de 40 jardas do machado depois do soak."
+    message: "{player} estava perto do machado no Death's Embrace"
+
+  - key: soulbound
+    name: "Soulbound"
+    type: hp_balance
+    severity: wipe
+    detect:
+      units: [zuljan, malacrass]
+      enrage_aura_id: null
+    max_hp_diff_pct: 10
+    tip: "Zul'jan morre antes dos roxos explodirem; depois há ~10s para matar o Malacrass."
+    message: "Soulbound: boss restante entrou em berserk"
+    notes: "1289798/1309987/1309995 são o vínculo aplicado no pull, não o berserk. ID do berserk ainda não visto."
+    needs_id: true
