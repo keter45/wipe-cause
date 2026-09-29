@@ -1,4 +1,6 @@
 mod history;
+mod logs;
+mod settings;
 mod wcr;
 
 use serde::Serialize;
@@ -52,6 +54,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             analyze_log,
             rules_dir,
+            logs::logs_list,
+            logs::logs_peek,
+            logs::logs_get_dir,
+            logs::logs_set_dir,
+            logs::logs_detect_dir,
             wcr::wcr_videos,
             wcr::wcr_get_dir,
             wcr::wcr_set_dir,

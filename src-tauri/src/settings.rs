@@ -1,0 +1,43 @@
+//! Configuração do app que varia de PC para PC (pastas cadastradas pelo usuário), em
+//! settings.json na pasta de configuração do app.
+
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use tauri::{AppHandle, Manager};
+
+#[derive(Default, Serialize, Deserialize)]
+pub struct Settings {
+    /// vídeos do Warcraft Recorder
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wcr_dir: Option<String>,
+    /// pasta Logs do WoW (onde ficam os WoWCombatLog*.txt)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logs_dir: Option<String>,
+}
+
+fn path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("settings.json"))
+}
+
+pub fn load(app: &AppHandle) -> Settings {
+    path(app)
+        .ok()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+/// Lê, altera e grava de volta.
+pub fn update(app: &AppHandle, change: impl FnOnce(&mut Settings)) -> Result<(), String> {
+    let mut s = load(app);
+    change(&mut s);
+    let json = serde_json::to_string_pretty(&s).map_err(|e| e.to_string())?;
+    std::fs::write(path(app)?, json).map_err(|e| e.to_string())
+}
+
+/// Caminho digitado/escolhido: sem espaços nas pontas; vazio = sem cadastro.
+pub fn clean_dir(dir: Option<String>) -> Option<String> {
+    dir.map(|d| d.trim().to_string()).filter(|d| !d.is_empty())
+}

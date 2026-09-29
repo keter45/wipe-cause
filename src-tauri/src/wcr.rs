@@ -4,7 +4,8 @@
 //! com o mesmo nome. O vídeo começa exatamente no ENCOUNTER_START (`start` = data dessa
 //! linha do log), então o segundo `t` do pull é o segundo `t` do vídeo.
 
-use serde::{Deserialize, Serialize};
+use crate::settings;
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
@@ -35,41 +36,16 @@ pub struct WcrScan {
     pub warning: Option<String>,
 }
 
-/// Configuração do app (pasta de vídeos cadastrada pelo usuário), em settings.json na
-/// pasta de configuração do app — varia de PC para PC.
-#[derive(Default, Serialize, Deserialize)]
-struct Settings {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    wcr_dir: Option<String>,
-}
-
-fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir.join("settings.json"))
-}
-
-fn load_settings(app: &AppHandle) -> Settings {
-    settings_path(app)
-        .ok()
-        .and_then(|p| std::fs::read_to_string(p).ok())
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
-}
-
 /// Pasta de vídeos cadastrada (None = usar a detectada do Warcraft Recorder).
 #[tauri::command]
 pub fn wcr_get_dir(app: AppHandle) -> Option<String> {
-    load_settings(&app).wcr_dir
+    settings::load(&app).wcr_dir
 }
 
 /// Cadastra a pasta de vídeos; None/vazio volta para a detecção automática.
 #[tauri::command]
 pub fn wcr_set_dir(app: AppHandle, dir: Option<String>) -> Result<(), String> {
-    let mut s = load_settings(&app);
-    s.wcr_dir = dir.map(|d| d.trim().to_string()).filter(|d| !d.is_empty());
-    let json = serde_json::to_string_pretty(&s).map_err(|e| e.to_string())?;
-    std::fs::write(settings_path(&app)?, json).map_err(|e| e.to_string())
+    settings::update(&app, |s| s.wcr_dir = settings::clean_dir(dir))
 }
 
 /// Pasta configurada no próprio Warcraft Recorder, se ele estiver instalado.
@@ -133,7 +109,7 @@ pub fn scan_dir(dir: &Path) -> Vec<WcrVideo> {
 /// Lê os vídeos da pasta cadastrada; sem cadastro, usa a pasta do Warcraft Recorder.
 #[tauri::command]
 pub fn wcr_videos(app: AppHandle) -> WcrScan {
-    let (dir, source) = match load_settings(&app).wcr_dir {
+    let (dir, source) = match settings::load(&app).wcr_dir {
         Some(d) => (Some(PathBuf::from(d)), "settings"),
         None => match recorder_storage_path() {
             Some(d) => (Some(d), "recorder"),

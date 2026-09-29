@@ -5,7 +5,7 @@ Ferramenta local para descobrir **por que a try deu wipe** no World of Warcraft,
 ## Como funciona
 
 1. Ative o log no jogo: `/combatlog` + *Advanced Combat Logging* nas opções de rede.
-2. Abra o arquivo `World of Warcraft\_retail_\Logs\WoWCombatLog-*.txt` no app.
+2. No app, escolha o log da noite na lista: ele encontra a pasta `World of Warcraft\_retail_\Logs` sozinho (ou você escolhe a pasta uma vez) e mostra os bosses de cada log.
 3. Escolha o pull e veja:
    - o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e os erros de mecânica do boss;
    - cada morte: spike ou morte lenta, se faltou cura, debuffs ativos (com stacks e descrição), golpe final, defensivos/poção/healthstone;

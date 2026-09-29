@@ -1312,6 +1312,51 @@ ul.plain {
 .night-head h2 {
   margin: 0;
 }
+.boss-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
+.boss-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  font: inherit;
+  transition-property: box-shadow;
+  transition-duration: 150ms;
+}
+.boss-card:hover {
+  box-shadow: var(--shadow-card), 0 0 0 1px var(--muted);
+}
+.boss-card:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.boss-card-title {
+  font-weight: 600;
+}
+.boss-card-result {
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.boss-card-cause {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.boss-card-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+  color: var(--accent);
+}
 .chips {
   display: flex;
   flex-wrap: wrap;
@@ -1967,4 +2012,174 @@ ul.plain {
 }
 .side-item.entry.confirming {
   background: var(--panel-2);
+}
+
+/* ---------------------------------------------------------------- pasta de logs */
+.logs {
+  max-width: 920px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.logs-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.logs-head h2 {
+  margin: 0 0 4px;
+}
+.logs-dir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.logs-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.logs-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.logs-warning {
+  margin: 0;
+  color: var(--major);
+}
+.logs-setup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.logs-setup p {
+  margin: 0;
+  line-height: 1.5;
+}
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.log-row {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition-property: box-shadow, background-color;
+  transition-duration: 150ms;
+}
+.log-row:hover:not(:disabled) {
+  box-shadow: var(--shadow-card), 0 0 0 1px var(--muted);
+}
+.log-row:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.log-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.log-row.empty-log {
+  opacity: 0.6;
+}
+.log-when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.log-when strong {
+  text-transform: capitalize;
+}
+.log-bosses {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 14px;
+  row-gap: 2px;
+  min-width: 0;
+}
+.log-boss {
+  white-space: nowrap;
+}
+.log-kill {
+  color: var(--kill);
+}
+.log-file {
+  flex-basis: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-reading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.log-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.log-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.log-tag.live {
+  color: var(--kill);
+}
+@media (max-width: 600px) {
+  .log-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .log-tags {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+.intro {
+  max-width: 920px;
+  margin: 8px auto 20px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.intro h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+.intro p {
+  margin: 0;
+  line-height: 1.5;
 }
