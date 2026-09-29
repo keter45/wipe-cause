@@ -39,6 +39,8 @@ interface Props {
   video?: WcrVideo;
   /** pulls do mesmo boss na noite (contexto da IA) */
   nightPulls?: Pull[];
+  /** regras do boss ajustadas: reanalisar o log aberto */
+  onRulesChanged?: () => void;
 }
 
 /** HP de um boss: no corte ("ignorar após N mortes"), se houver. */
@@ -56,7 +58,7 @@ export function PullView(props: Props) {
   );
 }
 
-function PullViewInner({ pull, wclCode, video, nightPulls }: Props) {
+function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Props) {
   const [tab, setTabState] = useState<Tab>(lastTab);
   const setTab = (t: Tab) => {
     lastTab = t;
@@ -216,7 +218,7 @@ function PullViewInner({ pull, wclCode, video, nightPulls }: Props) {
         label={`na aba ${tab === 'ask' ? 'Perguntar à IA' : (tabGroups.flatMap((g) => g.tabs).find((t) => t.key === tab)?.label ?? '')}`}
         resetKey={`${pull.id}:${tab}`}
       >
-      {tab === 'mechanics' && <MechanicsView pull={pull} />}
+      {tab === 'mechanics' && <MechanicsView pull={pull} onRulesChanged={onRulesChanged} />}
       {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} mechanicSpells={mechanicSpellMap([pull])} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}

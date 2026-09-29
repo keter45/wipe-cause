@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { SlidersHorizontal, Star } from 'lucide-react';
+import { RuleTuning, KIND_LABEL } from './RuleTuning';
 import type { MechanicResult, Pull } from '../types';
 import { mmss, num, shortName } from '../lib/format';
 import { useSeek } from '../lib/wcr';
@@ -8,31 +10,24 @@ import { PositionMap, type Mark } from './PositionMap';
 
 const SEVERITY_LABEL: Record<string, string> = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', none: 'Info' };
 
-const KIND_LABEL: Record<string, string> = {
-  avoidable_damage: 'Dano evitável',
-  stack_limit: 'Limite de stacks',
-  soak: 'Soak',
-  tank_soak: 'Soak de tank',
-  interrupt: 'Interrupt',
-  tank_range: 'Alcance do tank',
-  positioning: 'Posicionamento',
-  enrage: 'Enrage',
-  failure_event: 'Falha do raid',
-  dispel: 'Dispel',
-  hp_balance: 'HP dos bosses',
-  cc_required: 'CC',
-  spread: 'Espalhar',
-  add_kill: 'Matar adds',
-  info: 'Info',
-};
-
-export function MechanicsView({ pull }: { pull: Pull }) {
+/** `onRulesChanged`: os ajustes foram salvos; reanalisar o log aberto. */
+export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesChanged?: () => void }) {
+  const [tuning, setTuning] = useState(false);
+  if (tuning) return <RuleTuning pull={pull} onSaved={() => onRulesChanged?.()} onClose={() => setTuning(false)} />;
+  const tuneButton = (
+    <button className="btn sm" onClick={() => setTuning(true)}>
+      <SlidersHorizontal size={14} strokeWidth={1.5} aria-hidden /> Ajustar regras deste boss
+    </button>
+  );
   if (!pull.rulesFile) {
     return (
-      <p className="muted pad">
-        Ainda não há regras para <strong>{pull.encounterName}</strong>. Gere com a skill <code>boss-rules</code> a partir de um
-        guia e dos spell IDs da aba “Habilidades do boss”.
-      </p>
+      <div className="pad">
+        <p className="muted">
+          Ainda não há regras para <strong>{pull.encounterName}</strong>. Gere com a skill <code>boss-rules</code> a partir de um guia e dos
+          spell IDs da aba “Habilidades do boss”.
+        </p>
+        {tuneButton}
+      </div>
     );
   }
   const failed = pull.mechanics.filter((m) => m.failures > 0);
@@ -42,6 +37,11 @@ export function MechanicsView({ pull }: { pull: Pull }) {
 
   return (
     <div className="mechanics">
+      <div className="mechanics-bar">
+        {pull.mechanics.some((m) => m.tuned?.length || m.focus || m.custom) && <span className="muted small">Regras com ajustes seus.</span>}
+        <span className="topbar-spacer" />
+        {tuneButton}
+      </div>
       {pull.cutoffT != null && (
         <p className="muted small">Contando só até a morte que fechou o corte ({mmss(pull.cutoffT)}); o que veio depois é ignorado.</p>
       )}
@@ -76,10 +76,16 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
     <section className={`mechanic finding ${m.severity === 'none' ? 'info' : m.severity}`}>
       <header className="mechanic-head">
         <span className="badge">{SEVERITY_LABEL[m.severity] ?? m.severity}</span>
+        {m.focus && (
+          <span className="focus-mark" title="Foco da progressão">
+            <Star size={14} strokeWidth={1.75} fill="currentColor" aria-label="Foco" />
+          </span>
+        )}
         <strong>
           <SpellName spellId={m.spellId} name={m.name} size={20} />
         </strong>
         <span className="muted small">{KIND_LABEL[m.kind] ?? m.kind}</span>
+        {m.custom ? <span className="chip mech">sua regra</span> : m.tuned?.length ? <span className="chip mech" title={`Ajustado: ${m.tuned.join(', ')}`}>ajustada</span> : null}
         <span className="mechanic-count">{m.failures}×</span>
       </header>
       {m.summary && <p className="mechanic-summary">{m.summary}</p>}

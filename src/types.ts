@@ -251,6 +251,12 @@ export interface MechanicResult {
   kind: string;
   severity: MechanicSeverity;
   tip: string;
+  /** foco da progressão (marcado pelo usuário) */
+  focus?: boolean;
+  /** campos ajustados pelo usuário */
+  tuned?: string[];
+  /** regra criada pelo usuário */
+  custom?: boolean;
   evaluated: boolean;
   failures: number;
   summary: string;
