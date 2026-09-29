@@ -3,6 +3,7 @@ mod discord;
 mod history;
 mod live;
 mod logs;
+mod rule_tuning;
 mod settings;
 mod talents;
 mod wcl;
@@ -11,6 +12,7 @@ mod wcr;
 use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
+use rule_tuning::tuning_dir;
 use wipe_core::LogReport;
 
 #[derive(Clone, Serialize)]
@@ -20,7 +22,7 @@ struct Progress {
 }
 
 /// Pasta onde o usuário pode colocar regras de boss (*.yaml) que substituem as embutidas.
-fn user_rules_dir(app: &AppHandle) -> Option<PathBuf> {
+pub(crate) fn user_rules_dir(app: &AppHandle) -> Option<PathBuf> {
     let dir = app.path().app_data_dir().ok()?.join("encounters");
     std::fs::create_dir_all(&dir).ok()?;
     Some(dir)
@@ -29,7 +31,7 @@ fn user_rules_dir(app: &AppHandle) -> Option<PathBuf> {
 /// Analisa o log e guarda no histórico (se o histórico falhar, a análise continua valendo).
 /// `progress(lidos, total)` acompanha a leitura.
 pub(crate) fn analyze_and_save(app: &AppHandle, path: &str, death_cutoff: u32, progress: impl FnMut(u64, u64)) -> Result<LogReport, String> {
-    let opts = wipe_core::AnalyzeOptions { rules_dir: user_rules_dir(app), death_cutoff };
+    let opts = wipe_core::AnalyzeOptions { rules_dir: user_rules_dir(app), tuning_dir: tuning_dir(app), death_cutoff };
     let report = wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| format!("não foi possível ler {path}: {e}"))?;
     if let Err(e) = history::save(app, &report, path) {
         eprintln!("não foi possível salvar no histórico: {e}");
@@ -75,6 +77,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             analyze_log,
             rules_dir,
+            rule_tuning::rules_get,
+            rule_tuning::rules_save_tuning,
+            rule_tuning::rules_reset_tuning,
             ai::ai_get_config,
             ai::ai_set_config,
             ai::ai_list_models,

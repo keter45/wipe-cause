@@ -33,7 +33,7 @@ fn main() -> ExitCode {
             }
         };
     }
-    let opts = AnalyzeOptions { rules_dir: None, death_cutoff };
+    let opts = AnalyzeOptions { death_cutoff, ..Default::default() };
     let report = match analyze_file(&PathBuf::from(path), &opts, |_, _| {}) {
         Ok(r) => r,
         Err(e) => {

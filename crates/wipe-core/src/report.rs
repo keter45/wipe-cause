@@ -81,6 +81,15 @@ pub struct MechanicResult {
     /// wipe | major | minor | none
     pub severity: String,
     pub tip: String,
+    /// marcada pelo usuário como foco da progressão
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub focus: bool,
+    /// campos que o usuário ajustou (vazio = regra padrão)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub tuned: Vec<String>,
+    /// regra criada pelo usuário (não existe nas regras do app)
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub custom: bool,
     /// false = tipo de regra que o motor ainda não avalia (só dica)
     pub evaluated: bool,
     pub failures: u32,
