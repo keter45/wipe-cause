@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, Star, X } from 'lucide-react';
 import { useNote } from '../lib/notes';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
@@ -253,6 +253,11 @@ function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] 
     <li className={`finding ${f.severity}`}>
       <span className="badge">{SEVERITY_LABEL[f.severity]}</span>
       <span>
+        {f.focus && (
+          <span className="focus-mark" title="Foco da progressão">
+            <Star size={14} strokeWidth={1.75} fill="currentColor" aria-label="Foco" />
+          </span>
+        )}
         {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}
         <strong>{f.title}</strong>
         {f.detail && <span className="muted"> — {f.detail}</span>}

@@ -15,6 +15,8 @@ export interface Finding {
   player?: string;
   /** habilidade do achado (ícone) */
   spellId?: number | null;
+  /** mecânica marcada como foco da progressão */
+  focus?: boolean;
 }
 
 export interface Verdict {
@@ -65,12 +67,13 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   const decisive = p.cutoffT != null ? deaths.filter((d) => !d.ignored) : decisiveDeaths(deaths, cascadeThreshold(p));
   const bossHp = lowestBossHp(p);
 
-  // 0. Regras do boss: falhas de mecânica graves entram primeiro
+  // 0. Regras do boss: falhas de mecânica graves entram primeiro (e as do foco, mesmo leves)
   for (const m of p.mechanics) {
-    if (m.failures === 0 || (m.severity !== 'wipe' && m.severity !== 'major')) continue;
+    if (m.failures === 0 || m.severity === 'none' || (m.severity === 'minor' && !m.focus)) continue;
     const blamed = m.players.filter((x) => !x.credit);
     findings.push({
-      severity: m.severity,
+      severity: m.severity === 'minor' ? 'major' : m.severity,
+      focus: m.focus,
       spellId: m.spellId,
       title: m.summary || `${m.name}: ${blamed.length} jogador(es)`,
       detail: m.summary
@@ -196,6 +199,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   }
 
   const order: Record<Severity, number> = { wipe: 0, major: 1, minor: 2, info: 3 };
-  findings.sort((a, b) => order[a.severity] - order[b.severity]);
+  // o foco da progressão vem antes de tudo; depois, pela gravidade
+  findings.sort((a, b) => Number(!!b.focus) - Number(!!a.focus) || order[a.severity] - order[b.severity]);
   return { headline, findings, decisiveDeaths: decisive };
 }

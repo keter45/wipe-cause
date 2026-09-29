@@ -12,6 +12,8 @@ import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
 
 /** Desconto por erro, pela gravidade da regra. */
 const PENALTY: Record<string, number> = { wipe: 25, major: 12, minor: 4, none: 0 };
+/** Mecânica de foco pesa mais: é o que está segurando a progressão. */
+const FOCUS_MULTIPLIER = 1.5;
 /** Erros contados por mecânica (quem pisa 20× na poça não perde 80 pontos por uma mecânica só). */
 const MAX_PER_MECHANIC = 3;
 const MISSED_KICK = 10;
@@ -39,12 +41,12 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
 
   for (const m of p.mechanics) {
     if (!PERSONAL_BLAME.has(m.kind)) continue;
-    const per = PENALTY[m.severity] ?? 0;
+    const per = Math.round((PENALTY[m.severity] ?? 0) * (m.focus ? FOCUS_MULTIPLIER : 1));
     if (!per) continue;
     for (const mp of m.players) {
       if (mp.credit) continue;
       const n = m.kind === 'stack_limit' ? 1 : Math.min(mp.count, MAX_PER_MECHANIC);
-      add(mp.guid, n * per, `${m.name}${n > 1 ? ` (${n}×)` : ''}`);
+      add(mp.guid, n * per, `${m.focus ? '★ ' : ''}${m.name}${n > 1 ? ` (${n}×)` : ''}`);
     }
   }
 
