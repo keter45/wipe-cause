@@ -1,15 +1,17 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronRight, FileX, Pin, PinOff, Plus, Trash } from 'lucide-react';
 import type { LogReport } from '../types';
 import { inTauri, readReportFile, sameLog, type HistoryEntry } from '../lib/api';
 import { logTitle, pct } from '../lib/format';
-import { PullList, type PullListProps } from './PullList';
+import { NIGHT, PullList, type PullListProps } from './PullList';
 
 interface Props extends PullListProps {
   history: HistoryEntry[];
   report: LogReport | null;
   busy: boolean;
   onNew: () => void;
+  /** a lista de logs está aberta (destaca "Nova análise") */
+  browsing: boolean;
   /** navegador (dev): abre um relatório JSON gerado pelo wipe-cli */
   onOpenJson: (r: LogReport) => void;
   onOpenEntry: (e: HistoryEntry) => void;
@@ -29,14 +31,23 @@ export function Sidebar(props: Props) {
   const recent = history.filter((e) => !e.pinned);
   const current = report && !history.some(isOpen) ? report : null;
   const [confirmAll, setConfirmAll] = useState(false);
+  // a análise aberta começa expandida; clicar nela recolhe/expande a lista de pulls
+  const [collapsed, setCollapsed] = useState(false);
+  useEffect(() => setCollapsed(false), [report]);
+  const toggleOpen = () => {
+    if (collapsed) props.onSummary(NIGHT); // reabrir leva ao resumo da noite
+    setCollapsed(!collapsed);
+  };
 
-  const row = (e: HistoryEntry) => <EntryRow key={e.id} entry={e} open={isOpen(e)} {...props} />;
+  const row = (e: HistoryEntry) => (
+    <EntryRow key={e.id} entry={e} open={isOpen(e)} expanded={isOpen(e) && !collapsed} onToggle={toggleOpen} {...props} />
+  );
 
   return (
     <aside className="sidebar" aria-label="Análises">
       <div className="sidebar-top">
         {inTauri ? (
-          <button className="side-item new" onClick={props.onNew} disabled={props.busy}>
+          <button className={`side-item new ${props.browsing ? 'active' : ''}`} onClick={props.onNew} aria-current={props.browsing ? 'page' : undefined}>
             <Plus size={16} strokeWidth={2} aria-hidden /> Nova análise
           </button>
         ) : (
@@ -58,14 +69,14 @@ export function Sidebar(props: Props) {
       <div className="sidebar-scroll">
         {current && (
           <Section title="Aberta agora">
-            <div className="side-entry open">
+            <div className={`side-entry ${collapsed ? '' : 'open'}`}>
               <div className="side-item entry active">
-                <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
-                <span className="entry-title" title={current.file}>
-                  {logTitle(current.pulls)}
-                </span>
+                <button className="entry-main" onClick={toggleOpen} title={current.file} aria-expanded={!collapsed}>
+                  <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
+                  <span className="entry-title">{logTitle(current.pulls)}</span>
+                </button>
               </div>
-              <PullList {...props} />
+              {!collapsed && <PullList {...props} />}
             </div>
           </Section>
         )}
@@ -127,7 +138,13 @@ function savedLabel(ms: number): string {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function EntryRow({ entry: e, open, ...props }: { entry: HistoryEntry; open: boolean } & Props) {
+function EntryRow({
+  entry: e,
+  open,
+  expanded,
+  onToggle,
+  ...props
+}: { entry: HistoryEntry; open: boolean; expanded: boolean; onToggle: () => void } & Props) {
   const [confirm, setConfirm] = useState(false);
   const info = [
     `${e.pulls} pulls`,
@@ -142,7 +159,7 @@ function EntryRow({ entry: e, open, ...props }: { entry: HistoryEntry; open: boo
     .join(' · ');
 
   return (
-    <div className={`side-entry ${open ? 'open' : ''}`}>
+    <div className={`side-entry ${expanded ? 'open' : ''}`}>
       <div className={`side-item entry ${open ? 'active' : ''} ${confirm ? 'confirming' : ''}`}>
         {confirm ? (
           <span className="confirm-inline full">
@@ -162,7 +179,7 @@ function EntryRow({ entry: e, open, ...props }: { entry: HistoryEntry; open: boo
           </span>
         ) : (
           <>
-            <button className="entry-main" onClick={() => props.onOpenEntry(e)} title={info} aria-expanded={open}>
+            <button className="entry-main" onClick={() => (open ? onToggle() : props.onOpenEntry(e))} title={info} aria-expanded={expanded}>
               <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
               <span className="entry-title">{e.title}</span>
               {!e.logExists && <FileX size={13} strokeWidth={1.5} className="entry-missing" aria-label="log original não encontrado" />}
@@ -183,7 +200,7 @@ function EntryRow({ entry: e, open, ...props }: { entry: HistoryEntry; open: boo
           </>
         )}
       </div>
-      {open && <PullList {...props} />}
+      {expanded && <PullList {...props} />}
     </div>
   );
 }
