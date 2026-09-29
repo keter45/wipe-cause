@@ -13,6 +13,7 @@ import {
   type LogPeek,
   type LogsScan,
 } from '../lib/api';
+import { useSetup } from '../lib/setup';
 
 interface Props {
   history: HistoryEntry[];
@@ -32,6 +33,7 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
   const [scan, setScan] = useState<LogsScan | null>(null);
   const [peeks, setPeeks] = useState<Map<string, LogPeek | 'error'>>(new Map());
   const [error, setError] = useState<string | null>(null);
+  const setup = useSetup();
 
   const refresh = () =>
     logsList()
@@ -67,6 +69,7 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
     await logsSetDir(dir);
     setPeeks(new Map());
     refresh();
+    setup.reload();
   }
 
   async function useDetected() {
@@ -74,6 +77,7 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
     await logsSetDir(null);
     setPeeks(new Map());
     refresh();
+    setup.reload();
   }
 
   if (!inTauri && !scan?.files.length) {

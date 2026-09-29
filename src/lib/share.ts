@@ -74,6 +74,37 @@ export async function cardHtml(node: ReactElement, title: string): Promise<strin
   }
 }
 
+/**
+ * PDF: abre o diálogo de impressão do sistema com o cartão (escolher "Salvar como PDF"). O PDF
+ * do Chromium/WebView2 mantém os links clicáveis e o texto selecionável.
+ */
+export async function printPdf(html: string): Promise<void> {
+  // fundo escuro em toda a página, sem cortar seção de burst/tabela no meio da página
+  const printCss = `<style>
+@page { size: A4; margin: 0; }
+html, body { background: #0f1115 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { display: block !important; padding: 10mm !important; margin: 0; }
+.share-card { width: 100% !important; box-shadow: none !important; }
+.perf-card-burst, .cd-row, tr, .perf-insights li { break-inside: avoid; }
+h4 { break-after: avoid; }
+</style>`;
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  frame.srcdoc = html.replace('</head>', `${printCss}</head>`);
+  const loaded = new Promise((r) => (frame.onload = r));
+  document.body.appendChild(frame);
+  await loaded;
+  const win = frame.contentWindow!;
+  // ícones já estavam carregados no cartão; espera só o navegador do iframe pegar do cache
+  await Promise.all([...win.document.images].map((img) => (img.complete ? null : new Promise((r) => (img.onload = img.onerror = r)))));
+  const cleanup = () => frame.remove();
+  win.addEventListener('afterprint', () => setTimeout(cleanup, 500));
+  setTimeout(cleanup, 10 * 60_000); // se o afterprint não vier
+  win.focus();
+  win.print();
+}
+
 const b64 = (dataUrl: string) => dataUrl.slice(dataUrl.indexOf(',') + 1);
 const utf8b64 = (text: string) => {
   const bytes = new TextEncoder().encode(text);

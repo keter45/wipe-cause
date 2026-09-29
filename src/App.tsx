@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Crosshair } from 'lucide-react';
+import { ChevronRight, Crosshair, Settings } from 'lucide-react';
 import type { LogReport, Pull } from './types';
 import {
   analyzeLog,
@@ -32,6 +32,11 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import type { WcrScan, WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
+import { SettingsView } from './components/settings/SettingsView';
+import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
+
+/** O que ocupa a área principal: a análise aberta, a lista de logs, a evolução ou as configurações. */
+type Page = 'analysis' | 'browse' | 'trends' | 'settings';
 
 type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string } | { kind: 'error'; message: string };
 
@@ -53,10 +58,14 @@ export default function App() {
   // NIGHT = visão geral; chave de boss = resumo do boss; null = pull selecionado
   const [summary, setSummary] = useState<string | null>(NIGHT);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  // lista de logs da pasta do WoW ("Nova análise"); sem relatório aberto ela é a tela inicial
-  const [browsing, setBrowsing] = useState(false);
-  // tela de evolução entre noites (histórico)
-  const [trends, setTrends] = useState(() => import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoTrends'));
+  // sem relatório aberto, 'analysis' mostra a lista de logs (tela inicial)
+  const [page, setPage] = useState<Page>(() => (demoTrends ? 'trends' : demoSettings ? 'settings' : 'analysis'));
+  const [settingsFocus, setSettingsFocus] = useState<{ section: SettingsSection; n: number } | null>(null);
+  const setup = useSetupStatus();
+  const openSettings = (section?: SettingsSection) => {
+    setPage('settings');
+    if (section) setSettingsFocus((f) => ({ section, n: (f?.n ?? 0) + 1 }));
+  };
   const [sidebarOpen, setSidebarOpen] = useState(savedSidebarOpen);
   // corte da análise na tela; a preferência (para logs novos) fica salva à parte
   const [deathCutoff, setDeathCutoff] = useState(savedDeathCutoff);
@@ -78,7 +87,7 @@ export default function App() {
   function onLiveReport(r: LogReport, fresh: Pull[]) {
     const sameFile = report != null && sameLog(report.file, r.file);
     const lastId = report?.pulls[report.pulls.length - 1]?.id;
-    const following = !sameFile || summary === NIGHT || browsing || selected === lastId;
+    const following = page !== 'settings' && (!sameFile || summary === NIGHT || page === 'browse' || selected === lastId);
     if (sameFile) setReport(r);
     else showReport(r);
     setStatus({ kind: 'idle' });
@@ -88,7 +97,7 @@ export default function App() {
     if (following) {
       setSelected(newest.id);
       setSummary(null);
-      setBrowsing(false);
+      setPage('analysis');
     }
     setLiveToast({ pull: newest, discord: null });
     postToDiscord(fresh);
@@ -157,7 +166,7 @@ export default function App() {
       rememberFile(path);
       if (keepView) setReport(r);
       else showReport(r);
-      setBrowsing(false);
+      setPage('analysis');
       setStatus({ kind: 'idle' });
       refreshHistory(); // o backend salvou no histórico
     } catch (e) {
@@ -201,8 +210,7 @@ export default function App() {
   }
 
   async function openEntry(e: HistoryEntry) {
-    setBrowsing(false);
-    setTrends(false);
+    setPage('analysis');
     if (report && sameLog(e.logPath, report.file)) {
       setSummary(NIGHT);
       return;
@@ -233,7 +241,7 @@ export default function App() {
   }
 
   const selectPull = (id: number) => {
-    setTrends(false);
+    setPage('analysis');
     setSelected(id);
     setSummary(null);
   };
@@ -243,7 +251,9 @@ export default function App() {
   // análise do histórico cujo log sumiu: dá para ver, mas não para reanalisar
   const logMissing = entry != null && !entry.logExists;
 
+  const browsing = page === 'browse' || (page === 'analysis' && !report);
   return (
+    <SetupContext.Provider value={{ status: setup.status, reload: setup.reload, openSettings }}>
     <div className="app">
       <Header
         report={report}
@@ -281,13 +291,10 @@ export default function App() {
             history={history}
             report={report}
             busy={status.kind === 'loading'}
-            onNew={() => {
-              setTrends(false);
-              setBrowsing(true);
-            }}
-            browsing={!trends && (browsing || !report)}
-            trendsActive={trends}
-            onTrends={() => setTrends(true)}
+            onNew={() => setPage('browse')}
+            page={browsing ? 'browse' : page}
+            onTrends={() => setPage('trends')}
+            onSettings={() => openSettings()}
             appVersion={updater.version}
             updateState={updateState}
             onCheckUpdates={() => updater.checkNow(true)}
@@ -299,18 +306,20 @@ export default function App() {
             pulls={pulls}
             selected={selected}
             onSelect={selectPull}
-            summary={summary}
+            // fora da análise (evolução, configurações) nenhum pull ou resumo fica destacado
+            summary={page === 'analysis' ? summary : ''}
             onSummary={(k) => {
-              setTrends(false);
-              setBrowsing(false);
+              setPage('analysis');
               setSummary(k);
             }}
           />
         )}
         <main className="content">
-          {trends ? (
+          {page === 'settings' ? (
+            <SettingsView focus={settingsFocus} report={report} appVersion={updater.version} updateState={updateState} onCheckUpdates={() => updater.checkNow(true)} />
+          ) : page === 'trends' ? (
             <TrendsView />
-          ) : !report || browsing ? (
+          ) : browsing ? (
             inTauri || demoLogs ? (
               <>
                 {!report && <Intro />}
@@ -343,6 +352,7 @@ export default function App() {
         </main>
       </div>
     </div>
+    </SetupContext.Provider>
   );
 }
 
@@ -350,9 +360,13 @@ export default function App() {
 const demoLive = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoLive');
 const demoUpdate = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoUpdate');
 const demoLogs = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoLogs');
+const demoTrends = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoTrends');
+const demoSettings = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoSettings');
 
 /** Tela inicial do app, acima da lista de logs. */
 function Intro() {
+  const { status, openSettings } = useSetup();
+  const optional = optionalDone(status);
   return (
     <div className="intro">
       <Crosshair size={32} strokeWidth={1.5} className="empty-mark" aria-hidden />
@@ -362,6 +376,18 @@ function Intro() {
           Escolha o log da raid e veja o gatilho de cada wipe, as mortes e quem errou o quê. No jogo, use <code>/combatlog</code> antes do pull,
           com <em>Advanced Combat Logging</em> ligado (Opções → Rede).
         </p>
+        {status && optional.done < optional.total && (
+          <button className="intro-setup" onClick={() => openSettings()}>
+            <Settings size={14} strokeWidth={1.5} aria-hidden />
+            <span>
+              <span className="tabular">
+                {optional.done} de {optional.total}
+              </span>{' '}
+              integrações ligadas: Warcraft Logs, vídeos, Discord e IA
+            </span>
+            <ChevronRight size={14} strokeWidth={1.5} aria-hidden />
+          </button>
+        )}
       </div>
     </div>
   );

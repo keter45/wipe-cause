@@ -9,6 +9,7 @@ import { analyzePull, lowestBossHp } from '../lib/verdict';
 import { PositionMap, type Mark } from './PositionMap';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { mechanicSpellId } from '../lib/spells';
+import { getNote } from '../lib/notes';
 
 function Brand() {
   return <span className="share-brand">Wipe Cause</span>;
@@ -56,6 +57,7 @@ export function PullShareCard({ pull: p }: { pull: Pull }) {
         {!p.success && hp != null && <div className="share-big">{pct(hp)}</div>}
       </header>
       <p className="share-headline">{v.headline}</p>
+      {getNote(p).trim() && <p className="share-note">“{getNote(p).trim()}”</p>}
 
       <div className="share-cols">
         <div>

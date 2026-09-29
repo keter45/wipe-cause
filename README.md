@@ -14,13 +14,26 @@ Ferramenta local para descobrir **por que a try deu wipe** no World of Warcraft,
 
 Wipes com menos de 30s são ignorados.
 
-**Ignorar após N mortes** (topo da tela, padrão 4): depois de algumas mortes o wipe já está decidido. Erros de mecânica, falhas, interrupts e o gatilho só contam até a N-ésima morte de cada pull; o resto aparece esmaecido. Mudar o N é instantâneo (0 = conta tudo).
+## Configurações
+
+Tudo o que o app precisa fica em **Configurações** (rodapé da barra lateral), cada item com o status (pronto, falta configurar, desligado):
+
+- **Essencial:** a pasta de logs do WoW (detectada sozinha na maioria dos PCs) e o combat log no jogo (`/combatlog` + Advanced Combat Logging — o app avisa se o log aberto veio sem ele).
+- **Análise:** o corte de mortes padrão para logs novos.
+- **Integrações opcionais:** Warcraft Logs (client da API, para os tops da spec), pasta de vídeos do Warcraft Recorder, webhook do Discord e o provedor do "Perguntar à IA".
+- **Sobre:** versão, atualizações e a pasta das regras de boss.
+
+Quando um recurso depende de uma integração que ainda não foi ligada, ele mostra um atalho que abre a seção certa.
+
+**Ignorar após N mortes** (topo da tela para o log aberto; o padrão, 4, fica em Configurações): depois de algumas mortes o wipe já está decidido. Erros de mecânica, falhas, interrupts e o gatilho só contam até a N-ésima morte de cada pull; o resto aparece esmaecido. Mudar o N é instantâneo (0 = conta tudo).
 
 ## Modo ao vivo e Discord
 
 Com **Ao vivo** ligado (no topo), o app acompanha o `WoWCombatLog` mais recente da pasta de logs. Quando um pull termina, ele reanalisa o log em alguns segundos, abre o pull novo e mostra uma notificação — dá para ver o motivo do wipe antes do próximo pull.
 
-Em **Discord**, cole o webhook do canal da raid: cada wipe (e kill) chega lá com o gatilho, os erros de mecânica, as mortes decisivas e quem morreu sem defensivo. O pull e o resumo do boss também têm um botão para enviar na hora.
+O aviso do pull tem um campo para anotar o motivo do wipe na hora, do jeito que a raid percebeu (ele não some enquanto você escreve). A anotação fica salva no PC, aparece no topo do pull (onde dá para editar depois), marca o pull na lista, vai no cartão de compartilhar e entra no contexto do "Perguntar à IA".
+
+Em **Configurações → Discord**, cole o webhook do canal da raid: cada wipe (e kill) chega lá com o gatilho, os erros de mecânica, as mortes decisivas e quem morreu sem defensivo. O pull e o resumo do boss também têm um botão para enviar na hora.
 
 Para testar sem estar em raid: `node scripts/simulate-live.mjs <log antigo> <pasta Logs>` escreve alguns pulls de um log real, aos poucos, num `WoWCombatLog` novo.
 
@@ -28,7 +41,7 @@ Para testar sem estar em raid: `node scripts/simulate-live.mjs <log antigo> <pas
 
 Cada pull tem a aba **Perguntar à IA**: a IA recebe um dossiê do pull (mecânicas do boss com as dicas das regras, veredito, mortes com recap resumido, defensivos, posições, escala de interrupts, dispels, notas e um resumo dos outros pulls da noite — ~3–5 mil tokens) e responde só com base nele. Dá para ver o dossiê em **Ver dossiê**.
 
-Funciona com qualquer provedor no formato de chat da OpenAI, com presets para opções gratuitas: **Google Gemini** e **Groq** (planos gratuitos sem cartão), **OpenRouter** (modelos `:free`) e **Ollama** (roda no seu PC, grátis e offline). A chave de API fica no Gerenciador de Credenciais do Windows. Nos planos gratuitos, o provedor pode usar as perguntas para treinar modelos — o dossiê inclui os nomes dos players.
+Funciona com qualquer provedor no formato de chat da OpenAI, com presets para opções gratuitas: **Google Gemini** e **Groq** (planos gratuitos sem cartão), **OpenRouter** (modelos `:free`) e **Ollama** (roda no seu PC, grátis e offline), escolhidos em **Configurações → Perguntar à IA**. A chave de API fica no Gerenciador de Credenciais do Windows. Nos planos gratuitos, o provedor pode usar as perguntas para treinar modelos — o dossiê inclui os nomes dos players.
 
 ## Compartilhar
 
@@ -37,6 +50,18 @@ O pull e o resumo do boss têm **Compartilhar**: gera um cartão com o resumo (r
 ## Nota por player
 
 Cada player recebe uma nota de 0 a 100 por pull: parte de 100, perde pontos por erros de mecânica (pela gravidade da regra, até 3 por mecânica), por deixar passar a própria vez na escala de interrupts e por morte decisiva (mais se tinha defensivo sobrando); no fim pesa o tempo vivo até a primeira morte. Morte em **wipe geral** (mais de 5 mortes em até 1,5s — explosão, Execution, enrage) não conta: é consequência do wipe, e a culpa fica com a mecânica e quem a causou. Aparece na aba Jogadores (passe o mouse para ver os descontos), como média no placar do boss e por noite na Evolução.
+
+## Desempenho
+
+A aba **Desempenho** de cada pull compara um player com os **top players da mesma spec no Warcraft Logs**, com item level parecido (e tempo de kill parecido, se o pull foi kill). Na progressão não há tempo de kill: o fight do top é recortado no mesmo tempo que o player ficou vivo, então um wipe de 2:30 é comparado com os 2:30 iniciais do kill (sem o execute e sem as fases que o wipe não viu).
+
+- **Janelas de burst**: marque os cooldowns que quer comparar (os de dano da classe vêm marcados); cada uso vira um chip e mostra os casts de 3s antes a 20s depois numa linha do tempo, lado a lado com o mesmo uso do top.
+- **Cooldowns**: quando cada um foi usado, quantas vezes e se o 1º uso veio atrasado ou adiantado.
+- **Rotação**: casts por minuto e % do dano de cada habilidade, apontando o que ficou abaixo ou não foi usado.
+- **Setup**: poção de combate, distribuição de status, talentos diferentes (com nome e ícone) e itens lado a lado, com encantamentos e gemas que faltam.
+- **Exportar**: o relatório do jogador vira um cartão para copiar, salvar (PNG/HTML) ou mandar ao Discord — para quem não tem o app.
+
+Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) e cole o client ID e o secret na aba (ficam no Gerenciador de Credenciais do Windows). As consultas enviam só boss, spec e códigos de report; as respostas ficam em cache. A comparação com a própria raid (outro da mesma spec, ou você mesmo em outra tentativa) fica na aba **Na própria raid**. Se o link do report da noite estiver cadastrado, o pull também ganha links para o seu fight no Warcraft Logs e no WoWAnalyzer.
 
 ## Escala de interrupts e dispels
 
@@ -52,11 +77,11 @@ Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melh
 
 ## Warcraft Logs
 
-Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Não usa a API do Warcraft Logs nem pede login.
+Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Isso não usa a API nem pede login; a API (com client próprio) só entra na aba Desempenho.
 
 ## Warcraft Recorder
 
-Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com), cadastre a pasta onde ele salva os vídeos (botão 🎥 na barra: colar o caminho ou Procurar…). Ela fica salva no `settings.json` do app, porque varia de PC para PC. Sem cadastro, o app tenta detectar a pasta pela configuração do Recorder (lê só o caminho) e casa cada vídeo com o pull pelo boss e horário de início. No pull aparece o botão **▶ Vídeo** e cada morte, gatilho e evento de mecânica ganha um **▶** que abre o vídeo 5s antes do momento.
+Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com), cadastre a pasta onde ele salva os vídeos (**Configurações → Vídeos do Warcraft Recorder**, ou o botão **Vídeos** no topo: colar o caminho ou Procurar…). Ela fica salva no `settings.json` do app, porque varia de PC para PC. Sem cadastro, o app tenta detectar a pasta pela configuração do Recorder (lê só o caminho) e casa cada vídeo com o pull pelo boss e horário de início. No pull aparece o botão **▶ Vídeo** e cada morte, gatilho e evento de mecânica ganha um **▶** que abre o vídeo 5s antes do momento.
 
 Vídeos só na nuvem do Recorder ainda não são suportados (a API da nuvem é privada).
 

@@ -3,6 +3,7 @@ import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { groupByBoss } from '../lib/night';
 import { lowestBossHp } from '../lib/verdict';
+import { useNote } from '../lib/notes';
 
 /** `summary`: NIGHT = visão geral da noite; chave de boss = resumo daquele boss; null = um pull. */
 export const NIGHT = 'night';
@@ -39,7 +40,10 @@ export function PullList({ pulls, selected, onSelect, summary, onSummary }: Pull
                 aria-current={active ? 'page' : undefined}
                 title={`Pull ${p.pullNumber} · ${p.success ? 'kill' : `boss em ${pct(hp)}`} · ${mmss(p.durationMs)} · ${deaths} mortes`}
               >
-                <span className="pull-num">{p.pullNumber}</span>
+                <span className="pull-num">
+                  {p.pullNumber}
+                  <NoteDot pull={p} />
+                </span>
                 <span className="pull-result">{p.success ? 'Kill' : pct(hp)}</span>
                 {/* progresso até o kill: quanto do HP do boss já foi */}
                 <span className="pull-meter" aria-hidden>
@@ -57,6 +61,13 @@ export function PullList({ pulls, selected, onSelect, summary, onSummary }: Pull
       ))}
     </nav>
   );
+}
+
+/** Pontinho no número do pull quando há anotação (o texto aparece ao passar o mouse). */
+function NoteDot({ pull }: { pull: Pull }) {
+  const [note] = useNote(pull);
+  if (!note.trim()) return null;
+  return <span className="pull-note-dot" title={note} aria-label={`Anotação: ${note}`} />;
 }
 
 function SummaryLink({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {

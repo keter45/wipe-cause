@@ -115,6 +115,15 @@ struct PlayerAcc {
     interrupt_attempts: u32,
     /// última posição vista: (x, y, ms do pull)
     pos: Option<(f32, f32, i64)>,
+    /// casts do próprio player (sem pets): spell -> (nome, tempos)
+    casts: HashMap<u32, (String, Vec<i64>)>,
+    /// dano/cura por habilidade: (spell, veio de pet) -> (nome, total)
+    damage_by_spell: HashMap<(u32, bool), (String, i64)>,
+    healing_by_spell: HashMap<(u32, bool), (String, i64)>,
+    /// morto desde (até voltar a castar: battle rez) e tempo morto acumulado
+    dead_since: Option<i64>,
+    dead_ms: i64,
+    setup: Option<Setup>,
 }
 
 struct ActiveDebuff {
@@ -139,6 +148,14 @@ struct EnemySpellAcc {
     hits: u32,
     damage: i64,
     interrupted: u32,
+}
+
+/// Dano/cura por habilidade, maiores primeiro.
+fn by_spell(m: &HashMap<(u32, bool), (String, i64)>) -> Vec<SpellAmount> {
+    let mut v: Vec<SpellAmount> =
+        m.iter().filter(|(_, (_, a))| *a > 0).map(|((id, pet), (name, amount))| SpellAmount { spell_id: *id, name: name.clone(), amount: *amount, pet: *pet }).collect();
+    v.sort_by(|a, b| b.amount.cmp(&a.amount).then(a.spell_id.cmp(&b.spell_id)));
+    v
 }
 
 /// Morte ainda sem a checagem de defensivos disponíveis (feita depois, com dados do log inteiro).
@@ -469,15 +486,12 @@ impl PullBuilder {
         // A quantidade de stats muda entre patches (21 no 11.x, 22 no 12.x): a spec é o campo
         // imediatamente antes da lista de talentos.
         let Some(guid) = f.get(1) else { return };
-        let spec = f
-            .iter()
-            .position(|v| v.starts_with('['))
-            .and_then(|i| f.get(i.checked_sub(1)?))
-            .and_then(|v| v.parse::<u32>().ok());
+        let Some((spec, setup)) = crate::setup::parse_combatant_info(f) else { return };
         let p = self.players.entry(guid.to_string()).or_default();
         if spec.is_some() {
             p.spec_id = spec;
         }
+        p.setup = Some(setup);
     }
 
     /// `adv_at`: índice onde começa o bloco advanced (depois do prefixo spell, se houver).
@@ -514,8 +528,11 @@ impl PullBuilder {
         // dano causado por player (ou pet) em inimigo
         if counting && Self::is_enemy(dst_guid, dst_flags) {
             if let Some(owner) = self.owner_of(src_guid, src_flags) {
-                self.player(&owner, if owner == src_guid { src_name } else { "" }).damage_done +=
-                    (amount - overkill).max(0);
+                let pet = owner != src_guid;
+                let done = (amount - overkill).max(0);
+                let p = self.player(&owner, if pet { "" } else { src_name });
+                p.damage_done += done;
+                p.damage_by_spell.entry((spell_id, pet)).or_insert_with(|| (spell_name.clone(), 0)).1 += done;
             }
         }
 
@@ -596,7 +613,13 @@ impl PullBuilder {
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
         if self.counting() {
             if let Some(owner) = self.owner_of(src_guid, src_flags) {
-                self.player(&owner, if owner == src_guid { src_name } else { "" }).healing_done += effective;
+                let pet = owner != src_guid;
+                let p = self.player(&owner, if pet { "" } else { src_name });
+                p.healing_done += effective;
+                if effective > 0 {
+                    let (id, name) = (f[9].parse().unwrap_or(0), f[10]);
+                    p.healing_by_spell.entry((id, pet)).or_insert_with(|| (name.to_string(), 0)).1 += effective;
+                }
             }
         }
         if effective > 0 && Self::is_group_player(dst_guid, dst_flags) {
@@ -664,7 +687,15 @@ impl PullBuilder {
         }
         let consumable = data.consumable(spell_id, &spell_name);
         let defensive = data.defensives.get(&spell_id).filter(|d| d.kind == "personal").map(|d| d.name.clone());
+        let cut = self.cutoff_t;
         let p = self.player(src_guid, src_name);
+        if let Some(d) = p.dead_since.take() {
+            // voltou (battle rez): o tempo morto conta só até o corte
+            p.dead_ms += (cut.map_or(rel, |c| rel.min(c)) - d).max(0);
+        }
+        if counting {
+            p.casts.entry(spell_id).or_insert_with(|| (spell_name.clone(), Vec::new())).1.push(rel);
+        }
         match consumable {
             Some(Consumable::Healthstone) => p.healthstones.push(rel),
             Some(Consumable::HealthPotion) => p.health_potions.push(rel),
@@ -757,6 +788,7 @@ impl PullBuilder {
         }
         if !ignored {
             p.deaths += 1;
+            p.dead_since.get_or_insert(rel);
         }
         let recap: Vec<RecapEntry> = p.recap.iter().filter(|e| rel - e.t <= RECAP_WINDOW_MS).cloned().collect();
         let killing_blow = recap.iter().rev().find(|e| e.kind == RecapKind::Damage).cloned();
@@ -908,6 +940,16 @@ impl PullBuilder {
                 interrupt_attempts: p.interrupt_attempts.max(interrupts),
                 can_interrupt: p.interrupt_attempts > 0 || p.spec_id.is_some_and(|s| data.spec_can_interrupt(s)),
                 interrupt_log: p.interrupt_log.clone(),
+                casts: {
+                    let mut v: Vec<SpellCasts> =
+                        p.casts.iter().map(|(id, (name, times))| SpellCasts { spell_id: *id, name: name.clone(), times: times.clone() }).collect();
+                    v.sort_by(|a, b| b.times.len().cmp(&a.times.len()).then(a.spell_id.cmp(&b.spell_id)));
+                    v
+                },
+                damage_by_spell: by_spell(&p.damage_by_spell),
+                healing_by_spell: by_spell(&p.healing_by_spell),
+                alive_ms: (analyzed_ms - p.dead_ms.min(analyzed_ms) - p.dead_since.map_or(0, |d| (analyzed_ms - d).max(0))).max(0),
+                setup: p.setup.clone(),
             });
         }
         players.sort_by_key(|a| std::cmp::Reverse(a.damage_done));

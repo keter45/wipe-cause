@@ -245,7 +245,7 @@ pub fn compact(mut report: serde_json::Value) -> serde_json::Value {
                 strip(m, &["events", "snapshots"]);
             }
             for pl in p.get_mut("players").and_then(|x| x.as_array_mut()).into_iter().flatten() {
-                strip(pl, &["takenByAbility", "interruptLog"]);
+                strip(pl, &["takenByAbility", "interruptLog", "casts", "damageBySpell", "healingBySpell", "setup"]);
             }
         }
     }
