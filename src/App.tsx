@@ -324,7 +324,7 @@ export default function App() {
           ) : summary != null ? (
             <BossSummary key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} />
           ) : pull ? (
-            <PullView pull={pull} wclCode={wclCode ?? undefined} video={videos.get(pull.id)} />
+            <PullView pull={pull} wclCode={wclCode ?? undefined} video={videos.get(pull.id)} nightPulls={pulls.filter((x) => bossKey(x) === bossKey(pull))} />
           ) : (
             <p className="muted">Nenhum pull no log.</p>
           )}

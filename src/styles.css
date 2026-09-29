@@ -2717,3 +2717,124 @@ td.warn {
   font-weight: 700;
   color: var(--muted);
 }
+
+/* ---------------------------------------------------------------- perguntar à IA */
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 900px;
+}
+.ask-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ask-head .head-actions {
+  margin-left: auto;
+}
+.ask-context {
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.ask-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ask-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ask-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ask-suggestions .btn {
+  border: 1px solid var(--border);
+}
+.ask-msg {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  line-height: 1.55;
+}
+.ask-msg p {
+  margin: 0;
+}
+.ask-msg.user {
+  align-self: flex-end;
+  max-width: 80%;
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+}
+.ask-msg.assistant {
+  align-self: stretch;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.md > * + * {
+  margin-top: 8px;
+}
+.md ul,
+.md ol {
+  margin: 0;
+  padding-left: 20px;
+}
+.md li + li {
+  margin-top: 3px;
+}
+.md h4 {
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+.md code {
+  font-size: 12px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--panel-2);
+}
+.ask-input {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.ask-input textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 44px;
+  font: inherit;
+}
+.ask-input .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+}
+.ai-settings {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ai-settings h3 {
+  margin: 0;
+}
+.segmented.wrap {
+  flex-wrap: wrap;
+}
+.model-row {
+  display: flex;
+  gap: 6px;
+}
+.model-row .text-input {
+  flex: 1;
+}
