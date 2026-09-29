@@ -2838,3 +2838,17 @@ td.warn {
 .model-row .text-input {
   flex: 1;
 }
+.insights .md p {
+  margin: 0;
+}
+.chip.mech.with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.finding .spell-icon,
+.verdict h3 .spell-icon,
+.share-card li .spell-icon {
+  vertical-align: -4px;
+  margin-right: 4px;
+}

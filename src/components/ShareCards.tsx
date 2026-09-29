@@ -1,5 +1,5 @@
-// Cartões para compartilhar (imagem/HTML): só texto e SVG próprio — ícones de outros
-// domínios (Wowhead) travariam a geração da imagem.
+// Cartões para compartilhar (imagem/HTML). Os ícones das habilidades vêm do Wowhead (o CDN
+// libera CORS) e o gerador espera todos carregarem antes de virar imagem (lib/share.ts).
 
 import type { Pull } from '../types';
 import { classColor, mmss, pct, shortName } from '../lib/format';
@@ -7,6 +7,8 @@ import { summarizeNight } from '../lib/night';
 import { scorePull, scoreTone } from '../lib/score';
 import { analyzePull, lowestBossHp } from '../lib/verdict';
 import { PositionMap, type Mark } from './PositionMap';
+import { SpellIcon, SpellName } from './SpellIcon';
+import { mechanicSpellId } from '../lib/spells';
 
 function Brand() {
   return <span className="share-brand">Wipe Cause</span>;
@@ -63,7 +65,7 @@ export function PullShareCard({ pull: p }: { pull: Pull }) {
               <ul>
                 {findings.map((f, i) => (
                   <li key={i} className={f.severity}>
-                    <strong>{f.title}</strong>
+                    {f.spellId != null && <SpellIcon spellId={f.spellId} size={16} />} <strong>{f.title}</strong>
                     {f.detail && <span> — {f.detail}</span>}
                   </li>
                 ))}
@@ -77,7 +79,11 @@ export function PullShareCard({ pull: p }: { pull: Pull }) {
                 {v.decisiveDeaths.map((d) => (
                   <li key={`${d.guid}:${d.t}`}>
                     <span style={{ color: classColor(d.class) }}>{shortName(d.name)}</span> {mmss(d.t)} —{' '}
-                    {d.killingBlowMechanic ?? d.killingBlow?.spellName ?? '?'}
+                    <SpellName
+                      spellId={d.causedBy ? mechanicSpellId(p, d.causedBy.key) ?? d.killingBlow?.spellId : d.killingBlow?.spellId}
+                      name={d.killingBlowMechanic ?? d.killingBlow?.spellName ?? '?'}
+                      size={16}
+                    />
                     {d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0 && <span className="share-muted"> (sem defensivo)</span>}
                   </li>
                 ))}
@@ -151,7 +157,10 @@ export function BossShareCard({ title, pulls }: { title: string; pulls: Pull[] }
             <ul>
               {causes.map((c) => (
                 <li key={c.key}>
-                  <strong>{c.name}</strong> — gatilho em {c.triggers} de {s.wipes} wipes
+                  <strong>
+                    <SpellName spellId={mechanicSpellId(pulls, c.key)} name={c.name} size={16} />
+                  </strong>{' '}
+                  — gatilho em {c.triggers} de {s.wipes} wipes
                 </li>
               ))}
             </ul>

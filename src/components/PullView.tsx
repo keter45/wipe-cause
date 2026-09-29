@@ -16,6 +16,8 @@ import { SendToDiscord } from './SendToDiscord';
 import { ShareMenu } from './ShareMenu';
 import { PullShareCard } from './ShareCards';
 import { AskView } from './AskView';
+import { SpellIcon } from './SpellIcon';
+import { mechanicSpellId, mechanicSpellMap } from '../lib/spells';
 import { pullPayload } from '../lib/discord';
 import { scorePull } from '../lib/score';
 
@@ -127,6 +129,7 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
 
       <section className={`verdict ${pull.success ? 'kill' : 'wipe'}`}>
         <h3>
+          {pull.trigger && <SpellIcon spellId={mechanicSpellId(pull, pull.trigger.key)} size={20} />}
           {verdict.headline}
           {pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label="ver gatilho" />}
         </h3>
@@ -164,7 +167,7 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
       </div>
 
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
-      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} />}
+      {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} mechanicSpells={mechanicSpellMap([pull])} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
@@ -179,6 +182,7 @@ function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] 
     <li className={`finding ${f.severity}`}>
       <span className="badge">{SEVERITY_LABEL[f.severity]}</span>
       <span>
+        {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}
         <strong>{f.title}</strong>
         {f.detail && <span className="muted"> — {f.detail}</span>}
       </span>

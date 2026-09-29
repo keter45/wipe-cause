@@ -3,6 +3,7 @@
 import type { Death, Pull } from '../types';
 import { mmss, pct, shortName } from './format';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
+import { spellIdByName } from './spells';
 
 export type Severity = 'wipe' | 'major' | 'minor' | 'info';
 
@@ -12,6 +13,8 @@ export interface Finding {
   detail?: string;
   /** guid do player envolvido, para destacar na lista de mortes */
   player?: string;
+  /** habilidade do achado (ícone) */
+  spellId?: number | null;
 }
 
 export interface Verdict {
@@ -68,6 +71,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
     const blamed = m.players.filter((x) => !x.credit);
     findings.push({
       severity: m.severity,
+      spellId: m.spellId,
       title: m.summary || `${m.name}: ${blamed.length} jogador(es)`,
       detail: m.summary
         ? m.tip
@@ -89,6 +93,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
     if (ds.length >= 2) {
       findings.push({
         severity: 'wipe',
+        spellId: spellIdByName(p, spell) ?? ds[0].killingBlow?.spellId ?? null,
         title: `${ds.length} das primeiras mortes foram por ${spell}`,
         detail: ds.map((d) => `${shortName(d.name)} (${mmss(d.t)})`).join(', '),
       });
@@ -99,6 +104,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   for (const d of decisive.filter((d) => d.role === 'tank')) {
     findings.push({
       severity: 'wipe',
+      spellId: d.killingBlow?.spellId ?? null,
       title: `Tank ${shortName(d.name)} morreu aos ${mmss(d.t)}`,
       detail: d.killingBlow ? `Golpe final: ${d.killingBlow.spellName} (${d.killingBlow.source})` : undefined,
       player: d.guid,
@@ -156,6 +162,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
     }
     findings.push({
       severity: 'major',
+      spellId: passed[0].spellId,
       title: `${passed.reduce((n, e) => n + e.casts, 0)} cast(s) interrompível(is) passaram: ${passed.map((e) => `${e.name} ${e.casts}×`).join(', ')}`,
       detail: missed.size
         ? `Passou na vez de: ${[...missed].map(([n, c]) => (c > 1 ? `${n} (${c})` : n)).join(', ')}`

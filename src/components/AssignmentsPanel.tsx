@@ -45,7 +45,10 @@ export function AssignmentsPanel({ pull }: { pull: Pull }) {
           <ul className="plain small">
             {mechs.map((m) => (
               <li key={m.key}>
-                <strong>{m.name}</strong>:{' '}
+                <strong>
+                  <SpellName spellId={m.spellId} name={m.name} size={16} />
+                </strong>
+                :{' '}
                 {parsed.get(m.key)?.map((g, i) => (
                   <span key={i}>
                     {i > 0 && ' · '}add {i + 1}: {g.join(' → ')}

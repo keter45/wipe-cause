@@ -17,6 +17,8 @@ interface Props {
   cutoffT: number | null;
   /** guid -> classe, para as cores do mini mapa */
   classes: Map<string, string | null>;
+  /** mecânica (key) -> spell, para os ícones */
+  mechanicSpells: Map<string, number>;
 }
 
 export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: string }> = {
@@ -26,7 +28,7 @@ export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: stri
   unknown: { label: '?', title: 'Sem dados de HP (Advanced Combat Logging desligado?)' },
 };
 
-export function DeathList({ deaths, decisive, cutoffT, classes }: Props) {
+export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const seek = useSeek();
   if (deaths.length === 0) return <p className="muted pad">Ninguém morreu neste pull.</p>;
@@ -61,8 +63,8 @@ export function DeathList({ deaths, decisive, cutoffT, classes }: Props) {
                       <span className="kb-sub">
                         {d.killingBlow.source}
                         {d.causedBy && (
-                          <span className="chip mech" title={`${Math.round(d.causedBy.pct)}% do dano recebido nos últimos 15s`}>
-                            causa: {d.causedBy.name}
+                          <span className="chip mech with-icon" title={`${Math.round(d.causedBy.pct)}% do dano recebido nos últimos 15s`}>
+                            causa: <SpellName spellId={mechanicSpells.get(d.causedBy.key)} name={d.causedBy.name} size={14} />
                           </span>
                         )}
                       </span>
@@ -96,7 +98,7 @@ export function DeathList({ deaths, decisive, cutoffT, classes }: Props) {
               </button>
               <PlayAt t={d.t} seek={seek} />
             </div>
-            {isOpen && <DeathDetail death={d} classes={classes} />}
+            {isOpen && <DeathDetail death={d} classes={classes} mechanicSpells={mechanicSpells} />}
           </div>
         );
       })}
@@ -133,7 +135,7 @@ const FILTERS: { key: RecapFilter; label: string }[] = [
   { key: 'aura', label: 'Defensivos e debuffs' },
 ];
 
-function DeathDetail({ death, classes }: { death: Death; classes: Map<string, string | null> }) {
+function DeathDetail({ death, classes, mechanicSpells }: { death: Death; classes: Map<string, string | null>; mechanicSpells: Map<string, number> }) {
   const s = death.stats;
   const [filter, setFilter] = useState<RecapFilter>('all');
   // mais recente primeiro: o que matou fica no topo
@@ -162,8 +164,8 @@ function DeathDetail({ death, classes }: { death: Death; classes: Map<string, st
             <p className="recap-note">
               <span className="muted">Dano de mecânicas com falha</span>
               {death.mechanicDamage.map((m) => (
-                <span key={m.key} className="chip mech">
-                  {m.name} {Math.round(m.pct)}%{m.failT != null ? ` · falhou aos ${mmss(m.failT)}` : ''}
+                <span key={m.key} className="chip mech with-icon">
+                  <SpellName spellId={mechanicSpells.get(m.key)} name={m.name} size={14} /> {Math.round(m.pct)}%{m.failT != null ? ` · falhou aos ${mmss(m.failT)}` : ''}
                 </span>
               ))}
             </p>

@@ -4,6 +4,9 @@ import { historyTrends } from '../lib/api';
 import { classColor, pct, shortName } from '../lib/format';
 import { buildTrends, trendBosses, type NightInput, type Trends } from '../lib/trends';
 import { scoreTone } from '../lib/score';
+import { SpellName } from './SpellIcon';
+import { Markdown } from './AskView';
+import { spellIndex } from '../lib/spells';
 
 /**
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
@@ -54,6 +57,12 @@ export function TrendsView() {
 }
 
 function TrendsBody({ t }: { t: Trends }) {
+  // nomes de habilidades citados nas frases ganham ícone
+  const spells = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const n of t.nights) for (const p of n.summary.pulls) for (const [k, v] of spellIndex(p)) if (!m.has(k)) m.set(k, v);
+    return m;
+  }, [t]);
   return (
     <>
       {t.insights.length > 0 && (
@@ -63,7 +72,9 @@ function TrendsBody({ t }: { t: Trends }) {
           </h3>
           <ul className="insights">
             {t.insights.map((s) => (
-              <li key={s}>{s}</li>
+              <li key={s}>
+                <Markdown text={s} spells={spells} />
+              </li>
             ))}
           </ul>
         </section>
@@ -110,7 +121,9 @@ function TrendsBody({ t }: { t: Trends }) {
               <tbody>
                 {t.causes.slice(0, 10).map((c) => (
                   <tr key={c.key}>
-                    <td>{c.name}</td>
+                    <td>
+                      <SpellName spellId={c.spellId} name={c.name} size={16} />
+                    </td>
                     {c.perNight.map((v, i) => {
                       const wipes = t.nights[i].summary.wipes;
                       const share = v != null && wipes ? v / wipes : 0;
@@ -161,7 +174,15 @@ function TrendsBody({ t }: { t: Trends }) {
                   <td className="num">
                     {p.deaths}/{p.pulls}
                   </td>
-                  <td>{p.topKiller ? `${p.topKiller[0]} ${p.topKiller[1]}×` : <span className="muted">—</span>}</td>
+                  <td>
+                    {p.topKiller ? (
+                      <>
+                        <SpellName spellId={p.topKillerSpellId} name={p.topKiller[0]} size={16} /> <span className="muted">{p.topKiller[1]}×</span>
+                      </>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
                   <td className="num">{p.deathsNoDefensive || ''}</td>
                   <td className="num">{p.mechanicErrors || ''}</td>
                 </tr>

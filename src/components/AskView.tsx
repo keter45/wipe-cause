@@ -4,6 +4,8 @@ import type { Pull } from '../types';
 import { inTauri, openExternal } from '../lib/api';
 import { PRESETS, aiChat, aiGetConfig, aiListModels, aiSetConfig, type AiConfig, type ChatMessage } from '../lib/ai';
 import { SUGGESTED, SYSTEM_PROMPT, estimateTokens, pullContext } from '../lib/aiContext';
+import { spellIndex } from '../lib/spells';
+import { SpellName } from './SpellIcon';
 
 /** Conversas por pull (sobrevivem à troca de aba enquanto o app está aberto). */
 const conversations = new Map<string, ChatMessage[]>();
@@ -23,6 +25,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
   const endRef = useRef<HTMLDivElement>(null);
 
   const context = useMemo(() => pullContext(pull, nightPulls), [pull, nightPulls]);
+  const spells = useMemo(() => spellIndex(pull), [pull]);
 
   useEffect(() => {
     // navegador (dev): conversa de exemplo; ?demoAiSetup=1 mostra a configuração
@@ -124,7 +127,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
         )}
         {messages.map((m, i) => (
           <div key={i} className={`ask-msg ${m.role}`}>
-            {m.role === 'assistant' ? <Markdown text={m.content} /> : <p>{m.content}</p>}
+            {m.role === 'assistant' ? <Markdown text={m.content} spells={spells} /> : <p>{m.content}</p>}
           </div>
         ))}
         {busy && <div className="ask-msg assistant muted">Analisando o pull…</div>}
@@ -164,7 +167,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
 /** Navegador (desenvolvimento da UI): resposta de exemplo, sem chamar provedor. */
 async function demoAnswer(q: string): Promise<string> {
   await new Promise((r) => setTimeout(r, 500));
-  return `**Modo navegador** — resposta de exemplo para: _${q}_\n\n- No app, a pergunta vai para o provedor configurado junto com o dossiê do pull.\n- Use **Ver dossiê** para conferir o que a IA recebe.`;
+  return `**Modo navegador** — resposta de exemplo para: _${q}_\n\n- No app, a pergunta vai para o provedor configurado junto com o dossiê do pull.\n- Exemplo com habilidades: a **Virulent Mutation (detonação)** matou 4; ninguém usou defensivo contra Venom Rupture.\n- Use **Ver dossiê** para conferir o que a IA recebe.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -303,23 +306,42 @@ function AiSettings({ current, onSaved, onCancel }: { current: AiConfig | null; 
 // ---------------------------------------------------------------------------
 // Markdown mínimo das respostas (sem HTML: parágrafos, listas, títulos, **negrito**, _itálico_, `código`)
 
-function inline(text: string): ReactNode[] {
+type Spells = Map<string, number> | undefined;
+
+/** Troca nomes de habilidades conhecidas (do pull) por ícone + nome. */
+function withIcons(text: string, spells: Spells, keyBase: string): ReactNode[] {
+  if (!spells?.size) return [text];
+  const names = [...spells.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`(?<![\\p{L}])(${names.join('|')})(?![\\p{L}])`, 'giu');
   const out: ReactNode[] = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`|_[^_]+_|\*[^*]+\*)/g;
   let last = 0;
   for (const m of text.matchAll(re)) {
     if (m.index! > last) out.push(text.slice(last, m.index));
-    const t = m[0];
-    if (t.startsWith('**')) out.push(<strong key={m.index}>{t.slice(2, -2)}</strong>);
-    else if (t.startsWith('`')) out.push(<code key={m.index}>{t.slice(1, -1)}</code>);
-    else out.push(<em key={m.index}>{t.slice(1, -1)}</em>);
-    last = m.index! + t.length;
+    out.push(<SpellName key={`${keyBase}-${m.index}`} spellId={spells.get(m[0].normalize('NFC').toLocaleLowerCase('en'))} name={m[0]} size={16} />);
+    last = m.index! + m[0].length;
   }
   if (last < text.length) out.push(text.slice(last));
   return out;
 }
 
-export function Markdown({ text }: { text: string }) {
+function inline(text: string, spells: Spells): ReactNode[] {
+  const out: ReactNode[] = [];
+  const re = /(\*\*[^*]+\*\*|`[^`]+`|_[^_]+_|\*[^*]+\*)/g;
+  let last = 0;
+  for (const m of text.matchAll(re)) {
+    if (m.index! > last) out.push(...withIcons(text.slice(last, m.index), spells, `t${last}`));
+    const t = m[0];
+    if (t.startsWith('**')) out.push(<strong key={m.index}>{withIcons(t.slice(2, -2), spells, `b${m.index}`)}</strong>);
+    else if (t.startsWith('`')) out.push(<code key={m.index}>{t.slice(1, -1)}</code>);
+    else out.push(<em key={m.index}>{withIcons(t.slice(1, -1), spells, `i${m.index}`)}</em>);
+    last = m.index! + t.length;
+  }
+  if (last < text.length) out.push(...withIcons(text.slice(last), spells, `t${last}`));
+  return out;
+}
+
+/** `spells`: nome (minúsculas) -> spell, para mostrar o ícone ao lado das habilidades citadas. */
+export function Markdown({ text, spells }: { text: string; spells?: Map<string, number> }) {
   const blocks: ReactNode[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
   const flush = () => {
@@ -328,7 +350,7 @@ export function Markdown({ text }: { text: string }) {
     blocks.push(
       <Tag key={blocks.length}>
         {list.items.map((it, i) => (
-          <li key={i}>{inline(it)}</li>
+          <li key={i}>{inline(it, spells)}</li>
         ))}
       </Tag>,
     );
@@ -348,7 +370,7 @@ export function Markdown({ text }: { text: string }) {
     flush();
     if (!line.trim()) continue;
     const h = /^#{1,4}\s+(.*)$/.exec(line);
-    blocks.push(h ? <h4 key={blocks.length}>{inline(h[1])}</h4> : <p key={blocks.length}>{inline(line)}</p>);
+    blocks.push(h ? <h4 key={blocks.length}>{inline(h[1], spells)}</h4> : <p key={blocks.length}>{inline(line, spells)}</p>);
   }
   flush();
   return <div className="md">{blocks}</div>;
