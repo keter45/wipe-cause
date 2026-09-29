@@ -119,7 +119,7 @@ export async function copyPng(dataUrl: string) {
 }
 
 /** Salvar: no app, diálogo do sistema; no navegador, download. */
-async function saveFile(name: string, ext: 'png' | 'html', dataB64: string, mime: string): Promise<boolean> {
+async function saveFile(name: string, ext: 'png' | 'html' | 'json', dataB64: string, mime: string): Promise<boolean> {
   if (!inTauri) {
     const a = document.createElement('a');
     a.href = `data:${mime};base64,${dataB64}`;
@@ -136,6 +136,7 @@ async function saveFile(name: string, ext: 'png' | 'html', dataB64: string, mime
 
 export const savePng = (dataUrl: string, name: string) => saveFile(name, 'png', b64(dataUrl), 'image/png');
 export const saveHtml = (html: string, name: string) => saveFile(name, 'html', utf8b64(html), 'text/html');
+export const saveJson = (json: string, name: string) => saveFile(name, 'json', utf8b64(json), 'application/json');
 
 /** Envia o PNG ao webhook configurado, como imagem de um embed. */
 export async function sendPngToDiscord(dataUrl: string, fileName: string, title: string) {

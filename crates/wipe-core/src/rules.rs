@@ -3,8 +3,8 @@
 //! Formato documentado em `.claude/skills/boss-rules/references/schema.md`.
 
 use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, Positions};
-use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use yaml_serde::Value;
 
@@ -132,6 +132,13 @@ pub struct Mechanic {
     pub ignore_first_hit_in_burst: bool,
     /// dispel: segundos até o dispel antes de contar como atrasado
     pub max_delay: Option<f64>,
+    /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
+    #[serde(default)]
+    pub focus: bool,
+    #[serde(default)]
+    pub tuned: Vec<String>,
+    #[serde(default)]
+    pub custom: bool,
 }
 
 fn default_severity() -> String {
@@ -200,11 +207,93 @@ fn difficulty_key(id: u32) -> Option<&'static str> {
     }
 }
 
-/// Conjunto de regras disponíveis (embutidas + pasta do usuário).
+// ---------------------------------------------------------------------------
+// Ajustes do usuário
+
+/// Campos de uma mecânica que o usuário pode ajustar sem editar a regra.
+pub const TUNABLE_FIELDS: &[&str] = &["severity", "tolerance", "warn_stacks", "lethal_stacks", "max_delay", "roles", "tip", "message", "focus"];
+
+/// Ajustes de um boss: uma camada por cima da regra (só o que mudou), para os ajustes
+/// continuarem valendo quando a regra do app for atualizada.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Tuning {
+    pub encounter_id: u32,
+    /// nome do boss (para regras criadas em bosses sem regra no app)
+    #[serde(default)]
+    pub name: Option<String>,
+    /// key da mecânica -> campos ajustados (`enabled: false` desliga)
+    #[serde(default)]
+    pub mechanics: BTreeMap<String, serde_json::Map<String, serde_json::Value>>,
+    /// mecânicas criadas pelo usuário, no mesmo formato do YAML
+    #[serde(default)]
+    pub custom: Vec<serde_json::Value>,
+}
+
+fn to_yaml(v: &serde_json::Value) -> Value {
+    yaml_serde::to_value(v).unwrap_or(Value::Null)
+}
+
+impl RuleSet {
+    /// Mecânicas como estão no arquivo (sem ajustes nem overrides), para a tela de ajustes.
+    pub fn raw_mechanics(&self) -> &[Value] {
+        &self.mechanics
+    }
+
+    /// Esta regra com os ajustes aplicados (e as mecânicas criadas pelo usuário no fim).
+    fn tuned(&self, t: &Tuning) -> Result<RuleSet, String> {
+        let mut mechanics = Vec::new();
+        for raw in &self.mechanics {
+            let key = raw.get("key").and_then(Value::as_str).unwrap_or_default();
+            let Some(ov) = t.mechanics.get(key) else {
+                mechanics.push(raw.clone());
+                continue;
+            };
+            if ov.get("enabled").and_then(serde_json::Value::as_bool) == Some(false) {
+                continue;
+            }
+            let mut m = raw.clone();
+            let Some(map) = m.as_mapping_mut() else { continue };
+            let mut changed = Vec::new();
+            for field in TUNABLE_FIELDS {
+                let Some(val) = ov.get(*field) else { continue };
+                map.insert(Value::from(*field), to_yaml(val));
+                // o ajuste vale em todas as dificuldades: sai dos `overrides` da regra
+                if let Some(ovs) = map.get_mut("overrides").and_then(Value::as_mapping_mut) {
+                    for (_, diff) in ovs.iter_mut() {
+                        if let Some(d) = diff.as_mapping_mut() {
+                            d.remove(*field);
+                        }
+                    }
+                }
+                if *field != "focus" {
+                    changed.push(Value::from(*field));
+                }
+            }
+            map.insert(Value::from("tuned"), Value::Sequence(changed));
+            mechanics.push(m);
+        }
+        for c in &t.custom {
+            let mut m = to_yaml(c);
+            if let Some(map) = m.as_mapping_mut() {
+                map.insert(Value::from("custom"), Value::Bool(true));
+            }
+            mechanics.push(m);
+        }
+        let set = RuleSet { file: format!("{} + ajustes", self.file), mechanics, ..self.clone() };
+        for diff in [14, 15, 16] {
+            set.mechanics_for(diff)?;
+        }
+        Ok(set)
+    }
+}
+
+/// Conjunto de regras disponíveis (embutidas + pasta do usuário + ajustes).
 #[derive(Debug, Clone, Default)]
 pub struct RuleBook {
     pub sets: Vec<RuleSet>,
     pub errors: Vec<String>,
+    /// regras de boss com os ajustes do usuário aplicados, por encounter_id
+    tuned: HashMap<u32, RuleSet>,
 }
 
 impl RuleBook {
@@ -249,7 +338,55 @@ impl RuleBook {
         }
     }
 
+    /// Aplica os ajustes de um boss. Ajuste inválido vai para `errors` e o boss usa a regra padrão.
+    pub fn apply_tuning(&mut self, t: &Tuning) -> Result<(), String> {
+        let base = self.base(t.encounter_id).cloned().unwrap_or_else(|| RuleSet {
+            file: format!("ajustes/{}", t.encounter_id),
+            name: t.name.clone().unwrap_or_else(|| format!("encounter {}", t.encounter_id)),
+            encounter_id: Some(t.encounter_id),
+            global: false,
+            mechanics: Vec::new(),
+        });
+        match base.tuned(t) {
+            Ok(set) => {
+                self.tuned.insert(t.encounter_id, set);
+                Ok(())
+            }
+            Err(e) => {
+                let msg = format!("ajustes do boss {}: {e}", t.encounter_id);
+                self.errors.push(msg.clone());
+                Err(msg)
+            }
+        }
+    }
+
+    /// Carrega os ajustes (`<encounter_id>.json`) de uma pasta.
+    pub fn load_tuning_dir(&mut self, dir: &Path) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.extension().is_none_or(|x| x != "json") {
+                continue;
+            }
+            let parsed = std::fs::read_to_string(&p).map_err(|e| e.to_string()).and_then(|s| serde_json::from_str::<Tuning>(&s).map_err(|e| e.to_string()));
+            match parsed {
+                Ok(t) => {
+                    let _ = self.apply_tuning(&t);
+                }
+                Err(err) => self.errors.push(format!("{}: {err}", p.display())),
+            }
+        }
+    }
+
+    /// Regra do boss sem ajustes (o padrão, para a tela de ajustes).
+    pub fn base(&self, encounter_id: u32) -> Option<&RuleSet> {
+        self.sets.iter().find(|s| !s.global && s.encounter_id == Some(encounter_id))
+    }
+
     pub fn find(&self, encounter_id: u32, name: &str) -> Option<&RuleSet> {
+        if let Some(t) = self.tuned.get(&encounter_id) {
+            return Some(t);
+        }
         let boss = self.sets.iter().filter(|s| !s.global);
         boss.clone()
             .find(|s| s.encounter_id == Some(encounter_id))
@@ -719,6 +856,9 @@ impl RuleTracker {
                 kind: m.kind.as_str().to_string(),
                 severity: m.severity,
                 tip: m.tip,
+                focus: m.focus,
+                tuned: m.tuned,
+                custom: m.custom,
                 evaluated: m.kind.evaluated(),
                 failures,
                 summary,
@@ -735,7 +875,14 @@ impl RuleTracker {
             "minor" => 2,
             _ => 3,
         };
-        out.sort_by(|a, b| (a.failures == 0).cmp(&(b.failures == 0)).then(rank(&a.severity).cmp(&rank(&b.severity))).then(b.failures.cmp(&a.failures)));
+        // com falha primeiro; dentro disso, o foco da progressão antes da gravidade
+        out.sort_by(|a, b| {
+            (a.failures == 0)
+                .cmp(&(b.failures == 0))
+                .then(b.focus.cmp(&a.focus))
+                .then(rank(&a.severity).cmp(&rank(&b.severity)))
+                .then(b.failures.cmp(&a.failures))
+        });
         out
     }
 }
@@ -954,6 +1101,38 @@ mechanics:
         let blamed: Vec<&str> = m.players.iter().filter(|p| !p.credit).map(|p| p.name.as_str()).collect();
         assert_eq!(blamed.len(), 2);
         assert!(m.players.iter().any(|p| p.credit && p.name == "Healer-R" && p.count == 2));
+    }
+
+    #[test]
+    fn user_tuning_layers_over_the_rules() {
+        let mut book = RuleBook::embedded();
+        let t: Tuning = serde_json::from_value(serde_json::json!({
+            "encounter_id": 3421,
+            "mechanics": {
+                "caustic_globule": { "enabled": false },
+                // no Mítico o YAML sobe para wipe; o ajuste do usuário vale em todas
+                "eternal_venom": { "severity": "minor", "warn_stacks": 5, "focus": true }
+            },
+            "custom": [{ "key": "minha_poca", "name": "Poça", "type": "avoidable_damage", "severity": "major",
+                         "detect": { "damage_ids": [123] }, "tip": "sair", "message": "{player} na poça" }]
+        }))
+        .unwrap();
+        book.apply_tuning(&t).unwrap();
+        let set = book.find(3421, "The Twin Fangs").unwrap();
+        let ms = set.mechanics_for(16).unwrap();
+        assert!(ms.iter().all(|m| m.key != "caustic_globule"), "desligada");
+        let ev = ms.iter().find(|m| m.key == "eternal_venom").unwrap();
+        assert_eq!((ev.severity.as_str(), ev.warn_stacks, ev.focus), ("minor", Some(5), true));
+        assert_eq!(ev.tuned, vec!["severity", "warn_stacks"]);
+        let c = ms.iter().find(|m| m.key == "minha_poca").unwrap();
+        assert!(c.custom && c.kind == MechanicType::AvoidableDamage);
+        // o padrão continua disponível para a tela de ajustes
+        assert!(book.base(3421).unwrap().raw_mechanics().iter().any(|m| m.get("key").and_then(Value::as_str) == Some("caustic_globule")));
+
+        // ajuste inválido: erro e o boss segue com a regra de antes
+        let bad: Tuning = serde_json::from_value(serde_json::json!({ "encounter_id": 3421, "custom": [{ "key": "x", "name": "x", "type": "nao_existe" }] })).unwrap();
+        assert!(book.apply_tuning(&bad).is_err());
+        assert!(book.find(3421, "The Twin Fangs").unwrap().mechanics_for(16).unwrap().iter().any(|m| m.key == "minha_poca"));
     }
 
     #[test]

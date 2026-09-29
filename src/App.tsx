@@ -199,6 +199,12 @@ export default function App() {
     if (path) await analyzePath(path);
   }
 
+  /** Regras do boss ajustadas: reanalisa o log aberto (ao vivo, reinicia o acompanhamento). */
+  function rulesChanged() {
+    if (inTauri && live.status.active) live.start(deathCutoff);
+    else if (inTauri && report) void load(report.file, true, deathCutoff);
+  }
+
   /** Mudou o N: salva como preferência e reanalisa o log aberto (o corte é feito no núcleo). */
   function changeCutoff(n: number) {
     setDeathCutoff(n);
@@ -333,7 +339,13 @@ export default function App() {
           ) : summary != null ? (
             <BossSummary key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} />
           ) : pull ? (
-            <PullView pull={pull} wclCode={wclCode ?? undefined} video={videos.get(pull.id)} nightPulls={pulls.filter((x) => bossKey(x) === bossKey(pull))} />
+            <PullView
+              pull={pull}
+              wclCode={wclCode ?? undefined}
+              video={videos.get(pull.id)}
+              nightPulls={pulls.filter((x) => bossKey(x) === bossKey(pull))}
+              onRulesChanged={rulesChanged}
+            />
           ) : (
             <p className="muted">Nenhum pull no log.</p>
           )}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MechanicResult } from '../types';
 import { scorePull } from './score';
+import { analyzePull } from './verdict';
 import { death, player, pull } from './test-fixtures';
 
 const mech = (over: Partial<MechanicResult>): MechanicResult => ({
@@ -63,5 +64,22 @@ describe('wipe geral', () => {
     expect(massDeathKeys(ds).size).toBe(0);
     expect(massDeathKeys([...ds, death('F', 2400)]).size).toBe(6);
     expect(massDeathKeys([...ds, death('F', 2600)]).size).toBe(0); // fora da janela de 1,5s
+  });
+});
+
+describe('foco da progressão', () => {
+  it('mecânica de foco entra no veredito mesmo leve, vem primeiro e pesa mais na nota', () => {
+    const p = pull(0, 0, 100_000, {
+      analyzedMs: 100_000,
+      players: [player('A'), player('B')],
+      mechanics: [
+        mech({ key: 'sever', name: 'Sever', severity: 'major', summary: 'Sever', players: [blame('B', 1)] }),
+        mech({ key: 'poca', name: 'Poça', severity: 'minor', focus: true, summary: 'Poça', players: [blame('A', 2)] }),
+      ],
+    });
+    const v = analyzePull(p, new Map());
+    expect(v.findings[0]).toMatchObject({ title: 'Poça', focus: true, severity: 'major' });
+    const s = scorePull(p, new Map());
+    expect(s.get('A')!.parts).toEqual(['−12 ★ Poça (2×)']); // 4 × 1,5 = 6 por erro
   });
 });

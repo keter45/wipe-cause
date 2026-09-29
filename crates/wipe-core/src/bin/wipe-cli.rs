@@ -1,7 +1,8 @@
 //! CLI para analisar um log sem abrir o app.
 //!
 //!   wipe-cli analyze <arquivo> [--json] [--cutoff N]   resumo dos pulls (ou o relatório em JSON);
-//!                                                      --cutoff N ignora eventos após N mortes
+//!                                                      --cutoff N ignora eventos após N mortes;
+//!                                                      --tuning <pasta> aplica os ajustes do usuário (<encounter>.json)
 //!   wipe-cli spells <arquivo>             spells inimigas por encontro (para calibrar regras de boss)
 //!   wipe-cli peek <arquivo>               só os encontros do log (leitura rápida, como a lista de logs do app)
 
@@ -33,7 +34,8 @@ fn main() -> ExitCode {
             }
         };
     }
-    let opts = AnalyzeOptions { rules_dir: None, death_cutoff };
+    let tuning_dir = args.iter().position(|a| a == "--tuning").and_then(|i| args.get(i + 1)).map(PathBuf::from);
+    let opts = AnalyzeOptions { death_cutoff, tuning_dir, ..Default::default() };
     let report = match analyze_file(&PathBuf::from(path), &opts, |_, _| {}) {
         Ok(r) => r,
         Err(e) => {

@@ -20,6 +20,8 @@ interface Props {
   classes: Map<string, string | null>;
   /** mecânica (key) -> spell, para os ícones */
   mechanicSpells: Map<string, number>;
+  /** "marcar como erro": vira uma marca manual do pull */
+  onMark?: (d: Death) => void;
 }
 
 export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: string }> = {
@@ -29,7 +31,7 @@ export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: stri
   unknown: { label: '?', title: 'Sem dados de HP (Advanced Combat Logging desligado?)' },
 };
 
-export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells }: Props) {
+export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, onMark }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const seek = useSeek();
   const mass = massDeathKeys(deaths);
@@ -105,7 +107,7 @@ export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells }
               </button>
               <PlayAt t={d.t} seek={seek} />
             </div>
-            {isOpen && <DeathDetail death={d} classes={classes} mechanicSpells={mechanicSpells} />}
+            {isOpen && <DeathDetail death={d} classes={classes} mechanicSpells={mechanicSpells} onMark={onMark} />}
           </div>
         );
       })}
@@ -142,7 +144,18 @@ const FILTERS: { key: RecapFilter; label: string }[] = [
   { key: 'aura', label: 'Defensivos e debuffs' },
 ];
 
-function DeathDetail({ death, classes, mechanicSpells }: { death: Death; classes: Map<string, string | null>; mechanicSpells: Map<string, number> }) {
+function DeathDetail({
+  death,
+  classes,
+  mechanicSpells,
+  onMark,
+}: {
+  death: Death;
+  classes: Map<string, string | null>;
+  mechanicSpells: Map<string, number>;
+  onMark?: (d: Death) => void;
+}) {
+  const [marked, setMarked] = useState(false);
   const s = death.stats;
   const [filter, setFilter] = useState<RecapFilter>('all');
   // mais recente primeiro: o que matou fica no topo
@@ -153,6 +166,21 @@ function DeathDetail({ death, classes, mechanicSpells }: { death: Death; classes
   const isKillingBlow = (e: RecapEntry) => kb != null && e.kind === 'damage' && e.t === kb.t && e.spellId === kb.spellId && e.amount === kb.amount;
   return (
     <div className="recap">
+      {onMark && (
+        <p className="recap-actions">
+          <button
+            className="link small"
+            disabled={marked}
+            onClick={() => {
+              onMark(death);
+              setMarked(true);
+            }}
+            title="Para quando o erro não aparece nas regras: entra no veredito e na nota"
+          >
+            {marked ? 'Marcado como erro' : 'Essa morte foi erro do player: marcar'}
+          </button>
+        </p>
+      )}
       <div className="death-stats">
         <Stat label="Tipo" value={DEATH_KIND[death.deathKind].label} title={DEATH_KIND[death.deathKind].title} />
         <Stat label="Abaixo de 50%" value={s.belowHalfMs != null ? `${(s.belowHalfMs / 1000).toFixed(1)}s` : '—'} />

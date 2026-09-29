@@ -25,6 +25,8 @@ use tokenizer::{split_fields, split_timestamp};
 pub struct AnalyzeOptions {
     /// Pasta extra com regras de boss (*.yaml) que substituem as embutidas.
     pub rules_dir: Option<std::path::PathBuf>,
+    /// ajustes do usuário por boss (`<encounter_id>.json`)
+    pub tuning_dir: Option<std::path::PathBuf>,
     /// "Ignorar eventos após N mortes": depois da N-ésima morte de cada pull as estatísticas
     /// param de contar (0 = conta tudo).
     pub death_cutoff: u32,
@@ -37,6 +39,9 @@ pub fn analyze_file(path: &Path, opts: &AnalyzeOptions, progress: impl FnMut(u64
     let mut book = RuleBook::embedded();
     if let Some(dir) = &opts.rules_dir {
         book.load_dir(dir);
+    }
+    if let Some(dir) = &opts.tuning_dir {
+        book.load_tuning_dir(dir);
     }
     let mut report = analyze_reader(BufReader::with_capacity(1 << 20, file), total, &book, opts.death_cutoff, progress)?;
     report.file = path.display().to_string();

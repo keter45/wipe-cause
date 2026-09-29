@@ -5,7 +5,7 @@ use wipe_core::{analyze_file, AnalyzeOptions, LogReport, RecapKind};
 
 fn report_with(death_cutoff: u32) -> LogReport {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/twin-fangs.txt");
-    analyze_file(&path, &AnalyzeOptions { rules_dir: None, death_cutoff }, |_, _| {}).expect("fixture deve ser lida")
+    analyze_file(&path, &AnalyzeOptions { death_cutoff, ..Default::default() }, |_, _| {}).expect("fixture deve ser lida")
 }
 
 fn report() -> LogReport {
