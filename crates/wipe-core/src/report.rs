@@ -204,6 +204,73 @@ pub struct PlayerStats {
     /// spec tem interrupt ou o player usou um no log
     pub can_interrupt: bool,
     pub interrupt_log: Vec<InterruptUse>,
+    /// Casts do player (sem pets) até o corte, por habilidade: base da comparação de desempenho
+    pub casts: Vec<SpellCasts>,
+    /// Dano e cura por habilidade (pets somados ao dono), maiores primeiro
+    pub damage_by_spell: Vec<SpellAmount>,
+    pub healing_by_spell: Vec<SpellAmount>,
+    /// Tempo vivo dentro do tempo analisado (até a morte ou o corte)
+    pub alive_ms: i64,
+    /// Talentos, itens e status (COMBATANT_INFO do início do pull)
+    pub setup: Option<Setup>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpellCasts {
+    pub spell_id: u32,
+    pub name: String,
+    /// ms desde o início do pull
+    pub times: Vec<i64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpellAmount {
+    pub spell_id: u32,
+    pub name: String,
+    pub amount: i64,
+    /// veio de pet/guardião
+    pub pet: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Setup {
+    pub stats: SetupStats,
+    /// média dos itens equipados (arma de duas mãos conta duas vezes, como no jogo)
+    pub item_level: f32,
+    pub items: Vec<GearItem>,
+    /// entradas de talento escolhidas: (nó, entrada, rank)
+    pub talents: Vec<[u32; 3]>,
+}
+
+/// Rating secundário (não %) e atributos primários, como vêm no log.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupStats {
+    pub strength: u32,
+    pub agility: u32,
+    pub stamina: u32,
+    pub intellect: u32,
+    pub crit: u32,
+    pub haste: u32,
+    pub mastery: u32,
+    pub versatility: u32,
+    pub leech: u32,
+    pub avoidance: u32,
+    pub speed: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GearItem {
+    /// posição na lista do COMBATANT_INFO (0 = cabeça … 15 = arma, 16 = mão secundária)
+    pub slot: u8,
+    pub item_id: u32,
+    pub ilvl: u32,
+    pub enchant: Option<u32>,
+    pub gems: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -250,3 +250,24 @@ fn deaths_carry_positions_until_the_cutoff() {
     // depois do corte a morte não guarda posições
     assert!(p.deaths[1..].iter().all(|d| d.ignored && d.positions.is_none()));
 }
+
+#[test]
+fn performance_data_casts_setup_and_alive_time() {
+    let r = report();
+    let p1 = &r.pulls[0];
+    let priest = p1.players.iter().find(|p| p.name == "Curandeira-Azralon").unwrap();
+    assert_eq!(priest.alive_ms, 90_010, "tempo vivo acaba na morte");
+    let warrior = p1.players.iter().find(|p| p.name == "Tankão-Gallywix").unwrap();
+    assert_eq!(warrior.alive_ms, p1.analyzed_ms);
+    let wall = warrior.casts.iter().find(|c| c.name == "Shield Wall").expect("cast do defensivo registrado");
+    assert_eq!(wall.times.len(), 1);
+    assert!(warrior.damage_by_spell.iter().all(|s| s.amount > 0));
+
+    let setup = warrior.setup.as_ref().expect("COMBATANT_INFO vira setup");
+    assert_eq!(setup.talents, vec![[1, 2, 1], [3, 4, 1]]);
+    assert_eq!(setup.items.len(), 1);
+    assert_eq!(setup.items[0].ilvl, 639);
+
+    let mage = p1.players.iter().find(|p| p.name == "Magozin-Azralon").unwrap();
+    assert!(mage.damage_by_spell.iter().any(|s| s.pet), "dano do pet aparece separado");
+}

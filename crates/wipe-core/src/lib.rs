@@ -5,6 +5,7 @@ pub mod data;
 pub mod peek;
 pub mod report;
 pub mod rules;
+pub mod setup;
 pub mod timestamp;
 pub mod tokenizer;
 
