@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { GearItem, PlayerStats, Pull } from '../types';
 import { mmss, num, shortName } from '../lib/format';
@@ -26,6 +26,8 @@ import { specLabel } from '../lib/specs';
 import { useTalentTree, type TalentTree } from '../lib/talents';
 import { useTooltip } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
+import { PerfLinks, WclTopsButton } from './WclTops';
+import { loadTop, type TopRanking, type TopSample } from '../lib/wclApi';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
 
@@ -57,7 +59,7 @@ function refLabel(me: Sample, s: Sample): string {
 const signedSec = (ms: number) => `${ms > 0 ? '+' : '−'}${Math.round(Math.abs(ms) / 1000)}s`;
 
 /** Comparação de desempenho com a mesma spec na noite (etapa 1: sem dados externos). */
-export function PerformanceView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }) {
+export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nightPulls: Pull[]; wclCode?: string }) {
   const players = useMemo(
     () =>
       [...pull.players]
@@ -92,42 +94,101 @@ export function PerformanceView({ pull, nightPulls }: { pull: Pull; nightPulls: 
           ))}
         </select>
       </label>
-      <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} />
+      <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
     </div>
   );
 }
 
-function Comparison({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
+const topKey = (t: Pick<TopRanking, 'code' | 'fightId'>) => `top:${t.code}:${t.fightId}`;
+
+function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[]; wclCode?: string }) {
   const list = useMemo(() => candidates(me, nightPulls), [me, nightPulls]);
   const [refKey, setRefKey] = useState<string | null>(null);
-  const ref = list.find((s) => sampleKey(s) === refKey) ?? defaultReference(me, list);
-  const cds = useMemo(() => detectCooldowns([me, ...list]), [me, list]);
+  const [tops, setTops] = useState<TopRanking[]>([]);
+  const [loaded, setLoaded] = useState<Map<string, TopSample>>(new Map());
+  const [topError, setTopError] = useState<string | null>(null);
+  const wantTop = refKey?.startsWith('top:') ? tops.find((t) => topKey(t) === refKey) ?? null : null;
+  const topSample = refKey ? loaded.get(refKey) ?? null : null;
+  const ref: Sample | null = wantTop ? topSample : list.find((s) => sampleKey(s) === refKey) ?? defaultReference(me, list);
+  const cds = useMemo(() => detectCooldowns([me, ...list, ...loaded.values()]), [me, list, loaded]);
 
-  if (!ref)
-    return (
-      <p className="muted pad">
-        Ninguém mais jogou de {specLabel(me.player.specId)} neste boss na noite (nem você em outro pull com 30s+ vivo). A comparação com os top
-        players do Warcraft Logs vem na próxima etapa.
-      </p>
-    );
+  // top escolhido e ainda não baixado: busca o fight dele
+  useEffect(() => {
+    if (!wantTop || loaded.has(topKey(wantTop))) return;
+    let alive = true;
+    setTopError(null);
+    loadTop(wantTop, me, tops.indexOf(wantTop))
+      .then((s) => alive && setLoaded((m) => new Map(m).set(topKey(wantTop), s)))
+      .catch((e) => alive && setTopError(String(e)));
+    return () => {
+      alive = false;
+    };
+  }, [wantTop, loaded, me, tops]);
 
   const healer = isHealer(me.player);
+  const picker = (
+    <>
+      <label className="perf-field">
+        <span className="muted small">Comparar com</span>
+        <select className="select" value={refKey ?? (ref ? sampleKey(ref) : '')} onChange={(e) => setRefKey(e.target.value)}>
+          {!ref && !wantTop && <option value="">—</option>}
+          {list.length > 0 && (
+            <optgroup label="Na noite (mesma spec)">
+              {list.map((s) => (
+                <option key={sampleKey(s)} value={sampleKey(s)}>
+                  {refLabel(me, s)} — {num(outputPerSec(s))} {healer ? 'HPS' : 'DPS'} vivo
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {tops.length > 0 && (
+            <optgroup label="Top players (Warcraft Logs)">
+              {tops.map((t) => (
+                <option key={topKey(t)} value={topKey(t)}>
+                  {t.name}-{t.server} — {num(t.amount)} {healer ? 'HPS' : 'DPS'}
+                  {t.itemLevel ? ` · ilvl ${t.itemLevel.toFixed(0)}` : ''} · {mmss(t.durationMs)}
+                </option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </label>
+      <WclTopsButton
+        me={me}
+        onTops={(t) => {
+          setTops(t);
+          if (t[0]) setRefKey(topKey(t[0]));
+        }}
+      />
+      <PerfLinks pull={me.pull} me={me} wclCode={wclCode} top={topSample ? { ...topSample.source, name: topSample.source.name } : null} />
+    </>
+  );
+
+  if (wantTop && !ref)
+    return (
+      <>
+        {picker}
+        <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? `Baixando o fight de ${wantTop.name} no Warcraft Logs…`}</p>
+      </>
+    );
+  if (!ref)
+    return (
+      <>
+        {picker}
+        <p className="muted pad">
+          Ninguém mais jogou de {specLabel(me.player.specId)} neste boss na noite (nem você em outro pull com 30s+ vivo). Busque os top players do
+          Warcraft Logs acima.
+        </p>
+      </>
+    );
+
   const [mo, ro] = [outputPerSec(me), outputPerSec(ref)];
   const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
   const insights = perfInsights(me, ref, cds);
 
   return (
     <>
-      <label className="perf-field">
-        <span className="muted small">Comparar com</span>
-        <select className="select" value={sampleKey(ref)} onChange={(e) => setRefKey(e.target.value)}>
-          {list.map((s) => (
-            <option key={sampleKey(s)} value={sampleKey(s)}>
-              {refLabel(me, s)} — {num(outputPerSec(s))} {healer ? 'HPS' : 'DPS'} vivo
-            </option>
-          ))}
-        </select>
-      </label>
+      {picker}
       <p className="muted small perf-note">
         Mesma spec, no mesmo boss e dificuldade. Tudo é por minuto vivo e os cooldowns são comparados só no tempo em que os dois estavam vivos, então
         dá para comparar wipes de durações diferentes.

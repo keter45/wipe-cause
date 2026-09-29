@@ -172,7 +172,7 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
       {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} mechanicSpells={mechanicSpellMap([pull])} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
-      {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} />}
+      {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
     </div>

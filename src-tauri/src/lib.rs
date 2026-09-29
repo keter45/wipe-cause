@@ -5,6 +5,7 @@ mod live;
 mod logs;
 mod settings;
 mod talents;
+mod wcl;
 mod wcr;
 
 use serde::Serialize;
@@ -79,6 +80,9 @@ pub fn run() {
             ai::ai_list_models,
             ai::ai_chat,
             talents::talent_tree,
+            wcl::wcl_get_config,
+            wcl::wcl_set_config,
+            wcl::wcl_query,
             live::live_start,
             live::live_stop,
             live::live_status,

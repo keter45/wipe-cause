@@ -13,7 +13,7 @@ export function reportCode(input: string): string | null {
 }
 
 /** Dificuldade do jogo (ENCOUNTER_START) -> dificuldade do WCL. */
-const WCL_DIFFICULTY: Record<number, number> = { 17: 1, 14: 3, 15: 4, 16: 5 };
+export const WCL_DIFFICULTY: Record<number, number> = { 17: 1, 14: 3, 15: 4, 16: 5 };
 
 export function bossUrl(code: string, p: Pull): string {
   const params = new URLSearchParams({ boss: String(p.encounterId) });

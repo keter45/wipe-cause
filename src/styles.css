@@ -3058,3 +3058,18 @@ td.warn {
     grid-template-columns: 1fr;
   }
 }
+.wcl-tops,
+.perf-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+.wcl-setup {
+  max-width: 560px;
+}
+.wcl-steps {
+  margin: 0;
+  padding-left: 18px;
+}
