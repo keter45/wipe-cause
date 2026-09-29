@@ -114,6 +114,26 @@ export function cleanTuning(t: Tuning, base: RuleMechanic[]): Tuning {
   return { ...t, mechanics };
 }
 
+/** Arquivo exportado: os ajustes e de qual boss são (para não importar no boss errado). */
+export function exportTuning(t: Tuning, bossName: string): string {
+  return JSON.stringify({ app: 'wipe-cause', kind: 'rule-tuning', boss: bossName, ...t }, null, 2);
+}
+
+/** Lê um arquivo exportado; erro se não for de ajustes ou for de outro boss. */
+export function parseTuningFile(text: string, encounterId: number): Tuning {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error('O arquivo não é um JSON válido.');
+  }
+  const o = raw as Partial<Tuning> & { boss?: string };
+  if (!o || typeof o !== 'object' || typeof o.encounter_id !== 'number' || typeof o.mechanics !== 'object')
+    throw new Error('O arquivo não é de ajustes de regras do Wipe Cause.');
+  if (o.encounter_id !== encounterId) throw new Error(`Esses ajustes são de outro boss${o.boss ? ` (${o.boss})` : ''}.`);
+  return { encounter_id: o.encounter_id, name: o.name ?? null, mechanics: o.mechanics ?? {}, custom: Array.isArray(o.custom) ? o.custom : [] };
+}
+
 /** Valor efetivo de um campo: o ajuste, senão o padrão. */
 export function effective<K extends keyof MechanicTuning>(base: RuleMechanic, ov: MechanicTuning | undefined, k: K): MechanicTuning[K] | undefined {
   return (ov?.[k] ?? (base as MechanicTuning)[k]) as MechanicTuning[K] | undefined;

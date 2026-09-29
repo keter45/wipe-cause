@@ -3826,3 +3826,8 @@ td.warn {
 .recap-actions {
   margin: 0 0 8px;
 }
+.rule-tuning-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}

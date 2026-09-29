@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, RotateCcw, Star } from 'lucide-react';
+import { ChevronDown, Download, RotateCcw, Star, Upload } from 'lucide-react';
+import { saveJson, fileSlug } from '../lib/share';
 import type { MechanicSeverity, Pull } from '../types';
-import { cleanTuning, effective, PER_HIT, rulesGet, rulesResetTuning, rulesSaveTuning, type BossRules, type MechanicTuning, type RuleMechanic, type Tuning } from '../lib/rules';
+import {
+  cleanTuning,
+  effective,
+  exportTuning,
+  parseTuningFile,
+  PER_HIT,
+  rulesGet,
+  rulesResetTuning,
+  rulesSaveTuning,
+  type BossRules,
+  type MechanicTuning,
+  type RuleMechanic,
+  type Tuning,
+} from '../lib/rules';
 import { mechanicSpellId } from '../lib/spells';
 import { SpellIcon } from './SpellIcon';
 
@@ -119,9 +133,39 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
             veredito.
           </p>
         </div>
-        <button className="btn sm" onClick={onClose}>
-          Fechar
-        </button>
+        <div className="rule-tuning-actions">
+          <button
+            className="btn sm"
+            disabled={!rules.tuning}
+            title={rules.tuning ? 'Salvar os ajustes num arquivo para mandar a outra pessoa' : 'Sem ajustes salvos para exportar'}
+            onClick={() => rules.tuning && saveJson(exportTuning(rules.tuning, rules.name), `ajustes-${fileSlug(rules.name)}.json`).catch((e) => setMsg({ ok: false, text: String(e) }))}
+          >
+            <Download size={14} strokeWidth={1.5} aria-hidden /> Exportar
+          </button>
+          <label className="btn sm" title="Carregar ajustes que alguém exportou (revise e salve)">
+            <Upload size={14} strokeWidth={1.5} aria-hidden /> Importar
+            <input
+              type="file"
+              accept=".json,application/json"
+              hidden
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (!file) return;
+                try {
+                  const t = parseTuningFile(await file.text(), rules.encounterId);
+                  setDraft(t);
+                  setMsg({ ok: true, text: 'Ajustes importados. Confira e clique em Salvar e reanalisar.' });
+                } catch (err) {
+                  setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) });
+                }
+              }}
+            />
+          </label>
+          <button className="btn sm" onClick={onClose}>
+            Fechar
+          </button>
+        </div>
       </header>
 
       {mechs.length === 0 && <p className="muted small">Este boss ainda não tem regras no app.</p>}
