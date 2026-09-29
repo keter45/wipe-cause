@@ -53,3 +53,16 @@ describe('buildTrends', () => {
     expect(trendBosses(nights)).toEqual([{ key: 'Boss · Mythic', nights: 2, pulls: 8 }]);
   });
 });
+
+describe('histórico enxuto', () => {
+  it('não quebra sem os campos que o backend corta (recap, debuffs, eventos, interrupts)', () => {
+    // o histórico da Evolução vem sem os campos pesados (history.rs: compact)
+    const n = night('n1', '21/09 · Boss Mythic', 1_000_000, 3, 1, 50);
+    for (const p of n.pulls) {
+      for (const d of p.deaths) for (const k of ['recap', 'debuffs', 'mechanicDamage', 'positions'] as const) delete (d as Partial<typeof d>)[k];
+      for (const pl of p.players) for (const k of ['takenByAbility', 'interruptLog'] as const) delete (pl as Partial<typeof pl>)[k];
+    }
+    const t = buildTrends([n, night('n2', '24/09 · Boss Mythic', 2_000_000, 2, 0, 30)], 'Boss · Mythic');
+    expect(t.nights).toHaveLength(2);
+  });
+});
