@@ -2,6 +2,7 @@
   --bg: #0f1115;
   --panel: #171a21;
   --panel-2: #1e222b;
+  --sidebar: #0f1522; /* azul-marinho escuro da barra lateral */
   --border: #2a2f3a;
   --text: #e6e8ee;
   --muted: #8b93a5;
@@ -1780,7 +1781,7 @@ ul.plain {
   flex-shrink: 0;
   min-height: 0;
   border-right: 1px solid var(--border);
-  background: color-mix(in oklch, var(--panel) 45%, var(--bg));
+  background: var(--sidebar);
 }
 .sidebar-top {
   padding: 10px 8px 6px;
