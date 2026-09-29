@@ -17,6 +17,7 @@ import { SendToDiscord } from './SendToDiscord';
 import { ShareMenu } from './ShareMenu';
 import { PullShareCard } from './ShareCards';
 import { AskView } from './AskView';
+import { ErrorBoundary } from './ErrorBoundary';
 import { PerformanceView } from './PerformanceView';
 import { SpellIcon } from './SpellIcon';
 import { mechanicSpellId, mechanicSpellMap } from '../lib/spells';
@@ -43,7 +44,16 @@ const bossHpOf = (pull: Pull) => (b: Pull['bosses'][number]) => (pull.cutoffT !=
 /** guid -> classe (cores dos mini mapas). */
 const classesOf = (p: Pull) => new Map(p.players.map((x) => [x.guid, x.class] as const));
 
-export function PullView({ pull, wclCode, video, nightPulls }: Props) {
+/** Erro no pull (dados inesperados de um log) fica no pull: a lista e o resto do app seguem. */
+export function PullView(props: Props) {
+  return (
+    <ErrorBoundary label="neste pull" resetKey={props.pull.id}>
+      <PullViewInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function PullViewInner({ pull, wclCode, video, nightPulls }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
   const [videoOpen, setVideoOpen] = useState(false);
   const [showMinor, setShowMinor] = useState(false);
@@ -170,6 +180,8 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
         ))}
       </div>
 
+      {/* erro numa aba fica na aba: as outras e o resto do pull continuam */}
+      <ErrorBoundary label={`na aba ${tabs.find((t) => t.key === tab)?.label ?? ''}`} resetKey={`${pull.id}:${tab}`}>
       {tab === 'mechanics' && <MechanicsView pull={pull} />}
       {tab === 'deaths' && <DeathList deaths={pull.deaths} decisive={decisive} cutoffT={pull.cutoffT ?? null} classes={classesOf(pull)} mechanicSpells={mechanicSpellMap([pull])} />}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
@@ -177,6 +189,7 @@ export function PullView({ pull, wclCode, video, nightPulls }: Props) {
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
       {tab === 'spells' && <EnemySpellsTable spells={pull.enemySpells} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
+      </ErrorBoundary>
     </div>
     </SeekContext.Provider>
   );

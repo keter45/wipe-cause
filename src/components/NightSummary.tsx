@@ -10,6 +10,7 @@ import { mechanicSpellId } from '../lib/spells';
 import { SendToDiscord } from './SendToDiscord';
 import { ShareMenu } from './ShareMenu';
 import { BossShareCard } from './ShareCards';
+import { withErrorBoundary } from './ErrorBoundary';
 import { bossPayload } from '../lib/discord';
 
 interface Props {
@@ -31,7 +32,7 @@ function clock(p: Pull): string {
 }
 
 /** Visão geral da noite: tempo e downtime da raid inteira e um card por boss. */
-export function NightOverview({ pulls, onSelectPull, onSelectBoss }: Props & { onSelectBoss: (key: string) => void }) {
+function NightOverviewInner({ pulls, onSelectPull, onSelectBoss }: Props & { onSelectBoss: (key: string) => void }) {
   const s = useMemo(() => summarizeNight(pulls), [pulls]);
   const bosses = useMemo(() => groupByBoss(pulls).map((g) => ({ ...g, s: summarizeNight(g.pulls) })), [pulls]);
   const spellIds = useMechanicSpellIds(pulls);
@@ -104,7 +105,7 @@ function useMechanicSpellIds(pulls: Pull[]) {
 }
 
 /** Resumo de um boss: stats, maior causa, progresso, vilões/mocinhos, downtime e placar. */
-export function BossSummary({ title, pulls, onSelectPull }: Props & { title: string }) {
+function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: string }) {
   const s = useMemo(() => summarizeNight(pulls), [pulls]);
   const mechanicSpellIds = useMechanicSpellIds(pulls);
 
@@ -564,3 +565,6 @@ function Scoreboard({ players }: { players: PlayerNight[] }) {
     </table>
   );
 }
+
+export const NightOverview = withErrorBoundary(NightOverviewInner, 'no resumo da noite');
+export const BossSummary = withErrorBoundary(BossSummaryInner, 'no resumo do boss');

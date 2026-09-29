@@ -29,6 +29,7 @@ import {
   type Sample,
 } from '../lib/performance';
 import { ShareMenu } from './ShareMenu';
+import { ErrorBoundary } from './ErrorBoundary';
 import { specLabel } from '../lib/specs';
 import { useTalentTree, type TalentTree } from '../lib/talents';
 import { useTooltip } from '../lib/wowhead';
@@ -101,7 +102,10 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
           ))}
         </select>
       </label>
-      <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
+      {/* erro na comparação de um jogador não some com o seletor: dá para escolher outro */}
+      <ErrorBoundary label={`na comparação de ${shortName(player.name)}`} resetKey={player.guid}>
+        <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
+      </ErrorBoundary>
     </div>
   );
 }
