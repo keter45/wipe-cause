@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Radio, Square } from 'lucide-react';
-import type { LiveStatus } from '../lib/api';
+import { sourceName, type LiveStatus } from '../lib/api';
 import { Popover } from './Popover';
 
 const ICON = { size: 16, strokeWidth: 1.5, 'aria-hidden': true } as const;
@@ -35,7 +35,7 @@ export function LiveButton({ status, error, onStart, onStop }: { status: LiveSta
   }
 
   const label = status.state === 'in_combat' && status.encounter ? `em combate: ${status.encounter}` : STATE_LABEL[status.state];
-  const fileName = status.file?.split(/[\\/]/).pop();
+  const fileName = status.file ? sourceName(status.file) : null;
   return (
     <Popover
       open={open}
@@ -50,13 +50,13 @@ export function LiveButton({ status, error, onStart, onStop }: { status: LiveSta
     >
       <h4>Modo ao vivo</h4>
       <p className="muted small">
-        Acompanhando <code>{fileName}</code>. Quando um pull termina, o log é reanalisado e o pull abre sozinho (e vai para o Discord, se
-        configurado).
+        Acompanhando {fileName ? <code>{fileName}</code> : 'a guilda no Warcraft Logs'}. Quando um pull termina, o log é reanalisado e o pull abre
+        sozinho (e vai para o Discord, se configurado).
       </p>
       <p className="small">
         {status.analyzed} pull{status.analyzed === 1 ? '' : 's'} analisado{status.analyzed === 1 ? '' : 's'} nesta sessão
       </p>
-      {status.message && <p className="small bad">{status.message}</p>}
+      {status.message && <p className={`small ${status.state === 'error' ? 'bad' : 'muted'}`}>{status.message}</p>}
       <div className="popover-footer">
         <span className="topbar-spacer" />
         <button

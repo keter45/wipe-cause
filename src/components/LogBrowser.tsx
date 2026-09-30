@@ -17,6 +17,7 @@ import { useSetup } from '../lib/setup';
 import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
 import { WclOpen } from './WclOpen';
+import { GuildNights } from './GuildNights';
 
 interface Props {
   history: HistoryEntry[];
@@ -131,6 +132,7 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
       {error && <div className="error">Erro: {error}</div>}
       {scan?.warning && <p className="logs-warning small">{scan.warning}</p>}
 
+      <GuildNights history={history} busy={busy} onAnalyze={onAnalyze} />
       <WclOpen busy={busy} onAnalyze={onAnalyze} />
 
       {scan && !scan.dir && <NoFolder onChoose={chooseFolder} />}

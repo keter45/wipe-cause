@@ -3942,3 +3942,29 @@ td.warn {
   flex: 1 1 280px;
   min-width: 0;
 }
+
+/* Configurações → Warcraft Logs */
+.wcl-account {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.wcl-account p {
+  margin: 0;
+}
+.wcl-advanced summary {
+  cursor: pointer;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+/* noites da guilda (tela de logs) */
+.guild-nights {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.guild-nights select.text-input {
+  width: auto;
+}

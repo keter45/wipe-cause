@@ -22,6 +22,7 @@ import { LogBrowser } from './components/LogBrowser';
 import { UpdateBanner } from './components/UpdateBanner';
 import { useUpdater, type UpdateState } from './lib/updater';
 import { useLive } from './lib/live';
+import { savedGuildId } from './lib/guildNights';
 import { pullPayload } from './lib/discord';
 import { LiveToast } from './components/LiveToast';
 import { TrendsView } from './components/TrendsView';
@@ -79,7 +80,12 @@ export default function App() {
   const updater = useUpdater();
   // pull que acabou de ser analisado no modo ao vivo (aviso no canto)
   const [liveToast, setLiveToast] = useState<{ pull: Pull; discord: string | null } | null>(null);
-  const live = useLive(onLiveReport);
+  // guilda do login do Warcraft Logs: ao vivo sem log neste PC segue o report ao vivo dela
+  const wclGuild = useMemo(() => {
+    const guilds = setup.status?.wcl?.user?.guilds ?? [];
+    return guilds.find((g) => g.id === savedGuildId()) ?? guilds[0] ?? null;
+  }, [setup.status]);
+  const live = useLive(onLiveReport, wclGuild);
   // dev no navegador: ?demoLive=1 mostra o botão e o aviso do modo ao vivo (só visual)
   useEffect(() => {
     if (demoLive && report && !liveToast) setLiveToast({ pull: report.pulls[report.pulls.length - 1], discord: 'enviado ao Discord' });
