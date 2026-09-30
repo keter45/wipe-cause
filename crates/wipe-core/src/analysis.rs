@@ -225,6 +225,20 @@ impl PullBuilder {
         }
     }
 
+    /// Dono de um pet conhecido de antemão (o Warcraft Logs já diz de quem é cada pet).
+    pub(crate) fn set_pet_owner(&mut self, pet: &str, owner: &str) {
+        self.pet_owner.insert(pet.to_string(), owner.to_string());
+    }
+
+    /// Spec e setup vindos de fora do log (evento combatantinfo do Warcraft Logs).
+    pub(crate) fn set_combatant(&mut self, guid: &str, spec: Option<u32>, setup: Setup) {
+        let p = self.players.entry(guid.to_string()).or_default();
+        if spec.is_some() {
+            p.spec_id = spec;
+        }
+        p.setup = Some(setup);
+    }
+
     /// Ainda antes do corte: estatísticas contam.
     fn counting(&self) -> bool {
         self.cutoff_t.is_none()
@@ -603,8 +617,8 @@ impl PullBuilder {
         }
         let s = 12 + adv.as_ref().map_or(0, |a| a.len);
         let effective = match f.len().saturating_sub(s) {
-            // 12.x: effective, total, absorbed, overheal, critical
-            5.. => (num(f.get(s + 1)) - num(f.get(s + 3)).max(0)).max(0),
+            // 12.x: amount, baseAmount, overheal, absorbed, critical (amount inclui o overheal)
+            5.. => (num(f.get(s)) - num(f.get(s + 2)).max(0)).max(0),
             // formato antigo: amount, overheal, absorbed, critical
             _ => (num(f.get(s)) - num(f.get(s + 1)).max(0)).max(0),
         };
