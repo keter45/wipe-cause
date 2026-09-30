@@ -171,9 +171,10 @@ pub fn logs_list(app: AppHandle) -> LogsScan {
             .map(|(p, folder, meta)| {
                 let path = p.display().to_string();
                 let (size, modified_ms) = (meta.len(), modified_ms(&meta));
+                // índice antigo (sem o início de cada pull): a UI pede a leitura de novo
                 let peek = index
                     .get(&path)
-                    .filter(|e| e.size == size && e.modified_ms == modified_ms)
+                    .filter(|e| e.size == size && e.modified_ms == modified_ms && e.peek.encounters.iter().all(|x| x.starts.len() as u32 == x.pulls))
                     .map(|e| e.peek.clone());
                 let name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
                 LogFile { path, name, size, modified_ms, folder, peek }
@@ -189,7 +190,8 @@ fn peek_cached(app: &AppHandle, path: &Path) -> Result<LogPeek, String> {
     let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
     let key = path.display().to_string();
     let (size, modified) = (meta.len(), modified_ms(&meta));
-    if let Some(p) = with_index(app, |index| index.get(&key).filter(|e| e.size == size && e.modified_ms == modified).map(|e| e.peek.clone())) {
+    let fresh = |e: &&IndexEntry| e.size == size && e.modified_ms == modified && e.peek.encounters.iter().all(|x| x.starts.len() as u32 == x.pulls);
+    if let Some(p) = with_index(app, |index| index.get(&key).filter(fresh).map(|e| e.peek.clone())) {
         return Ok(p);
     }
     let peek = wipe_core::peek::peek_file(path).map_err(|e| e.to_string())?;

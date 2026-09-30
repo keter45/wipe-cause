@@ -165,6 +165,8 @@ export interface EncounterPeek {
   dungeon?: boolean;
   pulls: number;
   kills: number;
+  /** início (epoch ms) de cada pull contado */
+  starts?: number[];
 }
 
 export interface LogPeek {

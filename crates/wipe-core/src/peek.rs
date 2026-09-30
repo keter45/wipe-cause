@@ -23,6 +23,9 @@ pub struct EncounterPeek {
     /// pulls que a análise vai mostrar (kills + wipes de 30s ou mais)
     pub pulls: u32,
     pub kills: u32,
+    /// início (epoch ms) de cada pull contado, para casar com os pulls do Warcraft Logs
+    #[serde(default)]
+    pub starts: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -42,6 +45,7 @@ pub fn peek_reader<R: BufRead>(mut reader: R) -> io::Result<LogPeek> {
     let year = crate::current_year();
     let mut out = LogPeek::default();
     let mut buf = Vec::with_capacity(4096);
+    let mut last_start: Option<i64> = None;
     loop {
         buf.clear();
         if reader.read_until(b'\n', &mut buf)? == 0 {
@@ -62,6 +66,7 @@ pub fn peek_reader<R: BufRead>(mut reader: R) -> io::Result<LogPeek> {
                 if let Some(t) = parse_timestamp(ts, year) {
                     out.first_ms.get_or_insert(t);
                     out.last_ms = Some(t);
+                    last_start = Some(t);
                 }
             }
             continue;
@@ -84,12 +89,14 @@ pub fn peek_reader<R: BufRead>(mut reader: R) -> io::Result<LogPeek> {
                     dungeon: crate::data::is_dungeon(diff, f[4].parse().unwrap_or(0)),
                     pulls: 0,
                     kills: 0,
+                    starts: Vec::new(),
                 });
                 out.encounters.last_mut().unwrap()
             }
         };
         e.pulls += 1;
         e.kills += success as u32;
+        e.starts.extend(last_start.take());
     }
     Ok(out)
 }
@@ -117,6 +124,8 @@ mod tests {
         let tf = &p.encounters[0];
         assert_eq!((tf.name.as_str(), tf.pulls, tf.kills, tf.difficulty_name.as_str()), ("The Twin Fangs", 2, 1, "Mythic"));
         assert_eq!(p.encounters[1].pulls, 1);
+        assert_eq!(tf.starts.len(), 2, "o wipe curto não entra");
+        assert_eq!(tf.starts[1] - tf.starts[0], 10 * 60_000);
         // 21:00 no fuso -3 = 00:00 UTC do dia seguinte
         assert!(p.first_ms.unwrap() < p.last_ms.unwrap());
     }

@@ -3974,3 +3974,85 @@ td.warn {
   gap: 8px;
   cursor: pointer;
 }
+
+/* nova análise: uma linha por noite (log do PC + Warcraft Logs) */
+.night-row {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 14px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.night-row.empty-log {
+  opacity: 0.6;
+}
+.night-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.night-sources {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 14px;
+  row-gap: 2px;
+}
+.night-sources > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.log-boss.wcl-only {
+  opacity: 0.75;
+}
+.wcl-mark {
+  color: var(--info);
+}
+svg.wcl-mark {
+  vertical-align: -2px;
+  margin-right: 4px;
+}
+.night-gap {
+  margin: 0;
+  color: var(--info);
+}
+.night-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+}
+.night-confirm p {
+  margin: 0;
+}
+.night-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.night-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.night-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (max-width: 600px) {
+  .night-row {
+    grid-template-columns: 1fr;
+  }
+  .night-side {
+    align-items: flex-start;
+  }
+}

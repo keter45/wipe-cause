@@ -47,6 +47,8 @@ export interface GuildNight {
   path: string;
 }
 
+/** Dificuldade do WCL para Mítica+. */
+const MYTHIC_PLUS = 10;
 /** Reports que se sobrepõem (com folga) são da mesma noite. */
 const NIGHT_GAP_MS = 45 * 60_000;
 /** Mesmo pull em dois reports: começam com poucos segundos de diferença. */
@@ -55,20 +57,22 @@ const SAME_PULL_MS = 20_000;
 export const LIVE_MS = 15 * 60_000;
 
 /** Pulls únicos (boss + dificuldade + horário), do report mais completo primeiro. */
-export function uniquePulls(reports: GuildReport[]): { encounterId: number; name: string; difficulty: number; kill: boolean; start: number }[] {
-  const out: { encounterId: number; name: string; difficulty: number; kill: boolean; start: number }[] = [];
+export function uniquePulls(reports: GuildReport[]): { encounterId: number; name: string; difficulty: number; kill: boolean; start: number; durationMs: number }[] {
+  const out: { encounterId: number; name: string; difficulty: number; kill: boolean; start: number; durationMs: number }[] = [];
   for (const r of reports) {
     for (const f of r.fights) {
       const start = r.startTime + f.startTime;
       if (out.some((p) => p.encounterId === f.encounterID && p.difficulty === f.difficulty && Math.abs(p.start - start) < SAME_PULL_MS)) continue;
-      out.push({ encounterId: f.encounterID, name: f.name, difficulty: f.difficulty, kill: f.kill, start });
+      out.push({ encounterId: f.encounterID, name: f.name, difficulty: f.difficulty, kill: f.kill, start, durationMs: f.endTime - f.startTime });
     }
   }
   return out.sort((a, b) => a.start - b.start);
 }
 
 export function groupNights(reports: GuildReport[], now = Date.now()): GuildNight[] {
-  const withBosses = reports.filter((r) => r.fights.length > 0).sort((a, b) => a.startTime - b.startTime);
+  // o app é para raid: fights de M+ (dificuldade 10 no WCL) ficam de fora
+  const raidOnly = reports.map((r) => ({ ...r, fights: r.fights.filter((f) => f.difficulty !== MYTHIC_PLUS) }));
+  const withBosses = raidOnly.filter((r) => r.fights.length > 0).sort((a, b) => a.startTime - b.startTime);
   const groups: GuildReport[][] = [];
   for (const r of withBosses) {
     const g = groups[groups.length - 1];

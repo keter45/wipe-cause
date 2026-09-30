@@ -177,6 +177,8 @@ export default function App() {
     try {
       const r = await analyzeLog(path, cutoff, (progress) => setStatus({ kind: 'loading', progress, path }));
       rememberFile(path);
+      // noite completada com o Warcraft Logs: a análise só do log do PC fica redundante no histórico
+      for (const e of history.filter((h) => r.localLogs?.some((l) => sameLog(h.logPath, l)))) await historyDelete(e.id).catch(() => {});
       if (keepView) setReport(r);
       else showReport(r);
       setPage('analysis');

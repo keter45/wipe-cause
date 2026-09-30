@@ -20,8 +20,8 @@ export function WclOpen({ busy, onAnalyze }: { busy: boolean; onAnalyze: (path: 
       <div className="wcl-open-head">
         <Globe size={16} strokeWidth={1.5} aria-hidden />
         <div>
-          <strong>Sem o log no PC?</strong>
-          <p className="muted small">Analise direto de um report do Warcraft Logs — o de qualquer pessoa da raid serve.</p>
+          <strong>Report de fora da lista?</strong>
+          <p className="muted small">Cole o link de qualquer report do Warcraft Logs (de outra guilda, por exemplo). O que estiver num log do seu PC sai dele.</p>
         </div>
       </div>
       {!inTauri ? (

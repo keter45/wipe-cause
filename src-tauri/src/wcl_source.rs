@@ -186,7 +186,8 @@ pub fn analyze(
         analyzer.add_report(report, None)?;
         spans.push((report["startTime"].as_i64().unwrap_or(0), report["endTime"].as_i64().unwrap_or(0)));
     }
-    let all = dedupe(analyzer.fights());
+    // o app é para raid: fights de masmorra (M+) nem entram
+    let all: Vec<_> = dedupe(analyzer.fights()).into_iter().filter(|f| !wipe_core::data::is_dungeon(f.difficulty_id, f.size)).collect();
     if all.is_empty() {
         return Err("Nenhum boss nos reports.".into());
     }
