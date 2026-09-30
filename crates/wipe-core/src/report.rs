@@ -29,6 +29,8 @@ pub struct Pull {
     pub difficulty_id: u32,
     pub difficulty_name: String,
     pub group_size: u32,
+    /// encontro de masmorra (M+, delve…): o app é para raid, fica à parte na interface
+    pub dungeon: bool,
     /// Número do pull para este boss + dificuldade no log (1..), sem os pulls curtos descartados
     pub pull_number: u32,
     /// Mesmo número contando os pulls curtos — é a numeração do Warcraft Logs ("Wipe N")

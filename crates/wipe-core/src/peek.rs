@@ -17,6 +17,9 @@ pub struct EncounterPeek {
     pub name: String,
     pub difficulty_id: u32,
     pub difficulty_name: String,
+    /// masmorra (M+, delve…): a lista de logs mostra à parte
+    #[serde(default)]
+    pub dungeon: bool,
     /// pulls que a análise vai mostrar (kills + wipes de 30s ou mais)
     pub pulls: u32,
     pub kills: u32,
@@ -78,6 +81,7 @@ pub fn peek_reader<R: BufRead>(mut reader: R) -> io::Result<LogPeek> {
                     name,
                     difficulty_id: diff,
                     difficulty_name: difficulty_name(diff).to_string(),
+                    dungeon: crate::data::is_dungeon(diff, f[4].parse().unwrap_or(0)),
                     pulls: 0,
                     kills: 0,
                 });

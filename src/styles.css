@@ -3831,3 +3831,40 @@ td.warn {
   gap: 6px;
   flex: 0 0 auto;
 }
+
+/* ---- masmorras (M+): compartimento à parte, o foco é raid */
+.dungeon-block {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.dungeon-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.dungeon-toggle:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+.dungeon-toggle .group-count {
+  margin-left: auto;
+}
+.pull-tree-note {
+  padding: 8px;
+  margin: 0;
+}
+.log-dungeons {
+  display: block;
+}

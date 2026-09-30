@@ -20,6 +20,8 @@ export interface Pull {
   difficultyId: number;
   difficultyName: string;
   groupSize: number;
+  /** encontro de masmorra (M+, delve…); análises antigas não têm */
+  dungeon?: boolean;
   pullNumber: number;
   /** numeração do Warcraft Logs (conta os pulls curtos) */
   pullNumberAll: number;

@@ -116,6 +116,15 @@ fn lowercase_patterns(mut c: ConsumableDef) -> ConsumableDef {
     c
 }
 
+/// Dificuldades de masmorra (normal, heroica, mítica, M+, timewalking, follower, delve).
+const DUNGEON_DIFFICULTIES: [u32; 8] = [1, 2, 8, 23, 24, 150, 205, 208];
+
+/// Encontro de masmorra (M+, delve…) e não de raid: o app é para raid, então esses ficam à parte.
+/// `group_size` 0 = desconhecido (só a dificuldade decide).
+pub fn is_dungeon(difficulty_id: u32, group_size: u32) -> bool {
+    DUNGEON_DIFFICULTIES.contains(&difficulty_id) || (1..=5).contains(&group_size)
+}
+
 pub fn difficulty_name(id: u32) -> &'static str {
     match id {
         1 => "Normal (dungeon)",
@@ -133,6 +142,15 @@ pub fn difficulty_name(id: u32) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tells_dungeons_from_raids() {
+        assert!(is_dungeon(8, 5), "M+");
+        assert!(is_dungeon(23, 0), "masmorra mítica");
+        assert!(!is_dungeon(16, 20), "raid mítica");
+        assert!(!is_dungeon(233, 25), "world boss do tier");
+        assert!(is_dungeon(0, 5), "grupo de 5");
+    }
 
     #[test]
     fn matches_consumables_by_id_and_name() {

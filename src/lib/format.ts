@@ -1,4 +1,5 @@
 import type { Pull } from '../types';
+import { raidOnly } from './content';
 
 export function mmss(ms: number): string {
   const neg = ms < 0;
@@ -48,10 +49,12 @@ export function classColor(cls: string | null | undefined): string {
 export const ROLE_LABEL: Record<string, string> = { tank: 'Tank', healer: 'Healer', dps: 'DPS' };
 
 /** "24/09 · The Twin Fangs Mythic": data do 1º pull + boss com mais pulls. */
-export function logTitle(pulls: Pull[]): string {
-  if (!pulls.length) return 'Log sem pulls';
-  const [date] = pulls[0].startLocal.split(' ');
+export function logTitle(all: Pull[]): string {
+  if (!all.length) return 'Log sem pulls';
+  const [date] = all[0].startLocal.split(' ');
   const [m, d] = date.split('/');
+  const raid = raidOnly(all);
+  const pulls = raid.length ? raid : all;
   const count = new Map<string, number>();
   for (const p of pulls) {
     const k = `${p.encounterName} ${p.difficultyName}`;

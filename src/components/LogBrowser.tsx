@@ -14,6 +14,7 @@ import {
   type LogsScan,
 } from '../lib/api';
 import { useSetup } from '../lib/setup';
+import { dungeonsOnly, raidOnly } from '../lib/content';
 
 interface Props {
   history: HistoryEntry[];
@@ -181,6 +182,9 @@ function LogRow({ file: f, peek, analyzed, disabled, onClick }: { file: LogFile;
   const end = p?.lastMs ? when(p.lastMs).hm : null;
   const live = Date.now() - f.modifiedMs < LIVE_MS;
   const empty = p != null && p.encounters.length === 0;
+  // o app é para raid: masmorras (M+) viram só uma contagem no fim
+  const raidEnc = p ? raidOnly(p.encounters) : [];
+  const dungeonEnc = p ? dungeonsOnly(p.encounters) : [];
 
   return (
     <button className={`log-row ${empty ? 'empty-log' : ''}`} onClick={onClick} disabled={disabled} title={f.path}>
@@ -201,7 +205,7 @@ function LogRow({ file: f, peek, analyzed, disabled, onClick }: { file: LogFile;
         ) : empty ? (
           <span className="muted small">sem encontros de boss</span>
         ) : (
-          p!.encounters.map((e) => (
+          raidEnc.map((e) => (
             <span key={`${e.name}-${e.difficultyId}`} className="log-boss">
               <strong>{e.name}</strong> <span className="muted">{DIFF_SHORT[e.difficultyId] ?? e.difficultyName}</span>
               <span className="muted small">
@@ -211,6 +215,12 @@ function LogRow({ file: f, peek, analyzed, disabled, onClick }: { file: LogFile;
               </span>
             </span>
           ))
+        )}
+        {dungeonEnc.length > 0 && (
+          <span className="muted small log-dungeons" title={dungeonEnc.map((e) => e.name).join(', ')}>
+            {raidEnc.length ? '+ ' : ''}
+            {dungeonEnc.length} chefe{dungeonEnc.length > 1 ? 's' : ''} de masmorra (M+)
+          </span>
         )}
         <span className="muted small log-file">
           {f.name} · {size(f.size)}

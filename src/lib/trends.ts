@@ -4,6 +4,7 @@
 import type { Pull } from '../types';
 import { shortName } from './format';
 import { bossKey, summarizeNight, type NightSummary } from './night';
+import { raidOnly } from './content';
 import { mechanicSpellId } from './spells';
 
 export interface NightInput {
@@ -63,7 +64,8 @@ export interface Trends {
 export function trendBosses(nights: NightInput[]): { key: string; nights: number; pulls: number }[] {
   const m = new Map<string, { nights: Set<string>; pulls: number }>();
   for (const n of nights) {
-    for (const p of n.pulls) {
+    // a Evolução é de raid: masmorras (M+) ficam de fora
+    for (const p of raidOnly(n.pulls)) {
       const e = m.get(bossKey(p)) ?? { nights: new Set(), pulls: 0 };
       e.nights.add(n.id);
       e.pulls++;

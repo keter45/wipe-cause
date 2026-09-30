@@ -1000,6 +1000,7 @@ impl PullBuilder {
                 difficulty_id: self.difficulty_id,
                 difficulty_name: crate::data::difficulty_name(self.difficulty_id).to_string(),
                 group_size: self.group_size,
+                dungeon: crate::data::is_dungeon(self.difficulty_id, self.group_size),
                 pull_number: 0,
                 pull_number_all: 0,
                 start_ms: self.start_ms,
