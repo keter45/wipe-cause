@@ -7,6 +7,8 @@ import { useSetup } from '../lib/setup';
 import { SUGGESTED, SYSTEM_PROMPT, estimateTokens, pullContext } from '../lib/aiContext';
 import { spellIndex } from '../lib/spells';
 import { SpellName } from './SpellIcon';
+import { withPlayerNames } from './Names';
+import { namesRegex, usePlayerClasses } from '../lib/players';
 
 /** Conversas por pull (sobrevivem à troca de aba enquanto o app está aberto). */
 const conversations = new Map<string, ChatMessage[]>();
@@ -174,39 +176,43 @@ async function demoAnswer(q: string): Promise<string> {
 type Spells = Map<string, number> | undefined;
 
 /** Troca nomes de habilidades conhecidas (do pull) por ícone + nome. */
-function withIcons(text: string, spells: Spells, keyBase: string): ReactNode[] {
-  if (!spells?.size) return [text];
-  const names = [...spells.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const re = new RegExp(`(?<![\\p{L}])(${names.join('|')})(?![\\p{L}])`, 'giu');
+/** Ícones das habilidades e, no que sobra de texto, os nomes dos personagens coloridos. */
+function withIcons(text: string, spells: Spells, keyBase: string, names: RegExp | null): ReactNode[] {
+  const plain = (s: string, k: string) => withPlayerNames(s, k, names);
+  if (!spells?.size) return plain(text, keyBase);
+  const spellNames = [...spells.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`(?<![\\p{L}])(${spellNames.join('|')})(?![\\p{L}])`, 'giu');
   const out: ReactNode[] = [];
   let last = 0;
   for (const m of text.matchAll(re)) {
-    if (m.index! > last) out.push(text.slice(last, m.index));
+    if (m.index! > last) out.push(...plain(text.slice(last, m.index), `${keyBase}-p${last}`));
     out.push(<SpellName key={`${keyBase}-${m.index}`} spellId={spells.get(m[0].normalize('NFC').toLocaleLowerCase('en'))} name={m[0]} size={16} />);
     last = m.index! + m[0].length;
   }
-  if (last < text.length) out.push(text.slice(last));
+  if (last < text.length) out.push(...plain(text.slice(last), `${keyBase}-p${last}`));
   return out;
 }
 
-function inline(text: string, spells: Spells): ReactNode[] {
+function inline(text: string, spells: Spells, names: RegExp | null): ReactNode[] {
   const out: ReactNode[] = [];
   const re = /(\*\*[^*]+\*\*|`[^`]+`|_[^_]+_|\*[^*]+\*)/g;
   let last = 0;
   for (const m of text.matchAll(re)) {
-    if (m.index! > last) out.push(...withIcons(text.slice(last, m.index), spells, `t${last}`));
+    if (m.index! > last) out.push(...withIcons(text.slice(last, m.index), spells, `t${last}`, names));
     const t = m[0];
-    if (t.startsWith('**')) out.push(<strong key={m.index}>{withIcons(t.slice(2, -2), spells, `b${m.index}`)}</strong>);
+    if (t.startsWith('**')) out.push(<strong key={m.index}>{withIcons(t.slice(2, -2), spells, `b${m.index}`, names)}</strong>);
     else if (t.startsWith('`')) out.push(<code key={m.index}>{t.slice(1, -1)}</code>);
-    else out.push(<em key={m.index}>{withIcons(t.slice(1, -1), spells, `i${m.index}`)}</em>);
+    else out.push(<em key={m.index}>{withIcons(t.slice(1, -1), spells, `i${m.index}`, names)}</em>);
     last = m.index! + t.length;
   }
-  if (last < text.length) out.push(...withIcons(text.slice(last), spells, `t${last}`));
+  if (last < text.length) out.push(...withIcons(text.slice(last), spells, `t${last}`, names));
   return out;
 }
 
 /** `spells`: nome (minúsculas) -> spell, para mostrar o ícone ao lado das habilidades citadas. */
 export function Markdown({ text, spells }: { text: string; spells?: Map<string, number> }) {
+  const pc = usePlayerClasses();
+  const names = useMemo(() => namesRegex(pc), [pc]);
   const blocks: ReactNode[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
   const flush = () => {
@@ -215,7 +221,7 @@ export function Markdown({ text, spells }: { text: string; spells?: Map<string, 
     blocks.push(
       <Tag key={blocks.length}>
         {list.items.map((it, i) => (
-          <li key={i}>{inline(it, spells)}</li>
+          <li key={i}>{inline(it, spells, names)}</li>
         ))}
       </Tag>,
     );
@@ -235,7 +241,7 @@ export function Markdown({ text, spells }: { text: string; spells?: Map<string, 
     flush();
     if (!line.trim()) continue;
     const h = /^#{1,4}\s+(.*)$/.exec(line);
-    blocks.push(h ? <h4 key={blocks.length}>{inline(h[1], spells)}</h4> : <p key={blocks.length}>{inline(line, spells)}</p>);
+    blocks.push(h ? <h4 key={blocks.length}>{inline(h[1], spells, names)}</h4> : <p key={blocks.length}>{inline(line, spells, names)}</p>);
   }
   flush();
   return <div className="md">{blocks}</div>;

@@ -3868,3 +3868,25 @@ td.warn {
 .log-dungeons {
   display: block;
 }
+
+/* ---- ícone do boss ao lado do nome */
+.boss-icon {
+  border-radius: 5px;
+}
+.boss-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.boss-name .spell-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pull-tree h3 .boss-name {
+  flex: 1;
+}
+.player-name {
+  font-weight: inherit;
+}

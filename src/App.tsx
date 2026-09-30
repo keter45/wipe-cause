@@ -33,6 +33,7 @@ import { Sidebar } from './components/Sidebar';
 import type { WcrScan, WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
 import { raidOnly } from './lib/content';
+import { PlayerClassesContext, playerClasses } from './lib/players';
 import { SettingsView } from './components/settings/SettingsView';
 import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
 
@@ -263,8 +264,10 @@ export default function App() {
   const logMissing = entry != null && !entry.logExists;
 
   const browsing = page === 'browse' || (page === 'analysis' && !report);
+  const classes = useMemo(() => playerClasses(report?.pulls ?? []), [report]);
   return (
     <SetupContext.Provider value={{ status: setup.status, reload: setup.reload, openSettings }}>
+    <PlayerClassesContext.Provider value={classes}>
     <div className="app">
       <Header
         report={report}
@@ -369,6 +372,7 @@ export default function App() {
         </main>
       </div>
     </div>
+    </PlayerClassesContext.Provider>
     </SetupContext.Provider>
   );
 }

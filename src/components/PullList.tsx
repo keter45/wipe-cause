@@ -6,6 +6,7 @@ import { groupByBoss } from '../lib/night';
 import { lowestBossHp } from '../lib/verdict';
 import { useNote } from '../lib/notes';
 import { dungeonsOnly, raidOnly } from '../lib/content';
+import { BossName } from './Names';
 
 const DUNGEONS_OPEN_KEY = 'wipe-cause:dungeons-open';
 
@@ -64,7 +65,7 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
       {groupByBoss(pulls).map(({ key, pulls: ps }) => (
         <section key={key}>
           <h3>
-            {key}
+            <BossName encounterId={ps[0].encounterId} name={key} size={16} />
             <span className="group-count">{ps.length}</span>
           </h3>
           <SummaryLink active={summary === key} onClick={() => onSummary(key)} label="Resumo do boss" />

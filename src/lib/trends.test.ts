@@ -50,7 +50,7 @@ describe('buildTrends', () => {
   });
 
   it('lista os bosses do histórico', () => {
-    expect(trendBosses(nights)).toEqual([{ key: 'Boss · Mythic', nights: 2, pulls: 8 }]);
+    expect(trendBosses(nights)).toEqual([{ key: "Boss · Mythic", encounterId: 1, nights: 2, pulls: 8 }]);
   });
 });
 

@@ -61,18 +61,18 @@ export interface Trends {
 }
 
 /** Bosses presentes no histórico, do mais jogado para o menos. */
-export function trendBosses(nights: NightInput[]): { key: string; nights: number; pulls: number }[] {
-  const m = new Map<string, { nights: Set<string>; pulls: number }>();
+export function trendBosses(nights: NightInput[]): { key: string; encounterId: number; nights: number; pulls: number }[] {
+  const m = new Map<string, { encounterId: number; nights: Set<string>; pulls: number }>();
   for (const n of nights) {
     // a Evolução é de raid: masmorras (M+) ficam de fora
     for (const p of raidOnly(n.pulls)) {
-      const e = m.get(bossKey(p)) ?? { nights: new Set(), pulls: 0 };
+      const e = m.get(bossKey(p)) ?? { encounterId: p.encounterId, nights: new Set(), pulls: 0 };
       e.nights.add(n.id);
       e.pulls++;
       m.set(bossKey(p), e);
     }
   }
-  return [...m.entries()].map(([key, e]) => ({ key, nights: e.nights.size, pulls: e.pulls })).sort((a, b) => b.pulls - a.pulls);
+  return [...m.entries()].map(([key, e]) => ({ key, encounterId: e.encounterId, nights: e.nights.size, pulls: e.pulls })).sort((a, b) => b.pulls - a.pulls);
 }
 
 const pctOf = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);

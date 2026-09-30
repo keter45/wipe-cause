@@ -6,6 +6,7 @@ import { lowestBossHp } from '../lib/verdict';
 import { mechanicSpellId } from '../lib/spells';
 import { useNote } from '../lib/notes';
 import { SpellName } from './SpellIcon';
+import { BossName } from './Names';
 
 /** Tempo na tela: dá para ler entre um pull e outro sem ficar no caminho. */
 const SHOW_MS = 20_000;
@@ -33,7 +34,9 @@ export function LiveToast({ pull: p, discord, onOpen, onClose }: { pull: Pull; d
     <div className={`live-toast ${p.success ? 'kill' : 'wipe'}`} role="status">
       <div className="live-toast-row">
         <div className="live-toast-body">
-          <strong>{p.success ? `Kill! ${p.encounterName}` : `Pull ${p.pullNumber} · ${p.encounterName}${hp != null ? ` — ${pct(hp)}` : ''}`}</strong>
+          <strong>
+            <BossName encounterId={p.encounterId} name={p.success ? `Kill! ${p.encounterName}` : `Pull ${p.pullNumber} · ${p.encounterName}${hp != null ? ` — ${pct(hp)}` : ''}`} size={18} />
+          </strong>
           {!p.success && p.trigger && (
             <span className="small">
               Gatilho: <SpellName spellId={mechanicSpellId(p, p.trigger.key)} name={p.trigger.name} size={14} />

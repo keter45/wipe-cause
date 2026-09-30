@@ -3,7 +3,8 @@ import { CircleAlert, Crosshair, ExternalLink, FileText, Link2, PanelLeftClose, 
 import type { LogReport, Pull } from '../types';
 import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
 import { reportCode } from '../lib/wcl';
-import { logTitle } from '../lib/format';
+import { logTitle, mainEncounterId } from '../lib/format';
+import { BossName } from './Names';
 import { matchVideos } from '../lib/wcr';
 import { Popover } from './Popover';
 import { LiveButton } from './LiveControls';
@@ -97,7 +98,9 @@ function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
       <div className="log-chip" title={report.file}>
         <FileText {...ICON} className="muted" />
         <div className="log-chip-text">
-          <span className="log-title">{logTitle(report.pulls)}</span>
+          <span className="log-title">
+            <BossName encounterId={mainEncounterId(report.pulls)} name={logTitle(report.pulls)} size={18} />
+          </span>
           <span className="log-meta">
             {report.pulls.length} pulls
             {report.ignoredShortPulls > 0 && ` · ${report.ignoredShortPulls} curto${report.ignoredShortPulls > 1 ? 's' : ''} ignorado${report.ignoredShortPulls > 1 ? 's' : ''}`}

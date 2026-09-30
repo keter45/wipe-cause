@@ -4,6 +4,7 @@ import type { Pull } from '../types';
 import { classColor, mmss, num, pct, shortName } from '../lib/format';
 import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummary as Summary, type PlayerNight } from '../lib/night';
 import { dungeonsOnly, raidOnly } from '../lib/content';
+import { BossName } from './Names';
 import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
@@ -74,7 +75,9 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
           const top = b.causes.find((c) => c.triggers > 0);
           return (
             <button key={key} className="panel boss-card" onClick={() => onSelectBoss(key)}>
-              <span className="boss-card-title">{key}</span>
+              <span className="boss-card-title">
+                <BossName encounterId={b.pulls[0]?.encounterId} name={key} size={22} />
+              </span>
               <span className="boss-card-result">{b.kills ? 'Kill' : b.best ? `melhor ${pct(b.best.hp)}` : '—'}</span>
               <span className="muted small">
                 {b.pulls.length} pulls · {b.wipes} wipes · {duration(b.combatMs)} em combate · {clock(b.pulls[0])} → {endClock(b)}
@@ -130,7 +133,9 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
   return (
     <div className="night">
       <header className="night-head">
-        <h2>{title}</h2>
+        <h2>
+          <BossName encounterId={pulls[0]?.encounterId} name={title} size={26} />
+        </h2>
         <span className="head-actions">
           <SendToDiscord payload={() => bossPayload(title, s)} label="Enviar resumo ao Discord" />
           <ShareMenu card={() => <BossShareCard title={title} pulls={pulls} />} name={`Resumo - ${title}`} />
@@ -510,7 +515,7 @@ function Awards(props: {
                 ) : (
                   top.map((p, i) => (
                     <span key={p.guid} className={i === 0 ? 'first' : 'muted'}>
-                      <span style={{ color: i === 0 ? classColor(p.class) : undefined }}>{shortName(p.name)}</span> {a.format(p)}
+                      <span style={{ color: classColor(p.class) }}>{shortName(p.name)}</span> {a.format(p)}
                     </span>
                   ))
                 )}

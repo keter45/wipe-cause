@@ -29,6 +29,7 @@ import {
   type Sample,
 } from '../lib/performance';
 import { ShareMenu } from './ShareMenu';
+import { BossName, PlayerName } from './Names';
 import { ErrorBoundary } from './ErrorBoundary';
 import { specLabel } from '../lib/specs';
 import { useTalentTree, type TalentTree } from '../lib/talents';
@@ -444,10 +445,11 @@ export function PerfShareCard({
       <header className="share-head">
         <div>
           <div className="share-title">
-            {shortName(me.player.name)} · {specLabel(me.player.specId)}
+            <PlayerName name={me.player.name} cls={me.player.class} /> · {specLabel(me.player.specId)}
           </div>
           <div className="share-sub">
-            {me.pull.encounterName} {me.pull.difficultyName} · pull {me.pull.pullNumber} ({me.pull.success ? 'kill' : 'wipe'}, {mmss(me.pull.durationMs)}) ·
+            <BossName encounterId={me.pull.encounterId} name={`${me.pull.encounterName} ${me.pull.difficultyName}`} size={16} /> · pull {me.pull.pullNumber} (
+            {me.pull.success ? 'kill' : 'wipe'}, {mmss(me.pull.durationMs)}) ·
             comparado com {refName}
           </div>
         </div>

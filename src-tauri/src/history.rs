@@ -19,6 +19,9 @@ pub struct HistoryEntry {
     pub saved_at: i64,
     /// "24/09 · The Twin Fangs Mythic"
     pub title: String,
+    /// encontro do título (ícone do boss); entradas antigas não têm
+    #[serde(default)]
+    pub encounter_id: Option<u32>,
     /// início do 1º pull (epoch ms), para ordenar pela data da raid
     pub raid_start_ms: Option<i64>,
     pub log_path: String,
@@ -88,6 +91,17 @@ pub fn title_of(report: &LogReport) -> String {
     format!("{d:0>2}/{m:0>2} · {main}{}", if others > 0 { format!(" +{others}") } else { String::new() })
 }
 
+/// Encontro do título: o boss de raid com mais pulls (masmorra só se não houver raid).
+pub fn main_encounter(report: &LogReport) -> Option<u32> {
+    let raid: Vec<_> = report.pulls.iter().filter(|p| !p.dungeon).collect();
+    let pulls = if raid.is_empty() { report.pulls.iter().collect() } else { raid };
+    let mut count: HashMap<u32, usize> = HashMap::new();
+    for p in pulls {
+        *count.entry(p.encounter_id).or_default() += 1;
+    }
+    count.into_iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(&a.0))).map(|(id, _)| id)
+}
+
 fn now_ms() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
 }
@@ -121,6 +135,7 @@ fn save_in(dir: &Path, report: &LogReport, log_path: &str) -> Result<(), String>
         id,
         saved_at: now_ms(),
         title: title_of(report),
+        encounter_id: main_encounter(report),
         raid_start_ms: report.pulls.first().map(|p| p.start_ms),
         log_path: log_path.to_string(),
         pulls: report.pulls.len(),

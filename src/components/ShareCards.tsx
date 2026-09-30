@@ -9,6 +9,7 @@ import { analyzePull, lowestBossHp } from '../lib/verdict';
 import { PositionMap, type Mark } from './PositionMap';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { mechanicSpellId } from '../lib/spells';
+import { BossName, Colored } from './Names';
 import { getNote } from '../lib/notes';
 
 function Brand() {
@@ -48,7 +49,7 @@ export function PullShareCard({ pull: p }: { pull: Pull }) {
       <header className="share-head">
         <div>
           <div className="share-title">
-            {p.success ? 'Kill' : `Wipe · pull ${p.pullNumber}`} — {p.encounterName} {p.difficultyName}
+            <BossName encounterId={p.encounterId} name={`${p.success ? 'Kill' : `Wipe · pull ${p.pullNumber}`} — ${p.encounterName} ${p.difficultyName}`} size={22} />
           </div>
           <div className="share-sub">
             {dateOf(p)} {timeOf(p)} · {mmss(p.durationMs)} · {p.deaths.filter((d) => !d.ignored).length} mortes
@@ -67,8 +68,15 @@ export function PullShareCard({ pull: p }: { pull: Pull }) {
               <ul>
                 {findings.map((f, i) => (
                   <li key={i} className={f.severity}>
-                    {f.spellId != null && <SpellIcon spellId={f.spellId} size={16} />} <strong>{f.title}</strong>
-                    {f.detail && <span> — {f.detail}</span>}
+                    {f.spellId != null && <SpellIcon spellId={f.spellId} size={16} />} <strong>
+                      <Colored text={f.title} />
+                    </strong>
+                    {f.detail && (
+                      <span>
+                        {' '}
+                        — <Colored text={f.detail} />
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -133,7 +141,9 @@ export function BossShareCard({ title, pulls }: { title: string; pulls: Pull[] }
     <div className={`share-card ${s.kills ? 'kill' : 'wipe'}`}>
       <header className="share-head">
         <div>
-          <div className="share-title">{title}</div>
+          <div className="share-title">
+            <BossName encounterId={pulls[0]?.encounterId} name={title} size={22} />
+          </div>
           <div className="share-sub">
             {first ? `${dateOf(first)} · ` : ''}
             {s.pulls.length} pulls · {s.wipes} wipes · {s.kills} kill{s.kills === 1 ? '' : 's'}

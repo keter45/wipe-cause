@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronRight, FileX, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
 import type { LogReport } from '../types';
 import { inTauri, readReportFile, sameLog, type HistoryEntry } from '../lib/api';
-import { logTitle, pct } from '../lib/format';
+import { logTitle, mainEncounterId, pct } from '../lib/format';
+import { BossName } from './Names';
 import type { UpdateState } from '../lib/updater';
 import { missingRequired, useSetup } from '../lib/setup';
 import { NIGHT, PullList, type PullListProps } from './PullList';
@@ -83,7 +84,9 @@ export function Sidebar(props: Props) {
               <div className="side-item entry active">
                 <button className="entry-main" onClick={toggleOpen} title={current.file} aria-expanded={!collapsed}>
                   <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
-                  <span className="entry-title">{logTitle(current.pulls)}</span>
+                  <span className="entry-title">
+                    <BossName encounterId={mainEncounterId(current.pulls)} name={logTitle(current.pulls)} size={16} />
+                  </span>
                 </button>
               </div>
               {!collapsed && <PullList {...props} />}
@@ -196,7 +199,9 @@ function EntryRow({
           <>
             <button className="entry-main" onClick={() => (open ? onToggle() : props.onOpenEntry(e))} title={info} aria-expanded={expanded}>
               <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
-              <span className="entry-title">{e.title}</span>
+              <span className="entry-title">
+                <BossName encounterId={e.encounterId} name={e.title} size={16} />
+              </span>
               {!e.logExists && <FileX size={13} strokeWidth={1.5} className="entry-missing" aria-label="log original não encontrado" />}
             </button>
             <span className="entry-actions">
