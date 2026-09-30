@@ -192,9 +192,9 @@ code,
 .topbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 56px;
-  padding: 0 12px 0 16px;
+  gap: 10px;
+  height: 44px;
+  padding: 0 10px 0 14px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -233,9 +233,9 @@ code,
   align-items: center;
   gap: 10px;
   min-width: 0;
-  max-width: 460px;
-  height: 40px;
-  padding: 0 12px 0 10px;
+  max-width: 560px;
+  height: 32px;
+  padding: 0 10px;
   margin-right: 4px;
   background: var(--bg);
   border-radius: var(--radius-sm);
@@ -243,7 +243,8 @@ code,
 }
 .log-chip-text {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
   line-height: 1.25;
 }
@@ -4055,4 +4056,150 @@ svg.wcl-mark {
   .night-side {
     align-items: flex-start;
   }
+}
+
+/* topo compacto */
+.topbar .btn,
+.topbar .icon-btn {
+  height: 30px;
+}
+.topbar .btn {
+  padding: 0 10px;
+  font-size: 13px;
+}
+.topbar .stepper-label {
+  display: none;
+}
+
+/* barra lateral recolhida: coluna de ícones */
+.sidebar-top {
+  position: relative;
+}
+.sidebar-collapse {
+  position: absolute;
+  top: 10px;
+  right: 8px;
+  z-index: 1;
+}
+.sidebar-top .side-item.new {
+  width: calc(100% - 40px);
+}
+.sidebar-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 40px;
+  flex-shrink: 0;
+  padding: 8px 0;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+}
+.rail-entries {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.rail-item {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 120ms;
+}
+.rail-item:hover,
+.rail-item.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.rail-item.active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.rail-item.new {
+  color: var(--accent);
+}
+.rail-item.alert {
+  color: var(--major);
+}
+.rail-item:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.rail-sep {
+  width: 20px;
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+/* passo a passo (Configurações) */
+.first-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.first-steps h2 {
+  margin: 0;
+}
+.first-steps > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.first-steps[open] > summary {
+  margin-bottom: 10px;
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+}
+.step p {
+  margin: 2px 0 0;
+}
+.step-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--muted);
+}
+.step.done .step-mark {
+  background: color-mix(in oklch, var(--kill) 20%, transparent);
+  color: var(--kill);
+}
+.how h3 {
+  margin: 6px 0 4px;
+  font-size: 13px;
+}
+.how ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.how svg {
+  vertical-align: -2px;
 }

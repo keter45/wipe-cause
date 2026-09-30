@@ -1,11 +1,20 @@
 # wipe-cause
 
-Ferramenta local para descobrir **por que a try deu wipe** no World of Warcraft, lendo o `WoWCombatLog.txt` direto da sua máquina — sem depender da API do Warcraft Logs e sem servidor.
+Ferramenta para descobrir **por que a try deu wipe** no World of Warcraft. Lê o `WoWCombatLog.txt` direto da sua máquina e, com a sua conta do Warcraft Logs, completa a noite com o que o seu log não pegou — sem servidor próprio.
+
+## Primeiros passos
+
+Na primeira vez, o app abre em **Configurações** com o passo a passo (depois ele fica em *Configurações → Como funciona*):
+
+1. **Pasta de logs do WoW** — encontrada sozinha na maioria dos PCs (`World of Warcraft\_retail_\Logs`).
+2. **No jogo** — em *Opções → Rede*, ligue o *Advanced Combat Logging*; antes do primeiro pull, `/combatlog` (ou o uploader do Warcraft Logs, que liga sozinho).
+3. **Entrar com o Warcraft Logs** (recomendado) — com a sua conta o app vê os logs da sua guilda, completa o que faltou no seu log, liga o ao vivo sozinho e mostra o parse de cada um. Não precisa criar chave nem client.
+4. **Opcional** — vídeos do Warcraft Recorder, Discord e IA.
 
 ## Como funciona
 
-1. Ative o log no jogo: `/combatlog` + *Advanced Combat Logging* nas opções de rede.
-2. No app, escolha o log da noite na lista: ele encontra a pasta `World of Warcraft\_retail_\Logs` sozinho (ou você escolhe a pasta uma vez) e mostra os bosses de cada log.
+1. **Nova análise** mostra uma linha por noite: os logs do seu PC e os reports da guilda no Warcraft Logs, juntos. **Analisar** usa o log do seu PC (rápido, sem baixar nada).
+2. Bosses e pulls que **não estão no seu log** mas estão no Warcraft Logs (você saiu antes, entrou depois, estava longe) aparecem com o ícone de download. **Completar** baixa só o que falta — demora alguns minutos, então é você quem decide; depois do primeiro download, reabrir é rápido. Masmorras (M+) ficam de fora.
 3. Escolha o pull e veja:
    - o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e os erros de mecânica do boss;
    - cada morte: spike ou morte lenta, se faltou cura, debuffs ativos (com stacks e descrição), golpe final, defensivos/poção/healthstone;
@@ -32,7 +41,7 @@ Tudo o que o app precisa fica em **Configurações** (rodapé da barra lateral),
 
 - **Essencial:** a pasta de logs do WoW (detectada sozinha na maioria dos PCs) e o combat log no jogo (`/combatlog` + Advanced Combat Logging — o app avisa se o log aberto veio sem ele).
 - **Análise:** o corte de mortes padrão para logs novos.
-- **Integrações opcionais:** Warcraft Logs (client da API, para os tops da spec), pasta de vídeos do Warcraft Recorder, webhook do Discord e o provedor do "Perguntar à IA".
+- **Integrações opcionais:** Warcraft Logs (entrar com a conta; um client próprio da API fica como opção avançada), pasta de vídeos do Warcraft Recorder, webhook do Discord e o provedor do "Perguntar à IA".
 - **Sobre:** versão, atualizações e a pasta das regras de boss.
 
 Quando um recurso depende de uma integração que ainda não foi ligada, ele mostra um atalho que abre a seção certa.
@@ -41,7 +50,7 @@ Quando um recurso depende de uma integração que ainda não foi ligada, ele mos
 
 ## Modo ao vivo e Discord
 
-Com **Ao vivo** ligado (no topo), o app acompanha o `WoWCombatLog` mais recente da pasta de logs. Quando um pull termina, ele reanalisa o log em alguns segundos, abre o pull novo e mostra uma notificação — dá para ver o motivo do wipe antes do próximo pull.
+Com **Ao vivo** ligado (no topo), o app acompanha o `WoWCombatLog` mais recente da pasta de logs. Sem o WoW aberto neste PC e com a conta do Warcraft Logs, ele segue o log ao vivo da guilda (alguém precisa estar com o *Live Logging* do uploader ligado); com a opção *Ligar o ao vivo sozinho* (Configurações → Warcraft Logs), ele liga assim que a guilda começa a raid. Quando um pull termina, ele reanalisa o log em alguns segundos, abre o pull novo e mostra uma notificação — dá para ver o motivo do wipe antes do próximo pull.
 
 O aviso do pull tem um campo para anotar o motivo do wipe na hora, do jeito que a raid percebeu (ele não some enquanto você escreve). A anotação fica salva no PC, aparece no topo do pull (onde dá para editar depois), marca o pull na lista, vai no cartão de compartilhar e entra no contexto do "Perguntar à IA".
 
@@ -88,6 +97,8 @@ Com Advanced Combat Logging, cada morte (antes do corte) guarda onde todo mundo 
 Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando.
 
 ## Warcraft Logs
+
+Com a conta do Warcraft Logs, os reports da sua guilda (inclusive os não listados) aparecem em **Nova análise**, junto dos logs do PC; um link de fora da lista pode ser colado no fim da tela. O que estiver num log do seu PC sai dele; do Warcraft Logs só se baixa o que falta (os eventos baixados ficam no disco, para reanalisar sem gastar a API). Várias pessoas subiram a mesma noite? Os reports viram uma análise só, com uma cópia de cada pull.
 
 Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Isso não usa a API nem pede login; a API (com client próprio) só entra na aba Desempenho.
 

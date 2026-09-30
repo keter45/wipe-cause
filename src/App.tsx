@@ -32,7 +32,7 @@ import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { PullView } from './components/PullView';
 import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, SidebarRail } from './components/Sidebar';
 import type { WcrScan, WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
 import { raidOnly } from './lib/content';
@@ -54,6 +54,22 @@ function savedSidebarOpen(): boolean {
     return localStorage.getItem(SIDEBAR_KEY) !== '0';
   } catch {
     return true;
+  }
+}
+
+const ONBOARDED_KEY = 'wipe-cause:onboarded';
+function onboarded(): boolean {
+  try {
+    return localStorage.getItem(ONBOARDED_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
+function markOnboarded() {
+  try {
+    localStorage.setItem(ONBOARDED_KEY, '1');
+  } catch {
+    /* sem storage */
   }
 }
 
@@ -134,8 +150,21 @@ export default function App() {
   const updateState: UpdateState = demoUpdate ? { kind: 'available', version: '0.4.0', notes: '- Exemplo de novidade\n- Outra novidade' } : updater.state;
 
   const refreshHistory = () => historyList().then(setHistory).catch(() => {});
+  // primeira vez no app (sem nenhuma análise): abre nas Configurações, com o passo a passo
+  const [firstRun, setFirstRun] = useState(false);
   useEffect(() => {
-    refreshHistory();
+    historyList()
+      .then((h) => {
+        setHistory(h);
+        if (!onboarded()) {
+          markOnboarded();
+          if (h.length === 0 && inTauri) {
+            setFirstRun(true);
+            setPage('settings');
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   function toggleSidebar() {
@@ -289,8 +318,6 @@ export default function App() {
         onReanalyze={() => report && load(report.file, true)}
         onWcl={setWclCode}
         onVideos={setVideos}
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={toggleSidebar}
         live={demoLive ? { active: true, state: 'in_combat', file: 'WoWCombatLog-092826_204129.txt', encounter: 'The Coiled Altar', analyzed: 3, message: null } : live.status}
         showLive={inTauri || demoLive}
         liveError={live.error}
@@ -311,8 +338,9 @@ export default function App() {
       )}
 
       <div className="layout">
-        {sidebarOpen && (
+        {sidebarOpen ? (
           <Sidebar
+            onCollapse={toggleSidebar}
             history={history}
             report={report}
             busy={status.kind === 'loading'}
@@ -338,10 +366,32 @@ export default function App() {
               setSummary(k);
             }}
           />
+        ) : (
+          <SidebarRail
+            history={history}
+            report={report}
+            page={browsing ? 'browse' : page}
+            onNew={() => setPage('browse')}
+            onTrends={() => setPage('trends')}
+            onSettings={() => openSettings()}
+            onOpenEntry={openEntry}
+            onExpand={toggleSidebar}
+          />
         )}
         <main className="content">
           {page === 'settings' ? (
-            <SettingsView focus={settingsFocus} report={report} appVersion={updater.version} updateState={updateState} onCheckUpdates={() => updater.checkNow(true)} />
+            <SettingsView
+              focus={settingsFocus}
+              report={report}
+              appVersion={updater.version}
+              updateState={updateState}
+              onCheckUpdates={() => updater.checkNow(true)}
+              firstRun={firstRun}
+              onStart={() => {
+                setFirstRun(false);
+                setPage('browse');
+              }}
+            />
           ) : page === 'trends' ? (
             <TrendsView />
           ) : browsing ? (

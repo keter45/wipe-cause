@@ -24,6 +24,7 @@ import { AiForm } from './AiForm';
 import { DiscordForm } from './DiscordForm';
 import { FolderForm, type FolderApi } from './FolderForm';
 import { WclApiForm } from './WclApiForm';
+import { FirstSteps } from './FirstSteps';
 
 type Tone = 'ok' | 'todo' | 'off' | 'info';
 
@@ -35,6 +36,10 @@ interface Props {
   appVersion: string | null;
   updateState: UpdateState;
   onCheckUpdates: () => void;
+  /** primeira vez no app: o passo a passo aparece aberto */
+  firstRun: boolean;
+  /** "Começar": vai para a escolha da noite */
+  onStart: () => void;
 }
 
 const LOGS_API: FolderApi = {
@@ -62,7 +67,7 @@ const VIDEOS_API: FolderApi = {
  * Tudo o que o app precisa, num lugar: o essencial (pasta de logs e combat log no jogo), o
  * padrão da análise e as integrações opcionais. Cada cartão mostra o status e abre o formulário.
  */
-export function SettingsView({ focus, report, appVersion, updateState, onCheckUpdates }: Props) {
+export function SettingsView({ focus, report, appVersion, updateState, onCheckUpdates, firstRun, onStart }: Props) {
   const { status, reload } = useSetup();
   const [open, setOpen] = useState<Set<SettingsSection>>(() => new Set(focus ? [focus.section] : []));
   const toggle = (s: SettingsSection) =>
@@ -81,6 +86,12 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
     const id = window.setTimeout(() => document.getElementById(`set-${focus.section}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
     return () => window.clearTimeout(id);
   }, [focus]);
+
+  /** abre o cartão e rola até ele (passo a passo) */
+  const openSection = (s: SettingsSection) => {
+    setOpen((prev) => new Set(prev).add(s));
+    window.setTimeout(() => document.getElementById(`set-${s}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
+  };
 
   // o essencial que falta já começa aberto
   const logsMissing = missingRequired(status);
@@ -119,6 +130,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           </div>
         )}
       </header>
+      <FirstSteps firstRun={firstRun} onStart={onStart} onOpen={openSection} />
 
       <SettingsGroup title="Essencial" hint="Sem isso não há o que analisar.">
         {card(
