@@ -5439,9 +5439,11 @@ version = "0.7.0"
 dependencies = [
  "base64 0.23.1",
  "flate2",
+ "getrandom 0.3.4",
  "keyring",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

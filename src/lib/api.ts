@@ -66,11 +66,14 @@ export async function openExternal(url: string) {
 /** "Caminho" de uma análise feita a partir do Warcraft Logs (no lugar do arquivo de log). */
 export const WCL_SOURCE = 'wcl:';
 /** Código do report quando a análise veio do Warcraft Logs. */
-export const wclSourceCode = (file: string): string | null => (file.startsWith(WCL_SOURCE) ? file.slice(WCL_SOURCE.length) || null : null);
-/** Nome curto da fonte: o arquivo de log ou o report do Warcraft Logs. */
+export const wclSourceCodes = (file: string): string[] => (file.startsWith(WCL_SOURCE) ? file.slice(WCL_SOURCE.length).split(',').filter(Boolean) : []);
+/** Report principal (o mais completo) quando a análise veio do Warcraft Logs. */
+export const wclSourceCode = (file: string): string | null => wclSourceCodes(file)[0] ?? null;
+/** Nome curto da fonte: o arquivo de log ou o(s) report(s) do Warcraft Logs. */
 export function sourceName(file: string): string {
-  const code = wclSourceCode(file);
-  return code ? `Warcraft Logs · ${code}` : (file.split(/[\\/]/).pop() ?? file);
+  const codes = wclSourceCodes(file);
+  if (codes.length) return `Warcraft Logs · ${codes[0]}${codes.length > 1 ? ` +${codes.length - 1}` : ''}`;
+  return file.split(/[\\/]/).pop() ?? file;
 }
 /** Código do report a partir do link colado (ou do próprio código). */
 export function parseWclCode(input: string): string | null {

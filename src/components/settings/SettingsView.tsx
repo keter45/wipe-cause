@@ -178,9 +178,9 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           'wcl',
           Trophy,
           'Warcraft Logs',
-          'Compara você com os top players da spec na aba Desempenho e abre o seu fight no WoWAnalyzer.',
+          'Abre as noites da guilda sem o log no PC, compara você com os top players da spec e mostra o parse de cada um.',
           status?.wcl?.configured ? 'ok' : 'off',
-          status?.wcl?.configured ? 'Conectado' : 'Não conectado',
+          status?.wcl?.user ? `Conectado: ${status.wcl.user.name}` : status?.wcl?.configured ? 'Conectado' : 'Não conectado',
           inTauri ? <WclApiForm current={status?.wcl ?? null} onSaved={reload} /> : <OnlyInApp />,
         )}
         {card(

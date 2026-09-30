@@ -64,18 +64,18 @@ fn token(id: &str, secret: &str) -> Result<String, String> {
     Ok(t)
 }
 
-pub(crate) fn graphql(id: &str, secret: &str, query: &str, variables: &serde_json::Value) -> Result<serde_json::Value, String> {
-    let t = token(id, secret)?;
+/// Erro 401: o token não vale mais.
+pub(crate) const UNAUTHORIZED: &str = "Sessão do Warcraft Logs expirou; tente de novo.";
+
+/// POST de uma consulta GraphQL com um token (do client ou do usuário).
+pub(crate) fn post_graphql(url: &str, token: &str, query: &str, variables: &serde_json::Value) -> Result<serde_json::Value, String> {
     let res = agent()
-        .post(API_URL)
-        .set("Authorization", &format!("Bearer {t}"))
+        .post(url)
+        .set("Authorization", &format!("Bearer {token}"))
         .send_json(serde_json::json!({ "query": query, "variables": variables }));
     let json: serde_json::Value = match res {
         Ok(r) => r.into_json().map_err(|e| e.to_string())?,
-        Err(ureq::Error::Status(401, _)) => {
-            *TOKEN.lock().unwrap() = None; // token revogado: tenta de novo na próxima
-            return Err("Sessão do Warcraft Logs expirou; tente de novo.".into());
-        }
+        Err(ureq::Error::Status(401, _)) => return Err(UNAUTHORIZED.into()),
         Err(ureq::Error::Status(code, r)) => return Err(http_error(code, r.into_string().unwrap_or_default())),
         Err(e) => return Err(format!("Sem conexão com o Warcraft Logs: {e}")),
     };
@@ -86,10 +86,38 @@ pub(crate) fn graphql(id: &str, secret: &str, query: &str, variables: &serde_jso
     Ok(json["data"].clone())
 }
 
+pub(crate) fn graphql(id: &str, secret: &str, query: &str, variables: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let res = post_graphql(API_URL, &token(id, secret)?, query, variables);
+    if res.as_ref().is_err_and(|e| e == UNAUTHORIZED) {
+        *TOKEN.lock().unwrap() = None; // token revogado: tenta de novo na próxima
+    }
+    res
+}
+
+/// Consulta com o login do usuário (vê os reports não listados e privados das guildas dele);
+/// sem login, com o client cadastrado (só reports públicos).
+pub(crate) fn api_query(query: &str, variables: &serde_json::Value) -> Result<serde_json::Value, String> {
+    if let Some(t) = crate::wcl_auth::user_token() {
+        let res = post_graphql(crate::wcl_auth::USER_API, &t, query, variables);
+        if res.as_ref().is_err_and(|e| e == UNAUTHORIZED) {
+            crate::wcl_auth::forget_session();
+            return Err("O login do Warcraft Logs expirou. Entre de novo em Configurações → Warcraft Logs.".into());
+        }
+        return res;
+    }
+    let (id, secret) = credentials().ok_or("Entre com sua conta do Warcraft Logs (Configurações → Warcraft Logs).")?;
+    graphql(&id, &secret, query, variables)
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WclConfig {
+    /// dá para consultar a API (login do usuário ou client cadastrado)
     pub configured: bool,
+    /// quem entrou com a conta do Warcraft Logs
+    pub user: Option<crate::wcl_auth::WclUser>,
+    /// o login com a conta está disponível nesta versão
+    pub login_available: bool,
     /// para mostrar qual client está salvo (o secret nunca volta para a UI)
     pub client_id: Option<String>,
 }
@@ -97,7 +125,8 @@ pub struct WclConfig {
 #[tauri::command]
 pub fn wcl_get_config() -> WclConfig {
     let id = entry("wcl-client-id").ok().and_then(|e| e.get_password().ok()).filter(|v| !v.is_empty());
-    WclConfig { configured: credentials().is_some(), client_id: id }
+    let user = crate::wcl_auth::saved_user();
+    WclConfig { configured: user.is_some() || credentials().is_some(), user, login_available: crate::wcl_auth::client_id().is_some(), client_id: id }
 }
 
 /// Valida (pedindo um token) e guarda. Strings vazias apagam.
@@ -135,8 +164,7 @@ pub async fn wcl_query(app: AppHandle, query: String, variables: serde_json::Val
             return Ok(v);
         }
     }
-    let (id, secret) = credentials().ok_or("Configure o client do Warcraft Logs primeiro.")?;
-    let data = tauri::async_runtime::spawn_blocking(move || graphql(&id, &secret, &query, &variables)).await.map_err(|e| e.to_string())??;
+    let data = tauri::async_runtime::spawn_blocking(move || api_query(&query, &variables)).await.map_err(|e| e.to_string())??;
     if let Some(f) = &file {
         if let Some(dir) = f.parent() {
             let _ = std::fs::create_dir_all(dir);

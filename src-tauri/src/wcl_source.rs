@@ -6,7 +6,7 @@
 //! motor usa) para que reanalisar — regra ajustada, corte de mortes — não gaste os pontos da
 //! API de novo. Guardamos os últimos reports abertos.
 
-use crate::wcl::{credentials, graphql};
+use crate::wcl::api_query;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use serde_json::{Map, Value};
 use std::io::{Read, Write};
@@ -14,18 +14,22 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 use wipe_core::rules::RuleBook;
-use wipe_core::wcl::WclAnalyzer;
+use wipe_core::wcl::{dedupe, WclAnalyzer};
 use wipe_core::LogReport;
 
 /// "Caminho" de uma análise do Warcraft Logs (no lugar do arquivo de log).
 pub const PREFIX: &str = "wcl:";
 /// Reports com eventos guardados no disco.
 const KEEP_REPORTS: usize = 6;
-/// Um fight que terminou há menos que isso pode ainda estar chegando (log ao vivo): não guarda.
-const SETTLE_MS: i64 = 10 * 60_000;
+/// Fight com eventos do report depois dele (ou report parado há um tempo) não muda mais;
+/// antes disso, num log ao vivo, ainda pode estar chegando: não vai para o disco.
+const SETTLED_AFTER_MS: i64 = 30_000;
+const REPORT_IDLE_MS: i64 = 10 * 60_000;
 
-pub fn code_of(path: &str) -> Option<&str> {
-    path.strip_prefix(PREFIX).filter(|c| !c.is_empty())
+/// Códigos dos reports de uma análise do Warcraft Logs (`wcl:A` ou, noite com vários
+/// reports, `wcl:A,B`). Vazio se o caminho é de um log local.
+pub fn codes_of(path: &str) -> Vec<&str> {
+    path.strip_prefix(PREFIX).map(|c| c.split(',').filter(|c| !c.is_empty()).collect()).unwrap_or_default()
 }
 
 const REPORT_QUERY: &str = "query R($code: String!) {
@@ -155,29 +159,33 @@ fn now_ms() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
 }
 
-/// Baixa (ou lê do disco) e analisa o report. `progress(feitos, total)` por fight.
-pub fn analyze(app: &AppHandle, code: &str, book: RuleBook, death_cutoff: u32, tz_hours: f64, mut progress: impl FnMut(u64, u64)) -> Result<LogReport, String> {
-    let (id, secret) = credentials().ok_or("Conecte o Warcraft Logs em Configurações para abrir reports de lá.")?;
-    let data = graphql(&id, &secret, REPORT_QUERY, &serde_json::json!({ "code": code }))?;
-    let report = &data["reportData"]["report"];
-    if report.is_null() {
-        return Err(format!("Report {code} não encontrado no Warcraft Logs (ele é privado ou o código está errado)."));
+/// Baixa (ou lê do disco) e analisa os reports da noite (um ou mais, da mesma raid): cada
+/// pull vem de uma fonte só (`dedupe`). `progress(feitos, total)` por fight.
+pub fn analyze(app: &AppHandle, codes: &[&str], book: RuleBook, death_cutoff: u32, tz_hours: f64, mut progress: impl FnMut(u64, u64)) -> Result<LogReport, String> {
+    let mut analyzer = WclAnalyzer::new(book, death_cutoff, tz_hours);
+    // (início, fim) de cada report, para saber se um fight já não muda
+    let mut spans = Vec::new();
+    for code in codes {
+        let data = api_query(REPORT_QUERY, &serde_json::json!({ "code": code }))?;
+        let report = &data["reportData"]["report"];
+        if report.is_null() {
+            return Err(format!("Report {code} não encontrado no Warcraft Logs (ele é privado ou o código está errado)."));
+        }
+        analyzer.add_report(report, None)?;
+        spans.push((report["startTime"].as_i64().unwrap_or(0), report["endTime"].as_i64().unwrap_or(0)));
     }
-    let mut analyzer = WclAnalyzer::new(report, book, death_cutoff, tz_hours, None)?;
-    let fights: Vec<_> = analyzer.fights().to_vec();
+    let fights = dedupe(analyzer.fights());
     if fights.is_empty() {
-        return Err("Este report não tem nenhum boss.".into());
+        return Err("Nenhum boss nos reports.".into());
     }
-    let start = report["startTime"].as_i64().unwrap_or(0);
-    let end = report["endTime"].as_i64().unwrap_or(0);
-    let dir = cache_dir(app, code);
     let total = fights.len() as u64 * 100;
 
     for (i, f) in fights.iter().enumerate() {
         let done = i as u64 * 100;
         progress(done, total);
-        let file = dir.as_ref().map(|d| d.join(format!("fight-{}.json.gz", f.id)));
-        analyzer.begin_fight(f.id)?;
+        let code = codes[f.report];
+        let file = cache_dir(app, code).map(|d| d.join(format!("fight-{}.json.gz", f.id)));
+        analyzer.begin_fight(f.report, f.id)?;
         if let Some(events) = file.as_deref().and_then(read_cached) {
             analyzer.push_events(&events);
             continue;
@@ -187,7 +195,7 @@ pub fn analyze(app: &AppHandle, code: &str, book: RuleBook, death_cutoff: u32, t
         let mut pages = 0u64;
         while let Some(t) = from {
             let vars = serde_json::json!({ "code": code, "fight": f.id, "start": t, "end": f.end_time });
-            let mut page = graphql(&id, &secret, EVENTS_QUERY, &vars)?;
+            let mut page = api_query(EVENTS_QUERY, &vars)?;
             let events = &mut page["reportData"]["report"]["events"];
             from = events["nextPageTimestamp"].as_f64();
             let data = slim(match events["data"].take() {
@@ -199,24 +207,26 @@ pub fn analyze(app: &AppHandle, code: &str, book: RuleBook, death_cutoff: u32, t
             pages += 1;
             progress(done + (pages * 8).min(95), total);
         }
-        // fight recente de um log ao vivo pode ainda crescer
-        let settled = end - f.end_time > SETTLE_MS || now_ms() - (start + end) > SETTLE_MS;
+        let (start, end) = spans[f.report];
+        let settled = end - f.end_time > SETTLED_AFTER_MS || now_ms() - (start + end) > REPORT_IDLE_MS;
         if let (Some(file), true) = (&file, settled) {
             write_cached(file, &all);
         }
     }
-    if let Some(d) = &dir {
-        // marca o report como usado agora (a limpeza mantém os mais recentes)
-        let _ = std::fs::create_dir_all(d);
-        let _ = std::fs::remove_file(d.join(".used"));
-        let _ = std::fs::File::create(d.join(".used"));
-        if let Some(root) = d.parent() {
-            prune(root);
+    for code in codes {
+        if let Some(d) = cache_dir(app, code) {
+            // marca o report como usado agora (a limpeza mantém os mais recentes)
+            let _ = std::fs::create_dir_all(&d);
+            let _ = std::fs::remove_file(d.join(".used"));
+            let _ = std::fs::File::create(d.join(".used"));
         }
+    }
+    if let Some(root) = cache_dir(app, "x").and_then(|d| d.parent().map(Path::to_path_buf)) {
+        prune(&root);
     }
     progress(total, total);
     let mut r = analyzer.finish();
-    r.file = format!("{PREFIX}{code}");
+    r.file = format!("{PREFIX}{}", codes.join(","));
     Ok(r)
 }
 
@@ -225,10 +235,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reads_the_code_from_the_source_path() {
-        assert_eq!(code_of("wcl:abc12345"), Some("abc12345"));
-        assert_eq!(code_of("wcl:"), None);
-        assert_eq!(code_of("C:/logs/x.txt"), None);
+    fn reads_the_codes_from_the_source_path() {
+        assert_eq!(codes_of("wcl:abc12345"), vec!["abc12345"]);
+        assert_eq!(codes_of("wcl:abc12345,def67890"), vec!["abc12345", "def67890"]);
+        assert!(codes_of("wcl:").is_empty());
+        assert!(codes_of("C:/logs/x.txt").is_empty());
     }
 
     #[test]

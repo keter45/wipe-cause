@@ -1,12 +1,89 @@
 import { useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, LogIn, LogOut } from 'lucide-react';
 import { openExternal } from '../../lib/api';
-import { wclSetConfig, type WclConfig } from '../../lib/wclApi';
+import { wclLogin, wclLogout, wclSetConfig, type WclConfig } from '../../lib/wclApi';
 
 const CLIENTS_URL = 'https://www.warcraftlogs.com/api/clients/';
 
-/** Client da API v2 do Warcraft Logs (grátis): habilita os tops da spec na aba Desempenho. */
+/**
+ * Warcraft Logs: entrar com a conta (vê os reports das suas guildas, inclusive não listados)
+ * ou, avançado, um client próprio da API v2 (só reports públicos).
+ */
 export function WclApiForm({ current, onSaved }: { current: WclConfig | null; onSaved: () => void }) {
+  const user = current?.user ?? null;
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function login() {
+    setBusy(true);
+    setMsg({ ok: true, text: 'Continue no navegador: autorize o Wipe Cause no Warcraft Logs e volte para cá.' });
+    try {
+      const u = await wclLogin();
+      setMsg({ ok: true, text: `Conectado como ${u.name}.` });
+      onSaved();
+    } catch (e) {
+      setMsg({ ok: false, text: String(e) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function logout() {
+    await wclLogout();
+    setMsg(null);
+    onSaved();
+  }
+
+  return (
+    <>
+      {current?.loginAvailable && (
+        <div className="wcl-account">
+          {user ? (
+            <>
+              <p className="small">
+                Conectado como <strong>{user.name}</strong>
+                {user.guilds.length > 0 && (
+                  <span className="muted">
+                    {' '}
+                    · {user.guilds.map((g) => `${g.name} (${g.serverName}-${g.region})`).join(', ')}
+                  </span>
+                )}
+              </p>
+              <div className="set-actions">
+                <button className="btn ghost sm" onClick={logout}>
+                  <LogOut size={14} strokeWidth={1.5} aria-hidden /> Sair
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="small">
+                Entre com a sua conta: o app passa a ver os reports das suas guildas (inclusive os não listados), sem precisar do log no PC.
+              </p>
+              <div className="set-actions">
+                <button className="btn primary" onClick={login} disabled={busy}>
+                  <LogIn size={14} strokeWidth={1.5} aria-hidden /> {busy ? 'Esperando o navegador…' : 'Entrar com o Warcraft Logs'}
+                </button>
+              </div>
+            </>
+          )}
+          {msg && <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>{msg.text}</p>}
+        </div>
+      )}
+      {current?.loginAvailable ? (
+        <details className="wcl-advanced">
+          <summary className="small">Avançado: usar um client próprio da API</summary>
+          <ClientForm current={current} onSaved={onSaved} />
+        </details>
+      ) : (
+        <ClientForm current={current} onSaved={onSaved} />
+      )}
+    </>
+  );
+}
+
+/** Client da API v2 do Warcraft Logs (grátis): consultas sem login, só com reports públicos. */
+function ClientForm({ current, onSaved }: { current: WclConfig | null; onSaved: () => void }) {
   const clientId = current?.clientId ?? null;
   const [id, setId] = useState(clientId ?? '');
   const [secret, setSecret] = useState('');
@@ -68,8 +145,8 @@ export function WclApiForm({ current, onSaved }: { current: WclConfig | null; on
         </button>
       </div>
       <p className="muted small">
-        O secret fica no cofre de credenciais do Windows e as consultas só enviam boss, spec e código de report: nada do seu log sai do PC. O link do
-        report de cada noite fica no botão <em>Warcraft Logs</em> do topo.
+        Sem login, a API só mostra reports públicos. O secret fica no cofre de credenciais do Windows e as consultas só enviam boss, spec e código de
+        report: nada do seu log sai do PC.
       </p>
     </>
   );

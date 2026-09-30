@@ -7,6 +7,7 @@ mod rule_tuning;
 mod settings;
 mod talents;
 mod wcl;
+mod wcl_auth;
 mod wcl_source;
 mod wcr;
 
@@ -34,21 +35,19 @@ pub(crate) fn user_rules_dir(app: &AppHandle) -> Option<PathBuf> {
 /// `tz_hours` é o fuso de quem vê (o Warcraft Logs guarda os horários em UTC).
 pub(crate) fn analyze_and_save(app: &AppHandle, path: &str, death_cutoff: u32, tz_hours: f64, progress: impl FnMut(u64, u64)) -> Result<LogReport, String> {
     let rules_dir = user_rules_dir(app);
-    let report = match wcl_source::code_of(path) {
-        Some(code) => {
-            let mut book = wipe_core::rules::RuleBook::embedded();
-            if let Some(dir) = &rules_dir {
-                book.load_dir(dir);
-            }
-            if let Some(dir) = tuning_dir(app) {
-                book.load_tuning_dir(&dir);
-            }
-            wcl_source::analyze(app, code, book, death_cutoff, tz_hours, progress)?
+    let codes = wcl_source::codes_of(path);
+    let report = if !codes.is_empty() {
+        let mut book = wipe_core::rules::RuleBook::embedded();
+        if let Some(dir) = &rules_dir {
+            book.load_dir(dir);
         }
-        None => {
-            let opts = wipe_core::AnalyzeOptions { rules_dir, tuning_dir: tuning_dir(app), death_cutoff };
-            wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| format!("não foi possível ler {path}: {e}"))?
+        if let Some(dir) = tuning_dir(app) {
+            book.load_tuning_dir(&dir);
         }
+        wcl_source::analyze(app, &codes, book, death_cutoff, tz_hours, progress)?
+    } else {
+        let opts = wipe_core::AnalyzeOptions { rules_dir, tuning_dir: tuning_dir(app), death_cutoff };
+        wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| format!("não foi possível ler {path}: {e}"))?
     };
     if let Err(e) = history::save(app, &report, path) {
         eprintln!("não foi possível salvar no histórico: {e}");
@@ -105,6 +104,9 @@ pub fn run() {
             wcl::wcl_get_config,
             wcl::wcl_set_config,
             wcl::wcl_query,
+            wcl_auth::wcl_login,
+            wcl_auth::wcl_logout,
+            wcl_auth::wcl_refresh_user,
             live::live_start,
             live::live_stop,
             live::live_status,

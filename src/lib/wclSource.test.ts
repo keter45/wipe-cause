@@ -16,5 +16,9 @@ describe('análise a partir do Warcraft Logs', () => {
     expect(sourceName('C:\\Logs\\WoWCombatLog-092926.txt')).toBe('WoWCombatLog-092926.txt');
     expect(sourceName('D:/Logs/WoWCombatLog-092926.txt')).toBe('WoWCombatLog-092926.txt');
     expect(savedWclLink('wcl:vbCJ2N7yGVYczdr3')).toBe('https://www.warcraftlogs.com/reports/vbCJ2N7yGVYczdr3');
+    // noite com dois reports: o principal é o primeiro
+    expect(wclSourceCode('wcl:AAAAAAAA,BBBBBBBB')).toBe('AAAAAAAA');
+    expect(sourceName('wcl:AAAAAAAA,BBBBBBBB')).toBe('Warcraft Logs · AAAAAAAA +1');
+    expect(savedWclLink('wcl:AAAAAAAA,BBBBBBBB')).toBe('https://www.warcraftlogs.com/reports/AAAAAAAA');
   });
 });
