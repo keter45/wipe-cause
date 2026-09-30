@@ -6,6 +6,7 @@ mod logs;
 mod rule_tuning;
 mod settings;
 mod talents;
+mod tray;
 mod wcl;
 mod wcl_auth;
 mod wcl_source;
@@ -90,6 +91,9 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
+        // fechar a janela esconde na bandeja (o ao vivo continua); Sair fica no menu do ícone
+        .setup(|app| Ok(tray::setup(app.handle())?))
+        .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             analyze_log,
             rules_dir,
