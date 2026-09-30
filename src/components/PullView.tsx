@@ -3,6 +3,7 @@ import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, Star, X } from 
 import { useNote } from '../lib/notes';
 import { addMark, useMarks } from '../lib/marks';
 import { PullMarks } from './PullMarks';
+import { useWclParses } from '../lib/useWclParses';
 import { BossName, Colored } from './Names';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
@@ -246,7 +247,7 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
         />
       )}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
-      {tab === 'players' && <PlayersTable players={pull.players} scores={scorePull(pull)} />}
+      {tab === 'players' && <PlayersTab pull={pull} wclCode={wclCode} />}
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
       {tab === 'spells' && <EnemySpellsTable pull={pull} onRulesChanged={onRulesChanged} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
@@ -254,6 +255,12 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
     </div>
     </SeekContext.Provider>
   );
+}
+
+/** Aba Jogadores: nota do app + parse do Warcraft Logs (DPS para dps, HPS para healers). */
+function PlayersTab({ pull, wclCode }: { pull: Pull; wclCode?: string }) {
+  const parseState = useWclParses(pull, wclCode);
+  return <PlayersTable players={pull.players} scores={scorePull(pull)} parseState={parseState} />;
 }
 
 /** Anotação livre do pull (a mesma do aviso do modo ao vivo). */
