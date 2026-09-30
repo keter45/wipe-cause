@@ -82,20 +82,24 @@ function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
   if (!report) return null;
 
   const fileName = sourceName(report.file);
+  const short = report.ignoredShortPulls;
+  const meta = [
+    `${report.pulls.length} pulls`,
+    short > 0 ? `${short} curto${short > 1 ? 's' : ''} ignorado${short > 1 ? 's' : ''}` : null,
+    fileName + (report.localLogs?.length ? ` (${report.pulls.length - (report.wclPulls ?? 0)} do log do PC, ${report.wclPulls ?? 0} do WCL)` : ''),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  // o chip corta o texto: o tooltip mostra tudo, com o caminho do log
+  const full = [`${logTitle(report.pulls)} · ${meta}`, report.file, ...(report.localLogs ?? [])].join('\n');
   return (
     <div className="topbar-group log-group">
-      <div className="log-chip" title={report.file}>
+      <div className="log-chip" title={full}>
         <div className="log-chip-text">
           <span className="log-title">
             <BossName encounterId={mainEncounterId(report.pulls)} name={logTitle(report.pulls)} size={18} />
           </span>
-          <span className="log-meta">
-            {report.pulls.length} pulls
-            {report.ignoredShortPulls > 0 && ` · ${report.ignoredShortPulls} curto${report.ignoredShortPulls > 1 ? 's' : ''} ignorado${report.ignoredShortPulls > 1 ? 's' : ''}`}
-            {' · '}
-            {fileName}
-            {report.localLogs?.length ? ` (${report.pulls.length - (report.wclPulls ?? 0)} do log do PC, ${report.wclPulls ?? 0} do WCL)` : ''}
-          </span>
+          <span className="log-meta">{meta}</span>
         </div>
         {!report.advancedLogging && (
           <span className="warn-pill" title="Sem Advanced Combat Logging: HP, recap e bosses ficam incompletos. Ative em Opções → Rede.">

@@ -17,7 +17,6 @@ import { openExternal, type WcrVideo } from '../lib/api';
 import { SeekContext } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
-import { SendToDiscord } from './SendToDiscord';
 import { ShareMenu } from './ShareMenu';
 import { PullShareCard } from './ShareCards';
 import { AskView } from './AskView';
@@ -167,8 +166,7 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
             </button>
           )}
           {(video || wclCode) && <span className="toolbar-divider" aria-hidden />}
-          <SendToDiscord payload={() => pullPayload(pull, wclCode)} />
-          <ShareMenu card={() => <PullShareCard pull={pull} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
+          <ShareMenu discord={() => pullPayload(pull, wclCode)} card={() => <PullShareCard pull={pull} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
         </span>
       </div>
 

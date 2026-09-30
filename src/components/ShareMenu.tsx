@@ -1,19 +1,20 @@
 import { useState, type ReactElement } from 'react';
 import { Check, ClipboardCopy, FileCode, FileText, ImageDown, MessageSquare, Share2 } from 'lucide-react';
-import { inTauri } from '../lib/api';
+import { discordPost, inTauri } from '../lib/api';
 import { cardHtml, cardPng, copyPng, fileSlug, printPdf, saveHtml, savePng, sendPngToDiscord } from '../lib/share';
 import { Popover } from './Popover';
 import { PlayerClassesContext, usePlayerClasses } from '../lib/players';
 import { useSetup } from '../lib/setup';
 
-type Action = 'copy' | 'png' | 'html' | 'pdf' | 'discord';
+type Action = 'copy' | 'png' | 'html' | 'pdf' | 'discord' | 'discordText';
 
 const LABEL: Record<Action, string> = {
   copy: 'Copiar imagem',
   png: 'Salvar imagem (PNG)',
   html: 'Salvar página (HTML)',
   pdf: 'Salvar PDF (com links)',
-  discord: 'Enviar imagem ao Discord',
+  discord: 'Imagem no Discord',
+  discordText: 'Mensagem no Discord',
 };
 const DONE: Record<Action, string> = {
   copy: 'Imagem copiada: cole no Discord ou WhatsApp',
@@ -21,17 +22,21 @@ const DONE: Record<Action, string> = {
   html: 'Página salva',
   pdf: 'Na janela que abriu, escolha “Salvar como PDF”',
   discord: 'Imagem enviada ao Discord',
+  discordText: 'Resumo enviado ao Discord',
 };
 
 /**
  * "Compartilhar": gera o cartão (`card()`) como imagem ou página, para quem não tem o app.
  * `name`: base do nome do arquivo e título. `pdf`: oferece PDF (links clicáveis).
+ * `discord`: a mensagem de texto (resumo) para o canal da raid; sem webhook, o menu leva às
+ * Configurações.
  */
-export function ShareMenu({ card: makeCard, name, pdf = false }: { card: () => ReactElement; name: string; pdf?: boolean }) {
+export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card: () => ReactElement; name: string; pdf?: boolean; discord?: () => unknown }) {
   const classes = usePlayerClasses();
   const card = () => <PlayerClassesContext.Provider value={classes}>{makeCard()}</PlayerClassesContext.Provider>;
   const [open, setOpen] = useState(false);
-  const hasDiscord = !!useSetup().status?.discord?.webhook;
+  const { status, openSettings } = useSetup();
+  const hasDiscord = !!status?.discord?.webhook;
   const [busy, setBusy] = useState<Action | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const file = fileSlug(name) || 'wipe-cause';
@@ -40,7 +45,9 @@ export function ShareMenu({ card: makeCard, name, pdf = false }: { card: () => R
     setBusy(a);
     setMsg(null);
     try {
-      if (a === 'html') {
+      if (a === 'discordText') {
+        if (discord) await discordPost(discord());
+      } else if (a === 'html') {
         if (!(await saveHtml(await cardHtml(card(), name), `${file}.html`))) return;
       } else if (a === 'pdf') {
         await printPdf(await cardHtml(card(), name));
@@ -63,9 +70,9 @@ export function ShareMenu({ card: makeCard, name, pdf = false }: { card: () => R
     'png',
     ...(pdf ? (['pdf'] as const) : []),
     'html',
-    ...(inTauri && hasDiscord ? (['discord'] as const) : []),
+    ...(inTauri && hasDiscord ? ([...(discord ? (['discordText'] as const) : []), 'discord'] as const) : []),
   ];
-  const icons = { copy: ClipboardCopy, png: ImageDown, html: FileCode, pdf: FileText, discord: MessageSquare };
+  const icons = { copy: ClipboardCopy, png: ImageDown, html: FileCode, pdf: FileText, discord: MessageSquare, discordText: MessageSquare };
 
   return (
     <Popover
@@ -93,6 +100,21 @@ export function ShareMenu({ card: makeCard, name, pdf = false }: { card: () => R
           );
         })}
       </div>
+      {inTauri && status && !hasDiscord && (
+        <p className="muted small">
+          Discord:{' '}
+          <button
+            className="link"
+            onClick={() => {
+              setOpen(false);
+              openSettings('discord');
+            }}
+          >
+            configure o webhook do canal da raid
+          </button>{' '}
+          para enviar direto.
+        </p>
+      )}
       {msg && (
         <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>
           {msg.ok && <Check size={12} strokeWidth={2} aria-hidden />} {msg.text}

@@ -2209,9 +2209,9 @@ ul.plain {
 }
 .sidebar-foot {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px 10px;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 8px;
   border-top: 1px solid var(--border);
 }
 .update-foot {
@@ -3490,7 +3490,7 @@ td.warn {
 .topbar .live-state {
   max-width: 160px;
 }
-@media (max-width: 1500px) {
+@media (max-width: 1180px) {
   .topbar .stepper-label {
     display: none;
   }
@@ -4067,7 +4067,7 @@ svg.wcl-mark {
   padding: 0 10px;
   font-size: 13px;
 }
-.topbar .stepper-label {
+.topbar .stepper-long {
   display: none;
 }
 
@@ -4202,4 +4202,103 @@ svg.wcl-mark {
 }
 .how svg {
   vertical-align: -2px;
+}
+
+/* barra lateral: uma linha por boss (resumo), pulls no chevron */
+.boss-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  transition-property: background-color;
+  transition-duration: 120ms;
+}
+.boss-row:hover,
+.boss-row.active {
+  background: var(--panel-2);
+}
+.boss-row-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 4px 5px 8px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.boss-row-main .boss-name {
+  max-width: 100%;
+}
+.boss-row-main:focus-visible,
+.boss-row-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.boss-row-meta {
+  padding-left: 24px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.boss-row-meta.kill {
+  color: var(--kill);
+}
+.boss-row-toggle {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.boss-group + .boss-group {
+  margin-top: 2px;
+}
+.boss-group .pull-row {
+  margin-left: 8px;
+  width: calc(100% - 8px);
+}
+
+/* rodapé da barra lateral: Configurações + versão numa linha */
+.sidebar-foot .side-item {
+  flex: 1;
+  min-width: 0;
+}
+.version-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.version-chip:hover:not(:disabled) {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.version-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.version-chip.has-update {
+  color: var(--accent);
+}
+.update-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
 }

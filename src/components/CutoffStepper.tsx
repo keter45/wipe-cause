@@ -1,12 +1,14 @@
 import { Minus, Plus, Skull } from 'lucide-react';
 
-/** "Ignorar eventos após N mortes": − [N] +. Os rótulos somem no topo quando a janela é estreita. */
+/** "Analisar até N mortes": − [N] +. No topo o rótulo fica curto ("até 4 mortes") e some se a janela é estreita. */
 export function CutoffStepper({ value, disabled, title, onChange }: { value: number; disabled: boolean; title: string; onChange: (n: number) => void }) {
   const set = (n: number) => onChange(Math.max(0, Math.min(40, n)));
   return (
     <div className="stepper" role="group" aria-label="Ignorar eventos após N mortes" title={title}>
       <Skull size={16} strokeWidth={1.5} className="muted" aria-hidden />
-      <span className="stepper-label">Ignorar após</span>
+      <span className="stepper-label">
+        <span className="stepper-long">Analisar </span>até
+      </span>
       <button className="icon-btn sm" onClick={() => set(value - 1)} disabled={disabled || value <= 0} aria-label="Menos uma morte">
         <Minus size={14} strokeWidth={2} aria-hidden />
       </button>

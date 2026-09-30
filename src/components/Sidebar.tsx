@@ -138,7 +138,7 @@ export function Sidebar(props: Props) {
 
       <div className="sidebar-foot">
         <SettingsItem active={props.page === 'settings'} onClick={props.onSettings} />
-        {inTauri && <UpdateFooter version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
+        {inTauri && <VersionChip version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
       </div>
     </aside>
   );
@@ -246,10 +246,11 @@ function SettingsItem({ active, onClick }: { active: boolean; onClick: () => voi
   );
 }
 
-function UpdateFooter({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
+/** Versão no rodapé, na linha das Configurações: clique procura atualização; ponto = versão nova. */
+function VersionChip({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
   const label =
     state.kind === 'checking'
-      ? 'Procurando…'
+      ? 'Procurando atualizações…'
       : state.kind === 'none'
         ? 'Você está na versão mais recente'
         : state.kind === 'available'
@@ -257,13 +258,12 @@ function UpdateFooter({ version, state, onCheck }: { version: string | null; sta
           : state.kind === 'downloading'
             ? 'Baixando atualização…'
             : 'Procurar atualizações';
+  const busy = state.kind === 'checking' || state.kind === 'downloading';
   return (
-    <div className="update-foot">
-      <span className="muted small">{version ? `Wipe Cause v${version}` : 'Wipe Cause'}</span>
-      <button className="foot-check small" onClick={onCheck} disabled={state.kind === 'checking' || state.kind === 'downloading'} title="Procurar atualizações">
-        <RefreshCw size={12} strokeWidth={1.5} className={state.kind === 'checking' ? 'spin' : ''} aria-hidden /> {label}
-      </button>
-    </div>
+    <button className={`version-chip ${state.kind === 'available' ? 'has-update' : ''}`} onClick={onCheck} disabled={busy} title={label} aria-label={`Wipe Cause ${version ?? ''}: ${label}`}>
+      {busy ? <RefreshCw size={11} strokeWidth={1.75} className="spin" aria-hidden /> : state.kind === 'available' && <span className="update-dot" aria-hidden />}
+      {version ? `v${version}` : 'versão'}
+    </button>
   );
 }
 
