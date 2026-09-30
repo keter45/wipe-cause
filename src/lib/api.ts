@@ -309,6 +309,9 @@ const normPath = (p: string) => p.replaceAll('\\', '/').toLowerCase();
 export const sameLog = (a: string, b: string) => normPath(a) === normPath(b);
 
 /** Pasta onde o usuário pode pôr regras de boss (*.yaml) que substituem as embutidas. */
+/** "Abrir o Wipe Cause quando o WoW abrir" (inicia com o Windows, na bandeja). */
+export const startupGet = () => (inTauri ? invoke<boolean>('startup_get') : Promise.resolve(false));
+export const startupSet = (enabled: boolean) => invoke<void>('startup_set', { enabled });
 export const rulesDir = () => (inTauri ? invoke<string | null>('rules_dir') : Promise.resolve(null));
 
 /** Mostra o arquivo ou pasta no Explorador de Arquivos (permitido pelo opener:default). */

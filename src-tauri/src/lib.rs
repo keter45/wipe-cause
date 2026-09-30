@@ -5,6 +5,7 @@ mod live;
 mod logs;
 mod rule_tuning;
 mod settings;
+mod startup;
 mod talents;
 mod tray;
 mod wcl;
@@ -92,7 +93,15 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
         // fechar a janela esconde na bandeja (o ao vivo continua); Sair fica no menu do ícone
-        .setup(|app| Ok(tray::setup(app.handle())?))
+        .setup(|app| {
+            tray::setup(app.handle())?;
+            // a janela nasce escondida: aparece, a não ser quando o Windows abriu o app na bandeja
+            if !std::env::args().any(|a| a == startup::TRAY_ARG) {
+                tray::show(app.handle());
+            }
+            startup::watch(app.handle().clone());
+            Ok(())
+        })
         .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             analyze_log,
@@ -119,6 +128,8 @@ pub fn run() {
             discord::discord_post,
             discord::discord_post_image,
             save_file,
+            startup::startup_get,
+            startup::startup_set,
             logs::logs_list,
             logs::logs_peek,
             logs::logs_get_dir,

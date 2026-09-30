@@ -31,8 +31,8 @@ export function FirstSteps({ firstRun, onStart, onOpen }: { firstRun: boolean; o
           Com a sua conta, o app vê os logs da sua guilda: mostra o que faltou no log do seu PC, liga o ao vivo sozinho quando a raid começa e traz o parse
           de cada um. Não precisa criar chave nem client.
         </Step>
-        <Step done={null} title="Opcional" action={<button className="link" onClick={() => onOpen('videos')}>Ver integrações</button>}>
-          Vídeos do Warcraft Recorder, aviso no Discord a cada pull e perguntas à IA.
+        <Step done={null} title="Opcional" action={<button className="link" onClick={() => onOpen('startup')}>Ver opções</button>}>
+          Abrir o Wipe Cause junto com o WoW, vídeos do Warcraft Recorder, aviso no Discord a cada pull e perguntas à IA.
         </Step>
       </ol>
 

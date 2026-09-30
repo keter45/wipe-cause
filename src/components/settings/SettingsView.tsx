@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Bot, Check, ChevronDown, CircleAlert, FolderOpen, Gamepad2, Info, MessageSquare, RefreshCw, Skull, Trophy, Video, type LucideIcon } from 'lucide-react';
+import { Bot, Check, ChevronDown, CircleAlert, FolderOpen, Gamepad2, Info, MessageSquare, Power, RefreshCw, Skull, Trophy, Video, type LucideIcon } from 'lucide-react';
 import type { LogReport } from '../../types';
 import {
   inTauri,
@@ -25,6 +25,7 @@ import { DiscordForm } from './DiscordForm';
 import { FolderForm, type FolderApi } from './FolderForm';
 import { WclApiForm } from './WclApiForm';
 import { FirstSteps } from './FirstSteps';
+import { StartupForm } from './StartupForm';
 
 type Tone = 'ok' | 'todo' | 'off' | 'info';
 
@@ -159,6 +160,18 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
             </li>
             <li>O log vai para a pasta acima; depois é só abrir em “Nova análise” ou ligar o modo ao vivo.</li>
           </ol>,
+        )}
+      </SettingsGroup>
+
+      <SettingsGroup title="Abrir com o WoW">
+        {card(
+          'startup',
+          Power,
+          'Abrir quando o WoW abrir',
+          'O Wipe Cause fica na bandeja e aparece sozinho quando você abre o jogo.',
+          status?.openWithWow ? 'ok' : 'off',
+          status?.openWithWow ? 'Ligado' : 'Desligado',
+          inTauri ? <StartupForm enabled={!!status?.openWithWow} onSaved={reload} /> : <OnlyInApp />,
         )}
       </SettingsGroup>
 

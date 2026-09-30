@@ -3,11 +3,11 @@
 // contexto, então salvar numa tela atualiza os indicadores das outras.
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { discordGetConfig, inTauri, logsDetectDir, logsGetDir, wcrDetectDir, wcrGetDir, type DiscordConfig } from './api';
+import { discordGetConfig, inTauri, logsDetectDir, logsGetDir, wcrDetectDir, wcrGetDir, startupGet, type DiscordConfig } from './api';
 import { aiGetConfig, type AiConfig } from './ai';
 import { wclGetConfig, type WclConfig } from './wclApi';
 
-export type SettingsSection = 'logs' | 'game' | 'analysis' | 'wcl' | 'videos' | 'discord' | 'ai' | 'about';
+export type SettingsSection = 'logs' | 'game' | 'analysis' | 'startup' | 'wcl' | 'videos' | 'discord' | 'ai' | 'about';
 
 export interface SetupStatus {
   /** pasta Logs do WoW em uso (cadastrada ou detectada) */
@@ -18,6 +18,8 @@ export interface SetupStatus {
   discord: DiscordConfig | null;
   ai: AiConfig | null;
   wcl: WclConfig | null;
+  /** abrir o app quando o WoW abrir */
+  openWithWow: boolean;
 }
 
 /** Navegador (dev): um setup de exemplo, com a pasta de logs e a IA prontas. */
@@ -29,12 +31,13 @@ const DEMO: SetupStatus = {
   // ?demoAiSetup=1 mostra a aba da IA sem provedor
   ai: typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('demoAiSetup') ? null : { provider: 'demo', baseUrl: '', model: 'demonstração', hasKey: true },
   wcl: { configured: false, clientId: null },
+  openWithWow: false,
 };
 
 async function loadStatus(): Promise<SetupStatus> {
   if (!inTauri) return DEMO;
   const safe = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
-  const [logsSaved, logsDetected, wcrSaved, wcrDetected, discord, ai, wcl] = await Promise.all([
+  const [logsSaved, logsDetected, wcrSaved, wcrDetected, discord, ai, wcl, openWithWow] = await Promise.all([
     safe(logsGetDir(), null),
     safe(logsDetectDir(), null),
     safe(wcrGetDir(), null),
@@ -42,6 +45,7 @@ async function loadStatus(): Promise<SetupStatus> {
     safe(discordGetConfig(), null),
     safe(aiGetConfig(), null),
     safe(wclGetConfig(), null),
+    safe(startupGet(), false),
   ]);
   return {
     logsDir: logsSaved ?? logsDetected,
@@ -50,6 +54,7 @@ async function loadStatus(): Promise<SetupStatus> {
     discord,
     ai,
     wcl,
+    openWithWow,
   };
 }
 
