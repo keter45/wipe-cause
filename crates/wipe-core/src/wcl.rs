@@ -2,9 +2,9 @@
 //! de uma linha do combat log e alimentam o mesmo `PullBuilder` do log local. Assim regras,
 //! mortes, notas e mecânicas saem iguais nas duas fontes.
 //!
-//! Uso: `WclAnalyzer::new(report)` com o report (fights + masterData), depois, para cada
-//! fight de boss em ordem, `begin_fight` → `push_events` (página a página) → `end_fight`;
-//! no fim, `finish`. Nada aqui usa relógio ou disco (roda também no navegador, via wasm).
+//! Uso: `WclAnalyzer::new` + `add_report` para cada report da noite (fights + masterData),
+//! `dedupe` para ficar com uma cópia de cada pull, depois, para cada fight, `begin_fight` →
+//! `push_events` (página a página); no fim, `finish`. Nada aqui usa relógio ou disco (roda também no navegador, via wasm).
 
 use crate::analysis::{finalize, FinishedPull, PullBuilder};
 use crate::data::GameData;
@@ -48,9 +48,11 @@ enum ActorKind {
     Npc,
 }
 
-/// Fight de boss do report.
+/// Fight de boss de um dos reports.
 #[derive(Debug, Clone)]
 pub struct WclFight {
+    /// índice do report (ordem do `add_report`)
+    pub report: usize,
     pub id: i64,
     pub encounter_id: u32,
     pub name: String,
@@ -61,19 +63,52 @@ pub struct WclFight {
     pub start_time: i64,
     pub end_time: i64,
     pub size: u32,
+    /// início em epoch ms (para casar o mesmo pull entre reports)
+    pub abs_start: i64,
+}
+
+/// Dois reports do mesmo pull começam com poucos segundos de diferença (relógio de cada PC).
+const SAME_PULL_MS: i64 = 20_000;
+
+/// Uma fonte da verdade por pull: o report que cobre mais bosses vale; os outros só entram
+/// com os pulls que faltam nele. Devolve os fights escolhidos em ordem de horário.
+pub fn dedupe(fights: &[WclFight]) -> Vec<WclFight> {
+    let mut coverage: HashMap<usize, usize> = HashMap::new();
+    for f in fights {
+        *coverage.entry(f.report).or_default() += 1;
+    }
+    let mut reports: Vec<usize> = coverage.keys().copied().collect();
+    reports.sort_by_key(|r| (std::cmp::Reverse(coverage[r]), *r));
+    let mut chosen: Vec<WclFight> = Vec::new();
+    for r in reports {
+        for f in fights.iter().filter(|f| f.report == r) {
+            let dup = chosen
+                .iter()
+                .any(|c| c.encounter_id == f.encounter_id && c.difficulty_id == f.difficulty_id && (c.abs_start - f.abs_start).abs() < SAME_PULL_MS);
+            if !dup {
+                chosen.push(f.clone());
+            }
+        }
+    }
+    chosen.sort_by_key(|f| f.abs_start);
+    chosen
 }
 
 fn int(v: &Value) -> i64 {
     v.as_i64().or_else(|| v.as_f64().map(|f| f as i64)).unwrap_or(0)
 }
 
-/// Report da API: `startTime`, `fights`, `masterData { actors abilities }` e, se houver,
-/// `guild { server { region { slug } } }` (a região completa o nome "Fulano-Reino-US").
-pub struct WclAnalyzer {
+/// Atores e habilidades de um report (os ids são por report).
+struct Source {
     start_time: i64,
-    fights: Vec<WclFight>,
     actors: HashMap<i64, Actor>,
     abilities: HashMap<i64, (String, i64)>,
+}
+
+/// Analisa um ou mais reports da mesma noite (de pessoas diferentes da raid) como um log só.
+pub struct WclAnalyzer {
+    sources: Vec<Source>,
+    fights: Vec<WclFight>,
     book: RuleBook,
     data: GameData,
     death_cutoff: u32,
@@ -85,11 +120,36 @@ pub struct WclAnalyzer {
 
 impl WclAnalyzer {
     /// `tz_hours`: fuso de quem vê (o WCL guarda em UTC; o log local vem no fuso do PC).
-    pub fn new(report: &Value, book: RuleBook, death_cutoff: u32, tz_hours: f64, region: Option<&str>) -> Result<Self, String> {
+    pub fn new(book: RuleBook, death_cutoff: u32, tz_hours: f64) -> Self {
+        WclAnalyzer {
+            sources: Vec::new(),
+            fights: Vec::new(),
+            book,
+            data: GameData::embedded(),
+            death_cutoff,
+            tz_hours,
+            finished: Vec::new(),
+            current: None,
+            events: 0,
+        }
+    }
+
+    /// Um report só.
+    pub fn single(report: &Value, book: RuleBook, death_cutoff: u32, tz_hours: f64) -> Result<Self, String> {
+        let mut a = Self::new(book, death_cutoff, tz_hours);
+        a.add_report(report, None)?;
+        Ok(a)
+    }
+
+    /// Report da API: `startTime`, `fights`, `masterData { actors abilities }` e, se houver,
+    /// `guild { server { region { slug } } }` (a região completa o nome "Fulano-Reino-US").
+    /// Os fights entram em `fights`; para juntar reports da mesma noite, use `dedupe`.
+    pub fn add_report(&mut self, report: &Value, region: Option<&str>) -> Result<usize, String> {
         let start_time = int(&report["startTime"]);
         if start_time == 0 {
             return Err("Report do Warcraft Logs sem startTime.".into());
         }
+        let index = self.sources.len();
         let region = region
             .map(str::to_string)
             .or_else(|| report["guild"]["server"]["region"]["slug"].as_str().map(str::to_string))
@@ -110,10 +170,11 @@ impl WclAnalyzer {
                         (false, true) => format!("{name}-{server}"),
                         (false, false) => format!("{name}-{server}-{region}"),
                     };
+                    // o gameID do player é o mesmo em qualquer report: o guid casa entre fontes
                     (ActorKind::Player, format!("Player-0-{:08X}", if game_id > 0 { game_id } else { id }), full)
                 }
-                Some("Pet") => (ActorKind::Pet, format!("Pet-0-0-0-{id}-{game_id}-{id:08X}"), name),
-                _ => (ActorKind::Npc, format!("Creature-0-0-0-{id}-{game_id}-"), name),
+                Some("Pet") => (ActorKind::Pet, format!("Pet-0-0-{index}-{id}-{game_id}-{id:08X}"), name),
+                _ => (ActorKind::Npc, format!("Creature-0-0-{index}-{id}-{game_id}-"), name),
             };
             let pet_owner = a["petOwner"].as_i64();
             actors.insert(id, Actor { guid, name, kind, pet_owner });
@@ -126,52 +187,49 @@ impl WclAnalyzer {
             .map(|a| (int(&a["gameID"]), (a["name"].as_str().unwrap_or("?").to_string(), int(&a["type"]))))
             .collect();
 
-        let fights = report["fights"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter(|f| int(&f["encounterID"]) > 0)
-            .map(|f| WclFight {
-                id: int(&f["id"]),
-                encounter_id: int(&f["encounterID"]) as u32,
-                name: f["name"].as_str().unwrap_or("?").to_string(),
-                difficulty_id: game_difficulty(int(&f["difficulty"]) as u32),
-                kill: f["kill"].as_bool().unwrap_or(false),
-                start_time: int(&f["startTime"]),
-                end_time: int(&f["endTime"]),
-                size: int(&f["size"]) as u32,
-            })
-            .collect();
-
-        Ok(WclAnalyzer {
-            start_time,
-            fights,
-            actors,
-            abilities,
-            book,
-            data: GameData::embedded(),
-            death_cutoff,
-            tz_hours,
-            finished: Vec::new(),
-            current: None,
-            events: 0,
-        })
+        let fights = report["fights"].as_array().into_iter().flatten().filter(|f| int(&f["encounterID"]) > 0);
+        self.fights.extend(fights.map(|f| WclFight {
+            report: index,
+            id: int(&f["id"]),
+            encounter_id: int(&f["encounterID"]) as u32,
+            name: f["name"].as_str().unwrap_or("?").to_string(),
+            difficulty_id: game_difficulty(int(&f["difficulty"]) as u32),
+            kill: f["kill"].as_bool().unwrap_or(false),
+            start_time: int(&f["startTime"]),
+            end_time: int(&f["endTime"]),
+            size: int(&f["size"]) as u32,
+            abs_start: start_time + int(&f["startTime"]),
+        }));
+        self.sources.push(Source { start_time, actors, abilities });
+        Ok(index)
     }
 
-    /// Fights de boss, em ordem.
+    /// Fights de boss de todos os reports, na ordem em que entraram.
     pub fn fights(&self) -> &[WclFight] {
         &self.fights
     }
 
-    pub fn begin_fight(&mut self, fight_id: i64) -> Result<(), String> {
+    pub fn begin_fight(&mut self, report: usize, fight_id: i64) -> Result<(), String> {
         self.end_fight();
-        let fight = self.fights.iter().find(|f| f.id == fight_id).cloned().ok_or(format!("fight {fight_id} não é de boss"))?;
-        let t = self.start_time + fight.start_time;
-        let start = ["ENCOUNTER_START".to_string(), fight.encounter_id.to_string(), fight.name.clone(), fight.difficulty_id.to_string(), fight.size.to_string()];
+        let fight = self
+            .fights
+            .iter()
+            .find(|f| f.report == report && f.id == fight_id)
+            .cloned()
+            .ok_or(format!("fight {fight_id} não é de boss"))?;
+        let src = &self.sources[report];
+        let t = fight.abs_start;
+        let start = [
+            "ENCOUNTER_START".to_string(),
+            fight.encounter_id.to_string(),
+            fight.name.clone(),
+            fight.difficulty_id.to_string(),
+            fight.size.to_string(),
+        ];
         let f: Vec<&str> = start.iter().map(String::as_str).collect();
         let mut b = PullBuilder::start(&f, t, &format_timestamp(t, self.tz_hours), self.tz_hours, &self.book, self.death_cutoff);
-        for a in self.actors.values().filter(|a| a.kind == ActorKind::Pet) {
-            if let Some(owner) = a.pet_owner.and_then(|o| self.actors.get(&o)).filter(|o| o.kind == ActorKind::Player) {
+        for a in src.actors.values().filter(|a| a.kind == ActorKind::Pet) {
+            if let Some(owner) = a.pet_owner.and_then(|o| src.actors.get(&o)).filter(|o| o.kind == ActorKind::Player) {
                 b.set_pet_owner(&a.guid, &owner.guid);
             }
         }
@@ -181,19 +239,20 @@ impl WclAnalyzer {
 
     /// Uma página de `events.data` do fight atual.
     pub fn push_events(&mut self, events: &[Value]) {
-        let Some((_, b)) = self.current.as_mut() else { return };
+        let Some((fight, b)) = self.current.as_mut() else { return };
+        let src = &self.sources[fight.report];
         let mut fields: Vec<String> = Vec::with_capacity(48);
         for e in events {
             self.events += 1;
-            let t = self.start_time + int(&e["timestamp"]);
+            let t = src.start_time + int(&e["timestamp"]);
             if e["type"] == "combatantinfo" {
-                if let Some((guid, spec, setup)) = combatant(&self.actors, e) {
+                if let Some((guid, spec, setup)) = combatant(&src.actors, e) {
                     b.set_combatant(&guid, spec, setup);
                 }
                 continue;
             }
             fields.clear();
-            if !to_fields(&self.actors, &self.abilities, e, &mut fields) {
+            if !to_fields(&src.actors, &src.abilities, e, &mut fields) {
                 continue;
             }
             let f: Vec<&str> = fields.iter().map(String::as_str).collect();
@@ -203,8 +262,15 @@ impl WclAnalyzer {
 
     pub fn end_fight(&mut self) {
         let Some((fight, b)) = self.current.take() else { return };
-        let t = self.start_time + fight.end_time;
-        let end = ["ENCOUNTER_END".to_string(), fight.encounter_id.to_string(), fight.name.clone(), fight.difficulty_id.to_string(), fight.size.to_string(), if fight.kill { "1" } else { "0" }.to_string()];
+        let t = self.sources[fight.report].start_time + fight.end_time;
+        let end = [
+            "ENCOUNTER_END".to_string(),
+            fight.encounter_id.to_string(),
+            fight.name.clone(),
+            fight.difficulty_id.to_string(),
+            fight.size.to_string(),
+            if fight.kill { "1" } else { "0" }.to_string(),
+        ];
         let f: Vec<&str> = end.iter().map(String::as_str).collect();
         let id = self.finished.len();
         self.finished.push(b.finish(Some((&f, t)), id, &self.data));
@@ -212,6 +278,8 @@ impl WclAnalyzer {
 
     pub fn finish(mut self) -> LogReport {
         self.end_fight();
+        // pulls de reports diferentes: a numeração e o contexto entre pulls seguem o horário
+        self.finished.sort_by_key(|fp| fp.pull.start_ms);
         let (pulls, ignored_short_pulls) = finalize(self.finished, &self.data);
         LogReport {
             file: String::new(),
@@ -471,12 +539,30 @@ mod tests {
         })
     }
 
+    fn fight(report: usize, id: i64, encounter_id: u32, abs_start: i64) -> WclFight {
+        WclFight { report, id, encounter_id, name: String::new(), difficulty_id: 16, kill: false, start_time: 0, end_time: 0, size: 20, abs_start }
+    }
+
+    #[test]
+    fn one_copy_of_each_pull_from_the_most_complete_report() {
+        // report 1 cobre mais; o 0 tem um pull que falta no 1 (e o relógio 2s atrasado)
+        let fights = vec![
+            fight(0, 1, 3470, 1_000),
+            fight(0, 2, 3470, 60_000),
+            fight(1, 7, 3470, 2_000),
+            fight(1, 8, 3445, 120_000),
+            fight(1, 9, 3445, 200_000),
+        ];
+        let got: Vec<(usize, i64)> = dedupe(&fights).iter().map(|f| (f.report, f.id)).collect();
+        assert_eq!(got, vec![(1, 7), (0, 2), (1, 8), (1, 9)]);
+    }
+
     #[test]
     fn converts_events_into_a_pull() {
-        let mut a = WclAnalyzer::new(&report(), RuleBook::embedded(), 0, -3.0, None).unwrap();
+        let mut a = WclAnalyzer::single(&report(), RuleBook::embedded(), 0, -3.0).unwrap();
         assert_eq!(a.fights().len(), 1, "trash fica de fora");
         assert_eq!(a.fights()[0].difficulty_id, 16);
-        a.begin_fight(2).unwrap();
+        a.begin_fight(0, 2).unwrap();
         a.push_events(&[
             json!({ "timestamp": 10_000, "type": "combatantinfo", "sourceID": 5, "specID": 63, "intellect": 3000, "gear": [], "talentTree": [] }),
             json!({ "timestamp": 11_000, "type": "cast", "sourceID": 5, "sourceIsFriendly": true, "targetID": 30, "targetIsFriendly": false, "abilityGameID": 133 }),

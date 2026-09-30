@@ -5,7 +5,7 @@
 //!                                                      --tuning <pasta> aplica os ajustes do usuário (<encounter>.json)
 //!   wipe-cli spells <arquivo>             spells inimigas por encontro (para calibrar regras de boss)
 //!   wipe-cli peek <arquivo>               só os encontros do log (leitura rápida, como a lista de logs do app)
-//!   wipe-cli wcl <pasta> [--json]         analisa um report baixado do Warcraft Logs (scripts/wcl-fetch.mjs)
+//!   wipe-cli wcl <pasta>[,<pasta>] [--json]  analisa reports baixados do Warcraft Logs (scripts/wcl-fetch.mjs)
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -59,18 +59,23 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// Pasta do scripts/wcl-fetch.mjs: report.json e fight-<id>.json. Fuso em WIPE_TZ (padrão -3, BRT).
-fn analyze_wcl_dump(dir: &str, death_cutoff: u32) -> Result<LogReport, String> {
-    let read = |name: &str| -> Result<serde_json::Value, String> {
-        let text = std::fs::read_to_string(std::path::Path::new(dir).join(name)).map_err(|e| format!("{name}: {e}"))?;
-        serde_json::from_str(&text).map_err(|e| format!("{name}: {e}"))
+/// Pastas do scripts/wcl-fetch.mjs (report.json e fight-<id>.json), separadas por vírgula:
+/// várias = reports da mesma noite, juntados com uma cópia de cada pull. Fuso em WIPE_TZ
+/// (padrão -3, BRT).
+fn analyze_wcl_dump(dirs: &str, death_cutoff: u32) -> Result<LogReport, String> {
+    let read = |dir: &str, name: &str| -> Result<serde_json::Value, String> {
+        let text = std::fs::read_to_string(std::path::Path::new(dir).join(name)).map_err(|e| format!("{dir}/{name}: {e}"))?;
+        serde_json::from_str(&text).map_err(|e| format!("{dir}/{name}: {e}"))
     };
     let tz = std::env::var("WIPE_TZ").ok().and_then(|v| v.parse().ok()).unwrap_or(-3.0);
-    let mut a = wipe_core::wcl::WclAnalyzer::new(&read("report.json")?, wipe_core::rules::RuleBook::embedded(), death_cutoff, tz, None)?;
-    let ids: Vec<i64> = a.fights().iter().map(|f| f.id).collect();
-    for id in ids {
-        let Ok(events) = read(&format!("fight-{id}.json")) else { continue };
-        a.begin_fight(id)?;
+    let dirs: Vec<&str> = dirs.split(',').collect();
+    let mut a = wipe_core::wcl::WclAnalyzer::new(wipe_core::rules::RuleBook::embedded(), death_cutoff, tz);
+    for dir in &dirs {
+        a.add_report(&read(dir, "report.json")?, None)?;
+    }
+    for f in wipe_core::wcl::dedupe(a.fights()) {
+        let Ok(events) = read(dirs[f.report], &format!("fight-{}.json", f.id)) else { continue };
+        a.begin_fight(f.report, f.id)?;
         a.push_events(events.as_array().map_or(&[][..], |v| v.as_slice()));
     }
     Ok(a.finish())
