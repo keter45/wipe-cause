@@ -158,7 +158,8 @@ pub fn history_list(app: AppHandle) -> Result<Vec<HistoryEntry>, String> {
 fn list_in(dir: &Path) -> Vec<HistoryEntry> {
     let mut index = load_index(dir);
     for e in &mut index {
-        e.log_exists = Path::new(&e.log_path).exists();
+        // report do Warcraft Logs: dá para baixar de novo
+        e.log_exists = e.log_path.starts_with(crate::wcl_source::PREFIX) || Path::new(&e.log_path).exists();
     }
     index.sort_by(|a, b| {
         b.pinned

@@ -3908,3 +3908,37 @@ td.warn {
 .parse-note {
   margin: 0 0 8px;
 }
+
+/* abrir report do Warcraft Logs (tela de logs) */
+.wcl-open {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.wcl-open-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.wcl-open-head svg {
+  margin-top: 2px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.wcl-open-head p {
+  margin: 2px 0 0;
+}
+.wcl-open-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.wcl-open-form .text-input {
+  flex: 1 1 280px;
+  min-width: 0;
+}

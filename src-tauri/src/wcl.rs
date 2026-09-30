@@ -23,7 +23,7 @@ fn entry(name: &str) -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEYRING_SERVICE, name).map_err(|e| e.to_string())
 }
 
-fn credentials() -> Option<(String, String)> {
+pub(crate) fn credentials() -> Option<(String, String)> {
     let id = entry("wcl-client-id").ok()?.get_password().ok().filter(|v| !v.is_empty())?;
     let secret = entry("wcl-client-secret").ok()?.get_password().ok().filter(|v| !v.is_empty())?;
     Some((id, secret))
@@ -64,7 +64,7 @@ fn token(id: &str, secret: &str) -> Result<String, String> {
     Ok(t)
 }
 
-fn graphql(id: &str, secret: &str, query: &str, variables: &serde_json::Value) -> Result<serde_json::Value, String> {
+pub(crate) fn graphql(id: &str, secret: &str, query: &str, variables: &serde_json::Value) -> Result<serde_json::Value, String> {
     let t = token(id, secret)?;
     let res = agent()
         .post(API_URL)

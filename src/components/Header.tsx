@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CircleAlert, Crosshair, ExternalLink, FileText, Link2, PanelLeftClose, PanelLeftOpen, RotateCw, Unlink, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
+import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, sourceName,wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
 import { reportCode } from '../lib/wcl';
 import { logTitle, mainEncounterId } from '../lib/format';
 import { BossName } from './Names';
@@ -92,7 +92,7 @@ export function Header(props: Props) {
 function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
   if (!report) return null;
 
-  const fileName = report.file.split(/[\\/]/).pop();
+  const fileName = sourceName(report.file);
   return (
     <div className="topbar-group log-group">
       <div className="log-chip" title={report.file}>

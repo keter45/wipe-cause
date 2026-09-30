@@ -14,6 +14,7 @@ import {
   pickLogFile,
   rememberFile,
   sameLog,
+  sourceName,
   type HistoryEntry,
 } from './lib/api';
 import { BossSummary, NightOverview } from './components/NightSummary';
@@ -290,7 +291,7 @@ export default function App() {
       {status.kind === 'loading' && (
         <div className="progress">
           <div className="progress-bar" style={{ transform: `scaleX(${status.progress})` }} />
-          <span>Analisando {status.path.split(/[\\/]/).pop()}… {Math.round(status.progress * 100)}%</span>
+          <span>Analisando {sourceName(status.path)}… {Math.round(status.progress * 100)}%</span>
         </div>
       )}
       <UpdateBanner state={updateState} onInstall={updater.install} onDismiss={updater.dismiss} />
