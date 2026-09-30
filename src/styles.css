@@ -3890,3 +3890,21 @@ td.warn {
 .player-name {
   font-weight: inherit;
 }
+
+/* parse do Warcraft Logs (aba Jogadores) */
+.parse {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.parse-metric,
+.parse-hint {
+  font-size: 0.72em;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.parse.history strong {
+  opacity: 0.8;
+}
+.parse-note {
+  margin: 0 0 8px;
+}
