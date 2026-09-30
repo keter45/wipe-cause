@@ -110,7 +110,7 @@ pub fn parse_combatant_info(f: &[&str]) -> Option<(Option<u32>, Setup)> {
 }
 
 /// Média como o jogo mostra: 16 espaços; arma de duas mãos (sem mão secundária) conta duas vezes.
-fn item_level(items: &[GearItem]) -> f32 {
+pub(crate) fn item_level(items: &[GearItem]) -> f32 {
     let counted: Vec<&GearItem> = items
         .iter()
         .filter(|i| i.slot != SLOT_SHIRT && i.slot != SLOT_TABARD && i.ilvl > 0)

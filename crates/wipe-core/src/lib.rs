@@ -8,6 +8,7 @@ pub mod rules;
 pub mod setup;
 pub mod timestamp;
 pub mod tokenizer;
+pub mod wcl;
 
 use analysis::{finalize, PullBuilder};
 use data::GameData;

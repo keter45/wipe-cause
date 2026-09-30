@@ -5,6 +5,7 @@
 //!                                                      --tuning <pasta> aplica os ajustes do usuário (<encounter>.json)
 //!   wipe-cli spells <arquivo>             spells inimigas por encontro (para calibrar regras de boss)
 //!   wipe-cli peek <arquivo>               só os encontros do log (leitura rápida, como a lista de logs do app)
+//!   wipe-cli wcl <pasta> [--json]         analisa um report baixado do Warcraft Logs (scripts/wcl-fetch.mjs)
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -36,7 +37,8 @@ fn main() -> ExitCode {
     }
     let tuning_dir = args.iter().position(|a| a == "--tuning").and_then(|i| args.get(i + 1)).map(PathBuf::from);
     let opts = AnalyzeOptions { death_cutoff, tuning_dir, ..Default::default() };
-    let report = match analyze_file(&PathBuf::from(path), &opts, |_, _| {}) {
+    let result = if cmd == "wcl" { analyze_wcl_dump(path, death_cutoff) } else { analyze_file(&PathBuf::from(path), &opts, |_, _| {}).map_err(|e| e.to_string()) };
+    let report = match result {
         Ok(r) => r,
         Err(e) => {
             eprintln!("erro ao ler {path}: {e}");
@@ -44,10 +46,10 @@ fn main() -> ExitCode {
         }
     };
     match cmd.as_str() {
-        "analyze" if args.iter().any(|a| a == "--json") => {
+        "analyze" | "wcl" if args.iter().any(|a| a == "--json") => {
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }
-        "analyze" => print_summary(&report),
+        "analyze" | "wcl" => print_summary(&report),
         "spells" => print_spells(&report),
         _ => {
             eprintln!("comando desconhecido: {cmd}");
@@ -55,6 +57,23 @@ fn main() -> ExitCode {
         }
     }
     ExitCode::SUCCESS
+}
+
+/// Pasta do scripts/wcl-fetch.mjs: report.json e fight-<id>.json. Fuso em WIPE_TZ (padrão -3, BRT).
+fn analyze_wcl_dump(dir: &str, death_cutoff: u32) -> Result<LogReport, String> {
+    let read = |name: &str| -> Result<serde_json::Value, String> {
+        let text = std::fs::read_to_string(std::path::Path::new(dir).join(name)).map_err(|e| format!("{name}: {e}"))?;
+        serde_json::from_str(&text).map_err(|e| format!("{name}: {e}"))
+    };
+    let tz = std::env::var("WIPE_TZ").ok().and_then(|v| v.parse().ok()).unwrap_or(-3.0);
+    let mut a = wipe_core::wcl::WclAnalyzer::new(&read("report.json")?, wipe_core::rules::RuleBook::embedded(), death_cutoff, tz, None)?;
+    let ids: Vec<i64> = a.fights().iter().map(|f| f.id).collect();
+    for id in ids {
+        let Ok(events) = read(&format!("fight-{id}.json")) else { continue };
+        a.begin_fight(id)?;
+        a.push_events(events.as_array().map_or(&[][..], |v| v.as_slice()));
+    }
+    Ok(a.finish())
 }
 
 fn mmss(ms: i64) -> String {
