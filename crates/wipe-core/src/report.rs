@@ -17,6 +17,16 @@ pub struct LogReport {
     pub ignored_short_pulls: u32,
     /// Erros ao carregar regras de boss (YAML inválido etc.)
     pub rule_errors: Vec<String>,
+    /// Análise do Warcraft Logs: logs do PC usados no lugar do download (mais barato)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub local_logs: Vec<String>,
+    /// Análise do Warcraft Logs: pulls que vieram de lá (os outros saíram do log do PC)
+    #[serde(skip_serializing_if = "is_zero")]
+    pub wcl_pulls: u32,
+}
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
 }
 
 #[derive(Debug, Clone, Serialize)]

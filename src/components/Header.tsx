@@ -106,6 +106,7 @@ function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
             {report.ignoredShortPulls > 0 && ` · ${report.ignoredShortPulls} curto${report.ignoredShortPulls > 1 ? 's' : ''} ignorado${report.ignoredShortPulls > 1 ? 's' : ''}`}
             {' · '}
             {fileName}
+            {report.localLogs?.length ? ` (${report.pulls.length - (report.wclPulls ?? 0)} do log do PC, ${report.wclPulls ?? 0} do WCL)` : ''}
           </span>
         </div>
         {!report.advancedLogging && (

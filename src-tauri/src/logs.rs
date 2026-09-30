@@ -184,25 +184,55 @@ pub fn logs_list(app: AppHandle) -> LogsScan {
     LogsScan { dir: shown, source: source.into(), files, warning }
 }
 
+/// Encontros de um log: do índice, se o arquivo não mudou; senão lê (rápido) e guarda.
+fn peek_cached(app: &AppHandle, path: &Path) -> Result<LogPeek, String> {
+    let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
+    let key = path.display().to_string();
+    let (size, modified) = (meta.len(), modified_ms(&meta));
+    if let Some(p) = with_index(app, |index| index.get(&key).filter(|e| e.size == size && e.modified_ms == modified).map(|e| e.peek.clone())) {
+        return Ok(p);
+    }
+    let peek = wipe_core::peek::peek_file(path).map_err(|e| e.to_string())?;
+    let entry = IndexEntry { size, modified_ms: modified, peek: peek.clone() };
+    with_index(app, |index| {
+        index.insert(key, entry);
+        // esquece logs que sumiram
+        index.retain(|p, _| Path::new(p).exists());
+        if let (Some(p), Ok(json)) = (index_path(app), serde_json::to_string(index)) {
+            let _ = std::fs::write(p, json);
+        }
+    });
+    Ok(peek)
+}
+
 /// Encontros de um log (leitura rápida), guardados no índice.
 #[tauri::command]
 pub async fn logs_peek(app: AppHandle, path: String) -> Result<LogPeek, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
-        let peek = wipe_core::peek::peek_file(Path::new(&path)).map_err(|e| e.to_string())?;
-        let entry = IndexEntry { size: meta.len(), modified_ms: modified_ms(&meta), peek: peek.clone() };
-        with_index(&app, |index| {
-            index.insert(path, entry);
-            // esquece logs que sumiram
-            index.retain(|p, _| Path::new(p).exists());
-            if let (Some(p), Ok(json)) = (index_path(&app), serde_json::to_string(index)) {
-                let _ = std::fs::write(p, json);
-            }
-        });
-        Ok(peek)
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || peek_cached(&app, Path::new(&path))).await.map_err(|e| e.to_string())?
+}
+
+/// Logs do PC com encontros entre `from` e `to` (epoch ms): antes de baixar do Warcraft Logs,
+/// usa o que já está aqui. Os logs do WoW vêm primeiro; cópias (warcraftlogsarchive, Split-*)
+/// só entram se nenhum log do WoW cobrir o horário, para não analisar a mesma noite duas vezes.
+pub fn local_logs_between(app: &AppHandle, from: i64, to: i64) -> Vec<PathBuf> {
+    let (Some(dir), _) = current_dir(app) else { return Vec::new() };
+    let overlaps = |p: &LogPeek| p.first_ms.zip(p.last_ms).is_some_and(|(a, b)| a <= to && b >= from);
+    let (mut main, mut copies) = (Vec::new(), Vec::new());
+    for (path, folder, meta) in list_dir(&dir) {
+        // escrito antes da noite começar: não tem nada dela
+        if modified_ms(&meta) < from {
+            continue;
+        }
+        let original = folder.is_none() && path.file_name().is_some_and(|n| n.to_string_lossy().to_lowercase().starts_with("wowcombatlog"));
+        if peek_cached(app, &path).is_ok_and(|p| overlaps(&p)) {
+            if original { main.push(path) } else { copies.push(path) }
+        }
+    }
+    if main.is_empty() {
+        copies
+    } else {
+        main
+    }
 }
 
 #[cfg(test)]

@@ -11,6 +11,10 @@ export interface LogReport {
   deathCutoff: number;
   ignoredShortPulls: number;
   ruleErrors: string[];
+  /** análise do Warcraft Logs: logs do PC usados no lugar do download */
+  localLogs?: string[];
+  /** análise do Warcraft Logs: pulls que vieram de lá (os outros saíram do log do PC) */
+  wclPulls?: number;
 }
 
 export interface Pull {

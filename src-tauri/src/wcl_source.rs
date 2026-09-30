@@ -14,8 +14,8 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 use wipe_core::rules::RuleBook;
-use wipe_core::wcl::{dedupe, WclAnalyzer};
-use wipe_core::LogReport;
+use wipe_core::wcl::{covered_by, dedupe, is_short_wipe, WclAnalyzer};
+use wipe_core::{merge_pulls, AnalyzeOptions, LogReport, Pull};
 
 /// "Caminho" de uma análise do Warcraft Logs (no lugar do arquivo de log).
 pub const PREFIX: &str = "wcl:";
@@ -159,9 +159,21 @@ fn now_ms() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
 }
 
-/// Baixa (ou lê do disco) e analisa os reports da noite (um ou mais, da mesma raid): cada
-/// pull vem de uma fonte só (`dedupe`). `progress(feitos, total)` por fight.
-pub fn analyze(app: &AppHandle, codes: &[&str], book: RuleBook, death_cutoff: u32, tz_hours: f64, mut progress: impl FnMut(u64, u64)) -> Result<LogReport, String> {
+/// Folga ao procurar a noite nos logs do PC.
+const NIGHT_MARGIN_MS: i64 = 10 * 60_000;
+
+/// Analisa a noite dos reports (um ou mais, da mesma raid), sempre pelo mais barato: o que
+/// estiver num log deste PC sai do log; do Warcraft Logs só se baixa o que falta. Entre
+/// reports, cada pull vem de uma fonte só (`dedupe`). `progress(feitos, total)` por fight.
+pub fn analyze(
+    app: &AppHandle,
+    codes: &[&str],
+    book: RuleBook,
+    local_opts: &AnalyzeOptions,
+    tz_hours: f64,
+    mut progress: impl FnMut(u64, u64),
+) -> Result<LogReport, String> {
+    let death_cutoff = local_opts.death_cutoff;
     let mut analyzer = WclAnalyzer::new(book, death_cutoff, tz_hours);
     // (início, fim) de cada report, para saber se um fight já não muda
     let mut spans = Vec::new();
@@ -174,11 +186,34 @@ pub fn analyze(app: &AppHandle, codes: &[&str], book: RuleBook, death_cutoff: u3
         analyzer.add_report(report, None)?;
         spans.push((report["startTime"].as_i64().unwrap_or(0), report["endTime"].as_i64().unwrap_or(0)));
     }
-    let fights = dedupe(analyzer.fights());
-    if fights.is_empty() {
+    let all = dedupe(analyzer.fights());
+    if all.is_empty() {
         return Err("Nenhum boss nos reports.".into());
     }
-    let total = fights.len() as u64 * 100;
+
+    // 1) o que já está num log do PC
+    let from = all.iter().map(|f| f.abs_start).min().unwrap_or(0) - NIGHT_MARGIN_MS;
+    let to = all.iter().map(|f| spans[f.report].0 + f.end_time).max().unwrap_or(0) + NIGHT_MARGIN_MS;
+    let mut local_pulls: Vec<Pull> = Vec::new();
+    let mut local_logs = Vec::new();
+    let mut local_errors = Vec::new();
+    for path in crate::logs::local_logs_between(app, from, to) {
+        let Ok(r) = wipe_core::analyze_file(&path, local_opts, |_, _| {}) else { continue };
+        let fresh: Vec<Pull> = r
+            .pulls
+            .into_iter()
+            .filter(|p| p.start_ms >= from && p.start_ms <= to && !covered_by(&local_pulls, p.encounter_id, p.start_ms))
+            .collect();
+        if !fresh.is_empty() {
+            local_logs.push(path.display().to_string());
+            local_pulls.extend(fresh);
+            local_errors = r.rule_errors;
+        }
+    }
+
+    // 2) do Warcraft Logs, só os pulls que faltam (wipes curtos a análise descarta: nem baixa)
+    let fights: Vec<_> = all.into_iter().filter(|f| !is_short_wipe(f) && !covered_by(&local_pulls, f.encounter_id, f.abs_start)).collect();
+    let total = (fights.len() as u64 * 100).max(1);
 
     for (i, f) in fights.iter().enumerate() {
         let done = i as u64 * 100;
@@ -227,6 +262,16 @@ pub fn analyze(app: &AppHandle, codes: &[&str], book: RuleBook, death_cutoff: u3
     progress(total, total);
     let mut r = analyzer.finish();
     r.file = format!("{PREFIX}{}", codes.join(","));
+    r.wcl_pulls = r.pulls.len() as u32;
+    if !local_pulls.is_empty() {
+        let mut pulls = r.pulls;
+        pulls.extend(local_pulls);
+        r.pulls = merge_pulls(pulls);
+        r.local_logs = local_logs;
+        if r.rule_errors.is_empty() {
+            r.rule_errors = local_errors;
+        }
+    }
     Ok(r)
 }
 

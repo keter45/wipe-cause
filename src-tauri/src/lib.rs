@@ -36,17 +36,17 @@ pub(crate) fn user_rules_dir(app: &AppHandle) -> Option<PathBuf> {
 pub(crate) fn analyze_and_save(app: &AppHandle, path: &str, death_cutoff: u32, tz_hours: f64, progress: impl FnMut(u64, u64)) -> Result<LogReport, String> {
     let rules_dir = user_rules_dir(app);
     let codes = wcl_source::codes_of(path);
+    let opts = wipe_core::AnalyzeOptions { rules_dir, tuning_dir: tuning_dir(app), death_cutoff };
     let report = if !codes.is_empty() {
         let mut book = wipe_core::rules::RuleBook::embedded();
-        if let Some(dir) = &rules_dir {
+        if let Some(dir) = &opts.rules_dir {
             book.load_dir(dir);
         }
-        if let Some(dir) = tuning_dir(app) {
-            book.load_tuning_dir(&dir);
+        if let Some(dir) = &opts.tuning_dir {
+            book.load_tuning_dir(dir);
         }
-        wcl_source::analyze(app, &codes, book, death_cutoff, tz_hours, progress)?
+        wcl_source::analyze(app, &codes, book, &opts, tz_hours, progress)?
     } else {
-        let opts = wipe_core::AnalyzeOptions { rules_dir, tuning_dir: tuning_dir(app), death_cutoff };
         wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| format!("não foi possível ler {path}: {e}"))?
     };
     if let Err(e) = history::save(app, &report, path) {

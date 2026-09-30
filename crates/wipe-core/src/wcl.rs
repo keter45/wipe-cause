@@ -70,6 +70,17 @@ pub struct WclFight {
 /// Dois reports do mesmo pull começam com poucos segundos de diferença (relógio de cada PC).
 const SAME_PULL_MS: i64 = 20_000;
 
+/// O pull (boss e início em epoch ms) já está entre estes, vindo de outra fonte? A dificuldade
+/// não entra: o mesmo pull não tem duas, mas o log e o WCL podem escrever ids diferentes.
+pub fn covered_by(pulls: &[crate::Pull], encounter_id: u32, abs_start: i64) -> bool {
+    pulls.iter().any(|p| p.encounter_id == encounter_id && (p.start_ms - abs_start).abs() < SAME_PULL_MS)
+}
+
+/// Wipe curto (pull falso / reset): a análise descarta, então nem vale baixar.
+pub fn is_short_wipe(f: &WclFight) -> bool {
+    !f.kill && f.end_time - f.start_time < crate::analysis::MIN_PULL_MS
+}
+
 /// Uma fonte da verdade por pull: o report que cobre mais bosses vale; os outros só entram
 /// com os pulls que faltam nele. Devolve os fights escolhidos em ordem de horário.
 pub fn dedupe(fights: &[WclFight]) -> Vec<WclFight> {
@@ -291,6 +302,8 @@ impl WclAnalyzer {
             death_cutoff: self.death_cutoff,
             ignored_short_pulls,
             rule_errors: self.book.errors.clone(),
+            local_logs: Vec::new(),
+            wcl_pulls: 0,
         }
     }
 }
@@ -555,6 +568,25 @@ mod tests {
         ];
         let got: Vec<(usize, i64)> = dedupe(&fights).iter().map(|f| (f.report, f.id)).collect();
         assert_eq!(got, vec![(1, 7), (0, 2), (1, 8), (1, 9)]);
+    }
+
+    #[test]
+    fn local_log_first_then_only_the_missing_pulls() {
+        // log do PC: 2 pulls do Nek'zali (a dificuldade pode vir diferente entre as fontes)
+        let mut a = WclAnalyzer::single(&report(), RuleBook::embedded(), 0, -3.0).unwrap();
+        a.begin_fight(0, 2).unwrap();
+        let local = a.finish().pulls;
+        assert_eq!(local.len(), 1);
+        let start = local[0].start_ms;
+        assert!(covered_by(&local, 3470, start + 1_800), "mesmo pull, relógio de outro PC");
+        assert!(!covered_by(&local, 3470, start + 60_000), "outro pull do mesmo boss");
+        assert!(!covered_by(&local, 3445, start), "outro boss");
+
+        let mut later = local[0].clone();
+        later.start_ms += 600_000;
+        let merged = crate::merge_pulls(vec![later, local[0].clone()]);
+        assert_eq!(merged.iter().map(|p| (p.id, p.pull_number)).collect::<Vec<_>>(), vec![(0, 1), (1, 2)]);
+        assert_eq!(merged[0].start_ms, start);
     }
 
     #[test]

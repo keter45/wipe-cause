@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ExternalLink, LogIn, LogOut } from 'lucide-react';
 import { openExternal } from '../../lib/api';
+import { autoLiveEnabled, setAutoLiveEnabled } from '../../lib/autoLive';
 import { wclLogin, wclLogout, wclSetConfig, type WclConfig } from '../../lib/wclApi';
 
 const CLIENTS_URL = 'https://www.warcraftlogs.com/api/clients/';
@@ -49,6 +50,7 @@ export function WclApiForm({ current, onSaved }: { current: WclConfig | null; on
                   </span>
                 )}
               </p>
+              <AutoLiveSwitch />
               <div className="set-actions">
                 <button className="btn ghost sm" onClick={logout}>
                   <LogOut size={14} strokeWidth={1.5} aria-hidden /> Sair
@@ -79,6 +81,27 @@ export function WclApiForm({ current, onSaved }: { current: WclConfig | null; on
         <ClientForm current={current} onSaved={onSaved} />
       )}
     </>
+  );
+}
+
+/** Ligar o ao vivo sozinho quando a guilda começar a subir log ao vivo. */
+function AutoLiveSwitch() {
+  const [on, setOn] = useState(autoLiveEnabled);
+  return (
+    <label className="auto-live small">
+      <span className="switch">
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={(e) => {
+            setOn(e.target.checked);
+            setAutoLiveEnabled(e.target.checked);
+          }}
+        />
+        <span aria-hidden />
+      </span>
+      Ligar o ao vivo sozinho quando a guilda começar a raid (log ao vivo no Warcraft Logs)
+    </label>
   );
 }
 

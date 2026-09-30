@@ -10,14 +10,14 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::io::{BufRead, BufReader, Write};
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
 
 /// Client público do Wipe Cause no Warcraft Logs (o id não é segredo; PKCE dispensa o secret).
 /// `WIPE_WCL_CLIENT_ID` troca em tempo de execução (desenvolvimento).
-const CLIENT_ID: &str = "";
+const CLIENT_ID: &str = "01a0f443-ee6e-716a-8671-bd4e73b7df36";
 const AUTHORIZE_URL: &str = "https://www.warcraftlogs.com/oauth/authorize";
 const TOKEN_URL: &str = "https://www.warcraftlogs.com/oauth/token";
 pub const USER_API: &str = "https://www.warcraftlogs.com/api/v2/user";
@@ -64,6 +64,36 @@ pub struct WclUser {
 
 fn entry(name: &str) -> Option<keyring::Entry> {
     keyring::Entry::new(KEYRING_SERVICE, name).ok()
+}
+
+/// O cofre do Windows aceita ~1280 caracteres por credencial e o token do Warcraft Logs (JWT)
+/// passa disso: o valor vai em pedaços (`nome#0`, `nome#1`, ...) e `nome` guarda quantos são.
+const CHUNK: usize = 1000;
+
+fn set_secret(name: &str, value: &str) -> Result<(), String> {
+    let chars: Vec<char> = value.chars().collect();
+    let parts: Vec<String> = chars.chunks(CHUNK).map(|c| c.iter().collect()).collect();
+    for (i, part) in parts.iter().enumerate() {
+        entry(&format!("{name}#{i}")).ok_or("cofre de credenciais indisponível")?.set_password(part).map_err(|e| e.to_string())?;
+    }
+    entry(name).ok_or("cofre de credenciais indisponível")?.set_password(&parts.len().to_string()).map_err(|e| e.to_string())
+}
+
+fn get_secret(name: &str) -> Option<String> {
+    let n: usize = entry(name)?.get_password().ok()?.parse().ok()?;
+    (0..n).map(|i| entry(&format!("{name}#{i}"))?.get_password().ok()).collect()
+}
+
+fn delete_secret(name: &str) {
+    let n: usize = entry(name).and_then(|e| e.get_password().ok()).and_then(|v| v.parse().ok()).unwrap_or(0);
+    for i in 0..n {
+        if let Some(e) = entry(&format!("{name}#{i}")) {
+            let _ = e.delete_credential();
+        }
+    }
+    if let Some(e) = entry(name) {
+        let _ = e.delete_credential();
+    }
 }
 
 fn now_ms() -> i64 {
@@ -123,21 +153,31 @@ fn save_session(json: &serde_json::Value, old_refresh: Option<String>) -> Result
         expires_at: now_ms() + secs * 1000,
     };
     let text = serde_json::to_string(&s).map_err(|e| e.to_string())?;
-    entry(SESSION_KEY).ok_or("cofre de credenciais indisponível")?.set_password(&text).map_err(|e| format!("não foi possível guardar o login: {e}"))?;
+    set_secret(SESSION_KEY, &text).map_err(|e| format!("não foi possível guardar o login: {e}"))?;
     Ok(s)
 }
 
 fn post_token(form: &[(&str, &str)]) -> Result<serde_json::Value, String> {
     match ureq::AgentBuilder::new().timeout(Duration::from_secs(30)).build().post(TOKEN_URL).send_form(form) {
         Ok(r) => r.into_json().map_err(|e| e.to_string()),
-        Err(ureq::Error::Status(code, r)) => Err(format!("O Warcraft Logs recusou o login ({code}): {}", r.into_string().unwrap_or_default().chars().take(200).collect::<String>())),
+        Err(ureq::Error::Status(code, r)) => {
+            // OAuth: {"error", "error_description", "hint"}; o hint diz qual parâmetro faltou
+            let body = r.into_string().unwrap_or_default();
+            let json: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+            let detail = match (json["error"].as_str(), json["hint"].as_str()) {
+                (Some(e), Some(h)) if !h.is_empty() => format!("{e}: {h}"),
+                (Some(e), _) => format!("{e}: {}", json["error_description"].as_str().unwrap_or("")),
+                _ => body.chars().take(400).collect(),
+            };
+            Err(format!("O Warcraft Logs recusou o login ({code}): {detail}"))
+        }
         Err(e) => Err(format!("Sem conexão com o Warcraft Logs: {e}")),
     }
 }
 
 /// Token do usuário logado (renovado se estiver para vencer). `None` = ninguém logado.
 pub fn user_token() -> Option<String> {
-    let s: Session = serde_json::from_str(&entry(SESSION_KEY)?.get_password().ok()?).ok()?;
+    let s: Session = serde_json::from_str(&get_secret(SESSION_KEY)?).ok()?;
     if s.expires_at - now_ms() > 60_000 {
         return Some(s.access_token);
     }
@@ -148,9 +188,7 @@ pub fn user_token() -> Option<String> {
 
 /// Sessão recusada pela API (revogada): esquece o login.
 pub fn forget_session() {
-    if let Some(e) = entry(SESSION_KEY) {
-        let _ = e.delete_credential();
-    }
+    delete_secret(SESSION_KEY);
 }
 
 const PROFILE_QUERY: &str = "query { userData { currentUser { id name guilds { id name server { slug name region { slug } } } } } }";
@@ -174,7 +212,7 @@ fn fetch_profile(token: &str) -> Result<WclUser, String> {
 }
 
 /// Espera o navegador voltar em /callback e devolve a query string.
-fn wait_callback(listener: &TcpListener) -> Result<String, String> {
+fn wait_callback(listener: &TcpListener) -> Result<(TcpStream, String), String> {
     listener.set_nonblocking(true).map_err(|e| e.to_string())?;
     let deadline = Instant::now() + LOGIN_TIMEOUT;
     loop {
@@ -189,13 +227,7 @@ fn wait_callback(listener: &TcpListener) -> Result<String, String> {
                     let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n");
                     continue;
                 };
-                let ok = !query.contains("error=");
-                let body = format!(
-                    "<!doctype html><meta charset=utf-8><title>Wipe Cause</title><body style=\"font-family:system-ui;background:#0f1115;color:#e6e8ee;display:grid;place-items:center;height:100vh;margin:0\"><div style=\"text-align:center\"><h2>{}</h2><p style=\"color:#8b93a5\">Pode fechar esta aba e voltar ao Wipe Cause.</p></div>",
-                    if ok { "Pronto, você entrou com o Warcraft Logs." } else { "Login cancelado." }
-                );
-                let _ = stream.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes());
-                return Ok(query.to_string());
+                return Ok((stream, query.to_string()));
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 if Instant::now() > deadline {
@@ -221,26 +253,45 @@ fn login(app: &AppHandle) -> Result<WclUser, String> {
     );
     app.opener().open_url(&url, None::<&str>).map_err(|e| format!("não foi possível abrir o navegador: {e}"))?;
 
-    let query = wait_callback(&listener)?;
-    if query_param(&query, "state").as_deref() != Some(state.as_str()) {
+    let (mut stream, query) = wait_callback(&listener)?;
+    // a aba do navegador só responde depois da troca do código: mostra o resultado de verdade
+    let result = finish_login(&id, &verifier, &state, &query);
+    let (title, text) = match &result {
+        Ok(u) => (format!("Pronto, você entrou como {}.", html_escape(&u.name)), "Pode fechar esta aba e voltar ao Wipe Cause.".to_string()),
+        Err(e) => ("Não foi possível entrar.".to_string(), html_escape(e)),
+    };
+    let body = format!(
+        "<!doctype html><meta charset=utf-8><title>Wipe Cause</title><body style=\"font-family:system-ui;background:#0f1115;color:#e6e8ee;display:grid;place-items:center;height:100vh;margin:0\"><div style=\"text-align:center;max-width:560px;padding:16px\"><h2>{title}</h2><p style=\"color:#8b93a5\">{text}</p></div>"
+    );
+    let _ = stream.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes());
+    result
+}
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+}
+
+/// Confere a resposta do navegador, troca o código pelo token e busca o perfil.
+fn finish_login(id: &str, verifier: &str, state: &str, query: &str) -> Result<WclUser, String> {
+    if query_param(query, "state").as_deref() != Some(state) {
         return Err("Resposta de login inválida (state não confere).".into());
     }
-    if let Some(err) = query_param(&query, "error") {
+    if let Some(err) = query_param(query, "error") {
         return Err(if err == "access_denied" { "Login cancelado no Warcraft Logs.".into() } else { format!("O Warcraft Logs recusou o login: {err}") });
     }
-    let code = query_param(&query, "code").ok_or("O Warcraft Logs não devolveu o código de login.")?;
+    let code = query_param(query, "code").ok_or("O Warcraft Logs não devolveu o código de login.")?;
     let redirect = redirect_uri();
     let json = post_token(&[
         ("grant_type", "authorization_code"),
-        ("client_id", &id),
-        ("code_verifier", &verifier),
+        ("client_id", id),
+        ("code_verifier", verifier),
         ("redirect_uri", &redirect),
         ("code", &code),
     ])?;
     let session = save_session(&json, None)?;
     let user = fetch_profile(&session.access_token)?;
-    if let (Some(e), Ok(text)) = (entry(PROFILE_KEY), serde_json::to_string(&user)) {
-        let _ = e.set_password(&text);
+    if let Ok(text) = serde_json::to_string(&user) {
+        let _ = set_secret(PROFILE_KEY, &text);
     }
     Ok(user)
 }
@@ -253,15 +304,13 @@ pub async fn wcl_login(app: AppHandle) -> Result<WclUser, String> {
 #[tauri::command]
 pub fn wcl_logout() {
     forget_session();
-    if let Some(e) = entry(PROFILE_KEY) {
-        let _ = e.delete_credential();
-    }
+    delete_secret(PROFILE_KEY);
 }
 
 /// Usuário logado (do cofre; não consulta a API).
 pub fn saved_user() -> Option<WclUser> {
-    entry(SESSION_KEY)?.get_password().ok()?;
-    serde_json::from_str(&entry(PROFILE_KEY)?.get_password().ok()?).ok()
+    get_secret(SESSION_KEY)?;
+    serde_json::from_str(&get_secret(PROFILE_KEY)?).ok()
 }
 
 /// Atualiza as guildas do usuário logado (ex.: entrou numa guilda nova).
@@ -270,8 +319,8 @@ pub async fn wcl_refresh_user() -> Result<Option<WclUser>, String> {
     tauri::async_runtime::spawn_blocking(|| {
         let Some(token) = user_token() else { return Ok(None) };
         let user = fetch_profile(&token)?;
-        if let (Some(e), Ok(text)) = (entry(PROFILE_KEY), serde_json::to_string(&user)) {
-            let _ = e.set_password(&text);
+        if let Ok(text) = serde_json::to_string(&user) {
+            let _ = set_secret(PROFILE_KEY, &text);
         }
         Ok(Some(user))
     })

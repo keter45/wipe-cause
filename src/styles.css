@@ -3968,3 +3968,9 @@ td.warn {
 .guild-nights select.text-input {
   width: auto;
 }
+.auto-live {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}

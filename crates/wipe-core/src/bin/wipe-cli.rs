@@ -37,7 +37,8 @@ fn main() -> ExitCode {
     }
     let tuning_dir = args.iter().position(|a| a == "--tuning").and_then(|i| args.get(i + 1)).map(PathBuf::from);
     let opts = AnalyzeOptions { death_cutoff, tuning_dir, ..Default::default() };
-    let result = if cmd == "wcl" { analyze_wcl_dump(path, death_cutoff) } else { analyze_file(&PathBuf::from(path), &opts, |_, _| {}).map_err(|e| e.to_string()) };
+    let local = args.iter().position(|a| a == "--local").and_then(|i| args.get(i + 1)).map(PathBuf::from);
+    let result = if cmd == "wcl" { analyze_wcl_dump(path, death_cutoff, local.as_deref(), &opts) } else { analyze_file(&PathBuf::from(path), &opts, |_, _| {}).map_err(|e| e.to_string()) };
     let report = match result {
         Ok(r) => r,
         Err(e) => {
@@ -62,7 +63,9 @@ fn main() -> ExitCode {
 /// Pastas do scripts/wcl-fetch.mjs (report.json e fight-<id>.json), separadas por vírgula:
 /// várias = reports da mesma noite, juntados com uma cópia de cada pull. Fuso em WIPE_TZ
 /// (padrão -3, BRT).
-fn analyze_wcl_dump(dirs: &str, death_cutoff: u32) -> Result<LogReport, String> {
+/// `--local <log>`: como no app, o que estiver no log do PC sai dele e do Warcraft Logs só
+/// entram os pulls que faltam.
+fn analyze_wcl_dump(dirs: &str, death_cutoff: u32, local: Option<&std::path::Path>, opts: &AnalyzeOptions) -> Result<LogReport, String> {
     let read = |dir: &str, name: &str| -> Result<serde_json::Value, String> {
         let text = std::fs::read_to_string(std::path::Path::new(dir).join(name)).map_err(|e| format!("{dir}/{name}: {e}"))?;
         serde_json::from_str(&text).map_err(|e| format!("{dir}/{name}: {e}"))
@@ -73,12 +76,26 @@ fn analyze_wcl_dump(dirs: &str, death_cutoff: u32) -> Result<LogReport, String> 
     for dir in &dirs {
         a.add_report(&read(dir, "report.json")?, None)?;
     }
+    let local_pulls = match local {
+        Some(p) => analyze_file(p, opts, |_, _| {}).map_err(|e| e.to_string())?.pulls,
+        None => Vec::new(),
+    };
     for f in wipe_core::wcl::dedupe(a.fights()) {
+        if wipe_core::wcl::is_short_wipe(&f) || wipe_core::wcl::covered_by(&local_pulls, f.encounter_id, f.abs_start) {
+            continue;
+        }
         let Ok(events) = read(dirs[f.report], &format!("fight-{}.json", f.id)) else { continue };
         a.begin_fight(f.report, f.id)?;
         a.push_events(events.as_array().map_or(&[][..], |v| v.as_slice()));
     }
-    Ok(a.finish())
+    let mut r = a.finish();
+    r.wcl_pulls = r.pulls.len() as u32;
+    if !local_pulls.is_empty() {
+        let mut pulls = r.pulls;
+        pulls.extend(local_pulls);
+        r.pulls = wipe_core::merge_pulls(pulls);
+    }
+    Ok(r)
 }
 
 fn mmss(ms: i64) -> String {
