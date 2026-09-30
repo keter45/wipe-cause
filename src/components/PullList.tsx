@@ -60,24 +60,18 @@ export function PullList({ pulls, selected, onSelect, summary, onSummary }: Pull
 }
 
 /**
- * Uma linha por boss (clique = resumo do boss) com os pulls recolhidos no chevron. Começa aberto
- * só o boss do pull que está na tela; o resto fica numa linha cada, para a lista não crescer.
+ * Uma linha por boss, em acordeão: clicar abre o resumo do boss e mostra os pulls dele,
+ * recolhendo os outros. Começa aberto o boss do pull que está na tela.
  */
 function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListProps) {
   const groups = groupByBoss(pulls);
   const current = groups.find((g) => g.pulls.some((p) => p.id === selected))?.key ?? null;
-  const [open, setOpen] = useState<Set<string>>(() => new Set(current ? [current] : []));
+  const [open, setOpen] = useState<string | null>(current);
   // foi para um pull de outro boss (lista, atalho, ao vivo): abre o grupo dele
   useEffect(() => {
-    if (current) setOpen((prev) => (prev.has(current) ? prev : new Set(prev).add(current)));
+    if (current) setOpen(current);
   }, [current]);
-  const toggle = (key: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  const toggle = (key: string) => setOpen((prev) => (prev === key ? null : key));
 
   return (
     <>
@@ -88,12 +82,17 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
           return hp != null && (m == null || hp < m) ? hp : m;
         }, null);
         const meta = `${ps.length} pull${ps.length > 1 ? 's' : ''}${kills ? ' · kill' : best != null ? ` · melhor ${pct(best)}` : ''}`;
-        const isOpen = open.has(key);
+        const isOpen = open === key;
         const active = summary === key;
         return (
           <section key={key} className="boss-group">
             <div className={`boss-row ${active ? 'active' : ''}`}>
-              <button className="boss-row-main" onClick={() => onSummary(key)} title={`${key} · ${meta}: abrir o resumo do boss`} aria-current={active ? 'page' : undefined}>
+              <button
+                className="boss-row-main"
+                onClick={() => {
+                  setOpen(key);
+                  onSummary(key);
+                }} title={`${key} · ${meta}: abrir o resumo do boss`} aria-current={active ? 'page' : undefined}>
                 <BossName encounterId={ps[0].encounterId} name={key} size={18} />
                 <span className={`boss-row-meta ${kills ? 'kill' : ''}`}>{meta}</span>
               </button>
