@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Bot, Check, ChevronDown, CircleAlert, FolderOpen, Gamepad2, Info, MessageSquare, RefreshCw, Skull, Trophy, Video, type LucideIcon } from 'lucide-react';
+import { Bot, Check, ChevronDown, CircleAlert, FolderOpen, Gamepad2, Info, MessageSquare, Power, RefreshCw, Skull, Trophy, Video, type LucideIcon } from 'lucide-react';
 import type { LogReport } from '../../types';
 import {
   inTauri,
@@ -24,6 +24,8 @@ import { AiForm } from './AiForm';
 import { DiscordForm } from './DiscordForm';
 import { FolderForm, type FolderApi } from './FolderForm';
 import { WclApiForm } from './WclApiForm';
+import { FirstSteps } from './FirstSteps';
+import { StartupForm } from './StartupForm';
 
 type Tone = 'ok' | 'todo' | 'off' | 'info';
 
@@ -35,6 +37,10 @@ interface Props {
   appVersion: string | null;
   updateState: UpdateState;
   onCheckUpdates: () => void;
+  /** primeira vez no app: o passo a passo aparece aberto */
+  firstRun: boolean;
+  /** "Começar": vai para a escolha da noite */
+  onStart: () => void;
 }
 
 const LOGS_API: FolderApi = {
@@ -62,7 +68,7 @@ const VIDEOS_API: FolderApi = {
  * Tudo o que o app precisa, num lugar: o essencial (pasta de logs e combat log no jogo), o
  * padrão da análise e as integrações opcionais. Cada cartão mostra o status e abre o formulário.
  */
-export function SettingsView({ focus, report, appVersion, updateState, onCheckUpdates }: Props) {
+export function SettingsView({ focus, report, appVersion, updateState, onCheckUpdates, firstRun, onStart }: Props) {
   const { status, reload } = useSetup();
   const [open, setOpen] = useState<Set<SettingsSection>>(() => new Set(focus ? [focus.section] : []));
   const toggle = (s: SettingsSection) =>
@@ -81,6 +87,12 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
     const id = window.setTimeout(() => document.getElementById(`set-${focus.section}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
     return () => window.clearTimeout(id);
   }, [focus]);
+
+  /** abre o cartão e rola até ele (passo a passo) */
+  const openSection = (s: SettingsSection) => {
+    setOpen((prev) => new Set(prev).add(s));
+    window.setTimeout(() => document.getElementById(`set-${s}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
+  };
 
   // o essencial que falta já começa aberto
   const logsMissing = missingRequired(status);
@@ -119,6 +131,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           </div>
         )}
       </header>
+      <FirstSteps firstRun={firstRun} onStart={onStart} onOpen={openSection} />
 
       <SettingsGroup title="Essencial" hint="Sem isso não há o que analisar.">
         {card(
@@ -150,6 +163,18 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
         )}
       </SettingsGroup>
 
+      <SettingsGroup title="Abrir com o WoW">
+        {card(
+          'startup',
+          Power,
+          'Abrir quando o WoW abrir',
+          'O Wipe Cause fica na bandeja e aparece sozinho quando você abre o jogo.',
+          status?.openWithWow ? 'ok' : 'off',
+          status?.openWithWow ? 'Ligado' : 'Desligado',
+          inTauri ? <StartupForm enabled={!!status?.openWithWow} onSaved={reload} /> : <OnlyInApp />,
+        )}
+      </SettingsGroup>
+
       <SettingsGroup title="Análise">
         {card(
           'analysis',
@@ -178,9 +203,9 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           'wcl',
           Trophy,
           'Warcraft Logs',
-          'Compara você com os top players da spec na aba Desempenho e abre o seu fight no WoWAnalyzer.',
+          'Abre as noites da guilda sem o log no PC, compara você com os top players da spec e mostra o parse de cada um.',
           status?.wcl?.configured ? 'ok' : 'off',
-          status?.wcl?.configured ? 'Conectado' : 'Não conectado',
+          status?.wcl?.user ? `Conectado: ${status.wcl.user.name}` : status?.wcl?.configured ? 'Conectado' : 'Não conectado',
           inTauri ? <WclApiForm current={status?.wcl ?? null} onSaved={reload} /> : <OnlyInApp />,
         )}
         {card(

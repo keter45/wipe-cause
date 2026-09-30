@@ -5,8 +5,12 @@ mod live;
 mod logs;
 mod rule_tuning;
 mod settings;
+mod startup;
 mod talents;
+mod tray;
 mod wcl;
+mod wcl_auth;
+mod wcl_source;
 mod wcr;
 
 use serde::Serialize;
@@ -28,11 +32,25 @@ pub(crate) fn user_rules_dir(app: &AppHandle) -> Option<PathBuf> {
     Some(dir)
 }
 
-/// Analisa o log e guarda no histórico (se o histórico falhar, a análise continua valendo).
-/// `progress(lidos, total)` acompanha a leitura.
-pub(crate) fn analyze_and_save(app: &AppHandle, path: &str, death_cutoff: u32, progress: impl FnMut(u64, u64)) -> Result<LogReport, String> {
-    let opts = wipe_core::AnalyzeOptions { rules_dir: user_rules_dir(app), tuning_dir: tuning_dir(app), death_cutoff };
-    let report = wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| format!("não foi possível ler {path}: {e}"))?;
+/// Analisa o log (ou um report do Warcraft Logs, `wcl:<código>`) e guarda no histórico (se o
+/// histórico falhar, a análise continua valendo). `progress(lidos, total)` acompanha a leitura;
+/// `tz_hours` é o fuso de quem vê (o Warcraft Logs guarda os horários em UTC).
+pub(crate) fn analyze_and_save(app: &AppHandle, path: &str, death_cutoff: u32, tz_hours: f64, progress: impl FnMut(u64, u64)) -> Result<LogReport, String> {
+    let rules_dir = user_rules_dir(app);
+    let codes = wcl_source::codes_of(path);
+    let opts = wipe_core::AnalyzeOptions { rules_dir, tuning_dir: tuning_dir(app), death_cutoff };
+    let report = if !codes.is_empty() {
+        let mut book = wipe_core::rules::RuleBook::embedded();
+        if let Some(dir) = &opts.rules_dir {
+            book.load_dir(dir);
+        }
+        if let Some(dir) = &opts.tuning_dir {
+            book.load_tuning_dir(dir);
+        }
+        wcl_source::analyze(app, &codes, book, &opts, tz_hours, progress)?
+    } else {
+        wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| format!("não foi possível ler {path}: {e}"))?
+    };
     if let Err(e) = history::save(app, &report, path) {
         eprintln!("não foi possível salvar no histórico: {e}");
     }
@@ -41,9 +59,9 @@ pub(crate) fn analyze_and_save(app: &AppHandle, path: &str, death_cutoff: u32, p
 
 /// Analisa o combat log fora da thread da UI, emitindo `analyze-progress` durante a leitura.
 #[tauri::command]
-async fn analyze_log(app: AppHandle, path: String, death_cutoff: Option<u32>) -> Result<LogReport, String> {
+async fn analyze_log(app: AppHandle, path: String, death_cutoff: Option<u32>, tz_hours: Option<f64>) -> Result<LogReport, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        analyze_and_save(&app, &path, death_cutoff.unwrap_or(0), |read, total| {
+        analyze_and_save(&app, &path, death_cutoff.unwrap_or(0), tz_hours.unwrap_or(0.0), |read, total| {
             let _ = app.emit("analyze-progress", Progress { read, total });
         })
     })
@@ -74,6 +92,17 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
+        // fechar a janela esconde na bandeja (o ao vivo continua); Sair fica no menu do ícone
+        .setup(|app| {
+            tray::setup(app.handle())?;
+            // a janela nasce escondida: aparece, a não ser quando o Windows abriu o app na bandeja
+            if !std::env::args().any(|a| a == startup::TRAY_ARG) {
+                tray::show(app.handle());
+            }
+            startup::watch(app.handle().clone());
+            Ok(())
+        })
+        .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             analyze_log,
             rules_dir,
@@ -88,6 +117,9 @@ pub fn run() {
             wcl::wcl_get_config,
             wcl::wcl_set_config,
             wcl::wcl_query,
+            wcl_auth::wcl_login,
+            wcl_auth::wcl_logout,
+            wcl_auth::wcl_refresh_user,
             live::live_start,
             live::live_stop,
             live::live_status,
@@ -96,6 +128,8 @@ pub fn run() {
             discord::discord_post,
             discord::discord_post_image,
             save_file,
+            startup::startup_get,
+            startup::startup_set,
             logs::logs_list,
             logs::logs_peek,
             logs::logs_get_dir,

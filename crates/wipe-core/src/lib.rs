@@ -8,6 +8,7 @@ pub mod rules;
 pub mod setup;
 pub mod timestamp;
 pub mod tokenizer;
+pub mod wcl;
 
 use analysis::{finalize, PullBuilder};
 use data::GameData;
@@ -130,7 +131,24 @@ pub fn analyze_reader<R: BufRead>(
         death_cutoff,
         ignored_short_pulls,
         rule_errors: book.errors.clone(),
+        local_logs: Vec::new(),
+        wcl_pulls: 0,
     })
+}
+
+/// Junta pulls de fontes diferentes da mesma noite (log do PC + Warcraft Logs): ordena pelo
+/// horário e refaz a numeração (id e "pull N" de cada boss e dificuldade).
+pub fn merge_pulls(mut pulls: Vec<Pull>) -> Vec<Pull> {
+    pulls.sort_by_key(|p| p.start_ms);
+    let mut counters: std::collections::HashMap<(u32, u32), u32> = std::collections::HashMap::new();
+    for (i, p) in pulls.iter_mut().enumerate() {
+        p.id = i;
+        let c = counters.entry((p.encounter_id, p.difficulty_id)).or_insert(0);
+        *c += 1;
+        p.pull_number = *c;
+        p.pull_number_all = *c;
+    }
+    pulls
 }
 
 pub(crate) fn current_year() -> i32 {

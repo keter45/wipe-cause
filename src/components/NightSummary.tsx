@@ -9,7 +9,6 @@ import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
-import { SendToDiscord } from './SendToDiscord';
 import { ShareMenu } from './ShareMenu';
 import { BossShareCard } from './ShareCards';
 import { withErrorBoundary } from './ErrorBoundary';
@@ -137,8 +136,7 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
           <BossName encounterId={pulls[0]?.encounterId} name={title} size={26} />
         </h2>
         <span className="head-actions">
-          <SendToDiscord payload={() => bossPayload(title, s)} label="Enviar resumo ao Discord" />
-          <ShareMenu card={() => <BossShareCard title={title} pulls={pulls} />} name={`Resumo - ${title}`} />
+          <ShareMenu discord={() => bossPayload(title, s)} card={() => <BossShareCard title={title} pulls={pulls} />} name={`Resumo - ${title}`} />
         </span>
       </header>
 

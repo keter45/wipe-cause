@@ -58,6 +58,29 @@ fn days_from_civil(y: i32, m: u32, d: u32) -> i64 {
     era * 146_097 + doe - 719_468
 }
 
+/// Epoch (ms, UTC) no formato do log, no fuso dado: `9/29/2026 21:05:53.413-3`.
+pub fn format_timestamp(epoch_ms: i64, tz_hours: f64) -> String {
+    let local = epoch_ms + (tz_hours * 3_600_000.0) as i64;
+    let (days, ms_of_day) = (local.div_euclid(86_400_000), local.rem_euclid(86_400_000));
+    let (y, m, d) = civil_from_days(days);
+    let (h, min, s, ms) = (ms_of_day / 3_600_000, ms_of_day / 60_000 % 60, ms_of_day / 1000 % 60, ms_of_day % 1000);
+    let tz = if tz_hours.fract() == 0.0 { format!("{:+}", tz_hours as i64) } else { format!("{tz_hours:+}") };
+    format!("{m}/{d}/{y} {h:02}:{min:02}:{s:02}.{ms:03}{tz}")
+}
+
+/// Inverso de `days_from_civil` (Howard Hinnant).
+fn civil_from_days(z: i64) -> (i64, u32, u32) {
+    let z = z + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (yoe + era * 400 + i64::from(m <= 2), m, d)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -68,6 +91,8 @@ mod tests {
         let t = parse_timestamp("9/28/2026 21:03:11.1234-3", 2000).unwrap();
         assert_eq!(t, 1_790_640_191_123);
         assert_eq!(tz_offset_hours("9/28/2026 21:03:11.1234-3"), -3.0);
+        assert_eq!(format_timestamp(t, -3.0), "9/28/2026 21:03:11.123-3");
+        assert_eq!(parse_timestamp(&format_timestamp(t, 5.5), 2000), Some(t));
     }
 
     #[test]

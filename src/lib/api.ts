@@ -21,7 +21,9 @@ export async function analyzeLog(path: string, deathCutoff: number, onProgress: 
     if (e.payload.total > 0) onProgress(e.payload.read / e.payload.total);
   });
   try {
-    return await invoke<LogReport>('analyze_log', { path, deathCutoff });
+    // o Warcraft Logs guarda os horários em UTC: mostra no fuso de quem vê
+    const tzHours = -new Date().getTimezoneOffset() / 60;
+    return await invoke<LogReport>('analyze_log', { path, deathCutoff, tzHours });
   } finally {
     unlisten();
   }
@@ -61,9 +63,31 @@ export async function openExternal(url: string) {
   }
 }
 
+/** "Caminho" de uma análise feita a partir do Warcraft Logs (no lugar do arquivo de log). */
+export const WCL_SOURCE = 'wcl:';
+/** Código do report quando a análise veio do Warcraft Logs. */
+export const wclSourceCodes = (file: string): string[] => (file.startsWith(WCL_SOURCE) ? file.slice(WCL_SOURCE.length).split(',').filter(Boolean) : []);
+/** Report principal (o mais completo) quando a análise veio do Warcraft Logs. */
+export const wclSourceCode = (file: string): string | null => wclSourceCodes(file)[0] ?? null;
+/** Nome curto da fonte: o arquivo de log ou o(s) report(s) do Warcraft Logs. */
+export function sourceName(file: string): string {
+  const codes = wclSourceCodes(file);
+  if (codes.length) return `Warcraft Logs · ${codes[0]}${codes.length > 1 ? ` +${codes.length - 1}` : ''}`;
+  return file.split(/[\\/]/).pop() ?? file;
+}
+/** Código do report a partir do link colado (ou do próprio código). */
+export function parseWclCode(input: string): string | null {
+  const s = input.trim();
+  const after = s.includes('/reports/') ? s.split('/reports/')[1] : s;
+  const code = after.match(/^[A-Za-z0-9]+/)?.[0] ?? '';
+  return code.length >= 8 ? code : null;
+}
+
 const WCL_LINK_KEY = 'wipe-cause:wcl-report:';
-/** Link do report do WCL lembrado por arquivo de log. */
+/** Link do report do WCL lembrado por arquivo de log (análise do WCL: o próprio report). */
 export function savedWclLink(logFile: string): string {
+  const code = wclSourceCode(logFile);
+  if (code) return `https://www.warcraftlogs.com/reports/${code}`;
   try {
     return localStorage.getItem(WCL_LINK_KEY + logFile) ?? '';
   } catch {
@@ -141,6 +165,8 @@ export interface EncounterPeek {
   dungeon?: boolean;
   pulls: number;
   kills: number;
+  /** início (epoch ms) de cada pull contado */
+  starts?: number[];
 }
 
 export interface LogPeek {
@@ -283,6 +309,9 @@ const normPath = (p: string) => p.replaceAll('\\', '/').toLowerCase();
 export const sameLog = (a: string, b: string) => normPath(a) === normPath(b);
 
 /** Pasta onde o usuário pode pôr regras de boss (*.yaml) que substituem as embutidas. */
+/** "Abrir o Wipe Cause quando o WoW abrir" (inicia com o Windows, na bandeja). */
+export const startupGet = () => (inTauri ? invoke<boolean>('startup_get') : Promise.resolve(false));
+export const startupSet = (enabled: boolean) => invoke<void>('startup_set', { enabled });
 export const rulesDir = () => (inTauri ? invoke<string | null>('rules_dir') : Promise.resolve(null));
 
 /** Mostra o arquivo ou pasta no Explorador de Arquivos (permitido pelo opener:default). */

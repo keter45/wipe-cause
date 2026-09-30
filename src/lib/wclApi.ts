@@ -11,13 +11,35 @@ import type { Sample } from './performance';
 import { SPEC_NAMES } from './specs';
 import { WCL_DIFFICULTY } from './wcl';
 
+export interface WclGuild {
+  id: number;
+  name: string;
+  serverSlug: string;
+  serverName: string;
+  /** "US", "EU"... */
+  region: string;
+}
+
+export interface WclUser {
+  id: number;
+  name: string;
+  guilds: WclGuild[];
+}
+
 export interface WclConfig {
+  /** dá para consultar a API (login ou client próprio) */
   configured: boolean;
   clientId: string | null;
+  /** quem entrou com a conta do Warcraft Logs */
+  user?: WclUser | null;
+  /** esta versão tem o login com a conta */
+  loginAvailable?: boolean;
 }
 
 export const wclGetConfig = () => invoke<WclConfig>('wcl_get_config');
 export const wclSetConfig = (clientId: string, clientSecret: string) => invoke<void>('wcl_set_config', { clientId, clientSecret });
+export const wclLogin = () => invoke<WclUser>('wcl_login');
+export const wclLogout = () => invoke<void>('wcl_logout');
 
 function query<T>(q: string, variables: Record<string, unknown>, cacheKey?: string): Promise<T> {
   return invoke<T>('wcl_query', { query: q, variables, cacheKey: cacheKey ?? null });

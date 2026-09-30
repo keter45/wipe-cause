@@ -57,7 +57,7 @@ function heal(t, src, dst, spellId, spellName, amount, overheal = 0) {
   const cur = hp.has(dst.guid) ? hp.get(dst.guid) : dst.maxHp;
   setHp(dst, Math.min(dst.maxHp, cur + amount - overheal));
   // sufixo 12.x: efetivo, total, absorvido, overheal, crit
-  line(t, ['SPELL_HEAL', ...unit(src), ...unit(dst), spellId, q(spellName), '0x2', ...adv(dst), amount - overheal, amount, 0, overheal, 'nil']);
+  line(t, ['SPELL_HEAL', ...unit(src), ...unit(dst), spellId, q(spellName), '0x2', ...adv(dst), amount, amount, overheal, 0, 'nil']);
 }
 function cast(t, src, spellId, spellName, owner) {
   line(t, ['SPELL_CAST_SUCCESS', ...unit(src), ...NIL, spellId, q(spellName), '0x1', ...adv(src, owner)]);

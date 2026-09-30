@@ -209,7 +209,7 @@ fn parse_encounter(line: &[u8]) -> Option<Encounter> {
 
 fn analyze(app: &AppHandle, s: &Session, file: &Path, death_cutoff: u32, after_pull: bool) {
     set_status(app, s, |st| st.state = "analyzing".into());
-    match crate::analyze_and_save(app, &file.display().to_string(), death_cutoff, |_, _| {}) {
+    match crate::analyze_and_save(app, &file.display().to_string(), death_cutoff, 0.0, |_, _| {}) {
         Ok(report) => {
             if after_pull {
                 notify(app, &report);

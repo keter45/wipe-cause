@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChartColumn, ChevronDown, Skull } from 'lucide-react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
@@ -21,7 +21,7 @@ export interface PullListProps {
   onSummary: (key: string) => void;
 }
 
-/** Resumo da noite + pulls agrupados por boss, cada boss com o próprio resumo. */
+/** Resumo da noite + uma linha por boss (o resumo dele), com os pulls embaixo. */
 export function PullList({ pulls, selected, onSelect, summary, onSummary }: PullListProps) {
   const raid = raidOnly(pulls);
   const dungeons = dungeonsOnly(pulls);
@@ -59,47 +59,86 @@ export function PullList({ pulls, selected, onSelect, summary, onSummary }: Pull
   );
 }
 
+/**
+ * Uma linha por boss, em acordeão: clicar abre o resumo do boss e mostra os pulls dele,
+ * recolhendo os outros. Começa aberto o boss do pull que está na tela.
+ */
 function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListProps) {
+  const groups = groupByBoss(pulls);
+  const current = groups.find((g) => g.pulls.some((p) => p.id === selected))?.key ?? null;
+  const [open, setOpen] = useState<string | null>(current);
+  // foi para um pull de outro boss (lista, atalho, ao vivo): abre o grupo dele
+  useEffect(() => {
+    if (current) setOpen(current);
+  }, [current]);
+  const toggle = (key: string) => setOpen((prev) => (prev === key ? null : key));
+
   return (
     <>
-      {groupByBoss(pulls).map(({ key, pulls: ps }) => (
-        <section key={key}>
-          <h3>
-            <BossName encounterId={ps[0].encounterId} name={key} size={16} />
-            <span className="group-count">{ps.length}</span>
-          </h3>
-          <SummaryLink active={summary === key} onClick={() => onSummary(key)} label="Resumo do boss" />
-          {ps.map((p) => {
-            const hp = lowestBossHp(p);
-            const deaths = p.deaths.filter((d) => !d.ignored).length;
-            const active = summary == null && selected === p.id;
-            return (
+      {groups.map(({ key, pulls: ps }) => {
+        const kills = ps.filter((p) => p.success).length;
+        const best = ps.filter((p) => !p.success).reduce<number | null>((m, p) => {
+          const hp = lowestBossHp(p);
+          return hp != null && (m == null || hp < m) ? hp : m;
+        }, null);
+        const meta = `${ps.length} pull${ps.length > 1 ? 's' : ''}${kills ? ' · kill' : best != null ? ` · melhor ${pct(best)}` : ''}`;
+        const isOpen = open === key;
+        const active = summary === key;
+        return (
+          <section key={key} className="boss-group">
+            <div className={`boss-row ${active ? 'active' : ''}`}>
               <button
-                key={p.id}
-                className={`pull-row ${p.success ? 'kill' : 'wipe'} ${active ? 'active' : ''}`}
-                onClick={() => onSelect(p.id)}
-                aria-current={active ? 'page' : undefined}
-                title={`Pull ${p.pullNumber} · ${p.success ? 'kill' : `boss em ${pct(hp)}`} · ${mmss(p.durationMs)} · ${deaths} mortes`}
-              >
-                <span className="pull-num">
-                  {p.pullNumber}
-                  <NoteDot pull={p} />
-                </span>
-                <span className="pull-result">{p.success ? 'Kill' : pct(hp)}</span>
-                {/* progresso até o kill: quanto do HP do boss já foi */}
-                <span className="pull-meter" aria-hidden>
-                  <span style={{ transform: `scaleX(${p.success ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
-                </span>
-                <span className="pull-meta">{mmss(p.durationMs)}</span>
-                <span className="pull-deaths">
-                  {deaths}
-                  <Skull size={12} strokeWidth={1.75} aria-label="mortes" />
-                </span>
+                className="boss-row-main"
+                onClick={() => {
+                  setOpen(key);
+                  onSummary(key);
+                }} title={`${key} · ${meta}: abrir o resumo do boss`} aria-current={active ? 'page' : undefined}>
+                <BossName encounterId={ps[0].encounterId} name={key} size={18} />
+                <span className={`boss-row-meta ${kills ? 'kill' : ''}`}>{meta}</span>
               </button>
-            );
-          })}
-        </section>
-      ))}
+              <button
+                className="icon-btn sm boss-row-toggle"
+                onClick={() => toggle(key)}
+                aria-expanded={isOpen}
+                aria-label={`${isOpen ? 'Esconder' : 'Mostrar'} os pulls de ${key}`}
+                title={isOpen ? 'Esconder os pulls' : 'Mostrar os pulls'}
+              >
+                <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${isOpen ? 'open' : ''}`} aria-hidden />
+              </button>
+            </div>
+            {isOpen &&
+              ps.map((p) => {
+                const hp = lowestBossHp(p);
+                const deaths = p.deaths.filter((d) => !d.ignored).length;
+                const activePull = summary == null && selected === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    className={`pull-row ${p.success ? 'kill' : 'wipe'} ${activePull ? 'active' : ''}`}
+                    onClick={() => onSelect(p.id)}
+                    aria-current={activePull ? 'page' : undefined}
+                    title={`Pull ${p.pullNumber} · ${p.success ? 'kill' : `boss em ${pct(hp)}`} · ${mmss(p.durationMs)} · ${deaths} mortes`}
+                  >
+                    <span className="pull-num">
+                      {p.pullNumber}
+                      <NoteDot pull={p} />
+                    </span>
+                    <span className="pull-result">{p.success ? 'Kill' : pct(hp)}</span>
+                    {/* progresso até o kill: quanto do HP do boss já foi */}
+                    <span className="pull-meter" aria-hidden>
+                      <span style={{ transform: `scaleX(${p.success ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
+                    </span>
+                    <span className="pull-meta">{mmss(p.durationMs)}</span>
+                    <span className="pull-deaths">
+                      {deaths}
+                      <Skull size={12} strokeWidth={1.75} aria-label="mortes" />
+                    </span>
+                  </button>
+                );
+              })}
+          </section>
+        );
+      })}
     </>
   );
 }

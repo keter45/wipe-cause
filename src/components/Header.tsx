@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { CircleAlert, Crosshair, ExternalLink, FileText, Link2, PanelLeftClose, PanelLeftOpen, RotateCw, Unlink, Video } from 'lucide-react';
+import { CircleAlert, Crosshair, ExternalLink, Link2, RotateCw, Unlink, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
+import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, sourceName,wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
 import { reportCode } from '../lib/wcl';
 import { logTitle, mainEncounterId } from '../lib/format';
 import { BossName } from './Names';
@@ -24,8 +24,6 @@ interface Props {
   onReanalyze: () => void;
   onWcl: (code: string | null) => void;
   onVideos: (videos: Map<number, WcrVideo>) => void;
-  sidebarOpen: boolean;
-  onToggleSidebar: () => void;
   live: LiveStatus;
   /** mostrar o botão "Ao vivo" (só no app; no navegador, com ?demoLive=1) */
   showLive: boolean;
@@ -43,15 +41,6 @@ export function Header(props: Props) {
   const { report } = props;
   return (
     <header className="topbar">
-      <button
-        className="icon-btn"
-        onClick={props.onToggleSidebar}
-        title={props.sidebarOpen ? 'Recolher barra lateral' : 'Mostrar barra lateral'}
-        aria-label={props.sidebarOpen ? 'Recolher barra lateral' : 'Mostrar barra lateral'}
-        aria-expanded={props.sidebarOpen}
-      >
-        {props.sidebarOpen ? <PanelLeftClose {...ICON} /> : <PanelLeftOpen {...ICON} />}
-      </button>
       <div className="brand">
         <Crosshair size={18} strokeWidth={2} className="brand-mark" aria-hidden />
         Wipe Cause
@@ -92,21 +81,25 @@ export function Header(props: Props) {
 function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
   if (!report) return null;
 
-  const fileName = report.file.split(/[\\/]/).pop();
+  const fileName = sourceName(report.file);
+  const short = report.ignoredShortPulls;
+  const meta = [
+    `${report.pulls.length} pulls`,
+    short > 0 ? `${short} curto${short > 1 ? 's' : ''} ignorado${short > 1 ? 's' : ''}` : null,
+    fileName + (report.localLogs?.length ? ` (${report.pulls.length - (report.wclPulls ?? 0)} do log do PC, ${report.wclPulls ?? 0} do WCL)` : ''),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  // o chip corta o texto: o tooltip mostra tudo, com o caminho do log
+  const full = [`${logTitle(report.pulls)} · ${meta}`, report.file, ...(report.localLogs ?? [])].join('\n');
   return (
     <div className="topbar-group log-group">
-      <div className="log-chip" title={report.file}>
-        <FileText {...ICON} className="muted" />
+      <div className="log-chip" title={full}>
         <div className="log-chip-text">
           <span className="log-title">
             <BossName encounterId={mainEncounterId(report.pulls)} name={logTitle(report.pulls)} size={18} />
           </span>
-          <span className="log-meta">
-            {report.pulls.length} pulls
-            {report.ignoredShortPulls > 0 && ` · ${report.ignoredShortPulls} curto${report.ignoredShortPulls > 1 ? 's' : ''} ignorado${report.ignoredShortPulls > 1 ? 's' : ''}`}
-            {' · '}
-            {fileName}
-          </span>
+          <span className="log-meta">{meta}</span>
         </div>
         {!report.advancedLogging && (
           <span className="warn-pill" title="Sem Advanced Combat Logging: HP, recap e bosses ficam incompletos. Ative em Opções → Rede.">

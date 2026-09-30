@@ -5,6 +5,7 @@
 //!                                                      --tuning <pasta> aplica os ajustes do usuário (<encounter>.json)
 //!   wipe-cli spells <arquivo>             spells inimigas por encontro (para calibrar regras de boss)
 //!   wipe-cli peek <arquivo>               só os encontros do log (leitura rápida, como a lista de logs do app)
+//!   wipe-cli wcl <pasta>[,<pasta>] [--json]  analisa reports baixados do Warcraft Logs (scripts/wcl-fetch.mjs)
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -36,7 +37,9 @@ fn main() -> ExitCode {
     }
     let tuning_dir = args.iter().position(|a| a == "--tuning").and_then(|i| args.get(i + 1)).map(PathBuf::from);
     let opts = AnalyzeOptions { death_cutoff, tuning_dir, ..Default::default() };
-    let report = match analyze_file(&PathBuf::from(path), &opts, |_, _| {}) {
+    let local = args.iter().position(|a| a == "--local").and_then(|i| args.get(i + 1)).map(PathBuf::from);
+    let result = if cmd == "wcl" { analyze_wcl_dump(path, death_cutoff, local.as_deref(), &opts) } else { analyze_file(&PathBuf::from(path), &opts, |_, _| {}).map_err(|e| e.to_string()) };
+    let report = match result {
         Ok(r) => r,
         Err(e) => {
             eprintln!("erro ao ler {path}: {e}");
@@ -44,10 +47,10 @@ fn main() -> ExitCode {
         }
     };
     match cmd.as_str() {
-        "analyze" if args.iter().any(|a| a == "--json") => {
+        "analyze" | "wcl" if args.iter().any(|a| a == "--json") => {
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }
-        "analyze" => print_summary(&report),
+        "analyze" | "wcl" => print_summary(&report),
         "spells" => print_spells(&report),
         _ => {
             eprintln!("comando desconhecido: {cmd}");
@@ -55,6 +58,44 @@ fn main() -> ExitCode {
         }
     }
     ExitCode::SUCCESS
+}
+
+/// Pastas do scripts/wcl-fetch.mjs (report.json e fight-<id>.json), separadas por vírgula:
+/// várias = reports da mesma noite, juntados com uma cópia de cada pull. Fuso em WIPE_TZ
+/// (padrão -3, BRT).
+/// `--local <log>`: como no app, o que estiver no log do PC sai dele e do Warcraft Logs só
+/// entram os pulls que faltam.
+fn analyze_wcl_dump(dirs: &str, death_cutoff: u32, local: Option<&std::path::Path>, opts: &AnalyzeOptions) -> Result<LogReport, String> {
+    let read = |dir: &str, name: &str| -> Result<serde_json::Value, String> {
+        let text = std::fs::read_to_string(std::path::Path::new(dir).join(name)).map_err(|e| format!("{dir}/{name}: {e}"))?;
+        serde_json::from_str(&text).map_err(|e| format!("{dir}/{name}: {e}"))
+    };
+    let tz = std::env::var("WIPE_TZ").ok().and_then(|v| v.parse().ok()).unwrap_or(-3.0);
+    let dirs: Vec<&str> = dirs.split(',').collect();
+    let mut a = wipe_core::wcl::WclAnalyzer::new(wipe_core::rules::RuleBook::embedded(), death_cutoff, tz);
+    for dir in &dirs {
+        a.add_report(&read(dir, "report.json")?, None)?;
+    }
+    let local_pulls = match local {
+        Some(p) => analyze_file(p, opts, |_, _| {}).map_err(|e| e.to_string())?.pulls,
+        None => Vec::new(),
+    };
+    for f in wipe_core::wcl::dedupe(a.fights()) {
+        if wipe_core::wcl::is_short_wipe(&f) || wipe_core::wcl::covered_by(&local_pulls, f.encounter_id, f.abs_start) {
+            continue;
+        }
+        let Ok(events) = read(dirs[f.report], &format!("fight-{}.json", f.id)) else { continue };
+        a.begin_fight(f.report, f.id)?;
+        a.push_events(events.as_array().map_or(&[][..], |v| v.as_slice()));
+    }
+    let mut r = a.finish();
+    r.wcl_pulls = r.pulls.len() as u32;
+    if !local_pulls.is_empty() {
+        let mut pulls = r.pulls;
+        pulls.extend(local_pulls);
+        r.pulls = wipe_core::merge_pulls(pulls);
+    }
+    Ok(r)
 }
 
 fn mmss(ms: i64) -> String {

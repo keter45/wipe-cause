@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronRight, FileX, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
+import { ChevronRight, FileX, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
 import type { LogReport } from '../types';
 import { inTauri, readReportFile, sameLog, type HistoryEntry } from '../lib/api';
 import { logTitle, mainEncounterId, pct } from '../lib/format';
-import { BossName } from './Names';
+import { BossIcon, BossName } from './Names';
 import type { UpdateState } from '../lib/updater';
 import { missingRequired, useSetup } from '../lib/setup';
 import { NIGHT, PullList, type PullListProps } from './PullList';
@@ -26,6 +26,8 @@ interface Props extends PullListProps {
   onTogglePin: (e: HistoryEntry) => void;
   onDelete: (e: HistoryEntry) => void;
   onDeleteUnpinned: () => void;
+  /** recolher para a coluna de ícones */
+  onCollapse: () => void;
 }
 
 /**
@@ -54,6 +56,9 @@ export function Sidebar(props: Props) {
   return (
     <aside className="sidebar" aria-label="Análises">
       <div className="sidebar-top">
+        <button className="icon-btn sidebar-collapse" onClick={props.onCollapse} title="Recolher barra lateral" aria-label="Recolher barra lateral">
+          <PanelLeftClose size={16} strokeWidth={1.5} aria-hidden />
+        </button>
         {inTauri ? (
           <button className={`side-item new ${props.page === 'browse' ? 'active' : ''}`} onClick={props.onNew} aria-current={props.page === 'browse' ? 'page' : undefined}>
             <Plus size={16} strokeWidth={2} aria-hidden /> Nova análise
@@ -133,7 +138,7 @@ export function Sidebar(props: Props) {
 
       <div className="sidebar-foot">
         <SettingsItem active={props.page === 'settings'} onClick={props.onSettings} />
-        {inTauri && <UpdateFooter version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
+        {inTauri && <VersionChip version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
       </div>
     </aside>
   );
@@ -241,10 +246,11 @@ function SettingsItem({ active, onClick }: { active: boolean; onClick: () => voi
   );
 }
 
-function UpdateFooter({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
+/** Versão no rodapé, na linha das Configurações: clique procura atualização; ponto = versão nova. */
+function VersionChip({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
   const label =
     state.kind === 'checking'
-      ? 'Procurando…'
+      ? 'Procurando atualizações…'
       : state.kind === 'none'
         ? 'Você está na versão mais recente'
         : state.kind === 'available'
@@ -252,12 +258,56 @@ function UpdateFooter({ version, state, onCheck }: { version: string | null; sta
           : state.kind === 'downloading'
             ? 'Baixando atualização…'
             : 'Procurar atualizações';
+  const busy = state.kind === 'checking' || state.kind === 'downloading';
   return (
-    <div className="update-foot">
-      <span className="muted small">{version ? `Wipe Cause v${version}` : 'Wipe Cause'}</span>
-      <button className="foot-check small" onClick={onCheck} disabled={state.kind === 'checking' || state.kind === 'downloading'} title="Procurar atualizações">
-        <RefreshCw size={12} strokeWidth={1.5} className={state.kind === 'checking' ? 'spin' : ''} aria-hidden /> {label}
-      </button>
-    </div>
+    <button className={`version-chip ${state.kind === 'available' ? 'has-update' : ''}`} onClick={onCheck} disabled={busy} title={label} aria-label={`Wipe Cause ${version ?? ''}: ${label}`}>
+      {busy ? <RefreshCw size={11} strokeWidth={1.75} className="spin" aria-hidden /> : state.kind === 'available' && <span className="update-dot" aria-hidden />}
+      {version ? `v${version}` : 'versão'}
+    </button>
+  );
+}
+
+interface RailProps {
+  history: HistoryEntry[];
+  report: LogReport | null;
+  page: Props['page'];
+  onNew: () => void;
+  onTrends: () => void;
+  onSettings: () => void;
+  onOpenEntry: (e: HistoryEntry) => void;
+  onExpand: () => void;
+}
+
+/** Barra lateral recolhida: uma coluna de ícones (40px) com os atalhos e as análises recentes. */
+export function SidebarRail({ history, report, page, onNew, onTrends, onSettings, onOpenEntry, onExpand }: RailProps) {
+  const { status } = useSetup();
+  const isOpen = (e: HistoryEntry) => report != null && sameLog(e.logPath, report.file);
+  const entries = [...history.filter((e) => e.pinned), ...history.filter((e) => !e.pinned)].slice(0, 8);
+  const item = (label: string, active: boolean, onClick: () => void, icon: ReactNode, extra?: string) => (
+    <button className={`rail-item ${active ? 'active' : ''} ${extra ?? ''}`} onClick={onClick} title={label} aria-label={label} aria-current={active ? 'page' : undefined}>
+      {icon}
+    </button>
+  );
+  return (
+    <nav className="sidebar-rail" aria-label="Análises">
+      {item('Mostrar barra lateral', false, onExpand, <PanelLeftOpen size={16} strokeWidth={1.5} aria-hidden />)}
+      {inTauri && item('Nova análise', page === 'browse', onNew, <Plus size={16} strokeWidth={2} aria-hidden />, 'new')}
+      {item('Evolução', page === 'trends', onTrends, <TrendingUp size={16} strokeWidth={1.5} aria-hidden />)}
+      <span className="rail-sep" aria-hidden />
+      <div className="rail-entries">
+        {/* análise aberta que ainda não está no histórico (ex.: relatório JSON) */}
+        {report && !history.some(isOpen) && item(logTitle(report.pulls), page === 'analysis', onExpand, <BossIcon encounterId={mainEncounterId(report.pulls)} size={20} />)}
+        {entries.map((e) => (
+          <span key={e.id}>{item(e.title, isOpen(e) && page === 'analysis', () => onOpenEntry(e), <BossIcon encounterId={e.encounterId ?? null} size={20} />)}</span>
+        ))}
+      </div>
+      {item(
+        missingRequired(status) ? 'Configurações (falta configurar a pasta de logs)' : 'Configurações',
+        page === 'settings',
+        onSettings,
+        <Settings size={16} strokeWidth={1.5} aria-hidden />,
+        missingRequired(status) ? 'alert' : undefined,
+      )}
+    </nav>
   );
 }
