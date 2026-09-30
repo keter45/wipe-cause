@@ -235,7 +235,8 @@ fn analyze(app: &AppHandle, s: &Session, file: &Path, death_cutoff: u32, after_p
 fn notify(app: &AppHandle, report: &wipe_core::LogReport) {
     let focused = app.get_webview_window("main").and_then(|w| w.is_focused().ok()).unwrap_or(false);
     let Some(p) = report.pulls.last() else { return };
-    if focused {
+    // o app é para raid: pull de masmorra (M+, delve) não gera notificação
+    if focused || p.dungeon {
         return;
     }
     let hp = p

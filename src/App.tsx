@@ -32,6 +32,7 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import type { WcrScan, WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
+import { raidOnly } from './lib/content';
 import { SettingsView } from './components/settings/SettingsView';
 import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
 
@@ -92,7 +93,9 @@ export default function App() {
     else showReport(r);
     setStatus({ kind: 'idle' });
     refreshHistory();
-    const newest = fresh[fresh.length - 1];
+    // o app é para raid: pulls de masmorra (M+) entram na lista, mas não abrem nem avisam
+    const freshRaid = raidOnly(fresh);
+    const newest = freshRaid[freshRaid.length - 1];
     if (!newest) return;
     if (following) {
       setSelected(newest.id);
@@ -100,7 +103,7 @@ export default function App() {
       setPage('analysis');
     }
     setLiveToast({ pull: newest, discord: null });
-    postToDiscord(fresh);
+    postToDiscord(freshRaid);
   }
 
   /** Envia os pulls novos para o Discord, conforme a configuração (wipes e/ou kills). */
@@ -178,7 +181,9 @@ export default function App() {
     setReport(r);
     setDeathCutoff(r.deathCutoff);
     // abre no último wipe (normalmente o que a raid quer ver)
-    const lastWipe = [...r.pulls].reverse().find((p) => !p.success) ?? r.pulls[r.pulls.length - 1];
+    const raid = raidOnly(r.pulls);
+    const pool = raid.length ? raid : r.pulls;
+    const lastWipe = [...pool].reverse().find((p) => !p.success) ?? pool[pool.length - 1];
     setSelected(lastWipe?.id ?? null);
     setSummary(NIGHT); // abre no resumo da noite
   }

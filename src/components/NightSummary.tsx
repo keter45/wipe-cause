@@ -3,6 +3,7 @@ import { Award as AwardIcon, ChevronRight, EyeOff, Hand, Handshake, HeartPulse, 
 import type { Pull } from '../types';
 import { classColor, mmss, num, pct, shortName } from '../lib/format';
 import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummary as Summary, type PlayerNight } from '../lib/night';
+import { dungeonsOnly, raidOnly } from '../lib/content';
 import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
@@ -32,12 +33,20 @@ function clock(p: Pull): string {
 }
 
 /** Visão geral da noite: tempo e downtime da raid inteira e um card por boss. */
-function NightOverviewInner({ pulls, onSelectPull, onSelectBoss }: Props & { onSelectBoss: (key: string) => void }) {
+function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Props & { onSelectBoss: (key: string) => void }) {
+  // o foco é raid: masmorras (M+) não entram no tempo de raid nem nos cards
+  const pulls = useMemo(() => raidOnly(allPulls), [allPulls]);
+  const dungeonBosses = useMemo(() => groupByBoss(dungeonsOnly(allPulls)).length, [allPulls]);
   const s = useMemo(() => summarizeNight(pulls), [pulls]);
   const bosses = useMemo(() => groupByBoss(pulls).map((g) => ({ ...g, s: summarizeNight(g.pulls) })), [pulls]);
   const spellIds = useMechanicSpellIds(pulls);
 
-  if (!pulls.length) return <p className="muted pad">Nenhum pull no log.</p>;
+  if (!pulls.length)
+    return (
+      <p className="muted pad">
+        {dungeonBosses ? `Este log só tem masmorras (${dungeonBosses} chefe${dungeonBosses > 1 ? 's' : ''} de M+): veja na lista, em “Masmorras (M+)”.` : 'Nenhum pull no log.'}
+      </p>
+    );
 
   return (
     <div className="night">
@@ -84,6 +93,12 @@ function NightOverviewInner({ pulls, onSelectPull, onSelectBoss }: Props & { onS
           );
         })}
       </section>
+
+      {dungeonBosses > 0 && (
+        <p className="muted small">
+          Também neste log: {dungeonBosses} chefe{dungeonBosses > 1 ? 's' : ''} de masmorra (M+), fora do resumo — estão na lista, em “Masmorras (M+)”.
+        </p>
+      )}
 
       <section className="panel">
         <h3>Linha do tempo da noite</h3>

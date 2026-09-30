@@ -68,14 +68,17 @@ pub fn entry_id(log_path: &str) -> String {
     format!("{h:016x}")
 }
 
-/// "24/09 · The Twin Fangs Mythic +1": data do 1º pull + boss com mais pulls.
+/// "24/09 · The Twin Fangs Mythic +1": data do 1º pull + boss de raid com mais pulls (masmorras
+/// só entram no título se o log não tiver raid).
 pub fn title_of(report: &LogReport) -> String {
     let Some(first) = report.pulls.first() else { return "Log sem pulls".into() };
     let date = first.start_local.split(' ').next().unwrap_or("");
     let mut parts = date.split('/');
     let (m, d) = (parts.next().unwrap_or("?"), parts.next().unwrap_or("?"));
+    let raid: Vec<_> = report.pulls.iter().filter(|p| !p.dungeon).collect();
+    let pulls = if raid.is_empty() { report.pulls.iter().collect() } else { raid };
     let mut count: HashMap<String, usize> = HashMap::new();
-    for p in &report.pulls {
+    for p in pulls {
         *count.entry(format!("{} {}", p.encounter_name, p.difficulty_name)).or_default() += 1;
     }
     let mut ranked: Vec<(String, usize)> = count.into_iter().collect();

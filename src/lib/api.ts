@@ -137,6 +137,8 @@ export interface EncounterPeek {
   name: string;
   difficultyId: number;
   difficultyName: string;
+  /** masmorra (M+, delve…); índice antigo não tem */
+  dungeon?: boolean;
   pulls: number;
   kills: number;
 }
