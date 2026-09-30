@@ -235,6 +235,8 @@ export const discordPost = (payload: unknown, webhook?: string) => invoke<void>(
 // Histórico de análises (salvas pelo backend a cada análise)
 
 export interface HistoryEntry {
+  /** encontro do título (ícone do boss); entradas antigas não têm */
+  encounterId?: number | null;
   id: string;
   savedAt: number;
   title: string;

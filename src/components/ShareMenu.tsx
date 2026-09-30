@@ -3,6 +3,7 @@ import { Check, ClipboardCopy, FileCode, FileText, ImageDown, MessageSquare, Sha
 import { inTauri } from '../lib/api';
 import { cardHtml, cardPng, copyPng, fileSlug, printPdf, saveHtml, savePng, sendPngToDiscord } from '../lib/share';
 import { Popover } from './Popover';
+import { PlayerClassesContext, usePlayerClasses } from '../lib/players';
 import { useSetup } from '../lib/setup';
 
 type Action = 'copy' | 'png' | 'html' | 'pdf' | 'discord';
@@ -26,7 +27,9 @@ const DONE: Record<Action, string> = {
  * "Compartilhar": gera o cartão (`card()`) como imagem ou página, para quem não tem o app.
  * `name`: base do nome do arquivo e título. `pdf`: oferece PDF (links clicáveis).
  */
-export function ShareMenu({ card, name, pdf = false }: { card: () => ReactElement; name: string; pdf?: boolean }) {
+export function ShareMenu({ card: makeCard, name, pdf = false }: { card: () => ReactElement; name: string; pdf?: boolean }) {
+  const classes = usePlayerClasses();
+  const card = () => <PlayerClassesContext.Provider value={classes}>{makeCard()}</PlayerClassesContext.Provider>;
   const [open, setOpen] = useState(false);
   const hasDiscord = !!useSetup().status?.discord?.webhook;
   const [busy, setBusy] = useState<Action | null>(null);

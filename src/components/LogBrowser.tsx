@@ -15,6 +15,7 @@ import {
 } from '../lib/api';
 import { useSetup } from '../lib/setup';
 import { dungeonsOnly, raidOnly } from '../lib/content';
+import { BossName } from './Names';
 
 interface Props {
   history: HistoryEntry[];
@@ -207,7 +208,10 @@ function LogRow({ file: f, peek, analyzed, disabled, onClick }: { file: LogFile;
         ) : (
           raidEnc.map((e) => (
             <span key={`${e.name}-${e.difficultyId}`} className="log-boss">
-              <strong>{e.name}</strong> <span className="muted">{DIFF_SHORT[e.difficultyId] ?? e.difficultyName}</span>
+              <strong>
+                <BossName encounterId={e.encounterId} name={e.name} size={16} />
+              </strong>{' '}
+              <span className="muted">{DIFF_SHORT[e.difficultyId] ?? e.difficultyName}</span>
               <span className="muted small">
                 {' '}
                 · {e.pulls} pull{e.pulls > 1 ? 's' : ''}

@@ -3,6 +3,7 @@ import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, Star, X } from 
 import { useNote } from '../lib/notes';
 import { addMark, useMarks } from '../lib/marks';
 import { PullMarks } from './PullMarks';
+import { BossName, Colored } from './Names';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
@@ -116,7 +117,9 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
       <div className="pull-header">
         <div>
           <h2>
-            {pull.encounterName} <span className="muted">· {pull.difficultyName} · pull {pull.pullNumber}</span>
+            <BossName encounterId={pull.encounterId} name={pull.encounterName} size={26}>
+              <span className="muted">· {pull.difficultyName} · pull {pull.pullNumber}</span>
+            </BossName>
           </h2>
           <div className="muted">
             {pull.startLocal.split(' ')[1]?.slice(0, 8)} · {mmss(pull.durationMs)}
@@ -281,8 +284,15 @@ function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] 
           </span>
         )}
         {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}
-        <strong>{f.title}</strong>
-        {f.detail && <span className="muted"> — {f.detail}</span>}
+        <strong>
+          <Colored text={f.title} />
+        </strong>
+        {f.detail && (
+          <span className="muted">
+            {' '}
+            — <Colored text={f.detail} />
+          </span>
+        )}
       </span>
     </li>
   );

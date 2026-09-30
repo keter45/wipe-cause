@@ -48,6 +48,15 @@ export function classColor(cls: string | null | undefined): string {
 
 export const ROLE_LABEL: Record<string, string> = { tank: 'Tank', healer: 'Healer', dps: 'DPS' };
 
+/** Encontro do título (boss de raid com mais pulls), para o ícone. */
+export function mainEncounterId(all: Pull[]): number | null {
+  const raid = raidOnly(all);
+  const pulls = raid.length ? raid : all;
+  const count = new Map<number, number>();
+  for (const p of pulls) count.set(p.encounterId, (count.get(p.encounterId) ?? 0) + 1);
+  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+}
+
 /** "24/09 · The Twin Fangs Mythic": data do 1º pull + boss com mais pulls. */
 export function logTitle(all: Pull[]): string {
   if (!all.length) return 'Log sem pulls';

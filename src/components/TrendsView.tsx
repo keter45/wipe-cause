@@ -8,6 +8,7 @@ import { SpellName } from './SpellIcon';
 import { Markdown } from './AskView';
 import { withErrorBoundary } from './ErrorBoundary';
 import { spellIndex } from '../lib/spells';
+import { BossName } from './Names';
 
 /**
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
@@ -43,7 +44,8 @@ function TrendsViewInner() {
         <div className="chips" role="tablist" aria-label="Boss">
           {bosses.map((b) => (
             <button key={b.key} role="tab" aria-selected={b.key === selected} className={b.key === selected ? 'active' : ''} onClick={() => setBoss(b.key)}>
-              {b.key} <span className="muted">· {b.nights} noite{b.nights > 1 ? 's' : ''}</span>
+              <BossName encounterId={b.encounterId} name={b.key} size={16} />
+              <span className="muted">· {b.nights} noite{b.nights > 1 ? 's' : ''}</span>
             </button>
           ))}
         </div>

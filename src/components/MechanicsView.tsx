@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { SlidersHorizontal, Star } from 'lucide-react';
 import { RuleTuning, KIND_LABEL } from './RuleTuning';
+import { Colored, PlayerName } from './Names';
 import type { MechanicResult, Pull } from '../types';
-import { mmss, num, shortName } from '../lib/format';
+import { mmss, num } from '../lib/format';
 import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
 import { SpellName } from './SpellIcon';
@@ -88,7 +89,11 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
         {m.custom ? <span className="chip mech">sua regra</span> : m.tuned?.length ? <span className="chip mech" title={`Ajustado: ${m.tuned.join(', ')}`}>ajustada</span> : null}
         <span className="mechanic-count">{m.failures}×</span>
       </header>
-      {m.summary && <p className="mechanic-summary">{m.summary}</p>}
+      {m.summary && (
+        <p className="mechanic-summary">
+          <Colored text={m.summary} />
+        </p>
+      )}
       {m.tip && <p className="muted small">Como evitar: {m.tip}</p>}
 
       {blamed.length > 0 && (
@@ -96,7 +101,9 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           <tbody>
             {blamed.map((p) => (
               <tr key={p.guid}>
-                <td>{shortName(p.name)}</td>
+                <td>
+                  <PlayerName name={p.name} guid={p.guid} />
+                </td>
                 <td className="num">{m.kind === 'stack_limit' ? `${p.count} stacks` : `${p.count}×`}</td>
                 <td className="num muted">{p.amount ? num(p.amount) : ''}</td>
                 <td className="muted">
@@ -117,8 +124,13 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           {m.dispels.map((d, i) => (
             <span key={i} className={d.delayMs == null ? 'bad' : ''}>
               {i > 0 && ' · '}
-              {shortName(d.target)} {d.delayMs == null ? 'sem dispel' : `${(d.delayMs / 1000).toFixed(1).replace('.', ',')}s`}
-              {d.dispelledBy && <span className="muted"> ({shortName(d.dispelledBy)})</span>}
+              <PlayerName name={d.target} /> {d.delayMs == null ? 'sem dispel' : `${(d.delayMs / 1000).toFixed(1).replace('.', ',')}s`}
+              {d.dispelledBy && (
+                <span className="muted">
+                  {' '}
+                  (<PlayerName name={d.dispelledBy} />)
+                </span>
+              )}
             </span>
           ))}
         </p>
@@ -126,7 +138,12 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
       {credits.length > 0 && (
         <p className="small">
           <span className="muted">{m.kind === 'interrupt' ? 'Cortaram: ' : m.kind === 'dispel' ? 'Dispelaram: ' : 'Ajudaram: '}</span>
-          {credits.map((p) => `${shortName(p.name)} (${p.count})`).join(', ')}
+          {credits.map((p, i) => (
+            <span key={p.guid}>
+              {i > 0 && ', '}
+              <PlayerName name={p.name} guid={p.guid} /> ({p.count})
+            </span>
+          ))}
         </p>
       )}
       {snaps.length > 0 && (
@@ -162,7 +179,13 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
             <ul className="plain small timeline">
               {m.events.map((e, i) => (
                 <li key={i}>
-                  <span className="muted">{mmss(e.t)}</span> {e.player ? `${shortName(e.player)} — ` : ''}
+                  <span className="muted">{mmss(e.t)}</span> {e.player ? (
+                    <>
+                      <PlayerName name={e.player} /> —{' '}
+                    </>
+                  ) : (
+                    ''
+                  )}
                   {e.detail} <PlayAt t={e.t} seek={seek} />
                 </li>
               ))}
