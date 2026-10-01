@@ -9,7 +9,7 @@ Na primeira vez, o app abre em **Configurações** com o passo a passo (depois e
 1. **Pasta de logs do WoW** — encontrada sozinha na maioria dos PCs (`World of Warcraft\_retail_\Logs`).
 2. **No jogo** — em *Opções → Rede*, ligue o *Advanced Combat Logging*; antes do primeiro pull, `/combatlog` (ou o uploader do Warcraft Logs, que liga sozinho).
 3. **Entrar com o Warcraft Logs** (recomendado) — com a sua conta o app vê os logs da sua guilda, completa o que faltou no seu log, liga o ao vivo sozinho e mostra o parse de cada um. Não precisa criar chave nem client.
-4. **Opcional** — abrir o Wipe Cause junto com o WoW (ele inicia com o Windows, escondido na bandeja, e aparece quando o jogo abre), vídeos do Warcraft Recorder, Discord e IA.
+4. **Opcional** — ligar o ao vivo quando o WoW abrir (com o app fechado, o jogo abre o Wipe Cause minimizado na bandeja e já ao vivo; um vigia leve, sem janela, inicia com o Windows), vídeos do Warcraft Recorder, Discord e IA.
 
 ## Como funciona
 

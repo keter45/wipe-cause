@@ -87,8 +87,9 @@ export function useLive(onReport: (r: LogReport, newPulls: Pull[]) => void, guil
     [deliver],
   );
 
+  /** `local`: o WoW abriu neste PC — segue o log dele, mesmo que o arquivo da noite ainda não exista. */
   const start = useCallback(
-    async (deathCutoff: number) => {
+    async (deathCutoff: number, opts?: { local?: boolean }) => {
       setError(null);
       seen.current = null;
       if (wcl.current) window.clearInterval(wcl.current.timer);
@@ -98,7 +99,7 @@ export function useLive(onReport: (r: LogReport, newPulls: Pull[]) => void, guil
         const recentLocal = await logsList()
           .then((s) => s.files.some((f) => Date.now() - f.modifiedMs < LIVE_MS))
           .catch(() => false);
-        if (recentLocal || !guild) {
+        if (opts?.local || recentLocal || !guild) {
           setStatus(await liveStart(null, deathCutoff));
           return;
         }

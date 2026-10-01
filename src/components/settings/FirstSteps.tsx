@@ -32,7 +32,7 @@ export function FirstSteps({ firstRun, onStart, onOpen }: { firstRun: boolean; o
           de cada um. Não precisa criar chave nem client.
         </Step>
         <Step done={null} title="Opcional" action={<button className="link" onClick={() => onOpen('startup')}>Ver opções</button>}>
-          Abrir o Wipe Cause junto com o WoW, vídeos do Warcraft Recorder, aviso no Discord a cada pull e perguntas à IA.
+          Ligar o ao vivo sozinho quando o WoW abrir, vídeos do Warcraft Recorder, aviso no Discord a cada pull e perguntas à IA.
         </Step>
       </ol>
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { startupSet } from '../../lib/api';
 
-/** "Abrir o Wipe Cause quando o WoW abrir": o app inicia com o Windows, na bandeja, e aparece com o WoW. */
+/** "Ligar o ao vivo quando o WoW abrir": com o app fechado, o WoW abre o Wipe Cause na bandeja já ao vivo. */
 export function StartupForm({ enabled, onSaved }: { enabled: boolean; onSaved: () => void }) {
   const [on, setOn] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
@@ -25,11 +25,11 @@ export function StartupForm({ enabled, onSaved }: { enabled: boolean; onSaved: (
           <input type="checkbox" checked={on} onChange={(e) => change(e.target.checked)} />
           <span aria-hidden />
         </span>
-        Abrir o Wipe Cause quando o WoW abrir
+        Ligar o ao vivo quando o WoW abrir
       </label>
       <p className="muted small">
-        Para isso o app inicia com o Windows, escondido na bandeja (perto do relógio), e aparece quando o <code>Wow.exe</code> abre. Com o{' '}
-        <em>ao vivo automático</em> ligado, ele já começa a acompanhar a raid.
+        Mesmo com o app fechado: quando o <code>Wow.exe</code> abre, o Wipe Cause abre minimizado na bandeja (perto do relógio) e liga o modo ao
+        vivo, sem abrir a janela. Para isso, um vigia leve (sem janela) inicia com o Windows e só olha se o WoW abriu.
       </p>
       {error && <p className="small bad">{error}</p>}
     </>
