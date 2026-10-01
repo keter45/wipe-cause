@@ -39,7 +39,8 @@ interface Props {
   /** código do report da noite no Warcraft Logs */
   wclCode?: string;
   /** vídeo do Warcraft Recorder casado com o pull */
-  video?: WcrVideo;
+  /** POVs do pull (Warcraft Recorder: este PC e a nuvem da guilda) */
+  povs?: WcrVideo[];
   /** pulls do mesmo boss na noite (contexto da IA) */
   nightPulls?: Pull[];
   /** regras do boss ajustadas: reanalisar o log aberto */
@@ -61,7 +62,7 @@ export function PullView(props: Props) {
   );
 }
 
-function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Props) {
+function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Props) {
   useMarks(pull);
   const [tab, setTabState] = useState<Tab>(lastTab);
   const setTab = (t: Tab) => {
@@ -69,6 +70,9 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
     setTabState(t);
   };
   const [videoOpen, setVideoOpen] = useState(false);
+  // POV escolhido (o primeiro é o deste PC, se houver)
+  const [povIndex, setPovIndex] = useState(0);
+  const video = povs?.[Math.min(povIndex, povs.length - 1)];
   const [showMinor, setShowMinor] = useState(false);
   const [seekReq, setSeekReq] = useState<{ t: number; n: number } | null>(null);
   const seek = video
@@ -80,6 +84,7 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
   // outro pull: fecha o vídeo e recolhe os avisos
   useEffect(() => {
     setVideoOpen(false);
+    setPovIndex(0);
     setSeekReq(null);
     setShowMinor(false);
   }, [pull.id]);
@@ -152,7 +157,7 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
           {video && (
             <button className="btn sm" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
               {videoOpen ? <X size={14} strokeWidth={1.5} aria-hidden /> : <Play size={14} strokeWidth={1.5} aria-hidden />}
-              {videoOpen ? 'Fechar vídeo' : `Vídeo (${video.player ?? 'POV'})`}
+              {videoOpen ? 'Fechar vídeo' : povs && povs.length > 1 ? `Vídeo (${povs.length} POVs)` : `Vídeo (${video.player ?? 'POV'})`}
             </button>
           )}
           {wclCode && (
@@ -170,7 +175,9 @@ function PullViewInner({ pull, wclCode, video, nightPulls, onRulesChanged }: Pro
         </span>
       </div>
 
-      {video && videoOpen && <VideoPanel video={video} seek={seekReq} onClose={() => setVideoOpen(false)} />}
+      {video && videoOpen && povs && (
+        <VideoPanel povs={povs} video={video} onPov={(v) => setPovIndex(povs.indexOf(v))} seek={seekReq} onClose={() => setVideoOpen(false)} />
+      )}
 
       <section className={`verdict ${pull.success ? 'kill' : 'wipe'}`}>
         <h3>

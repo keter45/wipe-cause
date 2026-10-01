@@ -26,6 +26,7 @@ import { FolderForm, type FolderApi } from './FolderForm';
 import { WclApiForm } from './WclApiForm';
 import { FirstSteps } from './FirstSteps';
 import { StartupForm } from './StartupForm';
+import { WcrCloudForm } from './WcrCloudForm';
 
 type Tone = 'ok' | 'todo' | 'off' | 'info';
 
@@ -212,10 +213,13 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           'videos',
           Video,
           'Vídeos do Warcraft Recorder',
-          'Assista ao gatilho do wipe e a cada morte no vídeo gravado pelo Warcraft Recorder.',
-          status?.wcrDir ? 'ok' : 'off',
-          status?.wcrDir ? 'Pasta encontrada' : 'Sem pasta',
-          <FolderForm api={VIDEOS_API} pickTitle="Pasta de vídeos do Warcraft Recorder" placeholder="D:\WarcraftRecorder" detectedLabel="pasta do Warcraft Recorder" onSaved={reload} />,
+          'Assista ao gatilho do wipe e a cada morte no vídeo do Warcraft Recorder — o seu e, com a nuvem, o de quem mais da guilda subiu.',
+          status?.wcrDir || status?.wcrCloud?.configured ? 'ok' : 'off',
+          [status?.wcrDir ? 'Pasta encontrada' : null, status?.wcrCloud?.configured ? `Nuvem: ${status.wcrCloud.guild}` : null].filter(Boolean).join(' · ') || 'Sem pasta',
+          <>
+            <FolderForm api={VIDEOS_API} pickTitle="Pasta de vídeos do Warcraft Recorder" placeholder="D:\WarcraftRecorder" detectedLabel="pasta do Warcraft Recorder" onSaved={reload} />
+            {inTauri && <WcrCloudForm current={status?.wcrCloud ?? null} onSaved={reload} />}
+          </>,
         )}
         {card(
           'discord',

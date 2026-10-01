@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CircleAlert, Crosshair, ExternalLink, Link2, RotateCw, Unlink, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, sourceName,wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
+import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
 import { reportCode } from '../lib/wcl';
 import { logTitle, mainEncounterId } from '../lib/format';
 import { BossName } from './Names';
@@ -23,7 +23,7 @@ interface Props {
   onCutoff: (n: number) => void;
   onReanalyze: () => void;
   onWcl: (code: string | null) => void;
-  onVideos: (videos: Map<number, WcrVideo>) => void;
+  onVideos: (videos: Map<number, WcrVideo[]>) => void;
   live: LiveStatus;
   /** mostrar o botão "Ao vivo" (só no app; no navegador, com ?demoLive=1) */
   showLive: boolean;
@@ -185,21 +185,22 @@ function WclButton({ logFile, onWcl }: { logFile: string; onWcl: (code: string |
 // ---------------------------------------------------------------------------
 // Warcraft Recorder: vídeos locais
 
-function VideosButton({ pulls, onVideos }: { pulls: Pull[]; onVideos: (videos: Map<number, WcrVideo>) => void }) {
+function VideosButton({ pulls, onVideos }: { pulls: Pull[]; onVideos: (videos: Map<number, WcrVideo[]>) => void }) {
   const { status, openSettings } = useSetup();
   const [scan, setScan] = useState<WcrScan | null>(null);
   const [count, setCount] = useState(0);
+  const [cloud, setCloud] = useState(0);
 
-  // relê quando a pasta muda nas Configurações
+  // relê quando a pasta ou a conta da nuvem mudam nas Configurações
   useEffect(() => {
     let alive = true;
-    migrateWcrDir()
-      .then(wcrVideos)
-      .then((s) => {
+    Promise.all([migrateWcrDir().then(wcrVideos), wcrCloudVideos().catch(() => [] as WcrVideo[])])
+      .then(([s, fromCloud]) => {
         if (!alive) return;
         setScan(s);
-        const m = matchVideos(pulls, s.videos);
+        const m = matchVideos(pulls, [...s.videos, ...fromCloud]);
         setCount(m.size);
+        setCloud([...m.values()].reduce((n, povs) => n + povs.filter((v) => v.cloud).length, 0));
         onVideos(m);
       })
       .catch(() => {});
@@ -207,14 +208,19 @@ function VideosButton({ pulls, onVideos }: { pulls: Pull[]; onVideos: (videos: M
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pulls, status?.wcrDir]);
+  }, [pulls, status?.wcrDir, status?.wcrCloud?.guild]);
 
-  const ok = scan?.dir && !scan.warning;
+  const ok = (scan?.dir && !scan.warning) || status?.wcrCloud?.configured;
   return (
     <button
       className="btn ghost"
       onClick={() => openSettings('videos')}
-      title={scan?.warning ?? (scan?.dir ? `${count} de ${pulls.length} pulls com vídeo · pasta: ${scan.dir}` : 'Configurar a pasta de vídeos do Warcraft Recorder')}
+      title={
+        scan?.warning ??
+        (ok
+          ? `${count} de ${pulls.length} pulls com vídeo${cloud ? ` · ${cloud} POV${cloud > 1 ? 's' : ''} da guilda na nuvem` : ''}${scan?.dir ? ` · pasta: ${scan.dir}` : ''}`
+          : 'Configurar os vídeos do Warcraft Recorder')
+      }
     >
       {scan?.warning ? <CircleAlert {...ICON} className="warn" /> : <Video {...ICON} />}
       Vídeos

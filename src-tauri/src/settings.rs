@@ -20,6 +20,9 @@ pub struct Settings {
     pub discord_on_wipe: bool,
     #[serde(default = "yes")]
     pub discord_on_kill: bool,
+    /// resumo da noite no fim da raid (ao vivo)
+    #[serde(default = "yes")]
+    pub discord_on_night: bool,
     /// "Pergunte à IA": provedor, URL (compatível com OpenAI) e modelo; a chave fica no cofre do sistema
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_provider: Option<String>,
@@ -27,18 +30,23 @@ pub struct Settings {
     pub ai_base_url: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_model: Option<String>,
+    /// nuvem do Warcraft Recorder: conta e guilda (a senha fica no cofre)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wcr_cloud_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wcr_cloud_guild: Option<String>,
     /// abrir o app quando o WoW abrir (ele inicia com o Windows, escondido na bandeja)
     #[serde(default)]
     pub open_with_wow: bool,
 }
 
-fn yes() -> bool {
+pub(crate) fn yes() -> bool {
     true
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, ai_provider: None, ai_base_url: None, ai_model: None, open_with_wow: false }
+        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, discord_on_night: true, ai_provider: None, ai_base_url: None, ai_model: None, wcr_cloud_user: None, wcr_cloud_guild: None, open_with_wow: false }
     }
 }
 

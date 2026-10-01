@@ -10,7 +10,7 @@ import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
 import { ShareMenu } from './ShareMenu';
-import { BossShareCard } from './ShareCards';
+import { BossShareCard, NightShareCard } from './ShareCards';
 import { withErrorBoundary } from './ErrorBoundary';
 import { bossPayload } from '../lib/discord';
 
@@ -52,8 +52,11 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
     <div className="night">
       <header className="night-head">
         <h2>Resumo da noite</h2>
-        <span className="muted small">
-          {bosses.length} boss{bosses.length > 1 ? 'es' : ''} · {s.pulls.length} pulls · {s.kills} kill{s.kills === 1 ? '' : 's'}
+        <span className="head-actions">
+          <span className="muted small">
+            {bosses.length} boss{bosses.length > 1 ? 'es' : ''} · {s.pulls.length} pulls · {s.kills} kill{s.kills === 1 ? '' : 's'}
+          </span>
+          <ShareMenu card={() => <NightShareCard pulls={allPulls} />} name={`Resumo da noite - ${clock(s.pulls[0])}`} />
         </span>
       </header>
 

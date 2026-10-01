@@ -9,7 +9,6 @@ import {
   historyLoad,
   historySetPinned,
   discordGetConfig,
-  discordPost,
   inTauri,
   pickLogFile,
   rememberFile,
@@ -24,7 +23,7 @@ import { useUpdater, type UpdateState } from './lib/updater';
 import { useLive } from './lib/live';
 import { savedGuildId } from './lib/guildNights';
 import { useAutoLive } from './lib/autoLive';
-import { pullPayload } from './lib/discord';
+import { postPullImage, useNightRecap } from './lib/discordLive';
 import { LiveToast } from './components/LiveToast';
 import { TrendsView } from './components/TrendsView';
 import { NIGHT } from './components/PullList';
@@ -93,7 +92,7 @@ export default function App() {
   const cutoffTimer = useRef<number | undefined>(undefined);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [wclCode, setWclCode] = useState<string | null>(null);
-  const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
+  const [videos, setVideos] = useState<Map<number, WcrVideo[]>>(new Map());
   const updater = useUpdater();
   // pull que acabou de ser analisado no modo ao vivo (aviso no canto)
   const [liveToast, setLiveToast] = useState<{ pull: Pull; discord: string | null } | null>(null);
@@ -104,6 +103,8 @@ export default function App() {
   }, [setup.status]);
   const live = useLive(onLiveReport, wclGuild);
   useAutoLive(wclGuild, live.status.active, () => live.start(deathCutoff));
+  // resumo da noite no Discord quando a raid acaba (ao vivo desligado ou 30 min sem pull)
+  const trackNight = useNightRecap(live.status.active);
   // dev no navegador: ?demoLive=1 mostra o botão e o aviso do modo ao vivo (só visual)
   useEffect(() => {
     if (demoLive && report && !liveToast) setLiveToast({ pull: report.pulls[report.pulls.length - 1], discord: 'enviado ao Discord' });
@@ -129,17 +130,19 @@ export default function App() {
       setPage('analysis');
     }
     setLiveToast({ pull: newest, discord: null });
-    postToDiscord(freshRaid);
+    trackNight(r.pulls);
+    postToDiscord(freshRaid, r.pulls);
   }
 
   /** Envia os pulls novos para o Discord, conforme a configuração (wipes e/ou kills). */
-  async function postToDiscord(fresh: Pull[]) {
+  /** Pulls novos no Discord, como imagem: wipe = motivo do wipe; kill = resumo do boss. */
+  async function postToDiscord(fresh: Pull[], all: Pull[]) {
     const cfg = await discordGetConfig().catch(() => null);
     if (!cfg?.webhook) return;
     for (const p of fresh) {
       if (p.success ? !cfg.onKill : !cfg.onWipe) continue;
       try {
-        await discordPost(pullPayload(p, wclCode));
+        await postPullImage(p, all);
         setLiveToast((t) => (t && t.pull.startMs === p.startMs ? { ...t, discord: 'enviado ao Discord' } : t));
       } catch (e) {
         setLiveToast((t) => (t && t.pull.startMs === p.startMs ? { ...t, discord: `Discord: ${e}` } : t));
@@ -411,7 +414,7 @@ export default function App() {
             <PullView
               pull={pull}
               wclCode={wclCode ?? undefined}
-              video={videos.get(pull.id)}
+              povs={videos.get(pull.id)}
               nightPulls={pulls.filter((x) => bossKey(x) === bossKey(pull))}
               onRulesChanged={rulesChanged}
             />

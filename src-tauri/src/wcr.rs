@@ -9,7 +9,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct WcrVideo {
     pub video_path: String,
@@ -22,6 +22,8 @@ pub struct WcrVideo {
     pub boss_percent: Option<f64>,
     /// dono do POV
     pub player: Option<String>,
+    /// da nuvem do Recorder (o caminho é um link assinado)
+    pub cloud: bool,
 }
 
 #[derive(Serialize)]
@@ -83,6 +85,7 @@ fn parse_metadata(json_path: &Path) -> Option<WcrVideo> {
         result: v.get("result").and_then(|r| r.as_bool()).unwrap_or(false),
         boss_percent: v.get("bossPercent").and_then(|b| b.as_f64()),
         player: v.pointer("/player/_name").and_then(|n| n.as_str()).map(str::to_string),
+        cloud: false,
     })
 }
 

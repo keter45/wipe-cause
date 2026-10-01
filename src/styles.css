@@ -4302,3 +4302,90 @@ svg.wcl-mark {
   border-radius: 999px;
   background: var(--accent);
 }
+
+/* player: troca de ponto de vista (POV) */
+.pov-head {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pov-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.pov {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pov svg {
+  color: var(--info);
+}
+.pov:hover {
+  box-shadow: 0 0 0 1px var(--muted);
+}
+.pov.active {
+  box-shadow: 0 0 0 1px var(--accent);
+  font-weight: 600;
+}
+.pov:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* Configurações → Vídeos: nuvem do Warcraft Recorder */
+.wcr-cloud {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.wcr-cloud h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.wcr-cloud p {
+  margin: 0;
+}
+
+/* cartão do resumo da noite */
+.share-card ul.share-night-bosses {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 4px;
+  gap: 6px;
+}
+.share-night-bosses li {
+  display: grid;
+  grid-template-columns: 1fr auto 72px;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+}
+.share-night-bosses strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.share-kill {
+  color: var(--kill);
+}
+.share-wipe {
+  color: var(--text);
+}

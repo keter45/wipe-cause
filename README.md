@@ -56,7 +56,7 @@ Fechar a janela deixa o app na bandeja (perto do relógio), com o ao vivo rodand
 
 O aviso do pull tem um campo para anotar o motivo do wipe na hora, do jeito que a raid percebeu (ele não some enquanto você escreve). A anotação fica salva no PC, aparece no topo do pull (onde dá para editar depois), marca o pull na lista, vai no cartão de compartilhar e entra no contexto do "Perguntar à IA".
 
-Em **Configurações → Discord**, cole o webhook do canal da raid: cada wipe (e kill) chega lá com o gatilho, os erros de mecânica, as mortes decisivas e quem morreu sem defensivo. O pull e o resumo do boss também têm um botão para enviar na hora.
+Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar* (imagem ou mensagem).
 
 Para testar sem estar em raid: `node scripts/simulate-live.mjs <log antigo> <pasta Logs>` escreve alguns pulls de um log real, aos poucos, num `WoWCombatLog` novo.
 
@@ -110,6 +110,8 @@ Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com),
 
 Vídeos só na nuvem do Recorder ainda não são suportados (a API da nuvem é privada).
 
+
+**Vídeos da guilda (nuvem do Recorder):** em *Configurações → Vídeos*, entre com a conta da nuvem do Warcraft Recorder. Os vídeos que a guilda sobe viram outros pontos de vista de cada pull: no player, troque de POV e o vídeo continua no mesmo segundo.
 ## Estrutura
 
 | pasta | o quê |

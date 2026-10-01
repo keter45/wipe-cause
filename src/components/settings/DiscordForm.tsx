@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { Send } from 'lucide-react';
 import { discordPost, discordSetConfig, type DiscordConfig } from '../../lib/api';
 
-/** Webhook do canal da raid: resumo de cada pull no modo ao vivo e botões "Discord" na hora. */
+/** Webhook do canal da raid: no modo ao vivo, imagens de cada pull e da noite; no Compartilhar, na hora. */
 export function DiscordForm({ current, onSaved }: { current: DiscordConfig | null; onSaved: () => void }) {
   const [webhook, setWebhook] = useState(current?.webhook ?? '');
   const [onWipe, setOnWipe] = useState(current?.onWipe ?? true);
   const [onKill, setOnKill] = useState(current?.onKill ?? true);
+  const [onNight, setOnNight] = useState(current?.onNight ?? true);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -25,7 +26,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
 
   async function save() {
     try {
-      await discordSetConfig({ webhook: webhook.trim() || null, onWipe, onKill });
+      await discordSetConfig({ webhook: webhook.trim() || null, onWipe, onKill, onNight });
       setMsg({ ok: true, text: webhook.trim() ? 'Salvo.' : 'Discord desligado.' });
       onSaved();
     } catch (e) {
@@ -33,7 +34,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
     }
   }
 
-  const dirty = (webhook.trim() || null) !== (current?.webhook ?? null) || onWipe !== (current?.onWipe ?? true) || onKill !== (current?.onKill ?? true);
+  const dirty = (webhook.trim() || null) !== (current?.webhook ?? null) || onWipe !== (current?.onWipe ?? true) || onKill !== (current?.onKill ?? true) || onNight !== (current?.onNight ?? true);
   return (
     <>
       <ol className="small set-steps">
@@ -57,10 +58,13 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
       <div className="check-row">
         <span className="small muted">Com o modo ao vivo ligado, enviar sozinho:</span>
         <label>
-          <input type="checkbox" checked={onWipe} onChange={(e) => setOnWipe(e.target.checked)} /> cada wipe
+          <input type="checkbox" checked={onWipe} onChange={(e) => setOnWipe(e.target.checked)} /> cada wipe (o motivo do wipe)
         </label>
         <label>
-          <input type="checkbox" checked={onKill} onChange={(e) => setOnKill(e.target.checked)} /> cada kill
+          <input type="checkbox" checked={onKill} onChange={(e) => setOnKill(e.target.checked)} /> cada kill (o resumo do boss)
+        </label>
+        <label>
+          <input type="checkbox" checked={onNight} onChange={(e) => setOnNight(e.target.checked)} /> o resumo da noite, no fim da raid
         </label>
       </div>
       {msg && <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>{msg.text}</p>}
@@ -72,7 +76,9 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
           Salvar
         </button>
       </div>
-      <p className="muted small">A mensagem traz o gatilho do wipe, os erros de mecânica e quem morreu sem defensivo.</p>
+      <p className="muted small">
+        Tudo vai como imagem, o mesmo cartão do <em>Compartilhar</em>. O fim da raid é quando você desliga o ao vivo ou depois de 30 min sem pull novo.
+      </p>
     </>
   );
 }
