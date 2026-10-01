@@ -100,6 +100,7 @@ pub fn run() {
             if !std::env::args().any(|a| a == startup::TRAY_ARG) {
                 tray::show(app.handle());
             }
+            startup::repair_run_key(app.handle());
             startup::watch(app.handle().clone());
             Ok(())
         })

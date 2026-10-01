@@ -23,6 +23,12 @@ fn run(cmd: &str, args: &[&str]) -> Option<std::process::Output> {
     Command::new(cmd).args(args).creation_flags(CREATE_NO_WINDOW).output().ok()
 }
 
+/// Build de desenvolvimento (`target\debug` ou `target\release` do projeto): não vira o
+/// programa que o Windows abre no boot.
+fn is_dev_build(exe: &std::path::Path) -> bool {
+    exe.components().any(|c| c.as_os_str().eq_ignore_ascii_case("target"))
+}
+
 /// Liga/desliga a inicialização com o Windows (na bandeja).
 fn set_run_key(enabled: bool) -> Result<(), String> {
     let out = if enabled {
@@ -57,14 +63,27 @@ pub fn startup_get(app: AppHandle) -> bool {
 
 #[tauri::command]
 pub fn startup_set(app: AppHandle, enabled: bool) -> Result<(), String> {
-    set_run_key(enabled)?;
+    // build de teste: guarda a opção, mas o boot continua com o app instalado
+    if !std::env::current_exe().is_ok_and(|e| is_dev_build(&e)) {
+        set_run_key(enabled)?;
+    }
     crate::settings::update(&app, |s| s.open_with_wow = enabled)
 }
 
-/// Vigia o WoW em segundo plano: quando ele abre (e a opção está ligada), mostra a janela.
+/// Com a opção ligada, a entrada do boot aponta para este executável: conserta a que ficou de
+/// outra instalação, de uma pasta antiga ou de um build de teste.
+pub fn repair_run_key(app: &AppHandle) {
+    let Ok(exe) = std::env::current_exe() else { return };
+    if crate::settings::load(app).open_with_wow && !is_dev_build(&exe) {
+        let _ = set_run_key(true);
+    }
+}
+
+/// Vigia o WoW em segundo plano: quando ele abre (e a opção está ligada), mostra a janela. O
+/// WoW já aberto quando o app inicia também conta (app aberto depois do jogo).
 pub fn watch(app: AppHandle) {
     std::thread::spawn(move || {
-        let mut was_running = wow_running();
+        let mut was_running = false;
         loop {
             std::thread::sleep(CHECK_EVERY);
             if !crate::settings::load(&app).open_with_wow {
@@ -82,6 +101,12 @@ pub fn watch(app: AppHandle) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn dev_builds_do_not_register_for_boot() {
+        assert!(super::is_dev_build(std::path::Path::new(r"F:\Projetos\wipe-cause\target\release\wipe-cause-app.exe")));
+        assert!(!super::is_dev_build(std::path::Path::new(r"C:\Users\x\AppData\Local\Wipe Cause\wipe-cause-app.exe")));
+    }
+
     #[test]
     fn finds_wow_in_tasklist_csv() {
         let csv = "\"explorer.exe\",\"1\",\"Console\",\"1\",\"10 K\"\r\n\"Wow.exe\",\"2\",\"Console\",\"1\",\"3 GB\"";
