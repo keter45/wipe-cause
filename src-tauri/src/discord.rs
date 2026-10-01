@@ -11,9 +11,12 @@ use tauri::AppHandle;
 #[serde(rename_all = "camelCase")]
 pub struct DiscordConfig {
     pub webhook: Option<String>,
-    /// postar automaticamente no modo ao vivo
+    /// postar automaticamente no modo ao vivo (como imagem): o pull do wipe, o resumo do boss
+    /// no kill e o resumo da noite no fim da raid
     pub on_wipe: bool,
     pub on_kill: bool,
+    #[serde(default = "settings::yes")]
+    pub on_night: bool,
 }
 
 /// Aceita só webhooks do Discord (a URL vai direto para uma requisição HTTP).
@@ -26,7 +29,7 @@ pub fn valid_webhook(url: &str) -> bool {
 #[tauri::command]
 pub fn discord_get_config(app: AppHandle) -> DiscordConfig {
     let s = settings::load(&app);
-    DiscordConfig { webhook: s.discord_webhook, on_wipe: s.discord_on_wipe, on_kill: s.discord_on_kill }
+    DiscordConfig { webhook: s.discord_webhook, on_wipe: s.discord_on_wipe, on_kill: s.discord_on_kill, on_night: s.discord_on_night }
 }
 
 #[tauri::command]
@@ -41,6 +44,7 @@ pub fn discord_set_config(app: AppHandle, config: DiscordConfig) -> Result<(), S
         s.discord_webhook = webhook;
         s.discord_on_wipe = config.on_wipe;
         s.discord_on_kill = config.on_kill;
+        s.discord_on_night = config.on_night;
     })
 }
 

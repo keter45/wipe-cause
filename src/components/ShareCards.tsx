@@ -3,7 +3,8 @@
 
 import type { Pull } from '../types';
 import { classColor, mmss, pct, shortName } from '../lib/format';
-import { summarizeNight } from '../lib/night';
+import { groupByBoss, summarizeNight } from '../lib/night';
+import { raidOnly } from '../lib/content';
 import { scorePull, scoreTone } from '../lib/score';
 import { analyzePull, lowestBossHp } from '../lib/verdict';
 import { PositionMap, type Mark } from './PositionMap';
@@ -206,6 +207,108 @@ export function BossShareCard({ title, pulls }: { title: string; pulls: Pull[] }
       </div>
       <footer className="share-foot">
         <span className="share-muted">Nota média 0–100 · entre trys: média {mmss(s.avgGapMs)}</span>
+        <Brand />
+      </footer>
+    </div>
+  );
+}
+
+/** "2h13" / "47min" */
+const hm = (ms: number) => {
+  const min = Math.round(ms / 60_000);
+  return min >= 60 ? `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}` : `${min}min`;
+};
+
+/** A noite inteira (só raid): cada boss com kill ou melhor %, tempo, maiores causas e notas. */
+export function NightShareCard({ pulls: all }: { pulls: Pull[] }) {
+  const pulls = raidOnly(all);
+  const s = summarizeNight(pulls);
+  const causes = s.causes.filter((c) => c.triggers > 0).slice(0, 5);
+  const byScore = [...s.players].filter((x) => x.pulls >= Math.max(1, s.pulls.length / 3)).sort((a, b) => a.avgScore - b.avgScore);
+  const first = s.pulls[0];
+  const end = new Date(s.endMs).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const combatPct = s.totalMs > 0 ? Math.round((s.combatMs / s.totalMs) * 100) : 0;
+
+  return (
+    <div className={`share-card ${s.kills ? 'kill' : 'wipe'}`}>
+      <header className="share-head">
+        <div>
+          <div className="share-title">Resumo da noite</div>
+          <div className="share-sub">
+            {first ? `${dateOf(first)} · ${timeOf(first)}–${end} · ` : ''}
+            {hm(s.totalMs)} de raid · {combatPct}% em combate · {s.pulls.length} pulls
+          </div>
+        </div>
+        <div className="share-big">
+          {s.kills} kill{s.kills === 1 ? '' : 's'}
+        </div>
+      </header>
+
+      <ul className="share-night-bosses">
+        {groupByBoss(pulls).map(({ key, pulls: ps }) => {
+          const kill = ps.some((p) => p.success);
+          const best = ps.filter((p) => !p.success).reduce<number | null>((m, p) => {
+            const hp = lowestBossHp(p);
+            return hp != null && (m == null || hp < m) ? hp : m;
+          }, null);
+          return (
+            <li key={key}>
+              <BossName encounterId={ps[0].encounterId} name={key} size={18} />
+              <span className="share-muted">
+                {ps.length} pull{ps.length === 1 ? '' : 's'}
+              </span>
+              <strong className={kill ? 'share-kill' : 'share-wipe'}>{kill ? 'Kill' : best != null ? pct(best) : '—'}</strong>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="share-cols">
+        <section>
+          <h4>Maiores causas de wipe</h4>
+          {causes.length ? (
+            <ul>
+              {causes.map((c) => (
+                <li key={c.key}>
+                  <strong>
+                    <SpellName spellId={mechanicSpellId(pulls, c.key)} name={c.name} size={16} />
+                  </strong>{' '}
+                  — gatilho em {c.triggers} de {s.wipes} wipes
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="share-muted">Sem gatilhos apontados.</p>
+          )}
+        </section>
+        <section>
+          <h4>Precisam de atenção</h4>
+          <div className="share-scores">
+            {byScore.slice(0, 5).map((x) => (
+              <span key={x.guid}>
+                <span style={{ color: classColor(x.class) }}>{shortName(x.name)}</span>{' '}
+                <span className={`score-pill ${scoreTone(x.avgScore)}`}>{Math.round(x.avgScore)}</span>
+              </span>
+            ))}
+          </div>
+          <h4>Destaques</h4>
+          <div className="share-scores">
+            {byScore
+              .slice(-3)
+              .reverse()
+              .map((x) => (
+                <span key={x.guid}>
+                  <span style={{ color: classColor(x.class) }}>{shortName(x.name)}</span>{' '}
+                  <span className={`score-pill ${scoreTone(x.avgScore)}`}>{Math.round(x.avgScore)}</span>
+                </span>
+              ))}
+          </div>
+        </section>
+      </div>
+      <footer className="share-foot">
+        <span className="share-muted">
+          Nota média 0–100 · entre trys: média {mmss(s.avgGapMs)} · pausas {hm(s.downtimeMs)}
+        </span>
         <Brand />
       </footer>
     </div>

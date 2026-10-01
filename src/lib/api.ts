@@ -265,6 +265,8 @@ export interface DiscordConfig {
   webhook: string | null;
   onWipe: boolean;
   onKill: boolean;
+  /** resumo da noite no fim da raid (ao vivo) */
+  onNight?: boolean;
 }
 
 export const discordGetConfig = () => invoke<DiscordConfig>('discord_get_config');
