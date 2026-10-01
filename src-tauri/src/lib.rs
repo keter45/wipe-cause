@@ -12,6 +12,7 @@ mod wcl;
 mod wcl_auth;
 mod wcl_source;
 mod wcr;
+mod wcr_cloud;
 
 use serde::Serialize;
 use std::path::PathBuf;
@@ -139,6 +140,9 @@ pub fn run() {
             wcr::wcr_get_dir,
             wcr::wcr_set_dir,
             wcr::wcr_detect_dir,
+            wcr_cloud::wcr_cloud_get_config,
+            wcr_cloud::wcr_cloud_set_config,
+            wcr_cloud::wcr_cloud_videos,
             history::history_list,
             history::history_load,
             history::history_set_pinned,

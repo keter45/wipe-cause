@@ -3,7 +3,7 @@
 // contexto, então salvar numa tela atualiza os indicadores das outras.
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { discordGetConfig, inTauri, logsDetectDir, logsGetDir, wcrDetectDir, wcrGetDir, startupGet, type DiscordConfig } from './api';
+import { discordGetConfig, inTauri, logsDetectDir, logsGetDir, wcrDetectDir, wcrGetDir, startupGet, wcrCloudGetConfig, type DiscordConfig, type WcrCloudConfig } from './api';
 import { aiGetConfig, type AiConfig } from './ai';
 import { wclGetConfig, type WclConfig } from './wclApi';
 
@@ -20,6 +20,8 @@ export interface SetupStatus {
   wcl: WclConfig | null;
   /** abrir o app quando o WoW abrir */
   openWithWow: boolean;
+  /** nuvem do Warcraft Recorder (POVs da guilda) */
+  wcrCloud: WcrCloudConfig | null;
 }
 
 /** Navegador (dev): um setup de exemplo, com a pasta de logs e a IA prontas. */
@@ -32,12 +34,13 @@ const DEMO: SetupStatus = {
   ai: typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('demoAiSetup') ? null : { provider: 'demo', baseUrl: '', model: 'demonstração', hasKey: true },
   wcl: { configured: false, clientId: null },
   openWithWow: false,
+  wcrCloud: null,
 };
 
 async function loadStatus(): Promise<SetupStatus> {
   if (!inTauri) return DEMO;
   const safe = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
-  const [logsSaved, logsDetected, wcrSaved, wcrDetected, discord, ai, wcl, openWithWow] = await Promise.all([
+  const [logsSaved, logsDetected, wcrSaved, wcrDetected, discord, ai, wcl, openWithWow, wcrCloud] = await Promise.all([
     safe(logsGetDir(), null),
     safe(logsDetectDir(), null),
     safe(wcrGetDir(), null),
@@ -46,6 +49,7 @@ async function loadStatus(): Promise<SetupStatus> {
     safe(aiGetConfig(), null),
     safe(wclGetConfig(), null),
     safe(startupGet(), false),
+    safe(wcrCloudGetConfig(), null),
   ]);
   return {
     logsDir: logsSaved ?? logsDetected,
@@ -55,6 +59,7 @@ async function loadStatus(): Promise<SetupStatus> {
     ai,
     wcl,
     openWithWow,
+    wcrCloud,
   };
 }
 

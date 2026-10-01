@@ -93,7 +93,7 @@ export default function App() {
   const cutoffTimer = useRef<number | undefined>(undefined);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [wclCode, setWclCode] = useState<string | null>(null);
-  const [videos, setVideos] = useState<Map<number, WcrVideo>>(new Map());
+  const [videos, setVideos] = useState<Map<number, WcrVideo[]>>(new Map());
   const updater = useUpdater();
   // pull que acabou de ser analisado no modo ao vivo (aviso no canto)
   const [liveToast, setLiveToast] = useState<{ pull: Pull; discord: string | null } | null>(null);
@@ -411,7 +411,7 @@ export default function App() {
             <PullView
               pull={pull}
               wclCode={wclCode ?? undefined}
-              video={videos.get(pull.id)}
+              povs={videos.get(pull.id)}
               nightPulls={pulls.filter((x) => bossKey(x) === bossKey(pull))}
               onRulesChanged={rulesChanged}
             />

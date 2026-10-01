@@ -113,7 +113,10 @@ export interface WcrVideo {
   durationS: number;
   result: boolean;
   bossPercent: number | null;
+  /** dono do POV */
   player: string | null;
+  /** veio da nuvem do Recorder (`videoPath` é um link assinado) */
+  cloud?: boolean;
 }
 
 export interface WcrScan {
@@ -124,6 +127,17 @@ export interface WcrScan {
 }
 
 export const wcrVideos = () => invoke<WcrScan>('wcr_videos');
+
+/** Nuvem do Warcraft Recorder: conta (usuário + guilda; a senha fica no cofre) e os vídeos da guilda. */
+export interface WcrCloudConfig {
+  configured: boolean;
+  user: string | null;
+  guild: string | null;
+}
+export const wcrCloudGetConfig = () => (inTauri ? invoke<WcrCloudConfig>('wcr_cloud_get_config') : Promise.resolve<WcrCloudConfig>({ configured: false, user: null, guild: null }));
+/** Devolve as guildas da conta (para escolher quando a guilda veio vazia). Usuário vazio desconecta. */
+export const wcrCloudSetConfig = (user: string, pass: string, guild: string) => invoke<string[]>('wcr_cloud_set_config', { user, pass, guild });
+export const wcrCloudVideos = () => (inTauri ? invoke<WcrVideo[]>('wcr_cloud_videos') : Promise.resolve<WcrVideo[]>([]));
 /** Pasta cadastrada pelo usuário (null = detecção automática). Fica no settings.json do app. */
 export const wcrGetDir = () => invoke<string | null>('wcr_get_dir');
 export const wcrSetDir = (dir: string | null) => invoke<void>('wcr_set_dir', { dir });
@@ -131,6 +145,7 @@ export const wcrSetDir = (dir: string | null) => invoke<void>('wcr_set_dir', { d
 export const wcrDetectDir = () => invoke<string | null>('wcr_detect_dir');
 
 export async function videoSrc(path: string): Promise<string> {
+  if (/^https:\/\//.test(path)) return path; // nuvem do Warcraft Recorder: link assinado
   if (!inTauri) return `/__video?path=${encodeURIComponent(path)}`; // dev no navegador (vite.config.ts)
   const { convertFileSrc } = await import('@tauri-apps/api/core');
   return convertFileSrc(path);
