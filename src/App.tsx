@@ -20,6 +20,7 @@ import { BossSummary, NightOverview } from './components/NightSummary';
 import { LogBrowser } from './components/LogBrowser';
 import { UpdateBanner } from './components/UpdateBanner';
 import { useUpdater, type UpdateState } from './lib/updater';
+import { listen } from '@tauri-apps/api/event';
 import { useLive } from './lib/live';
 import { savedGuildId } from './lib/guildNights';
 import { useAutoLive } from './lib/autoLive';
@@ -103,6 +104,19 @@ export default function App() {
   }, [setup.status]);
   const live = useLive(onLiveReport, wclGuild);
   useAutoLive(wclGuild, live.status.active, () => live.start(deathCutoff));
+  // "ao vivo quando o WoW abrir": o backend avisa (o app pode estar só na bandeja)
+  const liveRef = useRef({ active: live.status.active, start: live.start, cutoff: deathCutoff });
+  liveRef.current = { active: live.status.active, start: live.start, cutoff: deathCutoff };
+  useEffect(() => {
+    if (!inTauri) return;
+    const off = listen('wow-started', () => {
+      const l = liveRef.current;
+      if (!l.active) void l.start(l.cutoff, { local: true });
+    });
+    return () => {
+      off.then((f) => f());
+    };
+  }, []);
   // resumo da noite no Discord quando a raid acaba (ao vivo desligado ou 30 min sem pull)
   const trackNight = useNightRecap(live.status.active);
   // dev no navegador: ?demoLive=1 mostra o botão e o aviso do modo ao vivo (só visual)

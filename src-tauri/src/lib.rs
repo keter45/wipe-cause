@@ -5,7 +5,7 @@ mod live;
 mod logs;
 mod rule_tuning;
 mod settings;
-mod startup;
+pub mod startup;
 mod talents;
 mod tray;
 mod wcl;
@@ -100,7 +100,7 @@ pub fn run() {
             if !std::env::args().any(|a| a == startup::TRAY_ARG) {
                 tray::show(app.handle());
             }
-            startup::repair_run_key(app.handle());
+            startup::repair(app.handle());
             startup::watch(app.handle().clone());
             Ok(())
         })

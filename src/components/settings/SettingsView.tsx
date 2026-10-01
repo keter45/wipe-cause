@@ -168,8 +168,8 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
         {card(
           'startup',
           Power,
-          'Abrir quando o WoW abrir',
-          'O Wipe Cause fica na bandeja e aparece sozinho quando você abre o jogo.',
+          'Ao vivo quando o WoW abrir',
+          'Abriu o jogo, o Wipe Cause abre na bandeja e já acompanha a raid — sem precisar lembrar de ligar.',
           status?.openWithWow ? 'ok' : 'off',
           status?.openWithWow ? 'Ligado' : 'Desligado',
           inTauri ? <StartupForm enabled={!!status?.openWithWow} onSaved={reload} /> : <OnlyInApp />,
