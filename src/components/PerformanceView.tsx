@@ -149,7 +149,13 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
   const picker = (
     <>
       <div className="segmented" role="radiogroup" aria-label="Comparar com">
-        <button role="radio" aria-checked={mode === 'tops'} className={mode === 'tops' ? 'active' : ''} onClick={() => setMode('tops')}>
+        <button
+          role="radio"
+          aria-checked={mode === 'tops'}
+          className={mode === 'tops' ? 'active' : ''}
+          onClick={() => setMode('tops')}
+          title="Só parses sem buffs externos (Power Infusion e afins): a referência é o que o player fez sozinho"
+        >
           Top players (Warcraft Logs)
         </button>
         <button role="radio" aria-checked={mode === 'raid'} className={mode === 'raid' ? 'active' : ''} onClick={() => setMode('raid')}>

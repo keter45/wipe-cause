@@ -113,8 +113,10 @@ export function pickTops(list: TopRanking[], myIlvl: number | null, myKillMs: nu
   return [...pool].sort((a, b) => b.amount - a.amount).slice(0, TOPS_SHOWN);
 }
 
+// externalBuffs: Exclude = só parses sem buffs externos (Power Infusion e afins): a referência
+// precisa ser o que o player faz sozinho, como o seu pull
 const RANKINGS_QUERY = `query Rankings($id: Int!, $difficulty: Int!, $className: String!, $specName: String!, $metric: CharacterRankingMetricType, $page: Int) {
-  worldData { encounter(id: $id) { characterRankings(difficulty: $difficulty, className: $className, specName: $specName, metric: $metric, page: $page, includeCombatantInfo: true) } }
+  worldData { encounter(id: $id) { characterRankings(difficulty: $difficulty, className: $className, specName: $specName, metric: $metric, page: $page, includeCombatantInfo: true, externalBuffs: Exclude) } }
 }`;
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -128,7 +130,7 @@ export async function fetchRankings(pull: Pull, specId: number, healer: boolean)
   // rankings mudam ao longo do dia: cache diário, 2 páginas (200 parses)
   const pages = await Promise.all(
     [1, 2].map((page) =>
-      query<any>(RANKINGS_QUERY, { ...vars, page }, `rank-${pull.encounterId}-${difficulty}-${specId}-${metric}-p${page}-${today()}`).catch((e) => {
+      query<any>(RANKINGS_QUERY, { ...vars, page }, `rank-noext-${pull.encounterId}-${difficulty}-${specId}-${metric}-p${page}-${today()}`).catch((e) => {
         if (page === 1) throw e;
         return null;
       }),
