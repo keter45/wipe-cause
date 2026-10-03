@@ -79,7 +79,7 @@ Cada player recebe uma nota de 0 a 100 por pull: parte de 100, perde pontos por 
 A aba **Desempenho** de cada pull compara um player com os **top players da mesma spec no Warcraft Logs**, com item level parecido (e tempo de kill parecido, se o pull foi kill). Na progressão não há tempo de kill: o fight do top é recortado no mesmo tempo que o player ficou vivo, então um wipe de 2:30 é comparado com os 2:30 iniciais do kill (sem o execute e sem as fases que o wipe não viu).
 
 - **Janelas de burst**: marque os cooldowns que quer comparar (os de dano da classe vêm marcados); cada uso vira um chip e mostra os casts de 3s antes a 20s depois numa linha do tempo, lado a lado com o mesmo uso do top.
-- **Cooldowns**: quando cada um foi usado, quantas vezes e se o 1º uso veio atrasado ou adiantado.
+- **Cooldowns**: quando cada um foi usado, quantas vezes (e quantas cabiam no tempo) e se o 1º uso veio atrasado ou adiantado. Entram os cooldowns da lista da classe, inclusive os menores (Colossus Smash, Stormkeeper, Ancestral Guidance, Touch of the Magi…), e os que o padrão de uso da noite mostra.
 - **Rotação**: casts por minuto e % do dano de cada habilidade, apontando o que ficou abaixo ou não foi usado.
 - **Setup**: poção de combate, distribuição de status, talentos diferentes (com nome e ícone) e itens lado a lado, com encantamentos e gemas que faltam.
 - **Exportar**: o relatório do jogador vira um cartão para copiar, salvar (PNG/HTML) ou mandar ao Discord — para quem não tem o app.
@@ -92,7 +92,8 @@ No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é po
 
 - **Pull → aba Você**: suas métricas, a sua sobrevivência e os seus erros de mecânica, em quatro partes.
   - **Para o próximo pull:** os seus erros ordenados pelo que custaram. Morte cedo, tempo parado, proc perdido e DoT fora do alvo viram uma estimativa de dano; mecânica e cooldown entram com peso pela gravidade. Cada um traz o momento (▶ no vídeo) e a dica.
-  - **Onde a referência abriu vantagem:** o seu dano a cada 5s contra uma referência, que pode ser o top do Warcraft Logs, o melhor da raid ou o seu melhor pull da noite (só referências que ficaram vivas pelo menos 60% do seu tempo). Os 3 trechos de maior diferença vêm com os casts de cada um lado a lado e o que a referência usou a mais.
+  - **Onde a referência abriu vantagem:** o seu dano a cada 5s contra uma referência que você escolhe: um dos tops da spec no Warcraft Logs, alguém da sua spec na raid, você em outro pull ou alguém de outra spec no mesmo pull (aí só o dano e o dano tomado). Sem escolha, vai o top #1 ou o melhor da raid que ficou vivo pelo menos 60% do seu tempo. Os 3 trechos de maior diferença vêm com os casts de cada um lado a lado e o que a referência usou a mais.
+  - **Cooldowns:** os seus usos contra os da referência numa linha do tempo, inclusive os cooldowns menores.
   - **Mecânicas:** só as suas (falhas nas regras do boss, mortes com o golpe final e o defensivo que estava disponível) e o dano que você tomou bem mais que a referência por minuto vivo, que costuma ser dano evitável.
   - **Rotação:** a leitura da rotação base da spec.
 - **Resumo da noite e do boss**: os seus pulls boss a boss, o melhor de cada um e os erros que se repetem.
