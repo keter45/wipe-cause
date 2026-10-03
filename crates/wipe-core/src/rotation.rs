@@ -61,6 +61,9 @@ pub struct Ability {
     /// só existe nesta árvore de herói (o cooldown não é cobrado das outras)
     #[serde(default)]
     pub tree: Option<String>,
+    /// outros ids que contam como esta habilidade (ex.: Solar e Lunar Eclipse, mesmo cooldown)
+    #[serde(default)]
+    pub alt_ids: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -405,7 +408,7 @@ impl RotationTracker {
     pub fn new(spec: &'static RotationSpec) -> Self {
         RotationTracker {
             spec,
-            ability_by_id: spec.abilities.iter().map(|(k, a)| (a.id, k.clone())).collect(),
+            ability_by_id: spec.abilities.iter().flat_map(|(k, a)| std::iter::once(a.id).chain(a.alt_ids.iter().copied()).map(move |id| (id, k.clone()))).collect(),
             buff_by_id: spec.buffs.iter().map(|(k, b)| (b.id, k.clone())).collect(),
             casts: Vec::new(),
             markers: spec.hero_trees.iter().flat_map(|t| t.markers.iter().copied()).collect(),
@@ -654,6 +657,8 @@ impl RotationTracker {
             .hero_trees
             .iter()
             .find(|t| t.markers.iter().any(|m| self.seen_markers.contains(m)))
+            // sem marcador visto: a árvore sem marcador (a que se reconhece por não ter as outras)
+            .or_else(|| spec.hero_trees.iter().find(|t| t.markers.is_empty()))
             .or_else(|| spec.hero_trees.first());
         let view = |items: &[PrioItem]| -> Vec<PrioView> {
             items.iter().map(|i| PrioView { spell_id: spec.abilities[&i.spell].id, name: spec.abilities[&i.spell].name.clone(), note: i.note.clone() }).collect()
