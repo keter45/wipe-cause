@@ -94,6 +94,29 @@ Tipos de checagem: `proc` (buff que precisa ser gasto, carga por carga — ex.: 
 
 Specs com rotação: **Marksmanship Hunter**, **Elemental Shaman**, **Balance Druid**, **Demonology Warlock**, **Arcane Mage**, **Havoc Demon Hunter**, **Assassination Rogue**, **Retribution Paladin**, **Arms Warrior**, **Shadow Priest**, **Unholy Death Knight**, **Devourer Demon Hunter**, **Destruction Warlock**, **Devastation Evoker**, **Beast Mastery Hunter** e **Affliction Warlock**.
 
+### Gerar a rotação de uma spec
+
+Sem escrever à mão nem usar IA: `scripts/rotation.mjs` monta o YAML a partir da APL e dos dados de spell do SimulationCraft e calibra nos logs dos tops do Warcraft Logs.
+
+1. `node scripts/rotation.mjs tops <spec>`: baixa os 2 melhores parses de cada chefe do raide (sem buffs externos), só com os eventos do player. Usa as variáveis de ambiente `WCL_CLIENT_ID` e `WCL_CLIENT_SECRET`.
+2. `node scripts/rotation.mjs calibrate <spec>`: gera o rascunho e o roda nos tops pelo próprio motor do app.
+   - **Prioridade:** sai da APL, por árvore de herói, em alvo único e AoE.
+   - **Ids:** vêm do que os tops castam.
+   - **Números:** cooldown, cargas e cast vêm do dump do SimC (ou do tooltip do Wowhead).
+   - **Checagens inferidas:**
+     - DoT, pelo `dot.X.refreshable`;
+     - proc, pelo `buff.X.react` numa spell que o buff modifica;
+     - recurso, pelo custo dos gastos;
+     - cooldowns de 20s ou mais.
+   - **Calibração pelos tops:**
+     - metas de uptime e de uso de cooldown pelo que os tops fazem;
+     - abertura: o que 70% deles casta nos primeiros segundos;
+     - sai o que nem os tops cumprem (proc gasto por outra coisa, buff de janela, cooldown que não se usa no cooldown, recurso que eles também estouram).
+   - **Destino:** escreve em `rotations/`; se já existe uma escrita à mão, vai para `samples/rotation/` para comparar.
+3. `node scripts/rotation.mjs check <spec>`: mostra como os tops se saem na rotação atual, para validar uma escrita à mão.
+
+Os textos saem em modelo ("X perdido: use antes de acabar"): vale revisar os pontos principais antes de publicar.
+
 ## Escala de interrupts e dispels
 
 Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem.
