@@ -192,6 +192,9 @@ pub enum Check {
         /// um destes precisa ter saído nos `within_ms` anteriores
         after: Vec<String>,
         within_ms: i64,
+        /// só vale para quem ganhou um destes buffs no pull (o talento que pede a combinação)
+        #[serde(default)]
+        only_with: Vec<String>,
         importance: String,
         title: String,
         tip: String,
@@ -245,7 +248,10 @@ impl RotationSpec {
                     casts.iter().chain(instead).try_for_each(ability)?;
                     unless_buff.iter().try_for_each(buff)?;
                 }
-                Check::AfterCast { casts, after, .. } => casts.iter().chain(after).try_for_each(ability)?,
+                Check::AfterCast { casts, after, only_with, .. } => {
+                    casts.iter().chain(after).try_for_each(ability)?;
+                    only_with.iter().try_for_each(buff)?;
+                }
                 Check::Cooldown { spells, .. } => {
                     for s in spells {
                         ability(s)?;
@@ -395,6 +401,8 @@ pub(crate) struct RotationTracker {
     active: HashSet<String>,
     /// cargas atuais de cada buff (Demonic Core vai até 4)
     stacks: HashMap<String, u32>,
+    /// buffs que o player ganhou em algum momento do pull
+    seen_buffs: HashSet<String>,
     removed_at: HashMap<String, i64>,
     /// remoções de buff de `proc` aguardando o spender: (índice da checagem, ms)
     pending: Vec<(usize, i64)>,
@@ -437,6 +445,7 @@ impl RotationTracker {
             seen_markers: HashSet::new(),
             active: HashSet::new(),
             stacks: HashMap::new(),
+            seen_buffs: HashSet::new(),
             removed_at: HashMap::new(),
             pending: Vec::new(),
             proc_total: HashMap::new(),
@@ -583,6 +592,7 @@ impl RotationTracker {
             self.stacks.insert(buff.clone(), stacks);
         }
         if stacks > before {
+            self.seen_buffs.insert(buff.clone());
             self.active.insert(buff.clone());
             for (i, c) in self.spec.checks.iter().enumerate() {
                 if let Check::RequiresBuff { buff: b, applied_by, .. } = c {
@@ -851,7 +861,10 @@ impl RotationTracker {
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
-                Check::AfterCast { id, casts, after, within_ms, importance, title, tip } => {
+                Check::AfterCast { id, casts, after, within_ms, only_with, importance, title, tip } => {
+                    if !only_with.is_empty() && !only_with.iter().any(|b| self.seen_buffs.contains(b)) {
+                        continue;
+                    }
                     let mine: Vec<i64> = self.casts.iter().filter(|(_, k)| casts.contains(k)).map(|(t, _)| *t).collect();
                     if mine.is_empty() {
                         continue;

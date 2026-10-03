@@ -92,7 +92,7 @@ Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.ya
 
 Tipos de checagem: `proc` (buff que precisa ser gasto, carga por carga — ex.: Precise Shots, Demonic Core), `requires_buff` (casts que pedem um buff, em AoE ou sempre — ex.: Trick Shots só para quem tem o talento, Demonbolt com Demonic Core), `downtime` (tempo sem castar, só quando a raid estava batendo: intermissões não contam), `cooldown` (usos vs. possíveis no tempo vivo; talentos opcionais só contam se usados), `resource_waste` (recurso estourado, ex.: Maelstrom, Astral Power, Soul Shards), `dot_uptime` (DoT no alvo, ex.: Flame Shock), `aoe_swap` (com N+ alvos o cast deveria ser outro, ex.: Chain Lightning) e `after_cast` (cast que precisa vir logo depois de outro, ex.: Demonic Tyrant com os Dreadstalkers fora).
 
-Specs com rotação: **Marksmanship Hunter**, **Elemental Shaman**, **Balance Druid**, **Demonology Warlock** e **Arcane Mage**.
+Specs com rotação: **Marksmanship Hunter**, **Elemental Shaman**, **Balance Druid**, **Demonology Warlock**, **Arcane Mage** e **Havoc Demon Hunter**.
 
 ## Escala de interrupts e dispels
 

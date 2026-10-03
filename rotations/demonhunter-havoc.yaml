@@ -1,0 +1,146 @@
+# Havoc Demon Hunter — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Dhknul e Keterz — Fel-Scarred).
+spec: 577
+name: Havoc Demon Hunter
+patch: "12.1"
+sources:
+  - title: Wowhead — Havoc Demon Hunter Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/demon-hunter/havoc/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL demonhunter_havoc (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/demonhunter_havoc.simc
+
+key_points:
+  - "Cooldowns curtos no cooldown: Eye Beam, Blade Dance / Death Sweep, Essence Break e Immolation Aura. Estourar Fury de vez em quando não é problema se a prioridade está certa."
+  - "Gaste Fury com Chaos Strike / Annihilation, mas guarde o suficiente para o Blade Dance quando ele voltar."
+  - "Metamorphosis reseta o Eye Beam e o Blade Dance (Chaotic Transformation): use os dois antes de entrar na Meta."
+  - "Vengeful Retreat logo antes do Eye Beam (Initiative / Inertia); se dessincronizar, Eye Beam no cooldown e segure o Retreat para o próximo."
+  - "Fel-Scarred: gaste os Demonsurge (Death Sweep / Annihilation) antes de outro Eye Beam ou Meta, senão eles se perdem; nunca fique parado com 2 cargas de Immolation Aura."
+  - "Aldrachi Reaver: use o Reaver's Glaive antes da próxima The Hunt (ela gera outro)."
+
+hero_trees:
+  - key: fel_scarred
+    name: Fel-Scarred
+    markers: [452416, 452487] # buff Demonsurge, Consuming Fire
+  - key: aldrachi_reaver
+    name: Aldrachi Reaver
+    markers: [442294] # Reaver's Glaive
+
+abilities:
+  metamorphosis: { id: 200166, alt_ids: [191427], name: Metamorphosis, cooldown_ms: 120000 }
+  the_hunt: { id: 370965, name: The Hunt, cast_ms: 1000, cooldown_ms: 90000 }
+  # Abyssal Gaze é o Eye Beam dentro da Meta (Fel-Scarred)
+  eye_beam: { id: 198013, alt_ids: [452497], name: Eye Beam, channel_ms: 2000, cooldown_ms: 30000 }
+  essence_break: { id: 258860, name: Essence Break, cooldown_ms: 40000 }
+  # Death Sweep é o Blade Dance dentro da Meta
+  blade_dance: { id: 188499, alt_ids: [210152], name: Blade Dance, cooldown_ms: 15000 }
+  # Consuming Fire é a Immolation Aura dentro da Meta (Fel-Scarred)
+  immolation_aura: { id: 258920, alt_ids: [427917, 452487], name: Immolation Aura, cooldown_ms: 30000 }
+  vengeful_retreat: { id: 198793, name: Vengeful Retreat }
+  reavers_glaive: { id: 442294, name: "Reaver's Glaive", tree: aldrachi_reaver }
+  chaos_strike: { id: 162794, alt_ids: [201427], name: Chaos Strike }
+  felblade: { id: 232893, name: Felblade }
+  throw_glaive: { id: 185123, name: Throw Glaive }
+  fel_rush: { id: 195072, name: Fel Rush }
+
+buffs:
+  empowered_eye_beam: { id: 1271144, name: Empowered Eye Beam }
+  initiative: { id: 391215, name: Initiative }
+  exergy: { id: 208628, name: Exergy }
+
+priority:
+  fel_scarred:
+    st:
+      - { spell: immolation_aura, note: "gaste as cargas antes da Meta" }
+      - { spell: metamorphosis, note: "depois de usar Eye Beam e Blade Dance (a Meta reseta os dois)" }
+      - { spell: the_hunt, note: "com o Eye Beam a menos de 10s" }
+      - { spell: vengeful_retreat, note: "1 GCD antes do Eye Beam" }
+      - { spell: immolation_aura, note: "se estiver com as cargas cheias" }
+      - { spell: blade_dance, note: "Death Sweep com Demonsurge disponível" }
+      - { spell: chaos_strike, note: "Annihilation com Demonsurge disponível" }
+      - { spell: eye_beam, note: "no cooldown" }
+      - { spell: essence_break, note: "no cooldown (segure se o Eye Beam volta em até 4s)" }
+      - { spell: blade_dance, note: "Death Sweep / Blade Dance" }
+      - { spell: chaos_strike, note: "Annihilation" }
+      - { spell: felblade, note: "com 100 de Fury ou menos" }
+      - { spell: chaos_strike }
+      - { spell: immolation_aura }
+      - { spell: throw_glaive, note: "ou Fel Rush, sem mais nada disponível" }
+    aoe:
+      - { spell: immolation_aura, note: "nunca parado com 2 cargas; perto dos inimigos até o fim (Ragefire)" }
+      - { spell: metamorphosis, note: "depois de usar Eye Beam e Blade Dance" }
+      - { spell: the_hunt, note: "com o Eye Beam a menos de 10s" }
+      - { spell: vengeful_retreat, note: "1 GCD antes do Eye Beam" }
+      - { spell: blade_dance, note: "Death Sweep com Demonsurge" }
+      - { spell: eye_beam }
+      - { spell: essence_break }
+      - { spell: blade_dance }
+      - { spell: chaos_strike }
+      - { spell: felblade, note: "com 100 de Fury ou menos" }
+  aldrachi_reaver:
+    st:
+      - { spell: the_hunt, note: "sem Reaver's Glaive na mão" }
+      - { spell: metamorphosis }
+      - { spell: vengeful_retreat, note: "1 GCD antes do Eye Beam" }
+      - { spell: reavers_glaive }
+      - { spell: chaos_strike, note: "Annihilation com Rending Strike, depois do Glaive Flurry" }
+      - { spell: immolation_aura, note: "se estiver com as cargas cheias" }
+      - { spell: eye_beam }
+      - { spell: essence_break }
+      - { spell: blade_dance, note: "Death Sweep / Blade Dance" }
+      - { spell: chaos_strike }
+      - { spell: felblade }
+      - { spell: immolation_aura }
+      - { spell: fel_rush, note: "sem mais nada disponível" }
+    aoe:
+      - { spell: the_hunt, note: "sem Reaver's Glaive na mão" }
+      - { spell: metamorphosis }
+      - { spell: reavers_glaive, note: "segure para empoderar o Blade Dance quando vierem adds" }
+      - { spell: chaos_strike, note: "empoderamentos: Chaos Strike antes do Blade Dance em 2+ alvos" }
+      - { spell: eye_beam }
+      - { spell: essence_break }
+      - { spell: blade_dance }
+      - { spell: immolation_aura }
+      - { spell: felblade }
+
+# Abertura: todos os cooldowns logo de cara (Immolation Aura pré-pull)
+opener:
+  window_ms: 15000
+  ordered: false
+  fel_scarred: [eye_beam, the_hunt, essence_break, metamorphosis]
+  aldrachi_reaver: [the_hunt, reavers_glaive, eye_beam, metamorphosis]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem atacar
+    tip: "Sempre com um GCD rodando: Felblade e Fel Rush para voltar ao alvo; Throw Glaive quando não der para chegar."
+  - kind: proc
+    id: empowered_eye_beam
+    buff: empowered_eye_beam
+    spenders: [eye_beam]
+    # o buff só sai no fim do canal do Eye Beam
+    channel: { spell: eye_beam, ms: 2500 }
+    importance: medium
+    title: Empowered Eye Beam perdido
+    tip: "A The Hunt dobra o próximo Eye Beam: use a Hunt com o Eye Beam a menos de 10s."
+  - kind: after_cast
+    id: retreat_before_eye_beam
+    casts: [eye_beam]
+    after: [vengeful_retreat, metamorphosis]
+    within_ms: 3000
+    only_with: [exergy]
+    importance: low
+    title: Eye Beam sem Vengeful Retreat
+    tip: "Com Exergy, Vengeful Retreat 1 GCD antes do Eye Beam: o Initiative/Inertia entra no dano dele. Se dessincronizar, segure o Retreat para o próximo Eye Beam."
+  - kind: cooldown
+    id: cooldowns
+    spells: [metamorphosis, the_hunt, eye_beam, essence_break, blade_dance, immolation_aura]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Eye Beam, Blade Dance, Essence Break e Immolation Aura no cooldown; The Hunt e Meta sem segurar."
