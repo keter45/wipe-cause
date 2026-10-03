@@ -46,6 +46,8 @@ export interface Pull {
   rulesFile: string | null;
   mechanics: MechanicResult[];
   trigger: PullTrigger | null;
+  /** quem gravou o log (flag "meu" do combat log); no Warcraft Logs não tem */
+  ownerGuid?: string;
 }
 
 export interface PullTrigger {
@@ -96,6 +98,9 @@ export interface PlayerStats {
   setup?: Setup | null;
   /** leitura da rotação (specs com rotação base escrita) */
   rotation?: RotationResult;
+  /** dano / cura por janela de 5s (pets somados), até o corte; análises antigas não têm */
+  damageTimeline?: number[];
+  healingTimeline?: number[];
 }
 
 export interface SpellCasts {
@@ -337,6 +342,8 @@ export interface RotationSpellRef {
 
 export interface RotationFinding {
   id: string;
+  /** tipo da checagem (proc, downtime, dot_uptime, cooldown, resource_waste...); análises antigas não têm */
+  kind?: string;
   title: string;
   tip: string;
   importance: 'high' | 'medium' | 'low';

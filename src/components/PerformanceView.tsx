@@ -69,7 +69,7 @@ function refLabel(me: Sample, s: Sample): string {
 const signedSec = (ms: number) => `${ms > 0 ? '+' : '−'}${Math.round(Math.abs(ms) / 1000)}s`;
 
 /** Comparação de desempenho com a mesma spec na noite (etapa 1: sem dados externos). */
-export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nightPulls: Pull[]; wclCode?: string }) {
+export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid }: { pull: Pull; nightPulls: Pull[]; wclCode?: string; defaultGuid?: string }) {
   const players = useMemo(
     () =>
       [...pull.players]
@@ -79,7 +79,7 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
   );
   const [guid, setGuid] = useState<string | null>(null);
   const player =
-    players.find((p) => p.guid === guid) ?? players.find((p) => p.name === rememberedPlayer()) ?? players.find((p) => p.role === 'dps') ?? players[0];
+    players.find((p) => p.guid === guid) ?? players.find((p) => p.guid === defaultGuid) ?? players.find((p) => p.name === rememberedPlayer()) ?? players.find((p) => p.role === 'dps') ?? players[0];
 
   if (!player) return <p className="muted pad">Sem dados de spec dos jogadores neste pull.</p>;
   if (!player.casts) return <p className="muted pad">Esta análise é de uma versão antiga do app. Analise o log de novo para ver o desempenho.</p>;

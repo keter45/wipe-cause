@@ -8,6 +8,12 @@ import { scoreTone } from '../lib/score';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
 
+/** Momentos em ordem, um por segundo (vários no mesmo segundo viram um ▶ só). */
+export const uniqueSeconds = (times: number[]) => {
+  const seen = new Set<number>();
+  return [...times].sort((a, b) => a - b).filter((t) => !seen.has(Math.floor(t / 1000)) && !!seen.add(Math.floor(t / 1000)));
+};
+
 const KIND: Record<RotationFinding['importance'], string> = { high: 'Erro', medium: 'Ajuste', low: 'Detalhe' };
 
 /**
@@ -57,13 +63,13 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
                   </div>
                   {f.times.length > 0 && (
                     <p className="rot-times small">
-                      {[...f.times].sort((a, b) => a - b).slice(0, 8).map((t) => (
+                      {uniqueSeconds(f.times).slice(0, 8).map((t) => (
                         <span key={t} className="rot-time">
                           {mmss(t)}
                           <PlayAt t={t} seek={seek} />
                         </span>
                       ))}
-                      {f.times.length > 8 && <span className="muted"> +{f.times.length - 8}</span>}
+                      {uniqueSeconds(f.times).length > 8 && <span className="muted"> +{uniqueSeconds(f.times).length - 8}</span>}
                     </p>
                   )}
                 </li>

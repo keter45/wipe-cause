@@ -282,6 +282,22 @@ pub struct RotationBook {
     pub errors: Vec<String>,
 }
 
+impl Check {
+    /// Nome do tipo como no YAML (`kind`).
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            Check::Proc { .. } => "proc",
+            Check::RequiresBuff { .. } => "requires_buff",
+            Check::Downtime { .. } => "downtime",
+            Check::Cooldown { .. } => "cooldown",
+            Check::ResourceWaste { .. } => "resource_waste",
+            Check::DotUptime { .. } => "dot_uptime",
+            Check::AoeSwap { .. } => "aoe_swap",
+            Check::AfterCast { .. } => "after_cast",
+        }
+    }
+}
+
 impl RotationBook {
     pub fn embedded() -> &'static RotationBook {
         static BOOK: OnceLock<RotationBook> = OnceLock::new();
@@ -342,6 +358,8 @@ pub struct PrioView {
 #[serde(rename_all = "camelCase")]
 pub struct RotationFinding {
     pub id: String,
+    /// tipo da checagem (proc, downtime, dot_uptime, cooldown...): o modo solo estima o dano perdido por ele
+    pub kind: &'static str,
     pub title: String,
     pub tip: String,
     /// "high" | "medium" | "low"
@@ -759,6 +777,7 @@ impl RotationTracker {
                     let n = waste.len() as u32;
                     findings.push(RotationFinding {
                         id: id.clone(),
+                        kind: c.kind_name(),
                         title: title.clone(),
                         tip: tip.clone(),
                         importance: importance.clone(),
@@ -782,6 +801,7 @@ impl RotationTracker {
                     let n = miss.len() as u32;
                     findings.push(RotationFinding {
                         id: id.clone(),
+                        kind: c.kind_name(),
                         title: title.clone(),
                         tip: tip.clone(),
                         importance: importance.clone(),
@@ -797,6 +817,7 @@ impl RotationTracker {
                     long.sort_by_key(|(a, b)| std::cmp::Reverse(b - a));
                     findings.push(RotationFinding {
                         id: id.clone(),
+                        kind: c.kind_name(),
                         title: title.clone(),
                         tip: tip.clone(),
                         importance: importance.clone(),
@@ -825,6 +846,7 @@ impl RotationTracker {
                     worst.sort_by_key(|(_, o)| std::cmp::Reverse(*o));
                     findings.push(RotationFinding {
                         id: id.clone(),
+                        kind: c.kind_name(),
                         title: title.clone(),
                         tip: tip.clone(),
                         importance: importance.clone(),
@@ -872,6 +894,7 @@ impl RotationTracker {
                     let rate = up as f32 / total as f32;
                     findings.push(RotationFinding {
                         id: id.clone(),
+                        kind: c.kind_name(),
                         title: title.clone(),
                         tip: tip.clone(),
                         importance: importance.clone(),
@@ -892,6 +915,7 @@ impl RotationTracker {
                     let names = |ks: &[String]| ks.iter().map(|k| spec.abilities[k].name.clone()).collect::<Vec<_>>().join("/");
                     findings.push(RotationFinding {
                         id: id.clone(),
+                        kind: c.kind_name(),
                         title: title.clone(),
                         tip: tip.clone(),
                         importance: importance.clone(),
@@ -924,6 +948,7 @@ impl RotationTracker {
                     let names = |ks: &[String]| ks.iter().map(|k| spec.abilities[k].name.clone()).collect::<Vec<_>>().join("/");
                     findings.push(RotationFinding {
                         id: id.clone(),
+                        kind: c.kind_name(),
                         title: title.clone(),
                         tip: tip.clone(),
                         importance: importance.clone(),
@@ -958,6 +983,7 @@ impl RotationTracker {
                     }
                     findings.push(RotationFinding {
                         id: id.clone(),
+                        kind: c.kind_name(),
                         title: title.clone(),
                         tip: tip.clone(),
                         importance: importance.clone(),

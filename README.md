@@ -86,6 +86,18 @@ A aba **Desempenho** de cada pull compara um player com os **top players da mesm
 
 Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) e cole o client ID e o secret na aba (ficam no Gerenciador de Credenciais do Windows). As consultas enviam só boss, spec e códigos de report; as respostas ficam em cache. A comparação com a própria raid (outro da mesma spec, ou você mesmo em outra tentativa) fica na aba **Na própria raid**. Se o link do report da noite estiver cadastrado, o pull também ganha links para o seu fight no Warcraft Logs e no WoWAnalyzer.
 
+## Modo solo
+
+No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é por que a raid wipou. No solo, é como **você** pode melhorar. "Você" é quem gravou o log (o combat log marca o próprio personagem; se trocar de personagem no meio, cada pull fica certo). Na análise do Warcraft Logs, ou se quiser outro personagem, escolha na própria tela; o app lembra da escolha.
+
+- **Pull → aba Você**: suas métricas, a sua sobrevivência e os seus erros de mecânica, em quatro partes.
+  - **Para o próximo pull:** os seus erros ordenados pelo que custaram. Morte cedo, tempo parado, proc perdido e DoT fora do alvo viram uma estimativa de dano; mecânica e cooldown entram com peso pela gravidade. Cada um traz o momento (▶ no vídeo) e a dica.
+  - **Onde a referência abriu vantagem:** o seu dano a cada 5s contra uma referência, que pode ser o top do Warcraft Logs, o melhor da raid ou o seu melhor pull da noite (só referências que ficaram vivas pelo menos 60% do seu tempo). Os 3 trechos de maior diferença vêm com os casts de cada um lado a lado e o que a referência usou a mais.
+  - **Mecânicas:** só as suas (falhas nas regras do boss, mortes com o golpe final e o defensivo que estava disponível) e o dano que você tomou bem mais que a referência por minuto vivo, que costuma ser dano evitável.
+  - **Rotação:** a leitura da rotação base da spec.
+- **Resumo da noite e do boss**: os seus pulls boss a boss, o melhor de cada um e os erros que se repetem.
+- **Evolução**: um boss ao longo das noites salvas: o seu melhor output, a rotação, as mortes e os erros de mecânica por pull.
+
 ## Rotação
 
 Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.yaml` (pontos principais, prioridade por árvore de herói em alvo único e AoE, abertura e checagens), feita a partir do guia de rotação do Wowhead e da APL do SimulationCraft do patch. Na aba **Desempenho**, o log do player é lido contra ela: aproveitamento (0–100), os erros claros e os ajustes, com o momento de cada um (▶ no vídeo), a abertura e o uso dos cooldowns.
