@@ -1,0 +1,134 @@
+# Destruction Warlock — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Portallus, Rainface e Poisonlock — Hellcaller).
+#
+# Sem checagem de Soul Shard estourado: no Destruction os fragmentos de Soul Shard não aparecem no
+# log como ganho de recurso.
+spec: 267
+name: Destruction Warlock
+patch: "12.1"
+sources:
+  - title: Wowhead — Destruction Warlock Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/warlock/destruction/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL warlock_destruction (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/warlock_destruction.simc
+
+key_points:
+  - "Não estoure Soul Shards: Chaos Bolt (Shadowburn quando disponível) antes de chegar ao máximo."
+  - "Wither (Hellcaller) ou Immolate (Diabolist) sempre no alvo, renovando no pandemic."
+  - "Conflagrate para não ficar com 2 cargas, e os Backdraft que ele dá vão no Chaos Bolt."
+  - "Summon Infernal e Malevolence no cooldown, e gaste todos os Soul Shards dentro deles."
+  - "Soul Fire no cooldown com menos de 4 Soul Shards; Incinerate gera no resto."
+  - "Diabolist: Infernal Bolt com 2 ou menos Soul Shards; Ruination no alvo com mais inimigos em volta."
+
+hero_trees:
+  - key: hellcaller
+    name: Hellcaller
+    markers: [445468, 442726] # Wither, Malevolence
+  - key: diabolist
+    name: Diabolist
+    markers: [434506, 434635] # Infernal Bolt, Ruination
+
+abilities:
+  summon_infernal: { id: 1122, name: Summon Infernal, cooldown_ms: 120000 }
+  malevolence: { id: 442726, name: Malevolence, cooldown_ms: 60000, tree: hellcaller }
+  soul_fire: { id: 6353, name: Soul Fire, cast_ms: 3000, cooldown_ms: 45000 }
+  conflagrate: { id: 17962, name: Conflagrate, cooldown_ms: 13000, charges: 2 }
+  havoc: { id: 80240, name: Havoc }
+  chaos_bolt: { id: 116858, name: Chaos Bolt, cast_ms: 3000 }
+  shadowburn: { id: 17877, name: Shadowburn }
+  incinerate: { id: 29722, name: Incinerate, cast_ms: 2000 }
+  wither: { id: 445468, name: Wither }
+  immolate: { id: 348, name: Immolate }
+  infernal_bolt: { id: 434506, name: Infernal Bolt, cast_ms: 2000, tree: diabolist }
+  ruination: { id: 434635, name: Ruination, cast_ms: 1500, tree: diabolist }
+  rain_of_fire: { id: 5740, name: Rain of Fire }
+
+buffs:
+  backdraft: { id: 117828, name: Backdraft }
+  wither: { id: 445474, name: Wither }
+  immolate: { id: 157736, name: Immolate }
+
+priority:
+  hellcaller:
+    st:
+      - { spell: wither, note: "manter no alvo" }
+      - { spell: summon_infernal, note: "no cooldown" }
+      - { spell: malevolence, note: "no cooldown" }
+      - { spell: shadowburn, note: "quando disponível e perto de estourar Soul Shards" }
+      - { spell: chaos_bolt, note: "para não estourar Soul Shards" }
+      - { spell: soul_fire, note: "com menos de 4 Soul Shards" }
+      - { spell: conflagrate, note: "para não ficar com 2 cargas, ou no movimento" }
+      - { spell: conflagrate, note: "gera Soul Shard e Backdraft (gaste no Chaos Bolt)" }
+      - { spell: incinerate, note: "gera Soul Shard (preenche)" }
+    aoe:
+      - { spell: wither, note: "no máximo de alvos" }
+      - { spell: malevolence, note: "com o Wither no máximo de alvos" }
+      - { spell: havoc, note: "num segundo alvo" }
+      - { spell: rain_of_fire, note: "3+ alvos sem Havoc, 5+ com Havoc" }
+      - { spell: chaos_bolt, note: "até 5 alvos com Havoc ativo" }
+      - { spell: conflagrate }
+      - { spell: incinerate }
+  diabolist:
+    st:
+      - { spell: immolate, note: "manter no alvo" }
+      - { spell: summon_infernal, note: "no cooldown" }
+      - { spell: shadowburn, note: "quando disponível e perto de estourar Soul Shards" }
+      - { spell: chaos_bolt, note: "para não estourar; com 4+ Soul Shards e Infernal Bolt pronto" }
+      - { spell: soul_fire, note: "com menos de 4 Soul Shards" }
+      - { spell: ruination, note: "quando aparecer" }
+      - { spell: infernal_bolt, note: "com 2 ou menos Soul Shards" }
+      - { spell: conflagrate, note: "para não ficar com 2 cargas" }
+      - { spell: incinerate, note: "gera Soul Shard (preenche)" }
+    aoe:
+      - { spell: immolate, note: "no alvo principal e nos que vivem mais de 10s" }
+      - { spell: havoc }
+      - { spell: chaos_bolt, note: "o Diabolist sempre gasta com Chaos Bolt" }
+      - { spell: infernal_bolt, note: "com 2 ou menos Soul Shards" }
+      - { spell: conflagrate }
+      - { spell: incinerate }
+
+# Abertura: Soul Fire pré-cast e os cooldowns logo de cara
+opener:
+  window_ms: 10000
+  ordered: false
+  hellcaller: [soul_fire, summon_infernal, malevolence, conflagrate]
+  diabolist: [soul_fire, summon_infernal, conflagrate]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem castar
+    tip: "Sempre castando: no movimento, Conflagrate e Shadowburn; Demonic Circle e Gateway para encurtar o caminho."
+  - kind: dot_uptime
+    id: wither
+    debuff: wither
+    min_uptime: 0.9
+    importance: medium
+    title: Wither fora do alvo
+    tip: "Wither sempre no alvo: renove no pandemic."
+  - kind: dot_uptime
+    id: immolate
+    debuff: immolate
+    min_uptime: 0.9
+    importance: medium
+    title: Immolate fora do alvo
+    tip: "Immolate sempre no alvo: renove no pandemic."
+  - kind: proc
+    id: backdraft
+    buff: backdraft
+    spenders: [chaos_bolt, incinerate, soul_fire]
+    importance: low
+    title: Backdraft perdido
+    tip: "O Backdraft do Conflagrate acelera o próximo Chaos Bolt: não deixe expirar."
+  - kind: cooldown
+    id: cooldowns
+    spells: [summon_infernal, malevolence, soul_fire, conflagrate]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Summon Infernal e Malevolence no cooldown; Soul Fire e Conflagrate sem ficar parados."
