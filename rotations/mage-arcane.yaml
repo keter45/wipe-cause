@@ -1,0 +1,126 @@
+# Arcane Mage — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Spieli, Kurä e Vessinia — Sunfury).
+spec: 62
+name: Arcane Mage
+patch: "12.1"
+sources:
+  - title: Wowhead — Arcane Mage Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/mage/arcane/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL mage_arcane (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/mage_arcane.simc
+
+key_points:
+  - "Arcane Barrage com 4 Arcane Charges: Arcane Blast, Arcane Orb, Touch of the Magi e Prismatic Bolt geram; o Barrage gasta todas."
+  - "Clearcasting vira Arcane Missiles (que dá Arcane Salvo); não deixe acumular nem expirar."
+  - "Prismatic Bolt é o proc mais forte e não acumula: gaste logo (com 8 Cumulative Power, se tiver o 4 peças)."
+  - "Arcane Salvo alimenta o Arcane Barrage: Sunfury gasta com Clearcasting e 12+ (ou 25), Spellslinger com 20."
+  - "Arcane Surge no cooldown, e Touch of the Magi com o Barrage (ou Prismatic Bolt) ainda no ar; no Sunfury, Barrage durante o Arcane Soul."
+  - "Mana não é problema nesta temporada: o que pesa é estar sempre castando (Shimmer e stutter step no movimento)."
+
+hero_trees:
+  - key: sunfury
+    name: Sunfury
+    markers: [451038, 448604] # buffs Arcane Soul e Spellfire Sphere
+  - key: spellslinger
+    name: Spellslinger
+    markers: [] # quem não ganha os buffs do Sunfury
+
+abilities:
+  arcane_surge: { id: 365350, name: Arcane Surge, cast_ms: 2500, cooldown_ms: 90000 }
+  touch_of_the_magi: { id: 321507, name: Touch of the Magi, cooldown_ms: 45000 }
+  arcane_orb: { id: 153626, name: Arcane Orb }
+  arcane_missiles: { id: 5143, name: Arcane Missiles, channel_ms: 2500 }
+  arcane_barrage: { id: 44425, name: Arcane Barrage }
+  prismatic_bolt: { id: 1295924, name: Prismatic Bolt, cast_ms: 2500 }
+  arcane_blast: { id: 30451, name: Arcane Blast, cast_ms: 2250 }
+  arcane_explosion: { id: 1449, name: Arcane Explosion }
+
+buffs:
+  clearcasting: { id: 263725, name: Clearcasting }
+  prismatic_bolt: { id: 1295942, name: "Prismatic Bolt!" }
+  arcane_soul: { id: 451038, name: Arcane Soul }
+
+priority:
+  sunfury:
+    st:
+      - { spell: arcane_surge, note: "no cooldown" }
+      - { spell: touch_of_the_magi, note: "com o Barrage/Prismatic Bolt no ar; junto do Surge ou a cada 45s" }
+      - { spell: arcane_missiles, note: "com Clearcasting e menos de 12 Arcane Salvo" }
+      - { spell: arcane_barrage, note: "durante o Arcane Soul" }
+      - { spell: prismatic_bolt, note: "de preferência com 8 Cumulative Power (4 peças)" }
+      - { spell: arcane_barrage, note: "com Clearcasting e 12+ Arcane Salvo, ou 25 Arcane Salvo (sempre com 4 Arcane Charges)" }
+      - { spell: arcane_orb, note: "sem Arcane Charges" }
+      - { spell: arcane_blast, note: "gera Arcane Charge (preenche)" }
+    aoe:
+      - { spell: arcane_surge, note: "no cooldown" }
+      - { spell: touch_of_the_magi, note: "no alvo mais resistente" }
+      - { spell: arcane_missiles, note: "com Clearcasting e menos de 12 Arcane Salvo" }
+      - { spell: arcane_barrage, note: "durante o Arcane Soul; com 12+ Arcane Salvo e Orb pronto em 5+ alvos" }
+      - { spell: prismatic_bolt }
+      - { spell: arcane_orb, note: "sem Arcane Charges" }
+      - { spell: arcane_blast }
+  spellslinger:
+    st:
+      - { spell: arcane_surge, note: "no cooldown" }
+      - { spell: touch_of_the_magi, note: "com o Barrage/Prismatic Bolt no ar" }
+      - { spell: prismatic_bolt, note: "com 13+ Arcane Salvo e (6+ Cumulative Power ou sem Clearcasting)" }
+      - { spell: arcane_barrage, note: "com 20 Arcane Salvo" }
+      - { spell: arcane_missiles, note: "com Clearcasting e menos de 15 Arcane Salvo" }
+      - { spell: prismatic_bolt, note: "quando aparecer" }
+      - { spell: arcane_orb, note: "sem Arcane Charges" }
+      - { spell: arcane_blast, note: "gera Arcane Charge (preenche)" }
+    aoe:
+      - { spell: arcane_surge, note: "no cooldown" }
+      - { spell: touch_of_the_magi }
+      - { spell: prismatic_bolt, note: "2+ alvos" }
+      - { spell: arcane_orb, note: "antes de encher as cargas (Orb Mastery)" }
+      - { spell: arcane_barrage, note: "com 20 Arcane Salvo e 4 Arcane Charges" }
+      - { spell: arcane_missiles, note: "com Clearcasting e menos de 15 Arcane Salvo" }
+      - { spell: arcane_orb, note: "2+ alvos" }
+      - { spell: arcane_blast }
+
+# Abertura: Arcane Surge, um Missiles e um Barrage, e o Touch of the Magi com o Barrage no ar
+opener:
+  window_ms: 10000
+  sunfury: [arcane_surge, arcane_missiles, arcane_barrage, touch_of_the_magi]
+  spellslinger: [arcane_surge, arcane_missiles, arcane_barrage, touch_of_the_magi]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem castar
+    tip: "Sempre castando: Shimmer e stutter step no movimento; Missiles com Clearcasting e Barrage são bons para andar."
+  - kind: proc
+    id: clearcasting
+    buff: clearcasting
+    spenders: [arcane_missiles, arcane_explosion]
+    importance: medium
+    title: Clearcasting perdido
+    tip: "Clearcasting vira Arcane Missiles: gaste antes de acumular no máximo ou expirar."
+  - kind: proc
+    id: prismatic_bolt
+    buff: prismatic_bolt
+    spenders: [prismatic_bolt]
+    importance: high
+    title: Prismatic Bolt perdido
+    tip: "Prismatic Bolt é o feitiço mais forte e não acumula: use antes de acabar."
+  - kind: after_cast
+    id: touch_after_barrage
+    casts: [touch_of_the_magi]
+    after: [arcane_barrage, prismatic_bolt]
+    within_ms: 1500
+    importance: low
+    title: Touch of the Magi fora do Barrage
+    tip: "Solte o Touch of the Magi com o Arcane Barrage (ou Prismatic Bolt) ainda no ar: o dano dele entra no Touch."
+  - kind: cooldown
+    id: cooldowns
+    spells: [arcane_surge, touch_of_the_magi]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Arcane Surge no cooldown; Touch of the Magi a cada 45s, sem segurar mais que alguns segundos."

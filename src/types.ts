@@ -46,6 +46,8 @@ export interface Pull {
   rulesFile: string | null;
   mechanics: MechanicResult[];
   trigger: PullTrigger | null;
+  /** quem gravou o log (flag "meu" do combat log); no Warcraft Logs não tem */
+  ownerGuid?: string;
 }
 
 export interface PullTrigger {
@@ -94,6 +96,11 @@ export interface PlayerStats {
   /** Tempo vivo dentro do tempo analisado */
   aliveMs?: number;
   setup?: Setup | null;
+  /** leitura da rotação (specs com rotação base escrita) */
+  rotation?: RotationResult;
+  /** dano / cura por janela de 5s (pets somados), até o corte; análises antigas não têm */
+  damageTimeline?: number[];
+  healingTimeline?: number[];
 }
 
 export interface SpellCasts {
@@ -326,4 +333,43 @@ export interface UnitPos {
   y: number;
   /** há quanto tempo a posição foi vista */
   ageMs: number;
+}
+
+export interface RotationSpellRef {
+  spellId: number;
+  name: string;
+}
+
+export interface RotationFinding {
+  id: string;
+  /** tipo da checagem (proc, downtime, dot_uptime, cooldown, resource_waste...); análises antigas não têm */
+  kind?: string;
+  title: string;
+  tip: string;
+  importance: 'high' | 'medium' | 'low';
+  count: number;
+  /** aproveitamento 0–1 */
+  rate: number;
+  /** ms desde o início do pull */
+  times: number[];
+  detail: string;
+  spellId: number | null;
+}
+
+/** Rotação do player lida contra a rotação base escrita da spec (rotations/*.yaml). */
+export interface RotationResult {
+  specName: string;
+  patch: string;
+  tree: string | null;
+  /** aproveitamento 0–100 */
+  score: number;
+  findings: RotationFinding[];
+  opener: { expected: RotationSpellRef[]; actual: RotationSpellRef[]; missing: RotationSpellRef[]; ok: boolean } | null;
+  downtimeMs: number;
+  activeMs: number;
+  cooldowns: { spellId: number; name: string; casts: number; possible: number; usage: number }[];
+  keyPoints: string[];
+  prioritySt: (RotationSpellRef & { note: string | null })[];
+  priorityAoe: (RotationSpellRef & { note: string | null })[];
+  sources: { title: string; url: string }[];
 }

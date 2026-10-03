@@ -26,11 +26,13 @@ import { SpellIcon } from './SpellIcon';
 import { mechanicSpellId, mechanicSpellMap } from '../lib/spells';
 import { pullPayload } from '../lib/discord';
 import { scorePull } from '../lib/score';
+import { meIn, useMode, useSoloCharacter, type AppMode } from '../lib/mode';
+import { SoloPullView } from './SoloPullView';
 
-type Tab = 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'ask';
+type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'ask';
 
-/** Aba aberta por último: continua nela ao trocar de pull ou voltar das Configurações. */
-let lastTab: Tab = 'deaths';
+/** Aba aberta por último em cada modo: continua nela ao trocar de pull ou voltar das Configurações. */
+const lastTab: Record<AppMode, Tab> = { guild: 'deaths', solo: 'me' };
 
 const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info: 'Info' } as const;
 
@@ -64,11 +66,18 @@ export function PullView(props: Props) {
 
 function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Props) {
   useMarks(pull);
-  const [tab, setTabState] = useState<Tab>(lastTab);
+  const mode = useMode();
+  const chosen = useSoloCharacter();
+  const solo = mode === 'solo';
+  const [tabState, setTabState] = useState<Tab>(lastTab[mode]);
+  // trocou de modo: volta para a última aba daquele modo ("Você" não existe no modo guilda)
+  useEffect(() => setTabState(lastTab[mode]), [mode]);
+  const tab: Tab = !solo && tabState === 'me' ? 'deaths' : tabState;
   const setTab = (t: Tab) => {
-    lastTab = t;
+    lastTab[mode] = t;
     setTabState(t);
   };
+  const [showVerdict, setShowVerdict] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
   // POV escolhido (o primeiro é o deste PC, se houver)
   const [povIndex, setPovIndex] = useState(0);
@@ -97,7 +106,27 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
   const minor = verdict.findings.filter((f) => f.severity === 'minor' || f.severity === 'info');
   const deathCount = pull.deaths.filter((d) => !d.ignored).length;
   // abas por assunto: o que deu errado · quem jogou como · a luta · IA
-  const tabGroups: { label: string; tabs: { key: Tab; label: string; count?: number }[] }[] = [
+  const tabGroups: { label: string; tabs: { key: Tab; label: string; count?: number }[] }[] = solo
+    ? [
+        {
+          label: 'Você',
+          tabs: [
+            { key: 'me', label: 'Você' },
+            { key: 'perf', label: 'Comparação detalhada' },
+          ],
+        },
+        {
+          label: 'A raid',
+          tabs: [
+            { key: 'deaths', label: 'Mortes', count: deathCount },
+            { key: 'mechanics', label: 'Mecânicas', count: pull.rulesFile ? mechFailures : undefined },
+            { key: 'interrupts', label: 'Interrupts' },
+            { key: 'players', label: 'Jogadores', count: pull.players.length },
+          ],
+        },
+        { label: 'Luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
+      ]
+    : [
     {
       label: 'O que aconteceu',
       tabs: [
@@ -114,7 +143,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       ],
     },
     { label: 'Luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
-  ];
+      ];
 
   return (
     <SeekContext.Provider value={seek}>
@@ -179,6 +208,15 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
         <VideoPanel povs={povs} video={video} onPov={(v) => setPovIndex(povs.indexOf(v))} seek={seekReq} onClose={() => setVideoOpen(false)} />
       )}
 
+      {solo && (
+        <p className="solo-raid small">
+          <span className="muted">Raid:</span> {verdict.headline}{' '}
+          <button className="link small" onClick={() => setShowVerdict(!showVerdict)} aria-expanded={showVerdict}>
+            {showVerdict ? 'esconder' : 'ver o porquê'}
+          </button>
+        </p>
+      )}
+      {(!solo || showVerdict) && (
       <section className={`verdict ${pull.success ? 'kill' : 'wipe'}`}>
         <h3>
           {pull.trigger && <SpellIcon spellId={mechanicSpellId(pull, pull.trigger.key)} size={20} />}
@@ -208,6 +246,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
           </>
         )}
       </section>
+      )}
 
       <div className="tabs" role="tablist" aria-label="Detalhes do pull">
         {tabGroups.map((g) => (
@@ -253,7 +292,8 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       )}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
       {tab === 'players' && <PlayersTab pull={pull} wclCode={wclCode} />}
-      {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
+      {tab === 'me' && <SoloPullView pull={pull} nightPulls={nightPulls ?? [pull]} />}
+      {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} defaultGuid={solo ? meIn(pull, chosen)?.guid : undefined} />}
       {tab === 'spells' && <EnemySpellsTable pull={pull} onRulesChanged={onRulesChanged} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       </ErrorBoundary>

@@ -1,0 +1,148 @@
+# Arms Warrior — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Kodoku, Vessinir e Emprego — Slayer).
+#
+# Sem checagem de Rage estourada: a maior parte vem dos auto-ataques e não aparece no log como ganho.
+spec: 71
+name: Arms Warrior
+patch: "12.1"
+sources:
+  - title: Wowhead — Arms Warrior Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/warrior/arms/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL warrior_arms (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/warrior_arms.simc
+
+key_points:
+  - "Ficar no alvo é o principal: a Rage vem dos auto-ataques. Charge e Heroic Leap para voltar rápido e sair no último momento."
+  - "Colossus Smash, Avatar e Bladestorm / Demolish no cooldown: atrasar um desalinha os outros."
+  - "Avatar logo antes ou junto do Colossus Smash; Bladestorm (Slayer) ou Demolish (Colossus) dentro do Colossus Smash."
+  - "Rend sempre no alvo (via Cleave), renovando antes do Colossus Smash."
+  - "Execute com Sudden Death (2 cargas não esperam); Mortal Strike e Overpower no resto; Slam só sem mais nada."
+  - "Em 2 alvos, Sweeping Strikes no cooldown; em mais, Cleave e Bladestorm."
+
+hero_trees:
+  - key: slayer
+    name: Slayer
+    markers: [445606, 446035] # buff Imminent Demise, Bladestorm do Slayer
+  - key: colossus
+    name: Colossus
+    markers: [436358] # Demolish
+
+abilities:
+  colossus_smash: { id: 167105, name: Colossus Smash, cooldown_ms: 45000 }
+  avatar: { id: 107574, name: Avatar, cooldown_ms: 90000 }
+  bladestorm: { id: 446035, alt_ids: [227847], name: Bladestorm, cooldown_ms: 90000, tree: slayer }
+  demolish: { id: 436358, name: Demolish, channel_ms: 2000, cooldown_ms: 30000, tree: colossus }
+  ravager: { id: 228920, name: Ravager, cooldown_ms: 90000, optional: true }
+  sweeping_strikes: { id: 260708, name: Sweeping Strikes }
+  mortal_strike: { id: 12294, name: Mortal Strike }
+  execute: { id: 281000, alt_ids: [163201], name: Execute }
+  overpower: { id: 7384, name: Overpower }
+  cleave: { id: 845, name: Cleave }
+  heroic_strike: { id: 1269383, name: Heroic Strike }
+  slam: { id: 1464, name: Slam }
+  charge: { id: 100, name: Charge }
+
+buffs:
+  sudden_death: { id: 52437, name: Sudden Death }
+  rend: { id: 388539, name: Rend }
+
+priority:
+  slayer:
+    st:
+      - { spell: cleave, note: "aplicar/renovar Rend com menos de 10s e o Colossus Smash pronto" }
+      - { spell: avatar, note: "no cooldown" }
+      - { spell: colossus_smash, note: "no cooldown" }
+      - { spell: execute, note: "com 2 Sudden Death" }
+      - { spell: bladestorm, note: "dentro do Colossus Smash" }
+      - { spell: heroic_strike }
+      - { spell: mortal_strike }
+      - { spell: execute, note: "com Sudden Death" }
+      - { spell: overpower }
+      - { spell: cleave, note: "renovar Rend com menos de 5s" }
+      - { spell: slam, note: "sem mais nada" }
+    aoe:
+      - { spell: sweeping_strikes, note: "no cooldown" }
+      - { spell: cleave, note: "cedo, para o Rend" }
+      - { spell: avatar }
+      - { spell: colossus_smash }
+      - { spell: cleave, note: "com 3 Collateral Damage" }
+      - { spell: bladestorm }
+      - { spell: execute, note: "com 2 Sudden Death" }
+      - { spell: cleave }
+      - { spell: overpower, note: "com 2 cargas" }
+      - { spell: execute, note: "com Sudden Death" }
+      - { spell: mortal_strike }
+      - { spell: slam, note: "sem mais nada" }
+  colossus:
+    st:
+      - { spell: mortal_strike, note: "com menos de 10 Colossal Might" }
+      - { spell: cleave, note: "aplicar/renovar Rend com menos de 10s e o Colossus Smash pronto" }
+      - { spell: ravager, note: "logo antes do Colossus Smash" }
+      - { spell: avatar, note: "logo antes ou junto do Colossus Smash" }
+      - { spell: colossus_smash }
+      - { spell: demolish, note: "dentro do Colossus Smash" }
+      - { spell: heroic_strike }
+      - { spell: execute, note: "com 2 Sudden Death" }
+      - { spell: mortal_strike }
+      - { spell: execute, note: "com Sudden Death" }
+      - { spell: overpower }
+      - { spell: slam, note: "preenche" }
+    aoe:
+      - { spell: sweeping_strikes, note: "no cooldown" }
+      - { spell: ravager, note: "logo antes do Colossus Smash" }
+      - { spell: avatar }
+      - { spell: colossus_smash }
+      - { spell: cleave }
+      - { spell: mortal_strike, note: "com menos de 10 Colossal Might" }
+      - { spell: demolish }
+      - { spell: overpower }
+      - { spell: mortal_strike }
+      - { spell: execute, note: "com Sudden Death" }
+      - { spell: slam, note: "sem mais nada" }
+
+# Abertura: Charge e os cooldowns logo de cara
+opener:
+  window_ms: 10000
+  ordered: false
+  slayer: [charge, avatar, colossus_smash, bladestorm]
+  colossus: [charge, avatar, colossus_smash, demolish]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem atacar
+    tip: "Fique no alvo: Charge e Heroic Leap para voltar, e saia das mecânicas no último momento."
+  - kind: dot_uptime
+    id: rend
+    debuff: rend
+    min_uptime: 0.85
+    importance: medium
+    title: Rend fora do alvo
+    tip: "Rend sempre no alvo: Cleave para aplicar e renovar, antes do Colossus Smash."
+  - kind: proc
+    id: sudden_death
+    buff: sudden_death
+    spenders: [execute]
+    importance: medium
+    title: Sudden Death perdido
+    tip: "Sudden Death libera o Execute: use antes de acumular a terceira ou expirar."
+  - kind: after_cast
+    id: bladestorm_in_smash
+    casts: [bladestorm, demolish]
+    after: [colossus_smash]
+    within_ms: 10000
+    importance: low
+    title: Bladestorm fora do Colossus Smash
+    tip: "Bladestorm (ou Demolish) dentro do Colossus Smash."
+  - kind: cooldown
+    id: cooldowns
+    spells: [colossus_smash, avatar, bladestorm, demolish, ravager]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Colossus Smash, Avatar e Bladestorm / Demolish no cooldown: atrasar um desalinha os outros."

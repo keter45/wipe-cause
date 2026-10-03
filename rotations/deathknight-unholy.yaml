@@ -1,0 +1,149 @@
+# Unholy Death Knight — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Hazuki e Ðéädìñsídé — San'layn).
+spec: 252
+name: Unholy Death Knight
+patch: "12.1"
+sources:
+  - title: Wowhead — Unholy Death Knight Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/death-knight/unholy/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL deathknight_unholy (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/deathknight_unholy.simc
+
+key_points:
+  - "Unholy é uma spec de burst: Army of the Dead, Dark Transformation, Putrefy e Soul Reaper no cooldown são a prioridade."
+  - "Gaste o Sudden Doom o quanto antes (Death Coil; Epidemic em 3+ alvos): é o botão mais forte fora dos cooldowns."
+  - "Lesser Ghoul: Festering Strike gera as cargas, Scourge Strike / Vampiric Strike gasta. Não fique sem cargas, e entre no Dark Transformation com 4+."
+  - "Outbreak para manter as pragas; Blightfall consome as pragas: use perto do fim do Dark Transformation (ou do trinket)."
+  - "Soul Reaper uns 7s depois do Dark Transformation e sempre com o alvo abaixo de 35%."
+  - "Não estoure Runic Power: Death Coil com pouco espaço sobrando."
+
+hero_trees:
+  - key: sanlayn
+    name: San'layn
+    markers: [433895] # Vampiric Strike
+  - key: rider_of_the_apocalypse
+    name: Rider of the Apocalypse
+    markers: [] # quem não usa Vampiric Strike
+
+abilities:
+  army_of_the_dead: { id: 42650, name: Army of the Dead, cooldown_ms: 90000 }
+  dark_transformation: { id: 1233448, name: Dark Transformation, cooldown_ms: 45000 }
+  putrefy: { id: 1247378, name: Putrefy, cooldown_ms: 30000 }
+  soul_reaper: { id: 343294, name: Soul Reaper }
+  blightfall: { id: 1271967, name: Blightfall }
+  outbreak: { id: 77575, name: Outbreak }
+  festering_strike: { id: 85948, name: Festering Strike }
+  festering_scythe: { id: 458128, name: Festering Scythe }
+  scourge_strike: { id: 55090, alt_ids: [433895], name: Scourge Strike }
+  death_coil: { id: 47541, name: Death Coil }
+  necrotic_coil: { id: 1242174, name: Necrotic Coil }
+  epidemic: { id: 207317, name: Epidemic }
+  graveyard: { id: 383269, name: Graveyard }
+  death_and_decay: { id: 43265, name: Death and Decay }
+
+buffs:
+  sudden_doom: { id: 81340, name: Sudden Doom }
+  virulent_plague: { id: 191587, name: Virulent Plague }
+
+priority:
+  sanlayn:
+    st:
+      - { spell: outbreak, note: "se o Virulent Plague não estiver ativo" }
+      - { spell: festering_strike, note: "antes do Dark Transformation, com 3 ou menos Lesser Ghoul" }
+      - { spell: soul_reaper, note: "alvo abaixo de 35%" }
+      - { spell: blightfall, note: "perto do fim do trinket ou uns 15s no Dark Transformation" }
+      - { spell: army_of_the_dead, note: "no cooldown" }
+      - { spell: dark_transformation, note: "no cooldown" }
+      - { spell: soul_reaper, note: "uns 7s depois do Dark Transformation" }
+      - { spell: putrefy, note: "com Dark Transformation ativo" }
+      - { spell: festering_scythe, note: "se o buff for acabar" }
+      - { spell: death_coil, note: "com Sudden Doom (Necrotic Coil no Forbidden Knowledge)" }
+      - { spell: festering_strike, note: "sem Lesser Ghoul" }
+      - { spell: scourge_strike, note: "com Lesser Ghoul (Vampiric Strike no Forbidden Knowledge)" }
+      - { spell: death_coil }
+    aoe:
+      - { spell: outbreak, note: "se o Virulent Plague não estiver ativo" }
+      - { spell: festering_strike, note: "antes do Dark Transformation, com 5 ou menos Lesser Ghoul" }
+      - { spell: blightfall }
+      - { spell: army_of_the_dead, note: "no cooldown" }
+      - { spell: dark_transformation, note: "no cooldown" }
+      - { spell: festering_scythe, note: "se o buff for acabar" }
+      - { spell: soul_reaper, note: "no cooldown" }
+      - { spell: putrefy, note: "com Dark Transformation ativo" }
+      - { spell: death_and_decay, note: "se os alvos ficarem dentro" }
+      - { spell: epidemic, note: "com Sudden Doom (Graveyard no Forbidden Knowledge)" }
+      - { spell: festering_strike, note: "sem Lesser Ghoul" }
+      - { spell: scourge_strike, note: "com Lesser Ghoul" }
+      - { spell: epidemic }
+  rider_of_the_apocalypse:
+    st:
+      - { spell: outbreak, note: "se o Virulent Plague não estiver ativo" }
+      - { spell: festering_strike, note: "antes do Dark Transformation, com 3 ou menos Lesser Ghoul" }
+      - { spell: soul_reaper, note: "alvo abaixo de 35%" }
+      - { spell: army_of_the_dead, note: "no cooldown" }
+      - { spell: dark_transformation, note: "no cooldown" }
+      - { spell: putrefy, note: "com Dark Transformation ativo" }
+      - { spell: death_coil, note: "com Sudden Doom" }
+      - { spell: festering_strike, note: "sem Lesser Ghoul" }
+      - { spell: scourge_strike, note: "com Lesser Ghoul" }
+      - { spell: death_coil }
+    aoe:
+      - { spell: outbreak }
+      - { spell: army_of_the_dead }
+      - { spell: dark_transformation }
+      - { spell: soul_reaper }
+      - { spell: putrefy }
+      - { spell: death_and_decay }
+      - { spell: epidemic, note: "com Sudden Doom" }
+      - { spell: festering_strike, note: "sem Lesser Ghoul" }
+      - { spell: scourge_strike }
+      - { spell: epidemic }
+
+# Abertura: Outbreak, Festering Strike / Scythe e os cooldowns empilhados
+opener:
+  window_ms: 12000
+  ordered: false
+  sanlayn: [outbreak, festering_strike, army_of_the_dead, dark_transformation, putrefy]
+  rider_of_the_apocalypse: [outbreak, festering_strike, army_of_the_dead, dark_transformation, putrefy]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem atacar
+    tip: "Sempre com um GCD rodando: Death Coil e Outbreak alcançam de longe; Death's Advance para voltar."
+  - kind: resource_waste
+    id: runic_power
+    power_type: 6
+    resource: Runic Power
+    # Anti-Magic Shell, Army of the Dead e auto-ataques (Runic Attenuation) geram sozinhos
+    from: [scourge_strike, festering_strike, festering_scythe, putrefy, soul_reaper, outbreak]
+    importance: medium
+    title: Runic Power desperdiçado
+    tip: "Death Coil (Epidemic em AoE) antes de chegar ao máximo de Runic Power."
+  - kind: proc
+    id: sudden_doom
+    buff: sudden_doom
+    spenders: [death_coil, necrotic_coil, epidemic, graveyard]
+    importance: high
+    title: Sudden Doom perdido
+    tip: "Sudden Doom é o botão mais forte fora dos cooldowns: Death Coil (ou Epidemic) logo."
+  - kind: dot_uptime
+    id: virulent_plague
+    debuff: virulent_plague
+    min_uptime: 0.8
+    importance: medium
+    title: Virulent Plague fora do alvo
+    tip: "Outbreak para manter as pragas (o Blightfall consome: reaplique depois)."
+  - kind: cooldown
+    id: cooldowns
+    # Soul Reaper fica de fora: só abaixo de 35% ou uns 7s depois do Dark Transformation
+    spells: [army_of_the_dead, dark_transformation, putrefy]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Army of the Dead, Dark Transformation e Putrefy no cooldown: o dano do Unholy vem deles."

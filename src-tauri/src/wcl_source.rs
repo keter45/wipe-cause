@@ -52,7 +52,6 @@ const EVENTS_QUERY: &str = "query E($code: String!, $fight: Int!, $start: Float!
 
 /// Tipos de evento que o motor não usa (fora daqui, só o que vira linha do log).
 const SKIP_TYPES: &[&str] = &[
-    "resourcechange",
     "refreshbuff",
     "refreshdebuff",
     "begincast",
@@ -100,6 +99,11 @@ const KEEP_FIELDS: &[&str] = &[
     "facing",
     "mapID",
     "itemLevel",
+    // resourcechange (recurso da rotação: ganho e desperdício)
+    "resourceChange",
+    "resourceChangeType",
+    "waste",
+    "maxResourceAmount",
 ];
 
 /// Só o que interessa de uma página de eventos.
@@ -117,7 +121,7 @@ fn slim(events: Vec<Value>) -> Vec<Value> {
 }
 
 fn cache_dir(app: &AppHandle, code: &str) -> Option<PathBuf> {
-    Some(app.path().app_data_dir().ok()?.join("wcl-events").join(code))
+    Some(app.path().app_data_dir().ok()?.join("wcl-events-v2").join(code))
 }
 
 fn read_cached(file: &Path) -> Option<Vec<Value>> {

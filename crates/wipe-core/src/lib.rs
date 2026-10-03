@@ -4,6 +4,7 @@ pub mod analysis;
 pub mod data;
 pub mod peek;
 pub mod report;
+pub mod rotation;
 pub mod rules;
 pub mod setup;
 pub mod timestamp;
@@ -130,7 +131,7 @@ pub fn analyze_reader<R: BufRead>(
         pulls,
         death_cutoff,
         ignored_short_pulls,
-        rule_errors: book.errors.clone(),
+        rule_errors: book.errors.iter().chain(&crate::rotation::RotationBook::embedded().errors).cloned().collect(),
         local_logs: Vec::new(),
         wcl_pulls: 0,
     })

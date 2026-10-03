@@ -86,6 +86,49 @@ A aba **Desempenho** de cada pull compara um player com os **top players da mesm
 
 Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) e cole o client ID e o secret na aba (ficam no Gerenciador de Credenciais do Windows). As consultas enviam só boss, spec e códigos de report; as respostas ficam em cache. A comparação com a própria raid (outro da mesma spec, ou você mesmo em outra tentativa) fica na aba **Na própria raid**. Se o link do report da noite estiver cadastrado, o pull também ganha links para o seu fight no Warcraft Logs e no WoWAnalyzer.
 
+## Modo solo
+
+No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é por que a raid wipou. No solo, é como **você** pode melhorar. "Você" é quem gravou o log (o combat log marca o próprio personagem; se trocar de personagem no meio, cada pull fica certo). Na análise do Warcraft Logs, ou se quiser outro personagem, escolha na própria tela; o app lembra da escolha.
+
+- **Pull → aba Você**: suas métricas, a sua sobrevivência e os seus erros de mecânica, em quatro partes.
+  - **Para o próximo pull:** os seus erros ordenados pelo que custaram. Morte cedo, tempo parado, proc perdido e DoT fora do alvo viram uma estimativa de dano; mecânica e cooldown entram com peso pela gravidade. Cada um traz o momento (▶ no vídeo) e a dica.
+  - **Onde a referência abriu vantagem:** o seu dano a cada 5s contra uma referência, que pode ser o top do Warcraft Logs, o melhor da raid ou o seu melhor pull da noite (só referências que ficaram vivas pelo menos 60% do seu tempo). Os 3 trechos de maior diferença vêm com os casts de cada um lado a lado e o que a referência usou a mais.
+  - **Mecânicas:** só as suas (falhas nas regras do boss, mortes com o golpe final e o defensivo que estava disponível) e o dano que você tomou bem mais que a referência por minuto vivo, que costuma ser dano evitável.
+  - **Rotação:** a leitura da rotação base da spec.
+- **Resumo da noite e do boss**: os seus pulls boss a boss, o melhor de cada um e os erros que se repetem.
+- **Evolução**: um boss ao longo das noites salvas: o seu melhor output, a rotação, as mortes e os erros de mecânica por pull.
+
+## Rotação
+
+Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.yaml` (pontos principais, prioridade por árvore de herói em alvo único e AoE, abertura e checagens), feita a partir do guia de rotação do Wowhead e da APL do SimulationCraft do patch. Na aba **Desempenho**, o log do player é lido contra ela: aproveitamento (0–100), os erros claros e os ajustes, com o momento de cada um (▶ no vídeo), a abertura e o uso dos cooldowns.
+
+Tipos de checagem: `proc` (buff que precisa ser gasto, carga por carga — ex.: Precise Shots, Demonic Core), `requires_buff` (casts que pedem um buff, em AoE ou sempre — ex.: Trick Shots só para quem tem o talento, Demonbolt com Demonic Core), `downtime` (tempo sem castar, só quando a raid estava batendo: intermissões não contam), `cooldown` (usos vs. possíveis no tempo vivo; talentos opcionais só contam se usados), `resource_waste` (recurso estourado, ex.: Maelstrom, Astral Power, Soul Shards; pode contar só os geradores castados, fora os procs automáticos), `dot_uptime` (DoT no alvo, ex.: Flame Shock), `aoe_swap` (com N+ alvos o cast deveria ser outro, ex.: Chain Lightning) e `after_cast` (cast que precisa vir logo antes ou depois de outro, ex.: Demonic Tyrant com os Dreadstalkers fora, Vanish seguido de Garrote).
+
+Specs com rotação: **Marksmanship Hunter**, **Elemental Shaman**, **Balance Druid**, **Demonology Warlock**, **Arcane Mage**, **Havoc Demon Hunter**, **Assassination Rogue**, **Retribution Paladin**, **Arms Warrior**, **Shadow Priest**, **Unholy Death Knight**, **Devourer Demon Hunter**, **Destruction Warlock**, **Devastation Evoker**, **Beast Mastery Hunter** e **Affliction Warlock**.
+
+### Gerar a rotação de uma spec
+
+Sem escrever à mão nem usar IA: `scripts/rotation.mjs` monta o YAML a partir da APL e dos dados de spell do SimulationCraft e calibra nos logs dos tops do Warcraft Logs.
+
+1. `node scripts/rotation.mjs tops <spec>`: baixa os 2 melhores parses de cada chefe do raide (sem buffs externos), só com os eventos do player. Usa as variáveis de ambiente `WCL_CLIENT_ID` e `WCL_CLIENT_SECRET`.
+2. `node scripts/rotation.mjs calibrate <spec>`: gera o rascunho e o roda nos tops pelo próprio motor do app.
+   - **Prioridade:** sai da APL, por árvore de herói, em alvo único e AoE.
+   - **Ids:** vêm do que os tops castam.
+   - **Números:** cooldown, cargas e cast vêm do dump do SimC (ou do tooltip do Wowhead).
+   - **Checagens inferidas:**
+     - DoT, pelo `dot.X.refreshable`;
+     - proc, pelo `buff.X.react` numa spell que o buff modifica;
+     - recurso, pelo custo dos gastos;
+     - cooldowns de 20s ou mais.
+   - **Calibração pelos tops:**
+     - metas de uptime e de uso de cooldown pelo que os tops fazem;
+     - abertura: o que 70% deles casta nos primeiros segundos;
+     - sai o que nem os tops cumprem (proc gasto por outra coisa, buff de janela, cooldown que não se usa no cooldown, recurso que eles também estouram).
+   - **Destino:** escreve em `rotations/`; se já existe uma escrita à mão, vai para `samples/rotation/` para comparar.
+3. `node scripts/rotation.mjs check <spec>`: mostra como os tops se saem na rotação atual, para validar uma escrita à mão.
+
+Os textos saem em modelo ("X perdido: use antes de acabar"): vale revisar os pontos principais antes de publicar.
+
 ## Escala de interrupts e dispels
 
 Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem.

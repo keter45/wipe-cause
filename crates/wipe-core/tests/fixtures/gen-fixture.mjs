@@ -9,7 +9,7 @@
 //  pull 3 (kill 3:00)
 
 const NIL = ['0000000000000000', 'nil', '0x80000000', '0x80000000'];
-const mage = { guid: 'Player-3209-0A1B2C3D', name: 'Magozin-Azralon', flags: '0x514', maxHp: 800000 };
+const mage = { guid: 'Player-3209-0A1B2C3D', name: 'Magozin-Azralon', flags: '0x511', maxHp: 800000 };
 const priest = { guid: 'Player-3209-0A1B2C3E', name: 'Curandeira-Azralon', flags: '0x514', maxHp: 700000 };
 const warrior = { guid: 'Player-3209-0A1B2C3F', name: 'Tankão-Gallywix', flags: '0x514', maxHp: 1500000 };
 const pet = { guid: 'Pet-0-3767-2900-1111-165189-0100AABBCC', name: 'Pet do Mage', flags: '0x1114', maxHp: 300000 };

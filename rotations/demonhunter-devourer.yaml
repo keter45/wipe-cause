@@ -1,0 +1,115 @@
+# Devourer Demon Hunter — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Markíno — Void-Scarred).
+#
+# Sem checagem de Fury estourada nem de Void Metamorphosis no cooldown: a Meta não tem cooldown
+# (abre com 50 Soul Fragments) e a Fury dentro dela drena sozinha. Moment of Craving também não: em
+# AoE o Void-Scarred deixa de usar Reap de propósito (as almas vão para o Eradicate).
+spec: 1480
+name: Devourer Demon Hunter
+patch: "12.1"
+sources:
+  - title: Wowhead — Devourer Demon Hunter Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/demon-hunter/devourer/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL demonhunter_devourer (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/demonhunter_devourer.simc
+
+# Soul Fragment (pegar alma) e o segundo evento da The Hunt não são botões
+ignore_casts: [1223412, 1246169]
+
+key_points:
+  - "Entre na Void Metamorphosis e use o Void Ray assim que estiverem disponíveis: o dano vem das janelas de Meta."
+  - "Reap sempre que for coletar 4+ Soul Fragments (10 para o Eradicate), por causa do 4 peças."
+  - "Consume com Soulburst primeiro; Moment of Craving vai no próximo Reap / Cull."
+  - "Void-Scarred: use todos os golpes corpo a corpo (Voidblade, Hungering Slash, The Hunt) e passe pela Meta o mais rápido possível; Annihilator estende a Meta para soltar o máximo de Collapsing Star."
+  - "Leve procs e almas de um lado para o outro da Meta (smuggling): Hungering Slash vira Reaper's Toll dentro dela."
+  - "Soul Immolation no cooldown fora da Meta (ou com pouca Fury dentro dela)."
+
+hero_trees:
+  - key: void_scarred
+    name: Void-Scarred
+    markers: [1245483, 1259431, 1245470] # Pierce the Veil, Predator's Wake, Reaper's Toll
+  - key: annihilator
+    name: Annihilator
+    markers: [] # quem não usa os golpes do Void-Scarred
+
+abilities:
+  the_hunt: { id: 1246167, alt_ids: [1259431], name: The Hunt, cast_ms: 1000, cooldown_ms: 90000 }
+  soul_immolation: { id: 1241937, name: Soul Immolation, cooldown_ms: 60000 }
+  voidblade: { id: 1245412, alt_ids: [1245414, 1245483], name: Voidblade, cooldown_ms: 30000, tree: void_scarred }
+  reap: { id: 1226019, alt_ids: [1245453], name: Reap }
+  void_ray: { id: 473728, name: Void Ray, channel_ms: 3000 }
+  consume: { id: 473662, alt_ids: [1217610], name: Consume, cast_ms: 1500 }
+  collapsing_star: { id: 1221150, name: Collapsing Star, cast_ms: 1500 }
+  hungering_slash: { id: 1245470, name: "Reaper's Toll" }
+  vengeful_retreat: { id: 198793, name: Vengeful Retreat }
+
+buffs:
+  soulburst: { id: 1297433, name: Soulburst }
+
+priority:
+  void_scarred:
+    st:
+      - { spell: consume, note: "fora da Meta: se for disparar o Soulburst" }
+      - { spell: reap, note: "com 4+ Soul Fragments" }
+      - { spell: soul_immolation, note: "se não houver uma ativa" }
+      - { spell: voidblade, note: "logo antes de entrar na Meta" }
+      - { spell: the_hunt, note: "no cooldown (Meta durante a viagem da Hunt)" }
+      - { spell: hungering_slash, note: "Hungering Slash / Reaper's Toll" }
+      - { spell: vengeful_retreat, note: "com Voidstep" }
+      - { spell: void_ray }
+      - { spell: consume, note: "preenche (Devour na Meta)" }
+    aoe:
+      - { spell: reap, note: "Eradicate com 10 Soul Fragments" }
+      - { spell: void_ray }
+      - { spell: consume, note: "Devour se for disparar o Soulburst" }
+      - { spell: hungering_slash, note: "Reaper's Toll" }
+      - { spell: voidblade, note: "Pierce the Veil" }
+      - { spell: the_hunt, note: "Predator's Wake" }
+      - { spell: soul_immolation, note: "com 20 de Fury ou menos, saindo da Meta" }
+      - { spell: consume }
+  annihilator:
+    st:
+      - { spell: consume, note: "se for disparar o Soulburst" }
+      - { spell: reap, note: "com 4+ Soul Fragments" }
+      - { spell: void_ray }
+      - { spell: soul_immolation }
+      - { spell: collapsing_star, note: "na Meta, com 30 Soul Fragments" }
+      - { spell: consume, note: "preenche (Devour na Meta)" }
+    aoe:
+      - { spell: void_ray, note: "sem Eradicate" }
+      - { spell: collapsing_star }
+      - { spell: reap, note: "só se der Voidfall ou almas para o Collapsing Star" }
+      - { spell: soul_immolation }
+      - { spell: consume }
+
+# Abertura: Soul Immolation e Consume pré-pull, depois Reap / Void Ray até a Meta
+opener:
+  window_ms: 15000
+  ordered: false
+  void_scarred: [reap, void_ray, voidblade, the_hunt]
+  annihilator: [reap, void_ray]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem castar
+    tip: "Sempre castando: Reap e os golpes corpo a corpo são instantâneos para o movimento."
+  - kind: proc
+    id: soulburst
+    buff: soulburst
+    spenders: [consume]
+    importance: medium
+    title: Soulburst perdido
+    tip: "Soulburst deixa o próximo Consume / Devour instantâneo e explodindo: use antes de acabar."
+  - kind: cooldown
+    id: cooldowns
+    spells: [the_hunt, soul_immolation, voidblade]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "The Hunt, Soul Immolation e Voidblade no cooldown."

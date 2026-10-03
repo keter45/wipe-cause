@@ -68,6 +68,9 @@ pub struct Pull {
     pub mechanics: Vec<MechanicResult>,
     /// Falha de mecânica que puxou as mortes do wipe, quando dá para apontar
     pub trigger: Option<PullTrigger>,
+    /// player que gravou o log (flag "meu" do combat log); no Warcraft Logs não tem
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner_guid: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -234,6 +237,14 @@ pub struct PlayerStats {
     pub alive_ms: i64,
     /// Talentos, itens e status (COMBATANT_INFO do início do pull)
     pub setup: Option<Setup>,
+    /// rotação da spec (se ela tiver rotação base escrita): achados e aproveitamento
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotation: Option<crate::rotation::RotationResult>,
+    /// dano / cura por janela de 5s (pets somados), até o corte
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub damage_timeline: Vec<i64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub healing_timeline: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]

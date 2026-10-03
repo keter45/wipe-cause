@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CircleAlert, Crosshair, ExternalLink, Link2, RotateCw, Unlink, Video } from 'lucide-react';
+import { CircleAlert, Crosshair, ExternalLink, Link2, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
 import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
 import { reportCode } from '../lib/wcl';
@@ -10,6 +10,7 @@ import { Popover } from './Popover';
 import { LiveButton } from './LiveControls';
 import { CutoffStepper } from './CutoffStepper';
 import { useSetup } from '../lib/setup';
+import { setMode, useMode } from '../lib/mode';
 
 /** Tamanho e traço dos ícones ao lado de texto regular. */
 const ICON = { size: 16, strokeWidth: 1.5, 'aria-hidden': true } as const;
@@ -45,6 +46,7 @@ export function Header(props: Props) {
         <Crosshair size={18} strokeWidth={2} className="brand-mark" aria-hidden />
         Wipe Cause
       </div>
+      <ModeSwitch />
 
       <LogGroup {...props} />
 
@@ -72,6 +74,33 @@ export function Header(props: Props) {
         {report && inTauri && <VideosButton pulls={report.pulls} onVideos={props.onVideos} />}
       </div>
     </header>
+  );
+}
+
+/** Guilda (por que a raid wipou) ou Solo (como você pode melhorar): muda o foco do app inteiro. */
+function ModeSwitch() {
+  const mode = useMode();
+  return (
+    <div className="segmented sm mode-switch" role="radiogroup" aria-label="Foco da análise">
+      <button
+        role="radio"
+        aria-checked={mode === 'guild'}
+        className={mode === 'guild' ? 'active' : ''}
+        onClick={() => setMode('guild')}
+        title="Por que a raid wipou: mortes, mecânicas e quem errou o quê"
+      >
+        <Users size={14} strokeWidth={1.5} aria-hidden /> Guilda
+      </button>
+      <button
+        role="radio"
+        aria-checked={mode === 'solo'}
+        className={mode === 'solo' ? 'active' : ''}
+        onClick={() => setMode('solo')}
+        title="Como você pode melhorar: os seus erros, a sua rotação e onde a referência abriu vantagem"
+      >
+        <User size={14} strokeWidth={1.5} aria-hidden /> Solo
+      </button>
+    </div>
   );
 }
 

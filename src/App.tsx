@@ -31,6 +31,8 @@ import { NIGHT } from './components/PullList';
 import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { PullView } from './components/PullView';
+import { SoloBossView, SoloNightView, SoloTrendsView } from './components/SoloNight';
+import { useMode } from './lib/mode';
 import { Header } from './components/Header';
 import { Sidebar, SidebarRail } from './components/Sidebar';
 import type { WcrScan, WcrVideo } from './lib/api';
@@ -321,6 +323,7 @@ export default function App() {
   const logMissing = entry != null && !entry.logExists;
 
   const browsing = page === 'browse' || (page === 'analysis' && !report);
+  const solo = useMode() === 'solo';
   const classes = useMemo(() => playerClasses(report?.pulls ?? []), [report]);
   return (
     <SetupContext.Provider value={{ status: setup.status, reload: setup.reload, openSettings }}>
@@ -410,7 +413,7 @@ export default function App() {
               }}
             />
           ) : page === 'trends' ? (
-            <TrendsView />
+            solo ? <SoloTrendsView /> : <TrendsView />
           ) : browsing ? (
             inTauri || demoLogs ? (
               <>
@@ -421,9 +424,13 @@ export default function App() {
               <Empty hasHistory={history.length > 0} />
             )
           ) : summary === NIGHT ? (
-            <NightOverview pulls={pulls} onSelectPull={selectPull} onSelectBoss={setSummary} />
+            solo ? <SoloNightView pulls={pulls} onSelectPull={selectPull} /> : <NightOverview pulls={pulls} onSelectPull={selectPull} onSelectBoss={setSummary} />
           ) : summary != null ? (
-            <BossSummary key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} />
+            solo ? (
+              <SoloBossView key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} />
+            ) : (
+              <BossSummary key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} />
+            )
           ) : pull ? (
             <PullView
               pull={pull}

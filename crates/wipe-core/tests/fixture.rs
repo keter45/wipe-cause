@@ -271,3 +271,17 @@ fn performance_data_casts_setup_and_alive_time() {
     let mage = p1.players.iter().find(|p| p.name == "Magozin-Azralon").unwrap();
     assert!(mage.damage_by_spell.iter().any(|s| s.pet), "dano do pet aparece separado");
 }
+
+#[test]
+fn log_owner_and_damage_timeline() {
+    let r = report();
+    let p1 = &r.pulls[0];
+    let mage = p1.players.iter().find(|p| p.name == "Magozin-Azralon").unwrap();
+    // o mago grava o log (flag 0x511): o modo solo abre nele
+    assert_eq!(p1.owner_guid.as_deref(), Some(mage.guid.as_str()));
+    // dano em janelas de 5s até o fim do tempo analisado, somando o pet
+    assert_eq!(mage.damage_timeline.len() as i64, (p1.analyzed_ms + 4_999) / 5_000);
+    assert_eq!(mage.damage_timeline.iter().sum::<i64>(), mage.damage_done);
+    let priest = p1.players.iter().find(|p| p.name == "Curandeira-Azralon").unwrap();
+    assert_eq!(priest.healing_timeline.iter().sum::<i64>(), priest.healing_done);
+}

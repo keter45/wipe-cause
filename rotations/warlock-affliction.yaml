@@ -1,0 +1,152 @@
+# Affliction Warlock — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Portallus — Soul Harvester).
+spec: 265
+name: Affliction Warlock
+patch: "12.1"
+sources:
+  - title: Wowhead — Affliction Warlock Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/warlock/affliction/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL warlock_affliction (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/warlock_affliction.simc
+
+key_points:
+  - "Não estoure Soul Shards (máximo 5): gaste com Unstable Affliction (Seed of Corruption em AoE); só junte antes de uma janela de dano."
+  - "Agony e Corruption (Wither no Hellcaller) sempre no alvo; Haunt no cooldown."
+  - "Summon Darkglare antes de encadear os Unstable Affliction: o bônus dele cobre todos."
+  - "Dark Harvest no cooldown sem estourar Soul Shards (no Soul Harvester ele gera 3)."
+  - "Hellcaller: Malevolence a cada minuto, junto do Darkglare a cada dois."
+  - "Reaja aos procs: Nightfall (Shadow Bolt instantâneo / Malefic Grasp) e Shard Instability (Unstable Affliction / Seed de graça)."
+
+hero_trees:
+  - key: hellcaller
+    name: Hellcaller
+    markers: [445468, 442726] # Wither, Malevolence
+  - key: soul_harvester
+    name: Soul Harvester
+    markers: [] # quem não usa Wither / Malevolence
+
+abilities:
+  summon_darkglare: { id: 205180, name: Summon Darkglare, cooldown_ms: 120000 }
+  dark_harvest: { id: 1257052, name: Dark Harvest, channel_ms: 3000, cooldown_ms: 60000 }
+  malevolence: { id: 442726, name: Malevolence, cooldown_ms: 60000, tree: hellcaller }
+  haunt: { id: 48181, name: Haunt, cast_ms: 1500, cooldown_ms: 15000 }
+  agony: { id: 980, name: Agony }
+  corruption: { id: 172, name: Corruption }
+  wither: { id: 445468, name: Wither }
+  unstable_affliction: { id: 1259790, name: Unstable Affliction, cast_ms: 1500 }
+  seed_of_corruption: { id: 27243, name: Seed of Corruption, cast_ms: 2000 }
+  malefic_grasp: { id: 1261153, alt_ids: [1261149], name: Malefic Grasp, channel_ms: 3000 }
+  shadow_bolt: { id: 686, name: Shadow Bolt, cast_ms: 2000 }
+
+buffs:
+  agony: { id: 980, name: Agony }
+  corruption: { id: 146739, name: Corruption }
+  wither: { id: 445474, name: Wither }
+  nightfall: { id: 264571, name: Nightfall }
+  shard_instability: { id: 1260269, name: Shard Instability }
+
+priority:
+  hellcaller:
+    st:
+      - { spell: haunt }
+      - { spell: agony }
+      - { spell: wither }
+      - { spell: dark_harvest }
+      - { spell: summon_darkglare }
+      - { spell: malevolence }
+      - { spell: unstable_affliction, note: "o máximo possível" }
+      - { spell: malefic_grasp, note: "preenche (Shadow Bolt sem o talento)" }
+    aoe:
+      - { spell: seed_of_corruption }
+      - { spell: haunt, note: "no alvo prioritário" }
+      - { spell: agony, note: "em alguns alvos" }
+      - { spell: summon_darkglare }
+      - { spell: malevolence }
+      - { spell: dark_harvest }
+      - { spell: seed_of_corruption, note: "o máximo possível" }
+      - { spell: shadow_bolt, note: "ou Drain Soul" }
+  soul_harvester:
+    st:
+      - { spell: haunt }
+      - { spell: agony }
+      - { spell: corruption }
+      - { spell: summon_darkglare }
+      - { spell: unstable_affliction }
+      - { spell: dark_harvest, note: "sem estourar Soul Shards (gera 3)" }
+      - { spell: unstable_affliction }
+      - { spell: malefic_grasp, note: "preenche (Shadow Bolt sem o talento)" }
+    aoe:
+      - { spell: seed_of_corruption }
+      - { spell: haunt, note: "no alvo prioritário" }
+      - { spell: agony, note: "em alguns alvos" }
+      - { spell: summon_darkglare }
+      - { spell: dark_harvest }
+      - { spell: seed_of_corruption, note: "o máximo possível" }
+      - { spell: malefic_grasp }
+
+# Abertura: Haunt pré-cast, DoTs e os cooldowns antes de encadear os Unstable Affliction
+opener:
+  window_ms: 12000
+  ordered: false
+  hellcaller: [haunt, agony, wither, dark_harvest, summon_darkglare, malevolence]
+  soul_harvester: [haunt, agony, corruption, summon_darkglare, dark_harvest]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem castar
+    tip: "Sempre castando: no movimento, Agony e Corruption instantâneos; Shadow Bolt com Nightfall."
+  - kind: resource_waste
+    id: soul_shards
+    power_type: 7
+    resource: Soul Shards
+    importance: high
+    title: Soul Shard desperdiçado
+    tip: "Gaste com Unstable Affliction antes de chegar a 5 Soul Shards."
+  - kind: dot_uptime
+    id: agony
+    debuff: agony
+    min_uptime: 0.95
+    importance: medium
+    title: Agony fora do alvo
+    tip: "Agony sempre no alvo: renove no pandemic."
+  - kind: dot_uptime
+    id: corruption
+    debuff: corruption
+    min_uptime: 0.9
+    importance: medium
+    title: Corruption fora do alvo
+    tip: "Corruption sempre no alvo: renove no pandemic."
+  - kind: dot_uptime
+    id: wither
+    debuff: wither
+    min_uptime: 0.9
+    importance: medium
+    title: Wither fora do alvo
+    tip: "Wither sempre no alvo: renove no pandemic."
+  - kind: proc
+    id: nightfall
+    buff: nightfall
+    spenders: [shadow_bolt, malefic_grasp]
+    importance: low
+    title: Nightfall perdido
+    tip: "Nightfall deixa o próximo Shadow Bolt instantâneo (ou fortalece o Malefic Grasp): use antes de acabar."
+  - kind: proc
+    id: shard_instability
+    buff: shard_instability
+    spenders: [unstable_affliction, seed_of_corruption]
+    importance: medium
+    title: Shard Instability perdido
+    tip: "Shard Instability deixa o próximo Unstable Affliction / Seed de graça: use antes de acabar."
+  - kind: cooldown
+    id: cooldowns
+    spells: [summon_darkglare, dark_harvest, malevolence, haunt]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Summon Darkglare, Dark Harvest e Haunt no cooldown; Malevolence a cada minuto."

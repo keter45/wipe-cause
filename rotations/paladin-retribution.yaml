@@ -1,0 +1,142 @@
+# Retribution Paladin — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Divo — Herald of the Sun).
+spec: 70
+name: Retribution Paladin
+patch: "12.1"
+sources:
+  - title: Wowhead — Retribution Paladin Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/paladin/retribution/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL paladin_retribution (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/paladin_retribution.simc
+
+key_points:
+  - "Gerar e gastar Holy Power sem estourar: com 5, gaste (Final Verdict; Divine Storm em 2+ alvos) antes de gerar mais."
+  - "Cooldowns de 30s e 60s se alinham sozinhos no cooldown: Avenging Wrath, Execution Sentence, Wake of Ashes e Divine Toll."
+  - "Blade of Justice com 2 Art of War antes de perder o reset; Divine Purpose deixa o próximo finalizador de graça."
+  - "Divine Arbiter: o proc do Final Verdict pede um Divine Storm com 5 Holy Power (e vice-versa em AoE)."
+  - "Templar: Hammer of Light logo depois do Wake of Ashes; o proc grátis (Light's Deliverance) pode esperar um pouco pelo Avenging Wrath."
+
+hero_trees:
+  - key: templar
+    name: Templar
+    markers: [427453] # Hammer of Light
+  - key: herald_of_the_sun
+    name: Herald of the Sun
+    markers: [] # quem não usa Hammer of Light
+
+abilities:
+  # com Radiant Glory o Avenging Wrath vem sozinho (não é castado)
+  avenging_wrath: { id: 31884, name: Avenging Wrath, cooldown_ms: 120000, optional: true }
+  execution_sentence: { id: 343527, name: Execution Sentence, cooldown_ms: 60000 }
+  wake_of_ashes: { id: 255937, name: Wake of Ashes, cooldown_ms: 30000 }
+  divine_toll: { id: 375576, name: Divine Toll, cooldown_ms: 60000 }
+  hammer_of_light: { id: 427453, name: Hammer of Light, tree: templar }
+  final_verdict: { id: 383328, name: Final Verdict }
+  divine_storm: { id: 53385, name: Divine Storm }
+  blade_of_justice: { id: 184575, name: Blade of Justice }
+  hammer_of_wrath: { id: 24275, name: Hammer of Wrath }
+  judgment: { id: 20271, name: Judgment }
+
+buffs:
+  divine_purpose: { id: 408458, name: Divine Purpose }
+
+priority:
+  herald_of_the_sun:
+    st:
+      - { spell: avenging_wrath }
+      - { spell: execution_sentence }
+      - { spell: divine_storm, note: "com Divine Arbiter (do Final Verdict) e 5 Holy Power" }
+      - { spell: final_verdict, note: "com 5 Holy Power" }
+      - { spell: wake_of_ashes }
+      - { spell: divine_toll }
+      - { spell: blade_of_justice, note: "com 2 Art of War, fora do Avenging Wrath" }
+      - { spell: hammer_of_wrath, note: "com 2 cargas" }
+      - { spell: divine_storm, note: "com Divine Arbiter" }
+      - { spell: final_verdict }
+      - { spell: hammer_of_wrath }
+      - { spell: blade_of_justice }
+      - { spell: judgment }
+    aoe:
+      - { spell: avenging_wrath }
+      - { spell: execution_sentence }
+      - { spell: final_verdict, note: "com Divine Arbiter (do Divine Storm) e 5 Holy Power, ou com Empyrean Legacy" }
+      - { spell: divine_storm, note: "com 5 Holy Power" }
+      - { spell: wake_of_ashes }
+      - { spell: divine_toll }
+      - { spell: hammer_of_wrath, note: "com 2 cargas" }
+      - { spell: blade_of_justice, note: "com 2 Art of War" }
+      - { spell: divine_storm }
+      - { spell: hammer_of_wrath }
+      - { spell: blade_of_justice }
+      - { spell: judgment }
+  templar:
+    st:
+      - { spell: avenging_wrath }
+      - { spell: execution_sentence }
+      - { spell: hammer_of_light, note: "logo depois do Wake of Ashes; o grátis pode esperar o Avenging Wrath" }
+      - { spell: divine_storm, note: "com Divine Arbiter e 5 Holy Power" }
+      - { spell: final_verdict, note: "com 5 Holy Power" }
+      - { spell: wake_of_ashes }
+      - { spell: divine_toll }
+      - { spell: blade_of_justice, note: "com 2 Art of War" }
+      - { spell: divine_storm, note: "com Divine Arbiter" }
+      - { spell: final_verdict }
+      - { spell: blade_of_justice }
+      - { spell: hammer_of_wrath }
+      - { spell: judgment }
+    aoe:
+      - { spell: avenging_wrath }
+      - { spell: execution_sentence }
+      - { spell: hammer_of_light, note: "logo depois do Wake of Ashes" }
+      - { spell: final_verdict, note: "com Divine Arbiter e 5 Holy Power" }
+      - { spell: divine_storm, note: "com 5 Holy Power" }
+      - { spell: wake_of_ashes }
+      - { spell: divine_toll }
+      - { spell: blade_of_justice, note: "com 2 Art of War" }
+      - { spell: divine_storm }
+      - { spell: blade_of_justice }
+      - { spell: hammer_of_wrath }
+      - { spell: judgment }
+
+# Abertura: Blade of Justice, Avenging Wrath e os outros cooldowns em seguida (Execution Sentence e
+# Wake of Ashes podem trocar de ordem)
+opener:
+  window_ms: 10000
+  ordered: false
+  herald_of_the_sun: [blade_of_justice, avenging_wrath, execution_sentence, wake_of_ashes, divine_toll]
+  templar: [blade_of_justice, avenging_wrath, execution_sentence, wake_of_ashes, hammer_of_light, divine_toll]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem atacar
+    tip: "Sempre com um GCD rodando: Judgment e Hammer of Wrath alcançam de longe; Divine Steed para voltar ao alvo."
+  - kind: resource_waste
+    id: holy_power
+    power_type: 9
+    resource: Holy Power
+    # Crusading Strikes e os Blade of Justice / Hammer of Wrath automáticos (procs) geram sem o player
+    # apertar nada: só conta o que vem dos geradores castados
+    from: [blade_of_justice, hammer_of_wrath, judgment, wake_of_ashes]
+    importance: medium
+    title: Holy Power desperdiçado
+    tip: "Com 5 Holy Power (ou 4 antes do Blade of Justice), gaste antes de gerar: Final Verdict ou Divine Storm."
+  - kind: proc
+    id: divine_purpose
+    buff: divine_purpose
+    spenders: [final_verdict, divine_storm, hammer_of_light]
+    importance: medium
+    title: Divine Purpose perdido
+    tip: "Divine Purpose deixa o próximo finalizador de graça: use antes de acabar."
+  - kind: cooldown
+    id: cooldowns
+    spells: [avenging_wrath, execution_sentence, wake_of_ashes, divine_toll]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Avenging Wrath, Execution Sentence, Wake of Ashes e Divine Toll no cooldown: eles se alinham sozinhos."

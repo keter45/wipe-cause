@@ -301,7 +301,7 @@ impl WclAnalyzer {
             pulls,
             death_cutoff: self.death_cutoff,
             ignored_short_pulls,
-            rule_errors: self.book.errors.clone(),
+            rule_errors: self.book.errors.iter().chain(&crate::rotation::RotationBook::embedded().errors).cloned().collect(),
             local_logs: Vec::new(),
             wcl_pulls: 0,
         }
@@ -393,6 +393,9 @@ fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64
         "heal" if tick => "SPELL_PERIODIC_HEAL",
         "heal" => "SPELL_HEAL",
         "cast" => "SPELL_CAST_SUCCESS",
+        // começo de cast / empower (o app não baixa; os tops da calibração da rotação sim)
+        "begincast" => "SPELL_CAST_START",
+        "empowerstart" => "SPELL_EMPOWER_START",
         "applybuff" | "applydebuff" => "SPELL_AURA_APPLIED",
         "removebuff" | "removedebuff" => "SPELL_AURA_REMOVED",
         "applybuffstack" | "applydebuffstack" => "SPELL_AURA_APPLIED_DOSE",
@@ -400,6 +403,7 @@ fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64
         "interrupt" => "SPELL_INTERRUPT",
         "dispel" => "SPELL_DISPEL",
         "summon" => "SPELL_SUMMON",
+        "resourcechange" => "SPELL_ENERGIZE",
         "death" => "UNIT_DIED",
         _ => return false,
     };
@@ -435,6 +439,12 @@ fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64
                     out.extend([total.clone(), total, overheal.to_string(), int(&e["absorbed"]).to_string(), "nil".into()]);
                 }
                 "SPELL_CAST_SUCCESS" => advanced(actors, e, &src_guid, &dst_guid, out),
+                "SPELL_ENERGIZE" => {
+                    advanced(actors, e, &src_guid, &dst_guid, out);
+                    // amount, overEnergize, powerType, maxPower (no WCL o resourceChange já inclui o desperdício;
+                    // no log o amount vem sem ele)
+                    out.extend([(int(&e["resourceChange"]) - int(&e["waste"])).max(0).to_string(), int(&e["waste"]).to_string(), int(&e["resourceChangeType"]).to_string(), int(&e["maxResourceAmount"]).to_string()]);
+                }
                 "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED" => out.push(aura_type(kind).into()),
                 "SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE" => {
                     out.push(aura_type(kind).into());

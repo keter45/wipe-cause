@@ -36,6 +36,7 @@ import { useTalentTree, type TalentTree } from '../lib/talents';
 import { useTooltip } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PerfLinks, WclTopsButton, perfLinks, useOwnFight, type PerfLink } from './WclTops';
+import { RotationPanel } from './RotationPanel';
 import { loadTop, type TopRanking, type TopSample } from '../lib/wclApi';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
@@ -68,7 +69,7 @@ function refLabel(me: Sample, s: Sample): string {
 const signedSec = (ms: number) => `${ms > 0 ? '+' : '−'}${Math.round(Math.abs(ms) / 1000)}s`;
 
 /** Comparação de desempenho com a mesma spec na noite (etapa 1: sem dados externos). */
-export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nightPulls: Pull[]; wclCode?: string }) {
+export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid }: { pull: Pull; nightPulls: Pull[]; wclCode?: string; defaultGuid?: string }) {
   const players = useMemo(
     () =>
       [...pull.players]
@@ -78,7 +79,7 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
   );
   const [guid, setGuid] = useState<string | null>(null);
   const player =
-    players.find((p) => p.guid === guid) ?? players.find((p) => p.name === rememberedPlayer()) ?? players.find((p) => p.role === 'dps') ?? players[0];
+    players.find((p) => p.guid === guid) ?? players.find((p) => p.guid === defaultGuid) ?? players.find((p) => p.name === rememberedPlayer()) ?? players.find((p) => p.role === 'dps') ?? players[0];
 
   if (!player) return <p className="muted pad">Sem dados de spec dos jogadores neste pull.</p>;
   if (!player.casts) return <p className="muted pad">Esta análise é de uma versão antiga do app. Analise o log de novo para ver o desempenho.</p>;
@@ -103,6 +104,16 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
           ))}
         </select>
       </label>
+      {player.rotation ? (
+        <ErrorBoundary label={`na rotação de ${shortName(player.name)}`} resetKey={player.guid}>
+          <RotationPanel rotation={player.rotation} />
+        </ErrorBoundary>
+      ) : (
+        <p className="rot-wip small">
+          <span className="chip">Em construção</span> A leitura da rotação de {specLabel(player.specId)} ainda está sendo preparada. Por enquanto, use a
+          comparação com a referência abaixo.
+        </p>
+      )}
       {/* erro na comparação de um jogador não some com o seletor: dá para escolher outro */}
       <ErrorBoundary label={`na comparação de ${shortName(player.name)}`} resetKey={player.guid}>
         <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
@@ -149,7 +160,13 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
   const picker = (
     <>
       <div className="segmented" role="radiogroup" aria-label="Comparar com">
-        <button role="radio" aria-checked={mode === 'tops'} className={mode === 'tops' ? 'active' : ''} onClick={() => setMode('tops')}>
+        <button
+          role="radio"
+          aria-checked={mode === 'tops'}
+          className={mode === 'tops' ? 'active' : ''}
+          onClick={() => setMode('tops')}
+          title="Só parses sem buffs externos (Power Infusion e afins): a referência é o que o player fez sozinho"
+        >
           Top players (Warcraft Logs)
         </button>
         <button role="radio" aria-checked={mode === 'raid'} className={mode === 'raid' ? 'active' : ''} onClick={() => setMode('raid')}>

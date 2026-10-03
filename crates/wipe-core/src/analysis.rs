@@ -3,6 +3,7 @@
 
 use crate::data::{Consumable, GameData};
 use crate::report::*;
+use crate::rotation::{RotationBook, RotationTracker};
 use crate::rules::{RuleBook, RuleTracker};
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -26,6 +27,10 @@ const NIL_GUID: &str = "0000000000000000";
 
 // Flags de unidade (COMBATLOG_OBJECT_*)
 const AFFILIATION_GROUP: u32 = 0x1 | 0x2 | 0x4;
+/// "meu": a unidade é quem gravou o log
+const AFFILIATION_MINE: u32 = 0x1;
+/// Tamanho de cada janela da linha do tempo de dano/cura por player.
+pub const TIMELINE_MS: i64 = 5_000;
 const REACTION_HOSTILE_OR_NEUTRAL: u32 = 0x40 | 0x20;
 const TYPE_PLAYER: u32 = 0x400;
 /// Tamanhos conhecidos do bloco advanced: 19 no 12.x, 17 em versões anteriores.
@@ -124,6 +129,19 @@ struct PlayerAcc {
     dead_since: Option<i64>,
     dead_ms: i64,
     setup: Option<Setup>,
+    /// leitura da rotação, para specs com rotação base escrita
+    rotation: Option<RotationTracker>,
+    /// dano e cura por janela de TIMELINE_MS (pets somados)
+    damage_timeline: Vec<i64>,
+    healing_timeline: Vec<i64>,
+}
+
+fn add_at(v: &mut Vec<i64>, rel: i64, amount: i64) {
+    let i = (rel.max(0) / TIMELINE_MS) as usize;
+    if v.len() <= i {
+        v.resize(i + 1, 0);
+    }
+    v[i] += amount;
 }
 
 struct ActiveDebuff {
@@ -151,11 +169,32 @@ struct EnemySpellAcc {
 }
 
 /// Dano/cura por habilidade, maiores primeiro.
+/// Linha do tempo cortada no tempo analisado (o resto é depois do corte).
+fn timeline(v: &[i64], analyzed_ms: i64) -> Vec<i64> {
+    let n = ((analyzed_ms + TIMELINE_MS - 1) / TIMELINE_MS).max(0) as usize;
+    // sem nada (healer no dano, dps na cura): vazio, para não pesar o relatório
+    if v.iter().all(|&x| x == 0) {
+        return Vec::new();
+    }
+    let mut out: Vec<i64> = v.iter().copied().take(n).collect();
+    out.resize(n, 0);
+    out
+}
+
 fn by_spell(m: &HashMap<(u32, bool), (String, i64)>) -> Vec<SpellAmount> {
     let mut v: Vec<SpellAmount> =
         m.iter().filter(|(_, (_, a))| *a > 0).map(|((id, pet), (name, amount))| SpellAmount { spell_id: *id, name: name.clone(), amount: *amount, pet: *pet }).collect();
     v.sort_by(|a, b| b.amount.cmp(&a.amount).then(a.spell_id.cmp(&b.spell_id)));
     v
+}
+
+/// Spec com rotação base escrita: passa a acompanhar os casts e buffs do player.
+fn start_rotation(p: &mut PlayerAcc) {
+    if p.rotation.is_none() {
+        if let Some(spec) = p.spec_id.and_then(|s| RotationBook::embedded().get(s)) {
+            p.rotation = Some(RotationTracker::new(spec));
+        }
+    }
 }
 
 /// Morte ainda sem a checagem de defensivos disponíveis (feita depois, com dados do log inteiro).
@@ -165,6 +204,8 @@ pub(crate) struct PendingDeath {
 }
 
 pub(crate) struct PullBuilder {
+    /// quem gravou o log (flag "meu" nos eventos do próprio player)
+    owner: Option<String>,
     encounter_id: u32,
     encounter_name: String,
     difficulty_id: u32,
@@ -185,6 +226,8 @@ pub(crate) struct PullBuilder {
     cutoff_t: Option<i64>,
     /// HP dos inimigos no corte
     hp_at_cutoff: HashMap<String, f32>,
+    /// segundos do pull em que alguém da raid acertou um inimigo
+    raid_active: Vec<bool>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -205,6 +248,7 @@ impl PullBuilder {
         let sets = book.for_encounter(encounter_id, &encounter_name);
         let rules = if sets.is_empty() { None } else { RuleTracker::new(&sets, difficulty_id).ok() };
         PullBuilder {
+            owner: None,
             encounter_id,
             encounter_name,
             difficulty_id,
@@ -222,6 +266,7 @@ impl PullBuilder {
             death_cutoff,
             cutoff_t: None,
             hp_at_cutoff: HashMap::new(),
+            raid_active: Vec::new(),
         }
     }
 
@@ -237,6 +282,7 @@ impl PullBuilder {
             p.spec_id = spec;
         }
         p.setup = Some(setup);
+        start_rotation(p);
     }
 
     /// Ainda antes do corte: estatísticas contam.
@@ -352,6 +398,9 @@ impl PullBuilder {
         }
         self.last_ms = t;
         let event = f[0];
+        if self.owner.is_none() && f[1].starts_with("Player-") && f[3].starts_with("0x") && hex(f[3]) & AFFILIATION_MINE != 0 {
+            self.owner = Some(f[1].to_string());
+        }
         // eventos SPELL_* precisam do prefixo spellId,spellName,school
         if event.starts_with("SPELL_") && f.len() < 12 {
             return;
@@ -369,6 +418,26 @@ impl PullBuilder {
             }
             "SPELL_HEAL" | "SPELL_PERIODIC_HEAL" => self.heal(f, t),
             "SPELL_CAST_SUCCESS" => self.cast(f, t, data),
+            "SPELL_ENERGIZE" => {
+                // recurso ganho (sufixo depois do bloco advanced: amount, overEnergize, powerType, maxPower)
+                if self.counting() && Self::is_group_player(f[5], hex(f[7])) {
+                    let s = 12 + advanced_at(f, 12).map_or(0, |a| a.len);
+                    let (amount, over, power) = (num(f.get(s)), num(f.get(s + 1)), num(f.get(s + 2)) as u32);
+                    let rel = self.rel(t);
+                    if let Some(r) = self.players.get_mut(f[5]).and_then(|p| p.rotation.as_mut()) {
+                        r.on_energize(rel, power, f[9].parse().unwrap_or(0), amount, over);
+                    }
+                }
+            }
+            "SPELL_CAST_START" | "SPELL_EMPOWER_START" => {
+                // começo de um cast com tempo de cast ou de um empower (a leitura da rotação mede o tempo parado)
+                if self.counting() && Self::is_group_player(f[1], hex(f[3])) {
+                    let (rel, id) = (self.rel(t), f[9].parse().unwrap_or(0));
+                    if let Some(r) = self.players.get_mut(f[1]).and_then(|p| p.rotation.as_mut()) {
+                        r.on_cast_start(rel, id);
+                    }
+                }
+            }
             "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED" => {
                 self.aura_state(f, t);
                 self.aura(f, t, data)
@@ -399,6 +468,20 @@ impl PullBuilder {
         };
         let (dst_guid, dst_name) = (f[5], f[6]);
         let is_player = Self::is_group_player(dst_guid, hex(f[7]));
+        // debuffs do player (ou do pet) num inimigo: uptime de DoT da rotação
+        if !is_player && self.counting() && matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") && f.get(12) == Some(&"DEBUFF") && Self::is_enemy(dst_guid, hex(f[7])) {
+            if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
+                if let Some(r) = self.players.get_mut(&owner).and_then(|p| p.rotation.as_mut()) {
+                    r.on_target_aura(rel, dst_guid, spell_id, f[0] == "SPELL_AURA_APPLIED");
+                }
+            }
+        }
+        // buffs no player: leitura da rotação (procs, Trick Shots...)
+        if is_player && self.counting() {
+            if let Some(r) = self.players.get_mut(dst_guid).and_then(|p| p.rotation.as_mut()) {
+                r.on_aura(rel, spell_id, stacks);
+            }
+        }
         if self.counting() {
             if let Some(r) = self.rules.as_mut() {
                 r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
@@ -506,6 +589,7 @@ impl PullBuilder {
             p.spec_id = spec;
         }
         p.setup = Some(setup);
+        start_rotation(p);
     }
 
     /// `adv_at`: índice onde começa o bloco advanced (depois do prefixo spell, se houver).
@@ -544,8 +628,22 @@ impl PullBuilder {
             if let Some(owner) = self.owner_of(src_guid, src_flags) {
                 let pet = owner != src_guid;
                 let done = (amount - overkill).max(0);
+                let rel = self.rel(t);
+                // segundo com a raid batendo (o tempo parado da rotação só conta nesses)
+                let s = (rel.max(0) / 1000) as usize;
+                if self.raid_active.len() <= s {
+                    self.raid_active.resize(s + 1, false);
+                }
+                self.raid_active[s] = true;
                 let p = self.player(&owner, if pet { "" } else { src_name });
+                // alvos da rotação: só acerto direto do próprio player (pets e ticks de DoT espalhado inflariam a conta)
+                if !pet && f[0] != "SPELL_PERIODIC_DAMAGE" {
+                    if let Some(r) = p.rotation.as_mut() {
+                        r.on_damage(rel, dst_guid);
+                    }
+                }
                 p.damage_done += done;
+                add_at(&mut p.damage_timeline, rel, done);
                 p.damage_by_spell.entry((spell_id, pet)).or_insert_with(|| (spell_name.clone(), 0)).1 += done;
             }
         }
@@ -628,8 +726,10 @@ impl PullBuilder {
         if self.counting() {
             if let Some(owner) = self.owner_of(src_guid, src_flags) {
                 let pet = owner != src_guid;
+                let rel = self.rel(t);
                 let p = self.player(&owner, if pet { "" } else { src_name });
                 p.healing_done += effective;
+                add_at(&mut p.healing_timeline, rel, effective);
                 if effective > 0 {
                     let (id, name) = (f[9].parse().unwrap_or(0), f[10]);
                     p.healing_by_spell.entry((id, pet)).or_insert_with(|| (name.to_string(), 0)).1 += effective;
@@ -709,6 +809,9 @@ impl PullBuilder {
         }
         if counting {
             p.casts.entry(spell_id).or_insert_with(|| (spell_name.clone(), Vec::new())).1.push(rel);
+            if let Some(r) = p.rotation.as_mut() {
+                r.on_cast(rel, spell_id);
+            }
         }
         match consumable {
             Some(Consumable::Healthstone) => p.healthstones.push(rel),
@@ -788,6 +891,15 @@ impl PullBuilder {
 
     fn unit_died(&mut self, f: &[&str], t: i64) {
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
+        // inimigo morto: fecha os DoTs que os players tinham nele
+        if Self::is_enemy(dst_guid, dst_flags) {
+            let rel = self.rel(t);
+            for p in self.players.values_mut() {
+                if let Some(r) = p.rotation.as_mut() {
+                    r.on_enemy_died(rel, dst_guid);
+                }
+            }
+        }
         if !Self::is_group_player(dst_guid, dst_flags) {
             return;
         }
@@ -803,6 +915,9 @@ impl PullBuilder {
         if !ignored {
             p.deaths += 1;
             p.dead_since.get_or_insert(rel);
+            if let Some(r) = p.rotation.as_mut() {
+                r.on_death(rel);
+            }
         }
         let recap: Vec<RecapEntry> = p.recap.iter().filter(|e| rel - e.t <= RECAP_WINDOW_MS).cloned().collect();
         let killing_blow = recap.iter().rev().find(|e| e.kind == RecapKind::Damage).cloned();
@@ -874,7 +989,7 @@ impl PullBuilder {
         }
     }
 
-    pub fn finish(self, end: Option<(&[&str], i64)>, id: usize, data: &GameData) -> FinishedPull {
+    pub fn finish(mut self, end: Option<(&[&str], i64)>, id: usize, data: &GameData) -> FinishedPull {
         let (success, end_ms, incomplete) = match end {
             // ENCOUNTER_END,id,name,difficulty,size,success,fightTime
             Some((f, t)) => (f.get(5) == Some(&"1"), t, false),
@@ -908,6 +1023,8 @@ impl PullBuilder {
         let mut defensives_by_player: HashMap<String, HashSet<u32>> = HashMap::new();
         let mut healthstone_users = HashSet::new();
         let mut players: Vec<PlayerStats> = Vec::new();
+        // leitura da rotação: até o corte de mortes, como o resto das estatísticas
+        let mut rotations: HashMap<String, RotationTracker> = self.players.iter_mut().filter_map(|(g, p)| Some((g.clone(), p.rotation.take()?))).collect();
         for (guid, p) in &self.players {
             if p.name.is_empty() {
                 continue; // só apareceu no COMBATANT_INFO (fora do grupo ou sem eventos)
@@ -964,6 +1081,9 @@ impl PullBuilder {
                 healing_by_spell: by_spell(&p.healing_by_spell),
                 alive_ms: (analyzed_ms - p.dead_ms.min(analyzed_ms) - p.dead_since.map_or(0, |d| (analyzed_ms - d).max(0))).max(0),
                 setup: p.setup.clone(),
+                rotation: rotations.remove(guid).map(|r| r.finish(analyzed_ms, &self.raid_active)),
+                damage_timeline: timeline(&p.damage_timeline, analyzed_ms),
+                healing_timeline: timeline(&p.healing_timeline, analyzed_ms),
             });
         }
         players.sort_by_key(|a| std::cmp::Reverse(a.damage_done));
@@ -1032,6 +1152,7 @@ impl PullBuilder {
                 rules_file,
                 mechanics,
                 trigger,
+                owner_guid: self.owner,
             },
             pending_deaths: pending,
             defensives_by_player,

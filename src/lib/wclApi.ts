@@ -113,8 +113,10 @@ export function pickTops(list: TopRanking[], myIlvl: number | null, myKillMs: nu
   return [...pool].sort((a, b) => b.amount - a.amount).slice(0, TOPS_SHOWN);
 }
 
+// externalBuffs: Exclude = só parses sem buffs externos (Power Infusion e afins): a referência
+// precisa ser o que o player faz sozinho, como o seu pull
 const RANKINGS_QUERY = `query Rankings($id: Int!, $difficulty: Int!, $className: String!, $specName: String!, $metric: CharacterRankingMetricType, $page: Int) {
-  worldData { encounter(id: $id) { characterRankings(difficulty: $difficulty, className: $className, specName: $specName, metric: $metric, page: $page, includeCombatantInfo: true) } }
+  worldData { encounter(id: $id) { characterRankings(difficulty: $difficulty, className: $className, specName: $specName, metric: $metric, page: $page, includeCombatantInfo: true, externalBuffs: Exclude) } }
 }`;
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -128,7 +130,7 @@ export async function fetchRankings(pull: Pull, specId: number, healer: boolean)
   // rankings mudam ao longo do dia: cache diário, 2 páginas (200 parses)
   const pages = await Promise.all(
     [1, 2].map((page) =>
-      query<any>(RANKINGS_QUERY, { ...vars, page }, `rank-${pull.encounterId}-${difficulty}-${specId}-${metric}-p${page}-${today()}`).catch((e) => {
+      query<any>(RANKINGS_QUERY, { ...vars, page }, `rank-noext-${pull.encounterId}-${difficulty}-${specId}-${metric}-p${page}-${today()}`).catch((e) => {
         if (page === 1) throw e;
         return null;
       }),
@@ -157,6 +159,37 @@ const CASTS_QUERY = `query Casts($code: String!, $fight: Int!, $source: Int!, $s
 const TABLE_QUERY = `query Table($code: String!, $fight: Int!, $source: Int!, $type: TableDataType!, $start: Float!, $end: Float!) {
   reportData { report(code: $code) { table(fightIDs: [$fight], sourceID: $source, dataType: $type, startTime: $start, endTime: $end) } }
 }`;
+
+// gráfico do site (dano/cura por intervalo, com os pets): a linha do tempo do top no modo solo
+const GRAPH_QUERY = `query Graph($code: String!, $fight: Int!, $source: Int!, $type: GraphDataType!, $start: Float!, $end: Float!) {
+  reportData { report(code: $code) { graph(fightIDs: [$fight], sourceID: $source, dataType: $type, startTime: $start, endTime: $end) } }
+}`;
+
+/** Janela da linha do tempo do núcleo (TIMELINE_MS). */
+const BUCKET_MS = 5_000;
+
+/**
+ * Gráfico do Warcraft Logs -> dano por janela de 5s desde o início do fight. As séries vêm em
+ * "por segundo" a cada `pointInterval` ms; com uma série "Total" usa só ela, senão soma todas
+ * (player e pets).
+ */
+export function graphTimeline(json: any, fightStart: number, durationMs: number): number[] {
+  const series: any[] = json?.data?.series ?? json?.series ?? [];
+  const total = series.find((x) => /^total$/i.test(String(x?.name ?? '')));
+  const use = total ? [total] : series;
+  const n = Math.ceil(durationMs / BUCKET_MS);
+  const out = new Array<number>(n).fill(0);
+  for (const se of use) {
+    const interval = Number(se?.pointInterval) || 1000;
+    const start = Number(se?.pointStart ?? fightStart);
+    (se?.data ?? []).forEach((v: any, i: number) => {
+      const [t, rate] = Array.isArray(v) ? [Number(v[0]), Number(v[1])] : [start + i * interval, Number(v)];
+      const k = Math.floor((t - fightStart) / BUCKET_MS);
+      if (k >= 0 && k < n && Number.isFinite(rate)) out[k] += (rate * interval) / 1000;
+    });
+  }
+  return out.map(Math.round);
+}
 
 /** Tempo vivo do nosso player: a parte da luta que dá para comparar. */
 const windowOf = (me: Sample) => Math.max(30_000, me.player.aliveMs ?? me.pull.analyzedMs);
@@ -280,6 +313,12 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
     `table2-${key}-${actor.id}-${healer ? 'h' : 'd'}-${durationMs}`,
   );
   const amounts = tableAmounts(table?.reportData?.report?.table);
+  // modo solo: dano ao longo do fight e dano tomado por habilidade (falha aqui não impede a comparação)
+  const range = { code: top.code, fight: top.fightId, source: actor.id, start: fight.startTime, end: fight.startTime + durationMs };
+  const graph = await query<any>(GRAPH_QUERY, { ...range, type: healer ? 'Healing' : 'DamageDone' }, `graph-${key}-${actor.id}-${healer ? 'h' : 'd'}-${durationMs}`).catch(() => null);
+  const timeline = graph ? graphTimeline(graph?.reportData?.report?.graph, Number(fight.startTime), durationMs) : [];
+  const takenTable = await query<any>(TABLE_QUERY, { ...range, type: 'DamageTaken' }, `taken-${key}-${actor.id}-${durationMs}`).catch(() => null);
+  const taken = tableAmounts(takenTable?.reportData?.report?.table).map((x) => ({ spellId: x.spellId, name: x.name, source: '', amount: x.amount, hits: 0 }));
 
   const details = report.playerDetails?.data?.playerDetails ?? report.playerDetails?.playerDetails ?? {};
   const detail = [...(details.dps ?? []), ...(details.healers ?? []), ...(details.tanks ?? [])].find((p: any) => p?.id === actor.id);
@@ -299,7 +338,7 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
     hps: healer ? total / (durationMs / 1000) : 0,
     deaths: 0,
     defensivesUsed: [],
-    takenByAbility: [],
+    takenByAbility: taken,
     interruptLog: [],
     interrupts: 0,
     interruptAttempts: 0,
@@ -308,6 +347,10 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
     healingBySpell: healer ? amounts : [],
     aliveMs: durationMs,
     setup,
+    // a leitura da rotação do top não vem do WCL (não herda a sua)
+    rotation: undefined,
+    damageTimeline: healer ? [] : timeline,
+    healingTimeline: healer ? timeline : [],
   };
   const pull: Pull = {
     ...me.pull,
