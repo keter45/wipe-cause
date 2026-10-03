@@ -4872,3 +4872,11 @@ svg.wcl-mark {
 .sparkline circle.best {
   fill: var(--accent);
 }
+
+/* envio automático ao Discord: pausado fica apagado, para não passar por ligado */
+.discord-auto.off {
+  color: var(--muted);
+}
+.discord-auto.on svg {
+  color: var(--accent);
+}

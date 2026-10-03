@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { CircleAlert, Crosshair, ExternalLink, Link2, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
+import { CircleAlert, Crosshair, ExternalLink, Link2, MessageSquare, MessageSquareOff, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
+import { discordSetConfig, inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
 import { reportCode } from '../lib/wcl';
 import { logTitle, mainEncounterId } from '../lib/format';
 import { BossName } from './Names';
@@ -70,10 +70,53 @@ export function Header(props: Props) {
       )}
       <div className="topbar-group" aria-label="Desta noite">
         {props.showLive && <LiveButton status={props.live} error={props.liveError} onStart={props.onLiveStart} onStop={props.onLiveStop} />}
+        {inTauri && <DiscordAutoButton />}
         {report && <WclButton logFile={report.file} onWcl={props.onWcl} />}
         {report && inTauri && <VideosButton pulls={report.pulls} onVideos={props.onVideos} />}
       </div>
     </header>
+  );
+}
+
+/**
+ * Chave geral do envio automático ao Discord (wipes, kills e resumo da noite no ao vivo). Só
+ * aparece com o webhook configurado; o que vai em cada caso fica nas Configurações.
+ */
+function DiscordAutoButton() {
+  const { status, reload } = useSetup();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const cfg = status?.discord;
+  if (!cfg?.webhook) return null;
+  const on = cfg.auto !== false;
+  async function toggle() {
+    setBusy(true);
+    setError(null);
+    try {
+      await discordSetConfig({ ...cfg!, auto: !on });
+      await reload();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const Icon = on ? MessageSquare : MessageSquareOff;
+  return (
+    <button
+      className={`btn ghost discord-auto ${on ? 'on' : 'off'}`}
+      aria-pressed={on}
+      disabled={busy}
+      onClick={toggle}
+      title={
+        error ??
+        (on
+          ? 'Envio automático ao Discord ligado: no ao vivo, cada wipe, kill e o resumo da noite vão para o canal. Clique para pausar.'
+          : 'Envio automático ao Discord pausado: nada vai sozinho (o Compartilhar continua funcionando). Clique para ligar.')
+      }
+    >
+      <Icon {...ICON} /> Discord <span className="small live-state">{error ? 'erro' : on ? 'automático' : 'pausado'}</span>
+    </button>
   );
 }
 

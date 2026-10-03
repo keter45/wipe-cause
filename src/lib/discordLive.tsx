@@ -50,7 +50,7 @@ export function useNightRecap(liveActive: boolean) {
     if (!n || n.sent || !raidOnly(n.pulls).length) return;
     n.sent = true;
     const cfg = await discordGetConfig().catch(() => null);
-    if (!cfg?.webhook || cfg.onNight === false) return;
+    if (!cfg?.webhook || cfg.auto === false || cfg.onNight === false) return;
     await postNightImage(n.pulls).catch(() => {
       n.sent = false; // tenta de novo na próxima
     });
