@@ -296,6 +296,22 @@ impl RotationBook {
                     Err(e) => errors.push(e),
                 }
             }
+            // ferramenta de desenvolvimento (scripts/rotation.mjs): YAMLs de uma pasta substituem os
+            // embutidos da mesma spec, para calibrar um rascunho sem recompilar
+            if let Some(dir) = std::env::var_os("WIPE_ROTATIONS") {
+                for e in std::fs::read_dir(&dir).into_iter().flatten().flatten() {
+                    let path = e.path();
+                    if path.extension().is_some_and(|x| x == "yaml") {
+                        let file = path.display().to_string();
+                        match std::fs::read_to_string(&path).map_err(|e| format!("{file}: {e}")).and_then(|src| RotationSpec::parse(&file, &src)) {
+                            Ok(s) => {
+                                specs.insert(s.spec, s);
+                            }
+                            Err(e) => errors.push(e),
+                        }
+                    }
+                }
+            }
             RotationBook { specs, errors }
         })
     }

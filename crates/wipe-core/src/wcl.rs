@@ -301,7 +301,7 @@ impl WclAnalyzer {
             pulls,
             death_cutoff: self.death_cutoff,
             ignored_short_pulls,
-            rule_errors: self.book.errors.clone(),
+            rule_errors: self.book.errors.iter().chain(&crate::rotation::RotationBook::embedded().errors).cloned().collect(),
             local_logs: Vec::new(),
             wcl_pulls: 0,
         }
@@ -393,6 +393,9 @@ fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64
         "heal" if tick => "SPELL_PERIODIC_HEAL",
         "heal" => "SPELL_HEAL",
         "cast" => "SPELL_CAST_SUCCESS",
+        // começo de cast / empower (o app não baixa; os tops da calibração da rotação sim)
+        "begincast" => "SPELL_CAST_START",
+        "empowerstart" => "SPELL_EMPOWER_START",
         "applybuff" | "applydebuff" => "SPELL_AURA_APPLIED",
         "removebuff" | "removedebuff" => "SPELL_AURA_REMOVED",
         "applybuffstack" | "applydebuffstack" => "SPELL_AURA_APPLIED_DOSE",
