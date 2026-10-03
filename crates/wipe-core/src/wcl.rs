@@ -438,8 +438,9 @@ fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64
                 "SPELL_CAST_SUCCESS" => advanced(actors, e, &src_guid, &dst_guid, out),
                 "SPELL_ENERGIZE" => {
                     advanced(actors, e, &src_guid, &dst_guid, out);
-                    // amount, overEnergize, powerType, maxPower (no WCL o resourceChange já inclui o desperdício)
-                    out.extend([int(&e["resourceChange"]).to_string(), int(&e["waste"]).to_string(), int(&e["resourceChangeType"]).to_string(), int(&e["maxResourceAmount"]).to_string()]);
+                    // amount, overEnergize, powerType, maxPower (no WCL o resourceChange já inclui o desperdício;
+                    // no log o amount vem sem ele)
+                    out.extend([(int(&e["resourceChange"]) - int(&e["waste"])).max(0).to_string(), int(&e["waste"]).to_string(), int(&e["resourceChangeType"]).to_string(), int(&e["maxResourceAmount"]).to_string()]);
                 }
                 "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED" => out.push(aura_type(kind).into()),
                 "SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE" => {

@@ -392,7 +392,7 @@ impl PullBuilder {
                     let (amount, over, power) = (num(f.get(s)), num(f.get(s + 1)), num(f.get(s + 2)) as u32);
                     let rel = self.rel(t);
                     if let Some(r) = self.players.get_mut(f[5]).and_then(|p| p.rotation.as_mut()) {
-                        r.on_energize(rel, power, amount, over);
+                        r.on_energize(rel, power, f[9].parse().unwrap_or(0), amount, over);
                     }
                 }
             }

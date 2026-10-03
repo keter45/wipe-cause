@@ -162,6 +162,9 @@ pub enum Check {
         /// tipo de recurso do log (0 mana, 1 rage, 3 energy, 7 soul shards, 8 astral power, 11 maelstrom...)
         power_type: u32,
         resource: String,
+        /// só conta o que vem destes geradores, castados pelo player (fora os procs automáticos)
+        #[serde(default)]
+        from: Vec<String>,
         importance: String,
         title: String,
         tip: String,
@@ -245,7 +248,8 @@ impl RotationSpec {
                     buff(b)?;
                     casts.iter().chain(applied_by).try_for_each(ability)?;
                 }
-                Check::Downtime { .. } | Check::ResourceWaste { .. } => {}
+                Check::Downtime { .. } => {}
+                Check::ResourceWaste { from, .. } => from.iter().try_for_each(ability)?,
                 Check::DotUptime { debuff, .. } => buff(debuff)?,
                 Check::AoeSwap { casts, instead, unless_buff, .. } => {
                     casts.iter().chain(instead).try_for_each(ability)?;
@@ -384,12 +388,13 @@ pub struct SpellSource {
 
 // ---------------------------------------------------------------- acompanhamento
 
-/// Recurso de um tipo: ganho, desperdiçado e os momentos com desperdício (ms, quanto).
-#[derive(Default)]
-struct Energy {
-    gained: i64,
-    wasted: i64,
-    moments: Vec<(i64, i64)>,
+/// Recurso ganho pelo player num momento: `amount` já sem o desperdício (`over`).
+struct Energize {
+    t: i64,
+    power_type: u32,
+    spell_id: u32,
+    amount: i64,
+    over: i64,
 }
 
 pub(crate) struct RotationTracker {
@@ -428,7 +433,7 @@ pub(crate) struct RotationTracker {
     /// intervalos morto (ms do pull), para o uptime de DoT
     dead_spans: Vec<(i64, i64)>,
     /// recurso ganho e desperdiçado, por tipo de recurso
-    energize: HashMap<u32, Energy>,
+    energize: Vec<Energize>,
     /// debuff do player em cada inimigo: (debuff, inimigo) -> aplicado em
     dots_on: HashMap<(String, String), i64>,
     /// intervalos com o debuff em algum inimigo, por debuff
@@ -464,7 +469,7 @@ impl RotationTracker {
             dead_since: None,
             dead_ms: 0,
             dead_spans: Vec::new(),
-            energize: HashMap::new(),
+            energize: Vec::new(),
             dots_on: HashMap::new(),
             dot_spans: HashMap::new(),
             swap_total: HashMap::new(),
@@ -549,14 +554,9 @@ impl RotationTracker {
         self.casts.push((t, key));
     }
 
-    /// Recurso ganho pelo player: `over` = o que passou do máximo (desperdício).
-    pub fn on_energize(&mut self, t: i64, power_type: u32, amount: i64, over: i64) {
-        let e = self.energize.entry(power_type).or_default();
-        e.gained += amount.max(0);
-        e.wasted += over.max(0);
-        if over > 0 {
-            e.moments.push((t, over));
-        }
+    /// Recurso ganho pelo player: `amount` o que entrou, `over` o que passou do máximo (desperdício).
+    pub fn on_energize(&mut self, t: i64, power_type: u32, spell_id: u32, amount: i64, over: i64) {
+        self.energize.push(Energize { t, power_type, spell_id, amount: amount.max(0), over: over.max(0) });
     }
 
     /// Inimigo morreu: os debuffs do player nele acabam aqui (não vem SPELL_AURA_REMOVED).
@@ -782,11 +782,20 @@ impl RotationTracker {
                         spell_id: None,
                     });
                 }
-                Check::ResourceWaste { id, power_type, resource, importance, title, tip } => {
-                    let Some(Energy { gained, wasted: waste, moments }) = self.energize.remove(power_type) else { continue };
-                    if gained <= 0 {
+                Check::ResourceWaste { id, power_type, resource, from, importance, title, tip } => {
+                    // com `from`: só o recurso dos geradores castados pelo player (o cast sai junto do ganho)
+                    let counts = |e: &&Energize| {
+                        e.power_type == *power_type
+                            && (from.is_empty()
+                                || self.ability_by_id.get(&e.spell_id).is_some_and(|k| from.contains(k) && self.casts.iter().any(|(ct, ck)| ck == k && (ct - e.t).abs() <= 100)))
+                    };
+                    let mine: Vec<&Energize> = self.energize.iter().filter(counts).collect();
+                    let waste: i64 = mine.iter().map(|e| e.over).sum();
+                    let total: i64 = mine.iter().map(|e| e.amount).sum::<i64>() + waste;
+                    if total <= 0 {
                         continue;
                     }
+                    let moments: Vec<(i64, i64)> = mine.iter().filter(|e| e.over > 0).map(|e| (e.t, e.over)).collect();
                     let mut worst = moments.clone();
                     worst.sort_by_key(|(_, o)| std::cmp::Reverse(*o));
                     findings.push(RotationFinding {
@@ -795,9 +804,13 @@ impl RotationTracker {
                         tip: tip.clone(),
                         importance: importance.clone(),
                         count: moments.len() as u32,
-                        rate: 1.0 - (waste as f32 / gained as f32).min(1.0),
+                        rate: 1.0 - waste as f32 / total as f32,
                         times: worst.iter().take(10).map(|(t, _)| *t).collect(),
-                        detail: format!("{waste} de {gained} {resource} desperdiçado ({:.0}%)", waste as f32 / gained as f32 * 100.0),
+                        detail: format!(
+                            "{waste} de {total} {resource} desperdiçado ({:.0}%){}",
+                            waste as f32 / total as f32 * 100.0,
+                            if from.is_empty() { "" } else { ", só nos geradores castados" }
+                        ),
                         spell_id: None,
                     });
                 }
@@ -1151,6 +1164,22 @@ mod tests {
         let res = r.finish(140000, &[true; 150]);
         let f = res.findings.iter().find(|f| f.id == "vanish_garrote").unwrap();
         assert_eq!((f.count, f.times.clone()), (1, vec![130500]));
+    }
+
+    #[test]
+    fn resource_waste_only_from_cast_generators() {
+        let ret = RotationBook::embedded().get(70).expect("retribution");
+        let mut r = RotationTracker::new(ret);
+        r.on_energize(3000, 9, 184575, 2, 0); // Blade of Justice castado: 2 ganhos
+        r.on_cast(3000, 184575);
+        r.on_energize(5000, 9, 184575, 0, 2); // Blade of Justice automático (sem cast): não conta
+        r.on_energize(6000, 9, 408385, 0, 1); // Crusading Strikes: fora dos geradores
+        r.on_cast(8000, 24275);
+        r.on_energize(8000, 9, 24275, 0, 1); // Hammer of Wrath castado com 5: desperdício
+        let res = r.finish(10000, &[true; 20]);
+        let f = res.findings.iter().find(|f| f.id == "holy_power").unwrap();
+        assert_eq!((f.count, f.times.clone()), (1, vec![8000]));
+        assert!((f.rate - 2.0 / 3.0).abs() < 0.01);
     }
 
     #[test]
