@@ -15,6 +15,8 @@ export interface RuleMechanic {
   warn_stacks?: number;
   lethal_stacks?: number;
   max_delay?: number;
+  target_s?: number;
+  max_s?: number;
   roles?: string[];
   difficulty?: string[];
   tip?: string;
@@ -33,6 +35,8 @@ export interface MechanicTuning {
   warn_stacks?: number;
   lethal_stacks?: number;
   max_delay?: number;
+  target_s?: number;
+  max_s?: number;
   roles?: string[];
   tip?: string;
   message?: string;

@@ -281,6 +281,21 @@ export interface MechanicResult {
   casts?: CastOutcome[];
   /** dispel: cada debuff e o que aconteceu com ele */
   dispels?: DispelOutcome[];
+  /** phase_duration: cada janela (intermissão) do pull */
+  phases?: PhaseWindow[];
+  /** phase_duration: tempo bom e tempo máximo aceitável (ms) */
+  targetMs?: number;
+  maxMs?: number;
+}
+
+export interface PhaseWindow {
+  start: number;
+  /** null = não terminou no tempo analisado */
+  end: number | null;
+  /** o raid wipou durante a fase */
+  wiped?: boolean;
+  /** players que morreram dentro da fase */
+  deaths?: number;
 }
 
 export interface CastOutcome {

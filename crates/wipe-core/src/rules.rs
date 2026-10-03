@@ -2,7 +2,7 @@
 //!
 //! Formato documentado em `.claude/skills/boss-rules/references/schema.md`.
 
-use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, Positions};
+use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PhaseWindow, Positions};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
@@ -27,6 +27,10 @@ const AURA_GRACE_MS: i64 = 500;
 /// Depois disso a remoção costuma ser pela morte na própria explosão.
 const CULPRIT_BEFORE_MS: i64 = 500;
 const CULPRIT_AFTER_MS: i64 = 50;
+/// Fase que termina tão perto do fim de um wipe acabou pelo reset do boss, não pelo raid.
+const PHASE_WIPE_SLACK_MS: i64 = 1_500;
+/// Mortes dentro de uma fase que mostram que a mecânica deu errado (não só alguém azarado).
+const PHASE_FAIL_DEATHS: u32 = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -46,6 +50,7 @@ pub enum MechanicType {
     Enrage,
     FailureEvent,
     Dispel,
+    PhaseDuration,
     Info,
 }
 
@@ -67,6 +72,7 @@ impl MechanicType {
             Self::Enrage => "enrage",
             Self::FailureEvent => "failure_event",
             Self::Dispel => "dispel",
+            Self::PhaseDuration => "phase_duration",
             Self::Info => "info",
         }
     }
@@ -132,6 +138,9 @@ pub struct Mechanic {
     pub ignore_first_hit_in_burst: bool,
     /// dispel: segundos até o dispel antes de contar como atrasado
     pub max_delay: Option<f64>,
+    /// phase_duration: segundos de uma fase bem feita, e acima de quanto conta como lenta
+    pub target_s: Option<f64>,
+    pub max_s: Option<f64>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -211,7 +220,7 @@ fn difficulty_key(id: u32) -> Option<&'static str> {
 // Ajustes do usuário
 
 /// Campos de uma mecânica que o usuário pode ajustar sem editar a regra.
-pub const TUNABLE_FIELDS: &[&str] = &["severity", "tolerance", "warn_stacks", "lethal_stacks", "max_delay", "roles", "tip", "message", "focus"];
+pub const TUNABLE_FIELDS: &[&str] = &["severity", "tolerance", "warn_stacks", "lethal_stacks", "max_delay", "target_s", "max_s", "roles", "tip", "message", "focus"];
 
 /// Ajustes de um boss: uma camada por cima da regra (só o que mudou), para os ajustes
 /// continuarem valendo quando a regra do app for atualizada.
@@ -442,6 +451,8 @@ struct MechState {
     open_dispels: HashMap<String, usize>,
     /// dispel: quando o debuff saiu (o SPELL_DISPEL vem logo depois da remoção)
     dispel_removed: HashMap<usize, i64>,
+    /// phase_duration: janelas da aura no boss (a última pode estar aberta)
+    phases: Vec<PhaseWindow>,
 }
 
 pub struct RuleTracker {
@@ -682,6 +693,19 @@ impl RuleTracker {
                         }
                     }
                 }
+                // fase: a aura entra no boss no começo e sai quando o raid resolve a mecânica
+                // (as duas sentinelas recebem a aura juntas: só a primeira abre a janela)
+                Hook::Aura if !is_player && m.kind == MechanicType::PhaseDuration => {
+                    let open = st.phases.last().is_some_and(|p| p.end.is_none());
+                    if stacks > 0 && !open {
+                        st.phases.push(PhaseWindow { start: t, end: None, wiped: false, deaths: 0 });
+                    } else if stacks == 0 && open {
+                        let p = st.phases.last_mut().unwrap();
+                        p.end = Some(t);
+                        let secs = (t - p.start) as f64 / 1000.0;
+                        push_event(st, t, None, format!("{} em {}", m.name, fmt_secs(secs)));
+                    }
+                }
                 Hook::Enrage if stacks > 0 => {
                     st.failures += 1;
                     st.fail_times.push(t);
@@ -749,6 +773,30 @@ impl RuleTracker {
         }
     }
 
+    /// Fim do pull (ms desde o início) e as mortes de players (ms): conta quem morreu dentro de
+    /// cada fase, e a fase que "terminou" junto com um wipe (reset do boss) fica sem fim e marcada
+    /// como wipe na fase.
+    pub fn close_pull(&mut self, end_t: i64, success: bool, deaths: &[i64]) {
+        for (m, st) in self.mechs.iter().zip(&mut self.state) {
+            if m.kind != MechanicType::PhaseDuration {
+                continue;
+            }
+            for p in &mut st.phases {
+                let until = p.end.unwrap_or(end_t);
+                p.deaths = deaths.iter().filter(|&&t| t >= p.start && t <= until).count() as u32;
+            }
+            if success {
+                continue;
+            }
+            if let Some(p) = st.phases.last_mut() {
+                if p.end.is_none_or(|e| e >= end_t - PHASE_WIPE_SLACK_MS) {
+                    p.end = None;
+                    p.wiped = true;
+                }
+            }
+        }
+    }
+
     /// `roles`: guid -> role, para não culpar quem a mecânica não envolve.
     pub fn finish(self, roles: &HashMap<String, String>) -> Vec<MechanicResult> {
         let mut out = Vec::new();
@@ -805,7 +853,14 @@ impl RuleTracker {
                 m.kind,
                 MechanicType::Soak | MechanicType::TankSoak | MechanicType::Interrupt | MechanicType::Enrage | MechanicType::HpBalance | MechanicType::FailureEvent | MechanicType::Dispel
             );
+            let max_ms = m.max_s.map(|s| (s * 1000.0) as i64);
             let failures = match m.kind {
+                // fases lentas (acima de max_s) e wipe dentro da fase
+                MechanicType::PhaseDuration => st
+                    .phases
+                    .iter()
+                    .filter(|p| p.wiped || p.deaths >= PHASE_FAIL_DEATHS || p.end.zip(max_ms).is_some_and(|(e, max)| round_s(e - p.start) > max))
+                    .count() as u32,
                 _ if collective => st.failures,
                 // quantos players passaram do limite de stacks
                 MechanicType::StackLimit => players.len() as u32,
@@ -844,6 +899,8 @@ impl RuleTracker {
                 .or(d.enrage_aura_id);
             let summary = if m.kind == MechanicType::Dispel {
                 dispel_summary(&m.name, st.failures, &st.dispels)
+            } else if m.kind == MechanicType::PhaseDuration {
+                phase_summary(&st.phases, m.target_s)
             } else if collective {
                 render(&m.message, "", st.failures, lethal)
             } else {
@@ -867,6 +924,9 @@ impl RuleTracker {
                 snapshots: st.snapshots,
                 casts: st.casts,
                 dispels: st.dispels,
+                phases: st.phases,
+                target_ms: m.target_s.map(|s| (s * 1000.0) as i64),
+                max_ms,
             });
         }
         let rank = |s: &str| match s {
@@ -914,6 +974,47 @@ fn judge_dispel(m: &Mechanic, st: &mut MechState, i: usize) {
 }
 
 /// "2 de 9 Venomfang sem dispel a tempo · dispel médio 2,4s"
+/// "3 intermissões: 18s, 13s, 14s · média 15s (alvo 12s)"
+fn phase_summary(phases: &[PhaseWindow], target_s: Option<f64>) -> String {
+    if phases.is_empty() {
+        return String::new();
+    }
+    // média só das fases limpas: a que acabou com o raid morrendo não mede a velocidade
+    let done: Vec<f64> = phases.iter().filter(|p| p.deaths < PHASE_FAIL_DEATHS).filter_map(|p| p.end.map(|e| (e - p.start) as f64 / 1000.0)).collect();
+    let list: Vec<String> = phases
+        .iter()
+        .map(|p| {
+            let time = match p.end {
+                Some(e) => fmt_secs((e - p.start) as f64 / 1000.0),
+                None if p.wiped => "wipe".into(),
+                None => "?".into(),
+            };
+            match p.deaths {
+                0 => time,
+                1 => format!("{time} (1 morte)"),
+                n => format!("{time} ({n} mortes)"),
+            }
+        })
+        .collect();
+    let avg = if done.len() > 1 { format!(" · média {}", fmt_secs(done.iter().sum::<f64>() / done.len() as f64)) } else { String::new() };
+    let target = target_s.map(|s| format!(" (alvo {})", fmt_secs(s))).unwrap_or_default();
+    format!("{}: {}{avg}{target}", if phases.len() == 1 { "1 vez".to_string() } else { format!("{} vezes", phases.len()) }, list.join(", "))
+}
+
+/// A aura sai no tick do servidor (segundo cheio + alguns ms): compara em segundos arredondados.
+fn round_s(ms: i64) -> i64 {
+    ((ms as f64 / 1000.0).round() as i64) * 1000
+}
+
+/// "13s" / "8,5s"
+fn fmt_secs(s: f64) -> String {
+    if (s - s.round()).abs() < 0.05 {
+        format!("{}s", s.round() as i64)
+    } else {
+        format!("{s:.1}s").replace('.', ",")
+    }
+}
+
 fn dispel_summary(name: &str, failures: u32, dispels: &[DispelOutcome]) -> String {
     let done: Vec<i64> = dispels.iter().filter_map(|d| d.delay_ms).collect();
     let avg = if done.is_empty() { String::new() } else { format!(" · dispel médio {:.1}s", done.iter().sum::<i64>() as f64 / done.len() as f64 / 1000.0).replace('.', ",") };
@@ -1155,5 +1256,43 @@ mechanics:
         tr.on_damage(0, "P1", "Um-Realm", 5000, 1000); // queda (ENVIRONMENTAL_DAMAGE)
         let res = tr.finish(&HashMap::new());
         assert_eq!(res.iter().find(|m| m.key == "environmental").unwrap().failures, 1);
+    }
+
+    #[test]
+    fn phase_duration_times_each_window() {
+        let src = r#"
+name: "Fase"
+encounter_id: 1
+mechanics:
+  - key: stasis
+    name: Stasis
+    type: phase_duration
+    severity: minor
+    detect: { aura_id: 500 }
+    target_s: 10
+    max_s: 15
+    message: "{count} lenta"
+"#;
+        let set = RuleSet::parse("fase.yaml", src).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        // dois bosses recebem a aura juntos: uma janela só
+        tr.on_aura(500, "Boss-A", "A", 1, false, 1_000);
+        tr.on_aura(500, "Boss-B", "B", 1, false, 1_001);
+        tr.on_aura(500, "Boss-A", "A", 0, false, 13_010); // 12s: dentro
+        tr.on_aura(500, "Boss-B", "B", 0, false, 13_011);
+        tr.on_aura(500, "Boss-A", "A", 1, false, 100_000);
+        tr.on_aura(500, "Boss-A", "A", 0, false, 118_005); // 18s: lenta
+        tr.on_aura(500, "Boss-A", "A", 1, false, 200_000);
+        tr.on_aura(500, "Boss-A", "A", 0, false, 206_000); // 6s, mas o raid morreu nela
+        tr.on_aura(500, "Boss-A", "A", 1, false, 300_000); // wipe com a fase aberta
+        tr.close_pull(305_000, false, &[201_000, 202_000, 203_000]);
+        let m = tr.finish(&HashMap::new()).into_iter().find(|m| m.key == "stasis").unwrap();
+        assert_eq!(m.phases.len(), 4);
+        assert_eq!(m.phases[0].end, Some(13_010));
+        assert_eq!(m.phases[2].deaths, 3);
+        assert!(m.phases[3].wiped && m.phases[3].end.is_none());
+        assert_eq!(m.failures, 3); // a lenta, a com mortes e o wipe
+        assert_eq!(m.target_ms, Some(10_000));
+        assert_eq!(m.summary, "4 vezes: 12s, 18s, 6s (3 mortes), wipe · média 15s (alvo 10s)");
     }
 }

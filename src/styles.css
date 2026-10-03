@@ -5024,3 +5024,98 @@ svg.wcl-mark {
   letter-spacing: 0;
   font-weight: 400;
 }
+
+/* ---------------------------------------------------------------- fases cronometradas (intermissões) */
+.phase-card,
+.phase-night {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.phase-card {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.phase-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.phase-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.phase-row {
+  display: grid;
+  grid-template-columns: 28px 40px minmax(120px, 1fr) 48px 120px auto;
+  align-items: center;
+  gap: 10px;
+}
+.phase-n {
+  color: var(--muted);
+  font-size: 12px;
+}
+.phase-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.phase-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--muted);
+}
+.phase-bar.good {
+  background: var(--kill);
+}
+.phase-bar.mid {
+  background: var(--minor);
+}
+.phase-bar.bad {
+  background: var(--wipe);
+}
+/* marcas do tempo bom (cheia) e do máximo (tracejada) */
+.phase-mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 0;
+  border-left: 2px solid var(--text);
+}
+.phase-mark.max {
+  border-left-style: dashed;
+  border-left-color: var(--wipe);
+}
+.phase-time {
+  text-align: right;
+}
+.phase-time.good,
+.phase-cell.good {
+  color: var(--kill);
+}
+.phase-time.mid,
+.phase-cell.mid {
+  color: var(--minor);
+}
+.phase-time.bad,
+.phase-cell.bad {
+  color: var(--wipe);
+}
+.phase-best {
+  color: var(--accent);
+}
+.phase-night {
+  margin-bottom: 16px;
+}
+.share-phase {
+  margin: 8px 0 0;
+}

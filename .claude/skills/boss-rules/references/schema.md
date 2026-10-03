@@ -62,7 +62,7 @@ Opções extras:
 
 ### O que o motor avalia hoje
 
-`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event`, `dispel` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
+`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event`, `dispel`, `phase_duration` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
 
 ## Tipos
 
@@ -121,6 +121,17 @@ detect: { aura_id: .. }
 max_delay: 4          # segundos até o dispel; depois disso conta como atrasado
 ```
 Log: `SPELL_AURA_APPLIED` no player abre; `SPELL_DISPEL` (extraSpellId = aura) credita quem dispelou e mede o tempo; debuff que sai sem dispel (ou depois de `max_delay`) = falha. Relatório: tempo de cada dispel, quem dispelou e quem ficou sem.
+
+### `phase_duration`
+Fase cronometrada: o boss fica numa aura (imune, intermissão) até o raid resolver a mecânica — quanto mais rápido, melhor.
+```yaml
+detect: { aura_id: .. }   # aura no boss: entra no começo, sai quando o raid resolve
+target_s: 9               # tempo bom
+max_s: 12                 # acima disto, lenta (conta como falha)
+overrides:
+  mythic: { target_s: 11, max_s: 16 }
+```
+Log: `SPELL_AURA_APPLIED` num inimigo abre a janela (dois bosses com a aura juntos = uma janela só) e `SPELL_AURA_REMOVED` fecha. Compara em segundos arredondados (a aura sai no tick do servidor). Falha = fase lenta, fase com 3+ mortes de players (a mecânica deu errado) ou wipe com a fase aberta. Relatório: cada janela com a duração e as mortes (aba Mecânicas) e a tabela pull a pull com o melhor da noite (resumo do boss). Ex.: `entombed-sentinels.yaml` → `vitriolic_stasis`.
 
 ### `cc_required`
 Precisa de CC/stop para quebrar algo (escudo, cast).

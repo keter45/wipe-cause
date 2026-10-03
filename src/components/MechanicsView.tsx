@@ -8,6 +8,7 @@ import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
 import { SpellName } from './SpellIcon';
 import { PositionMap, type Mark } from './PositionMap';
+import { PullPhaseTimes } from './PhaseTimes';
 
 const SEVERITY_LABEL: Record<string, string> = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', none: 'Info' };
 
@@ -31,9 +32,11 @@ export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesCha
       </div>
     );
   }
-  const failed = pull.mechanics.filter((m) => m.failures > 0);
+  // fases cronometradas têm o próprio quadro (o tempo importa mesmo sem falha)
+  const listed = pull.mechanics.filter((m) => m.kind !== 'phase_duration');
+  const failed = listed.filter((m) => m.failures > 0);
   const classes = new Map(pull.players.map((x) => [x.guid, x.class] as const));
-  const clean = pull.mechanics.filter((m) => m.failures === 0 && m.evaluated);
+  const clean = listed.filter((m) => m.failures === 0 && m.evaluated);
   const notEvaluated = pull.mechanics.filter((m) => !m.evaluated);
 
   return (
@@ -46,6 +49,7 @@ export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesCha
       {pull.cutoffT != null && (
         <p className="muted small">Contando só até a morte que fechou o corte ({mmss(pull.cutoffT)}); o que veio depois é ignorado.</p>
       )}
+      <PullPhaseTimes pull={pull} />
       {failed.length === 0 && <p className="muted pad">Nenhuma falha de mecânica detectada neste pull.</p>}
       {failed.map((m) => (
         <MechanicCard key={m.key} m={m} classes={classes} />

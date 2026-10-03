@@ -6,6 +6,7 @@ import { mechanicSpellId } from '../../lib/spells';
 import { scoreTone } from '../../lib/score';
 import { SpellName } from '../SpellIcon';
 import { BossName } from '../Names';
+import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight } from '../../lib/phases';
 import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, type CardDetail } from './common';
 
 const SUMMARY = { causes: 3, attention: 5, highlights: 3 };
@@ -36,6 +37,7 @@ export function BossShareCard({ title, pulls, detail = 'summary' }: { title: str
       foot={`Nota média 0–100 · entre trys: média ${mmss(s.avgGapMs)}${full ? ' · relatório completo' : ''}`}
     >
       <PullBars pulls={s.pulls} />
+      <PhaseLine pulls={s.pulls} />
 
       <div className="share-cols">
         <CausesSection causes={causes} wipes={s.wipes} pulls={pulls} full={full} />
@@ -43,6 +45,7 @@ export function BossShareCard({ title, pulls, detail = 'summary' }: { title: str
       </div>
 
       {full && <PullTable pulls={s.pulls} />}
+      {full && <PhaseTables pulls={s.pulls} />}
       {full && <Scoreboard players={players} />}
     </Card>
   );
@@ -125,6 +128,74 @@ export function PeopleSection({ attention, players, full }: { attention: PlayerN
         </Section>
       )}
     </div>
+  );
+}
+
+const oneDecimal = (n: number) => n.toFixed(1).replace('.', ',').replace(/,0$/, '');
+
+/** Resumo: uma linha por fase cronometrada (média e melhor da noite contra o alvo). */
+function PhaseLine({ pulls }: { pulls: Pull[] }) {
+  const phases = phasesOfNight(pulls);
+  if (!phases.length) return null;
+  return (
+    <>
+      {phases.map((n) => {
+        const best = n.best.filter((x): x is number => x != null);
+        const failed = n.pulls.flatMap((p) => p.windows).filter(failedPhase).length;
+        return (
+          <p key={n.key} className="share-phase">
+            <SpellName spellId={n.spellId} name={n.name} size={16} />{' '}
+            {n.avg != null ? `média ${oneDecimal(n.avg)}s` : 'sem tempo limpo'}
+            {best.length > 0 && ` · melhor ${Math.min(...best)}s`}
+            {n.targetMs != null && <span className="share-muted"> · bom até {Math.round(n.targetMs / 1000)}s</span>}
+            {failed > 0 && <span className="share-bad"> · {failed} com o raid morrendo na fase</span>}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
+/** Completo: cada vez da fase, pull a pull. */
+function PhaseTables({ pulls }: { pulls: Pull[] }) {
+  return (
+    <>
+      {phasesOfNight(pulls).map((n) => (
+        <Section key={n.key} title={`${n.name}: tempo de cada vez`}>
+          <table className="share-table">
+            <thead>
+              <tr>
+                <th>Pull</th>
+                {Array.from({ length: n.slots }, (_, i) => (
+                  <th key={i} className="num">
+                    {i + 1}ª
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {n.pulls.map(({ pull, windows }) => (
+                <tr key={pull.id}>
+                  <td>
+                    {pull.pullNumber} <span className="share-muted">{pull.success ? 'kill' : 'wipe'}</span>
+                  </td>
+                  {Array.from({ length: n.slots }, (_, i) => {
+                    const w = windows[i];
+                    return (
+                      <td key={i} className={`num phase-cell ${w ? phaseTone(w, n) : ''}`}>
+                        {w ? phaseLabel(w) : '—'}
+                        {w && (w.deaths ?? 0) > 0 && <span className="share-muted"> †{w.deaths}</span>}
+                        {w && phaseSec(w) === n.best[i] && !failedPhase(w) && <span className="phase-best"> ★</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Section>
+      ))}
+    </>
   );
 }
 

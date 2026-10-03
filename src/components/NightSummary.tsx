@@ -10,6 +10,7 @@ import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
 import { ShareMenu } from './share/ShareMenu';
+import { NightPhaseTimes } from './PhaseTimes';
 import { BossShareCard } from './share/BossCard';
 import { NightShareCard } from './share/NightCard';
 import { withErrorBoundary } from './ErrorBoundary';
@@ -184,6 +185,8 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
         <p className="muted small">HP do boss no fim de cada pull (menor = mais perto do kill). Clique numa barra para abrir o pull.</p>
         <ProgressChart pulls={s.pulls} onSelect={onSelectPull} bestId={s.best?.pull.id} />
       </section>
+
+      <NightPhaseTimes pulls={s.pulls} onSelectPull={onSelectPull} />
 
       <div className="two-col">
         <section className="panel">

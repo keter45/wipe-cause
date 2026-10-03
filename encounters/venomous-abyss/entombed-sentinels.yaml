@@ -176,11 +176,16 @@ mechanics:
   # ---------- Intermissão ----------
   - key: vitriolic_stasis
     name: "Vitriolic Stasis"
-    type: info
-    severity: none
-    detect: { cast_id: 1284588 }
-    tip: "Com 100 de energia as duas vão para o centro e ficam imunes: hora do puzzle."
-    message: "Vitriolic Stasis"
+    type: phase_duration
+    severity: minor
+    detect: { aura_id: 1284588 }
+    target_s: 9
+    max_s: 12
+    overrides:
+      mythic: { target_s: 11, max_s: 16 }
+    tip: "Com 100 de energia as duas ficam imunes até o raid resolver o puzzle: quanto mais rápido, menos a luta se arrasta (a próxima intermissão vem ~90s depois do fim desta)."
+    message: "{count} intermissão lenta ou com wipe"
+    notes: "A aura 1284588 fica no Blood of Ula'tek (o Breath tem a 1284606, com o mesmo tempo) e sai ~0,5s depois do último Helical Toxins ser limpo. Tempos nos logs de set/out: mítico 7-18s (29s num pull com 17 mortes), heroico 8-13s; alvo e máximo pela mediana e pelo pior dos kills."
 
   - key: helical_toxins
     name: "Helical Toxins"

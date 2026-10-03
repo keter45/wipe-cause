@@ -135,7 +135,7 @@ Os textos saem em modelo ("X perdido: use antes de acabar"): vale revisar os pon
 
 ## Escala de interrupts e dispels
 
-Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem.
+Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem. Regras do tipo `phase_duration` cronometram uma fase em que o boss fica imune até o raid resolver a mecânica (ex.: o puzzle do Vitriolic Stasis no Entombed Sentinels): a aba Mecânicas mostra cada vez com a duração contra o tempo bom e o máximo, e o resumo do boss mostra a fase pull a pull, com o melhor da noite e as vezes em que o raid morreu nela.
 
 ## Posições
 
