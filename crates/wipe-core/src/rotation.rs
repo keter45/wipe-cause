@@ -9,7 +9,9 @@
 //!   - `cooldown`: casts de cada cooldown vs. quantos cabiam no tempo vivo;
 //!   - `resource_waste`: recurso ganho acima do máximo (ex.: Maelstrom), pelo overEnergize;
 //!   - `dot_uptime`: tempo com o debuff do player no alvo (ex.: Flame Shock);
-//!   - `aoe_swap`: com N+ alvos, este cast deveria ser outro (ex.: Lightning Bolt -> Chain Lightning).
+//!   - `aoe_swap`: com N+ alvos, este cast deveria ser outro (ex.: Lightning Bolt -> Chain Lightning);
+//!   - `after_cast`: este cast precisa vir pouco depois de outro (ex.: Demonic Tyrant com os
+//!     Dreadstalkers fora).
 //!
 //! O `RotationTracker` acompanha um player durante o pull (casts, buffs nele, quantos inimigos
 //! ele acertou nos últimos segundos) e no fim devolve os achados e o aproveitamento.
@@ -26,6 +28,8 @@ const SPEND_WINDOW_MS: i64 = 400;
 const BUFF_GRACE_MS: i64 = 500;
 /// Inimigos acertados nesta janela = alvos "ativos" (para AoE).
 const TARGETS_WINDOW_MS: i64 = 3000;
+/// Cast com START e SUCCESS a menos disso um do outro é instantâneo (ex.: Demonbolt com Demonic Core).
+const INSTANT_START_MS: i64 = 200;
 /// Começo do pull sem contar tempo parado (posicionamento, pré-cast).
 const START_GRACE_MS: i64 = 2000;
 
@@ -64,6 +68,9 @@ pub struct Ability {
     /// outros ids que contam como esta habilidade (ex.: Solar e Lunar Eclipse, mesmo cooldown)
     #[serde(default)]
     pub alt_ids: Vec<u32>,
+    /// talento opcional: sem nenhum cast no pull, o cooldown não é cobrado
+    #[serde(default)]
+    pub optional: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -179,6 +186,16 @@ pub enum Check {
         title: String,
         tip: String,
     },
+    AfterCast {
+        id: String,
+        casts: Vec<String>,
+        /// um destes precisa ter saído nos `within_ms` anteriores
+        after: Vec<String>,
+        within_ms: i64,
+        importance: String,
+        title: String,
+        tip: String,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -228,6 +245,7 @@ impl RotationSpec {
                     casts.iter().chain(instead).try_for_each(ability)?;
                     unless_buff.iter().try_for_each(buff)?;
                 }
+                Check::AfterCast { casts, after, .. } => casts.iter().chain(after).try_for_each(ability)?,
                 Check::Cooldown { spells, .. } => {
                     for s in spells {
                         ability(s)?;
@@ -375,11 +393,15 @@ pub(crate) struct RotationTracker {
     markers: HashSet<u32>,
     seen_markers: HashSet<u32>,
     active: HashSet<String>,
+    /// cargas atuais de cada buff (Demonic Core vai até 4)
+    stacks: HashMap<String, u32>,
     removed_at: HashMap<String, i64>,
     /// remoções de buff de `proc` aguardando o spender: (índice da checagem, ms)
     pending: Vec<(usize, i64)>,
     proc_total: HashMap<usize, u32>,
     proc_waste: HashMap<usize, Vec<i64>>,
+    /// casts que já justificaram o gasto de uma carga: (checagem, ms do cast)
+    spent_by: HashSet<(usize, i64)>,
     req_total: HashMap<usize, u32>,
     req_miss: HashMap<usize, Vec<i64>>,
     /// checagens requires_buff cujo buff já veio de um dos casts de `applied_by` (tem o talento)
@@ -414,10 +436,12 @@ impl RotationTracker {
             markers: spec.hero_trees.iter().flat_map(|t| t.markers.iter().copied()).collect(),
             seen_markers: HashSet::new(),
             active: HashSet::new(),
+            stacks: HashMap::new(),
             removed_at: HashMap::new(),
             pending: Vec::new(),
             proc_total: HashMap::new(),
             proc_waste: HashMap::new(),
+            spent_by: HashSet::new(),
             req_total: HashMap::new(),
             req_miss: HashMap::new(),
             req_talent: HashSet::new(),
@@ -472,7 +496,7 @@ impl RotationTracker {
         let gcd = self.downtime_cfg().map_or(1200, |(g, _)| g);
         let key = self.ability_by_id.get(&spell_id).cloned();
         // cast com tempo de cast terminou agora; instantâneo começa (e ocupa o GCD) agora
-        let had_start = self.casting_since.take().is_some_and(|s| t - s <= 4000);
+        let had_start = self.casting_since.take().is_some_and(|s| t - s <= 4000 && t - s >= INSTANT_START_MS);
         if self.dead_since.is_some() {
             // voltou (battle rez)
             if let Some(d) = self.dead_since.take() {
@@ -490,7 +514,7 @@ impl RotationTracker {
         let targets = self.targets(t);
         for (i, c) in self.spec.checks.iter().enumerate() {
             if let Check::RequiresBuff { casts, buff, min_targets, .. } = c {
-                if casts.contains(&key) && targets >= *min_targets {
+                if casts.contains(&key) && targets >= *min_targets && t >= START_GRACE_MS {
                     *self.req_total.entry(i).or_default() += 1;
                     let up = self.active.contains(buff) || self.removed_at.get(buff).is_some_and(|r| t - r <= BUFF_GRACE_MS);
                     if !up {
@@ -544,11 +568,17 @@ impl RotationTracker {
         }
     }
 
-    /// Buff no próprio player (aplicado / removido).
-    pub fn on_aura(&mut self, t: i64, spell_id: u32, applied: bool) {
+    /// Buff no próprio player: `stacks` = cargas depois do evento (0 = removido).
+    pub fn on_aura(&mut self, t: i64, spell_id: u32, stacks: u32) {
         self.resolve(t);
         let Some(buff) = self.buff_by_id.get(&spell_id).cloned() else { return };
-        if applied {
+        let before = self.stacks.get(&buff).copied().unwrap_or(0);
+        if stacks == 0 {
+            self.stacks.remove(&buff);
+        } else {
+            self.stacks.insert(buff.clone(), stacks);
+        }
+        if stacks > before {
             self.active.insert(buff.clone());
             for (i, c) in self.spec.checks.iter().enumerate() {
                 if let Check::RequiresBuff { buff: b, applied_by, .. } = c {
@@ -559,15 +589,19 @@ impl RotationTracker {
             }
             for (i, c) in self.spec.checks.iter().enumerate() {
                 if matches!(c, Check::Proc { buff: b, .. } if *b == buff) {
-                    *self.proc_total.entry(i).or_default() += 1;
+                    *self.proc_total.entry(i).or_default() += stacks - before;
                 }
             }
-        } else {
-            self.active.remove(&buff);
-            self.removed_at.insert(buff.clone(), t);
+        } else if stacks < before || (stacks == 0 && before == 0) {
+            if stacks == 0 {
+                self.active.remove(&buff);
+                self.removed_at.insert(buff.clone(), t);
+            }
+            // cada carga perdida precisa de um spender (removido de vez: todas as que sobravam)
+            let lost = before.saturating_sub(stacks).max(1);
             for (i, c) in self.spec.checks.iter().enumerate() {
                 if matches!(c, Check::Proc { buff: b, .. } if *b == buff) {
-                    self.pending.push((i, t));
+                    self.pending.extend(std::iter::repeat_n((i, t), lost as usize));
                 }
             }
         }
@@ -604,8 +638,12 @@ impl RotationTracker {
 
     fn classify(&mut self, i: usize, t: i64) {
         let Check::Proc { spenders, channel, .. } = &self.spec.checks[i] else { return };
-        let spent = self.casts.iter().any(|(ct, k)| (ct - t).abs() <= SPEND_WINDOW_MS && spenders.contains(k))
-            || channel.as_ref().is_some_and(|ch| self.casts.iter().any(|(ct, k)| *k == ch.spell && t >= *ct && t - ct <= ch.ms));
+        // cada cast de spender gasta uma carga só
+        let cast = self.casts.iter().find(|(ct, k)| (ct - t).abs() <= SPEND_WINDOW_MS && spenders.contains(k) && !self.spent_by.contains(&(i, *ct))).map(|(ct, _)| *ct);
+        if let Some(ct) = cast {
+            self.spent_by.insert((i, ct));
+        }
+        let spent = cast.is_some() || channel.as_ref().is_some_and(|ch| self.casts.iter().any(|(ct, k)| *k == ch.spell && t >= *ct && t - ct <= ch.ms));
         if !spent {
             self.proc_waste.entry(i).or_default().push(t);
         }
@@ -689,7 +727,7 @@ impl RotationTracker {
                         spell_id: Some(spec.buffs[buff].id),
                     });
                 }
-                Check::RequiresBuff { id, buff, importance, title, tip, casts, applied_by, .. } => {
+                Check::RequiresBuff { id, buff, importance, title, tip, casts, applied_by, min_targets } => {
                     // sem o talento (o buff nunca veio dos casts que o colocam), não se aplica
                     if !applied_by.is_empty() && !self.req_talent.contains(&i) {
                         continue;
@@ -708,7 +746,7 @@ impl RotationTracker {
                         count: n,
                         rate: 1.0 - n as f32 / total as f32,
                         times: miss,
-                        detail: format!("{n} de {total} casts em AoE sem {}", spec.buffs[buff].name),
+                        detail: format!("{n} de {total} casts{} sem {}", if *min_targets > 1 { " em AoE" } else { "" }, spec.buffs[buff].name),
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
@@ -809,6 +847,30 @@ impl RotationTracker {
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
+                Check::AfterCast { id, casts, after, within_ms, importance, title, tip } => {
+                    let mine: Vec<i64> = self.casts.iter().filter(|(_, k)| casts.contains(k)).map(|(t, _)| *t).collect();
+                    if mine.is_empty() {
+                        continue;
+                    }
+                    let miss: Vec<i64> = mine
+                        .iter()
+                        .copied()
+                        .filter(|t| !self.casts.iter().any(|(ct, k)| after.contains(k) && ct <= t && t - ct <= *within_ms))
+                        .collect();
+                    let n = miss.len() as u32;
+                    let names = |ks: &[String]| ks.iter().map(|k| spec.abilities[k].name.clone()).collect::<Vec<_>>().join("/");
+                    findings.push(RotationFinding {
+                        id: id.clone(),
+                        title: title.clone(),
+                        tip: tip.clone(),
+                        importance: importance.clone(),
+                        count: n,
+                        rate: 1.0 - n as f32 / mine.len() as f32,
+                        times: miss,
+                        detail: format!("{n} de {} {} sem {} nos {}s antes", mine.len(), names(casts), names(after), within_ms / 1000),
+                        spell_id: casts.first().map(|k| spec.abilities[k].id),
+                    });
+                }
                 Check::Cooldown { id, spells, min_usage, importance, title, tip } => {
                     let mut low = Vec::new();
                     let mut rates = Vec::new();
@@ -821,6 +883,9 @@ impl RotationTracker {
                         let per = a.uses_per_cooldown.unwrap_or(1);
                         let possible = (a.charges.unwrap_or(1) + (active_ms / cd) as u32) * per;
                         let casts = self.casts.iter().filter(|(_, k)| k == s).count() as u32;
+                        if casts == 0 && a.optional {
+                            continue;
+                        }
                         let usage = (casts as f32 / possible.max(1) as f32).min(1.0);
                         rates.push(usage);
                         if usage < *min_usage {
@@ -925,18 +990,18 @@ mod tests {
         let mut r = RotationTracker::new(mm());
         // 1) Aimed -> Precise Shots -> Arcane Shot: gasto
         r.on_cast(3000, 19434);
-        r.on_aura(3100, 260242, true);
+        r.on_aura(3100, 260242, 1);
         r.on_cast(4000, 185358);
-        r.on_aura(4000, 260242, false);
+        r.on_aura(4000, 260242, 0);
         // 2) Aimed -> Precise Shots -> outro Aimed sem spender: sobrescrito
         r.on_cast(6000, 19434);
-        r.on_aura(6100, 260242, true);
+        r.on_aura(6100, 260242, 1);
         r.on_cast(9000, 19434);
-        r.on_aura(9100, 260242, false);
+        r.on_aura(9100, 260242, 0);
         // 3) Rapid Fire (Unload) gasta o próprio durante o canal
         r.on_cast(12000, 257044);
-        r.on_aura(12500, 260242, true);
-        r.on_aura(13500, 260242, false);
+        r.on_aura(12500, 260242, 1);
+        r.on_aura(13500, 260242, 0);
         let res = r.finish(20000, &[true; 40]);
         let ps = res.findings.iter().find(|f| f.id == "precise_shots").unwrap();
         assert_eq!((ps.count, ps.times.clone()), (1, vec![9100]));
@@ -952,7 +1017,7 @@ mod tests {
         }
         r.on_cast(5500, 19434); // 3 alvos, sem Trick Shots: erro
         r.on_cast(5900, 257620); // Multi-Shot coloca o Trick Shots: o player tem o talento
-        r.on_aura(6000, 257622, true);
+        r.on_aura(6000, 257622, 1);
         r.on_cast(6500, 19434); // com Trick Shots: ok
         r.on_cast(20000, 19434); // alvos sumiram (sem acerto há 3 s): single target, não conta
         let res = r.finish(25000, &[true; 40]);
@@ -966,7 +1031,7 @@ mod tests {
             r.on_damage(5000, e);
         }
         r.on_cast(5200, 260243); // Volley
-        r.on_aura(5300, 257622, true);
+        r.on_aura(5300, 257622, 1);
         r.on_cast(5500, 19434);
         r.on_cast(9000, 19434);
         assert!(r.finish(25000, &[true; 40]).findings.iter().all(|f| f.id != "trick_shots"));
@@ -1011,5 +1076,42 @@ mod tests {
         }
         let o = r.finish(20000, &[true; 40]).opener.unwrap();
         assert!(!o.ok);
+    }
+
+    fn demo() -> &'static RotationSpec {
+        RotationBook::embedded().get(266).expect("demonology")
+    }
+
+    #[test]
+    fn stacked_proc_counts_each_charge() {
+        let mut r = RotationTracker::new(demo());
+        // 3 cargas de Demonic Core; um Demonbolt gasta uma, as outras duas expiram juntas
+        r.on_aura(3000, 264173, 1);
+        r.on_aura(3000, 264173, 2);
+        r.on_aura(4000, 264173, 3);
+        r.on_cast_start(5000, 264178);
+        r.on_cast(5000, 264178);
+        r.on_aura(5010, 264173, 2);
+        r.on_aura(24000, 264173, 0);
+        let res = r.finish(30000, &[true; 40]);
+        let dc = res.findings.iter().find(|f| f.id == "demonic_core").unwrap();
+        assert_eq!((dc.count, dc.times.clone()), (2, vec![24000, 24000]));
+        // Demonbolt instantâneo (START e SUCCESS juntos) com Demonic Core: não é erro
+        let nb = res.findings.iter().find(|f| f.id == "demonbolt_without_core").unwrap();
+        assert_eq!(nb.count, 0);
+    }
+
+    #[test]
+    fn tyrant_needs_dreadstalkers_before() {
+        let mut r = RotationTracker::new(demo());
+        r.on_cast(3000, 104316); // Dreadstalkers
+        r.on_cast(6000, 265187); // Tyrant 3 s depois: ok
+        r.on_cast(70000, 265187); // Tyrant sem Dreadstalkers nos 12 s antes
+        let res = r.finish(80000, &[true; 90]);
+        let f = res.findings.iter().find(|f| f.id == "tyrant_dreadstalkers").unwrap();
+        assert_eq!((f.count, f.times.clone()), (1, vec![70000]));
+        // Grimoire nunca usado conta; Doomguard e Power Siphon (opcionais) não aparecem
+        assert!(res.cooldowns.iter().any(|c| c.name.starts_with("Grimoire") && c.casts == 0));
+        assert!(!res.cooldowns.iter().any(|c| c.name == "Summon Doomguard" || c.name == "Power Siphon"));
     }
 }

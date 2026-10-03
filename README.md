@@ -90,9 +90,9 @@ Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](http
 
 Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.yaml` (pontos principais, prioridade por árvore de herói em alvo único e AoE, abertura e checagens), feita a partir do guia de rotação do Wowhead e da APL do SimulationCraft do patch. Na aba **Desempenho**, o log do player é lido contra ela: aproveitamento (0–100), os erros claros e os ajustes, com o momento de cada um (▶ no vídeo), a abertura e o uso dos cooldowns.
 
-Tipos de checagem: `proc` (buff que precisa ser gasto, ex.: Precise Shots), `requires_buff` (casts que em AoE pedem um buff, ex.: Trick Shots — só para quem tem o talento), `downtime` (tempo sem castar, só quando a raid estava batendo: intermissões não contam) e `cooldown` (usos vs. possíveis no tempo vivo).
+Tipos de checagem: `proc` (buff que precisa ser gasto, carga por carga — ex.: Precise Shots, Demonic Core), `requires_buff` (casts que pedem um buff, em AoE ou sempre — ex.: Trick Shots só para quem tem o talento, Demonbolt com Demonic Core), `downtime` (tempo sem castar, só quando a raid estava batendo: intermissões não contam), `cooldown` (usos vs. possíveis no tempo vivo; talentos opcionais só contam se usados), `resource_waste` (recurso estourado, ex.: Maelstrom, Astral Power, Soul Shards), `dot_uptime` (DoT no alvo, ex.: Flame Shock), `aoe_swap` (com N+ alvos o cast deveria ser outro, ex.: Chain Lightning) e `after_cast` (cast que precisa vir logo depois de outro, ex.: Demonic Tyrant com os Dreadstalkers fora).
 
-Primeira spec: **Marksmanship Hunter** (Sentinel e Dark Ranger).
+Specs com rotação: **Marksmanship Hunter**, **Elemental Shaman**, **Balance Druid** e **Demonology Warlock**.
 
 ## Escala de interrupts e dispels
 

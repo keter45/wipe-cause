@@ -444,9 +444,9 @@ impl PullBuilder {
             }
         }
         // buffs no player: leitura da rotação (procs, Trick Shots...)
-        if is_player && self.counting() && matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") {
+        if is_player && self.counting() {
             if let Some(r) = self.players.get_mut(dst_guid).and_then(|p| p.rotation.as_mut()) {
-                r.on_aura(rel, spell_id, f[0] == "SPELL_AURA_APPLIED");
+                r.on_aura(rel, spell_id, stacks);
             }
         }
         if self.counting() {
