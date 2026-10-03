@@ -1,0 +1,99 @@
+# Beast Mastery Hunter — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Kuraa e Bettaozor — Pack Leader).
+#
+# Sem Cobra Fang: o buff acumula e é consumido por mais coisas do que o Cobra Shot, o log não separa.
+spec: 253
+name: Beast Mastery Hunter
+patch: "12.1"
+sources:
+  - title: Wowhead — Beast Mastery Hunter Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/hunter/beast-mastery/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL hunter_beast_mastery (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/hunter_beast_mastery.simc
+
+key_points:
+  - "Bestial Wrath no cooldown, sempre: perder um uso perde muito dano."
+  - "Kill Command nunca com 2 cargas, sempre com Nature's Ally, e o máximo deles dentro do Bestial Wrath."
+  - "Barbed Shot antes de chegar a 2 cargas e logo antes do Bestial Wrath."
+  - "Cobra Shot com Cobra Fang; no resto, preenche."
+  - "Pets no alvo certo (macros de ataque, Dash manual); em AoE, Wild Thrash para ativar o Beast Cleave antes do Bestial Wrath."
+  - "Dark Ranger: Black Arrow no cooldown e o Wailing Arrow antes de acabar."
+
+hero_trees:
+  - key: pack_leader
+    name: Pack Leader
+    markers: [471877] # buff Howl of the Pack Leader
+  - key: dark_ranger
+    name: Dark Ranger
+    markers: [466930] # Black Arrow
+
+abilities:
+  bestial_wrath: { id: 19574, name: Bestial Wrath, cooldown_ms: 90000 }
+  kill_command: { id: 34026, name: Kill Command, cooldown_ms: 7500, charges: 2 }
+  barbed_shot: { id: 217200, name: Barbed Shot, cooldown_ms: 18000, charges: 2 }
+  wild_thrash: { id: 1264359, name: Wild Thrash }
+  black_arrow: { id: 466930, name: Black Arrow, cooldown_ms: 10000, tree: dark_ranger }
+  wailing_arrow: { id: 392060, name: Wailing Arrow, cast_ms: 2000, tree: dark_ranger }
+  cobra_shot: { id: 193455, name: Cobra Shot }
+
+buffs: {}
+
+priority:
+  pack_leader:
+    st:
+      - { spell: barbed_shot, note: "se o Bestial Wrath volta em 3s ou for chegar a 2 cargas" }
+      - { spell: bestial_wrath }
+      - { spell: kill_command, note: "com Howl of the Pack Leader ou Nature's Ally" }
+      - { spell: cobra_shot, note: "com Cobra Fang" }
+      - { spell: barbed_shot }
+      - { spell: cobra_shot }
+    aoe:
+      - { spell: barbed_shot, note: "no alvo prioritário, antes de 2 cargas" }
+      - { spell: wild_thrash }
+      - { spell: bestial_wrath, note: "com o Beast Cleave ativo" }
+      - { spell: kill_command, note: "com Howl of the Pack Leader ou Nature's Ally" }
+      - { spell: cobra_shot, note: "com Cobra Fang" }
+      - { spell: barbed_shot, note: "no alvo prioritário (sem espalhar)" }
+      - { spell: cobra_shot }
+  dark_ranger:
+    st:
+      - { spell: barbed_shot, note: "se o Bestial Wrath volta em 3s" }
+      - { spell: bestial_wrath }
+      - { spell: kill_command, note: "com Nature's Ally" }
+      - { spell: black_arrow }
+      - { spell: barbed_shot }
+      - { spell: wailing_arrow, note: "sem deixar o Kill Command chegar a 2 cargas" }
+      - { spell: cobra_shot }
+    aoe:
+      - { spell: bestial_wrath, note: "com o Beast Cleave ativo" }
+      - { spell: wild_thrash }
+      - { spell: kill_command, note: "com Nature's Ally" }
+      - { spell: black_arrow, note: "na frente do pack (Bleak Powder)" }
+      - { spell: wailing_arrow }
+      - { spell: barbed_shot, note: "no alvo prioritário" }
+      - { spell: cobra_shot }
+
+# Abertura: Barbed Shot (duas vezes), Bestial Wrath com o pet no alvo e Kill Command
+opener:
+  window_ms: 8000
+  ordered: false
+  pack_leader: [barbed_shot, bestial_wrath, kill_command]
+  dark_ranger: [black_arrow, barbed_shot, bestial_wrath, kill_command]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem atirar
+    tip: "Tudo é instantâneo: atire andando, e Cobra Shot sempre que não houver nada acima."
+  - kind: cooldown
+    id: cooldowns
+    spells: [bestial_wrath, kill_command, barbed_shot, black_arrow]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Bestial Wrath no cooldown; Kill Command e Barbed Shot nunca parados com 2 cargas."
