@@ -46,6 +46,10 @@ pub fn show(app: &AppHandle) {
 
 /// Fechar (X) esconde na bandeja em vez de encerrar.
 pub fn on_window_event(window: &Window, event: &WindowEvent) {
+    // só a janela principal vai para a bandeja (a do WoWAnalyzer fecha de verdade)
+    if window.label() != "main" {
+        return;
+    }
     if let WindowEvent::CloseRequested { api, .. } = event {
         api.prevent_close();
         let _ = window.hide();

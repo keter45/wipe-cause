@@ -36,6 +36,7 @@ import { useTalentTree, type TalentTree } from '../lib/talents';
 import { useTooltip } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PerfLinks, WclTopsButton, perfLinks, useOwnFight, type PerfLink } from './WclTops';
+import { WowAnalyzerFrame } from './WowAnalyzerFrame';
 import { loadTop, type TopRanking, type TopSample } from '../lib/wclApi';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
@@ -113,7 +114,7 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
 
 const topKey = (t: Pick<TopRanking, 'code' | 'fightId'>) => `top:${t.code}:${t.fightId}`;
 
-type Mode = 'tops' | 'raid';
+type Mode = 'tops' | 'raid' | 'wowanalyzer';
 
 function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[]; wclCode?: string }) {
   const list = useMemo(() => candidates(me, nightPulls), [me, nightPulls]);
@@ -161,6 +162,15 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
         <button role="radio" aria-checked={mode === 'raid'} className={mode === 'raid' ? 'active' : ''} onClick={() => setMode('raid')}>
           Na própria raid
         </button>
+        <button
+          role="radio"
+          aria-checked={mode === 'wowanalyzer'}
+          className={mode === 'wowanalyzer' ? 'active' : ''}
+          onClick={() => setMode('wowanalyzer')}
+          title="Rotação, checklist e cooldowns analisados pelo WoWAnalyzer"
+        >
+          WoWAnalyzer
+        </button>
       </div>
       {mode === 'tops' ? (
         <>
@@ -184,7 +194,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
             </div>
           )}
         </>
-      ) : (
+      ) : mode === 'wowanalyzer' ? null : (
         <label className="perf-field">
           <span className="muted small">Outro da mesma spec na noite (ou você em outra tentativa)</span>
           <select className="select" value={raidRef ? sampleKey(raidRef) : ''} onChange={(e) => setRaidKey(e.target.value)}>
@@ -197,9 +207,17 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
           </select>
         </label>
       )}
-      <PerfLinks links={links} />
+      {mode !== 'wowanalyzer' && <PerfLinks links={links} />}
     </>
   );
+
+  if (mode === 'wowanalyzer')
+    return (
+      <>
+        {picker}
+        <WowAnalyzerFrame playerName={me.player.name} wclCode={wclCode} own={own} top={topSample?.source ?? null} bossName={`${me.pull.encounterName} ${me.pull.difficultyName}`} />
+      </>
+    );
 
   if (!ref)
     return (
