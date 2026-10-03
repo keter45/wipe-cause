@@ -189,9 +189,12 @@ pub enum Check {
     AfterCast {
         id: String,
         casts: Vec<String>,
-        /// um destes precisa ter saído nos `within_ms` anteriores
+        /// um destes precisa ter saído nos `within_ms` anteriores (ou seguintes, com `followed_by`)
         after: Vec<String>,
         within_ms: i64,
+        /// o outro cast vem depois (ex.: Vanish seguido de Garrote)
+        #[serde(default)]
+        followed_by: bool,
         /// só vale para quem ganhou um destes buffs no pull (o talento que pede a combinação)
         #[serde(default)]
         only_with: Vec<String>,
@@ -861,7 +864,7 @@ impl RotationTracker {
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
-                Check::AfterCast { id, casts, after, within_ms, only_with, importance, title, tip } => {
+                Check::AfterCast { id, casts, after, within_ms, followed_by, only_with, importance, title, tip } => {
                     if !only_with.is_empty() && !only_with.iter().any(|b| self.seen_buffs.contains(b)) {
                         continue;
                     }
@@ -872,7 +875,12 @@ impl RotationTracker {
                     let miss: Vec<i64> = mine
                         .iter()
                         .copied()
-                        .filter(|t| !self.casts.iter().any(|(ct, k)| after.contains(k) && ct <= t && t - ct <= *within_ms))
+                        .filter(|t| {
+                            !self.casts.iter().any(|(ct, k)| {
+                                let gap = if *followed_by { ct - t } else { t - ct };
+                                after.contains(k) && (0..=*within_ms).contains(&gap)
+                            })
+                        })
                         .collect();
                     let n = miss.len() as u32;
                     let names = |ks: &[String]| ks.iter().map(|k| spec.abilities[k].name.clone()).collect::<Vec<_>>().join("/");
@@ -884,7 +892,7 @@ impl RotationTracker {
                         count: n,
                         rate: 1.0 - n as f32 / mine.len() as f32,
                         times: miss,
-                        detail: format!("{n} de {} {} sem {} nos {}s antes", mine.len(), names(casts), names(after), *within_ms as f32 / 1000.0),
+                        detail: format!("{n} de {} {} sem {} nos {}s {}", mine.len(), names(casts), names(after), *within_ms as f32 / 1000.0, if *followed_by { "seguintes" } else { "antes" }),
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
@@ -1130,6 +1138,19 @@ mod tests {
         // Grimoire nunca usado conta; Doomguard e Power Siphon (opcionais) não aparecem
         assert!(res.cooldowns.iter().any(|c| c.name.starts_with("Grimoire") && c.casts == 0));
         assert!(!res.cooldowns.iter().any(|c| c.name == "Summon Doomguard" || c.name == "Power Siphon"));
+    }
+
+    #[test]
+    fn vanish_followed_by_garrote() {
+        let assa = RotationBook::embedded().get(259).expect("assassination");
+        let mut r = RotationTracker::new(assa);
+        r.on_cast(5000, 1856); // Vanish
+        r.on_cast(5400, 703); // Garrote logo depois: ok
+        r.on_cast(130000, 703); // Garrote antes do Vanish não conta
+        r.on_cast(130500, 1856); // Vanish sem Garrote depois
+        let res = r.finish(140000, &[true; 150]);
+        let f = res.findings.iter().find(|f| f.id == "vanish_garrote").unwrap();
+        assert_eq!((f.count, f.times.clone()), (1, vec![130500]));
     }
 
     #[test]

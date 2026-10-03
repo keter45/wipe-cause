@@ -1,0 +1,133 @@
+# Assassination Rogue — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Phënomz e Thigazr — Fatebound).
+#
+# Sem checagem de tempo parado: o Assassination é travado por energia, não por GCD, e o tempo
+# sem apertar botão faz parte da rotação (guardar energia para o Envenom).
+spec: 259
+name: Assassination Rogue
+patch: "12.1"
+sources:
+  - title: Wowhead — Assassination Rogue Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/rogue/assassination/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL rogue_assassination (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/rogue_assassination.simc
+
+key_points:
+  - "Garrote e Rupture sempre no alvo (Rupture com 5+ combo points); em AoE, Crimson Tempest espalha os dois."
+  - "Gere com Mutilate (Fan of Knives com 2+ alvos) até 5+ combo points e gaste com Envenom sem estourar combo points."
+  - "Deathmark no cooldown, com Garrote e Rupture rodando; Kingsbane logo depois (e a cada 1 min)."
+  - "Vanish junto do Deathmark, seguido de Garrote (Improved Garrote); renove o Garrote no fim dos 6s do Improved Garrote."
+  - "É uma spec de energia: encadeie o Envenom no último 1–2s do buff (Rapid Injection); nos cooldowns, gaste tudo."
+  - "Deathstalker: Shiv no cooldown em alvo único e Envenom com o máximo de combo points no Darkest Night."
+
+hero_trees:
+  - key: fatebound
+    name: Fatebound
+    markers: [452923, 452917] # buffs Fatebound Coin (Heads / Tails)
+  - key: deathstalker
+    name: Deathstalker
+    markers: [] # quem não joga as moedas do Fatebound
+
+abilities:
+  deathmark: { id: 360194, name: Deathmark, cooldown_ms: 120000 }
+  kingsbane: { id: 385627, name: Kingsbane, cooldown_ms: 60000 }
+  vanish: { id: 1856, name: Vanish, cooldown_ms: 120000 }
+  shiv: { id: 5938, name: Shiv }
+  garrote: { id: 703, name: Garrote }
+  rupture: { id: 1943, name: Rupture }
+  mutilate: { id: 1329, name: Mutilate }
+  envenom: { id: 32645, name: Envenom }
+  fan_of_knives: { id: 51723, name: Fan of Knives }
+  crimson_tempest: { id: 1247227, name: Crimson Tempest }
+
+buffs:
+  garrote: { id: 703, name: Garrote }
+  rupture: { id: 1943, name: Rupture }
+  improved_garrote: { id: 392401, name: Improved Garrote }
+
+priority:
+  fatebound:
+    st:
+      - { spell: garrote, note: "manter no alvo" }
+      - { spell: mutilate, note: "até 5+ combo points" }
+      - { spell: rupture, note: "manter, com 5+ combo points" }
+      - { spell: vanish, note: "seguido de Garrote (Improved Garrote), junto do Deathmark" }
+      - { spell: deathmark, note: "no cooldown" }
+      - { spell: kingsbane, note: "no cooldown, logo depois do Deathmark quando der" }
+      - { spell: envenom, note: "com 5+ combo points, no fim do buff do Envenom" }
+    aoe:
+      - { spell: garrote, note: "manter no alvo principal" }
+      - { spell: rupture, note: "manter no alvo principal, com 5+ combo points" }
+      - { spell: crimson_tempest, note: "espalha os sangramentos, até 5+ combo points" }
+      - { spell: fan_of_knives, note: "2+ alvos, até 5+ combo points" }
+      - { spell: vanish, note: "seguido de Garrote; junto do Deathmark" }
+      - { spell: deathmark, note: "no cooldown" }
+      - { spell: kingsbane, note: "logo depois do Deathmark" }
+      - { spell: envenom, note: "com 5+ combo points" }
+  deathstalker:
+    st:
+      - { spell: garrote, note: "manter no alvo" }
+      - { spell: shiv, note: "no cooldown (com Toxic Stiletto), nunca com adds" }
+      - { spell: mutilate, note: "até 5+ combo points" }
+      - { spell: envenom, note: "com o máximo de combo points no Darkest Night" }
+      - { spell: rupture, note: "manter, com 5+ combo points (não no Darkest Night, fora da abertura)" }
+      - { spell: vanish, note: "seguido de Garrote, junto do Deathmark" }
+      - { spell: deathmark, note: "no cooldown" }
+      - { spell: kingsbane, note: "logo depois do Deathmark" }
+      - { spell: envenom, note: "com 5+ combo points" }
+    aoe:
+      - { spell: garrote, note: "manter no alvo principal" }
+      - { spell: rupture, note: "manter no alvo principal" }
+      - { spell: crimson_tempest, note: "espalha os sangramentos" }
+      - { spell: fan_of_knives, note: "2+ alvos" }
+      - { spell: vanish, note: "seguido de Garrote" }
+      - { spell: deathmark }
+      - { spell: kingsbane }
+      - { spell: envenom, note: "com o máximo de combo points no Darkest Night" }
+
+# Abertura: Garrote, Rupture e depois Deathmark e Kingsbane
+opener:
+  window_ms: 15000
+  fatebound: [garrote, rupture, deathmark, kingsbane]
+  deathstalker: [garrote, rupture, deathmark, kingsbane]
+
+checks:
+  - kind: resource_waste
+    id: combo_points
+    power_type: 4
+    resource: combo points
+    importance: medium
+    title: Combo points desperdiçados
+    tip: "Finalize com 5+ combo points antes de gerar mais (o Seal Fate dá extras nos críticos)."
+  - kind: dot_uptime
+    id: garrote
+    debuff: garrote
+    min_uptime: 0.9
+    importance: high
+    title: Garrote fora do alvo
+    tip: "Garrote sempre no alvo: renove no pandemic."
+  - kind: dot_uptime
+    id: rupture
+    debuff: rupture
+    min_uptime: 0.9
+    importance: high
+    title: Rupture fora do alvo
+    tip: "Rupture sempre no alvo, renovando com 5+ combo points no pandemic."
+  - kind: after_cast
+    id: vanish_garrote
+    casts: [vanish]
+    after: [garrote]
+    within_ms: 3000
+    followed_by: true
+    importance: medium
+    title: Vanish sem Garrote
+    tip: "O Vanish serve para o Improved Garrote: Garrote logo em seguida."
+  - kind: cooldown
+    id: cooldowns
+    spells: [deathmark, kingsbane, vanish]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Deathmark e Kingsbane no cooldown, com o Vanish junto do Deathmark."
