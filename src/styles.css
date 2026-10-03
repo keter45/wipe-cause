@@ -578,7 +578,6 @@ code,
 .verdict h3 {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
   margin: 0;
   font-size: 16px;
@@ -645,6 +644,9 @@ code,
   top: -20px;
   z-index: 5;
   display: flex;
+  /* janela estreita: as abas quebram em outra linha em vez de sumir na borda */
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: 2px;
   margin: 0 -28px 14px;
   padding: 0 28px;
@@ -3474,13 +3476,31 @@ td.warn {
 
 /* abas agrupadas por assunto: um separador fino entre os grupos */
 .tab-group {
+  position: relative;
   display: flex;
   gap: 2px;
+  padding-top: 14px;
+}
+/* o assunto de cada grupo de abas, em cima delas */
+.tab-group-label {
+  position: absolute;
+  top: 6px;
+  left: 12px;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tab-group + .tab-group .tab-group-label {
+  left: 20px;
 }
 .tab-group + .tab-group {
   margin-left: 8px;
   padding-left: 8px;
-  background: linear-gradient(var(--border), var(--border)) left center / 1px 16px no-repeat;
+  background: linear-gradient(var(--border), var(--border)) left calc(50% + 7px) / 1px 16px no-repeat;
 }
 .tabs .tab-ask svg {
   color: var(--accent);
@@ -3496,7 +3516,8 @@ td.warn {
   }
 }
 @media (max-width: 1180px) {
-  .topbar .live-state {
+  .topbar .live-state,
+  .topbar .topbar-label {
     display: none;
   }
 }

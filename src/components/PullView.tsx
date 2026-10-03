@@ -109,7 +109,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
   const tabGroups: { label: string; tabs: { key: Tab; label: string; count?: number }[] }[] = solo
     ? [
         {
-          label: 'Você',
+          label: 'Seu desempenho',
           tabs: [
             { key: 'me', label: 'Você' },
             { key: 'perf', label: 'Comparação detalhada' },
@@ -124,7 +124,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
             { key: 'players', label: 'Jogadores', count: pull.players.length },
           ],
         },
-        { label: 'Luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
+        { label: 'A luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
       ]
     : [
     {
@@ -136,13 +136,13 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       ],
     },
     {
-      label: 'Jogadores',
+      label: 'Quem jogou como',
       tabs: [
         { key: 'players', label: 'Jogadores', count: pull.players.length },
         { key: 'perf', label: 'Desempenho' },
       ],
     },
-    { label: 'Luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
+    { label: 'A luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
       ];
 
   return (
@@ -250,7 +250,10 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
 
       <div className="tabs" role="tablist" aria-label="Detalhes do pull">
         {tabGroups.map((g) => (
-          <div key={g.label} className="tab-group" role="presentation" title={g.label}>
+          <div key={g.label} className="tab-group" role="presentation">
+            <span className="tab-group-label" aria-hidden>
+              {g.label}
+            </span>
             {g.tabs.map((t) => (
               <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
                 {t.label}

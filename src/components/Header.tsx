@@ -106,6 +106,7 @@ function DiscordAutoButton() {
     <button
       className={`btn ghost discord-auto ${on ? 'on' : 'off'}`}
       aria-pressed={on}
+      aria-label="Envio automático ao Discord"
       disabled={busy}
       onClick={toggle}
       title={
@@ -115,7 +116,7 @@ function DiscordAutoButton() {
           : 'Envio automático ao Discord pausado: nada vai sozinho (o Compartilhar continua funcionando). Clique para ligar.')
       }
     >
-      <Icon {...ICON} /> Discord <span className="small live-state">{error ? 'erro' : on ? 'automático' : 'pausado'}</span>
+      <Icon {...ICON} /> <span className="topbar-label">Discord</span> <span className="small live-state">{error ? 'erro' : on ? 'automático' : 'pausado'}</span>
     </button>
   );
 }
@@ -216,9 +217,9 @@ function WclButton({ logFile, onWcl }: { logFile: string; onWcl: (code: string |
       onClose={() => setOpen(false)}
       label="Link do Warcraft Logs"
       trigger={
-        <button className={`btn ghost ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open}>
+        <button className={`btn ghost ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Warcraft Logs" title="Report desta noite no Warcraft Logs">
           <Link2 {...ICON} />
-          Warcraft Logs
+          <span className="topbar-label">Warcraft Logs</span>
           <span className={`status-dot ${code ? 'on' : ''}`} aria-label={code ? 'report ligado' : 'sem report'} />
         </button>
       }
@@ -286,6 +287,7 @@ function VideosButton({ pulls, onVideos }: { pulls: Pull[]; onVideos: (videos: M
   return (
     <button
       className="btn ghost"
+      aria-label="Vídeos"
       onClick={() => openSettings('videos')}
       title={
         scan?.warning ??
@@ -295,7 +297,7 @@ function VideosButton({ pulls, onVideos }: { pulls: Pull[]; onVideos: (videos: M
       }
     >
       {scan?.warning ? <CircleAlert {...ICON} className="warn" /> : <Video {...ICON} />}
-      Vídeos
+      <span className="topbar-label">Vídeos</span>
       {ok ? (
         <span className="count-badge tabular">
           {count}/{pulls.length}
