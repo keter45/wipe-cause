@@ -354,6 +354,14 @@ pub struct SpellSource {
 
 // ---------------------------------------------------------------- acompanhamento
 
+/// Recurso de um tipo: ganho, desperdiçado e os momentos com desperdício (ms, quanto).
+#[derive(Default)]
+struct Energy {
+    gained: i64,
+    wasted: i64,
+    moments: Vec<(i64, i64)>,
+}
+
 pub(crate) struct RotationTracker {
     spec: &'static RotationSpec,
     ability_by_id: HashMap<u32, String>,
@@ -383,8 +391,8 @@ pub(crate) struct RotationTracker {
     dead_ms: i64,
     /// intervalos morto (ms do pull), para o uptime de DoT
     dead_spans: Vec<(i64, i64)>,
-    /// recurso: tipo -> (ganho, desperdiçado, momentos com desperdício)
-    energize: HashMap<u32, (i64, i64, Vec<(i64, i64)>)>,
+    /// recurso ganho e desperdiçado, por tipo de recurso
+    energize: HashMap<u32, Energy>,
     /// debuff do player em cada inimigo: (debuff, inimigo) -> aplicado em
     dots_on: HashMap<(String, String), i64>,
     /// intervalos com o debuff em algum inimigo, por debuff
@@ -505,10 +513,10 @@ impl RotationTracker {
     /// Recurso ganho pelo player: `over` = o que passou do máximo (desperdício).
     pub fn on_energize(&mut self, t: i64, power_type: u32, amount: i64, over: i64) {
         let e = self.energize.entry(power_type).or_default();
-        e.0 += amount.max(0);
-        e.1 += over.max(0);
+        e.gained += amount.max(0);
+        e.wasted += over.max(0);
         if over > 0 {
-            e.2.push((t, over));
+            e.moments.push((t, over));
         }
     }
 
@@ -715,7 +723,7 @@ impl RotationTracker {
                     });
                 }
                 Check::ResourceWaste { id, power_type, resource, importance, title, tip } => {
-                    let Some((gained, waste, moments)) = self.energize.remove(power_type) else { continue };
+                    let Some(Energy { gained, wasted: waste, moments }) = self.energize.remove(power_type) else { continue };
                     if gained <= 0 {
                         continue;
                     }
