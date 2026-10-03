@@ -385,6 +385,17 @@ impl PullBuilder {
             }
             "SPELL_HEAL" | "SPELL_PERIODIC_HEAL" => self.heal(f, t),
             "SPELL_CAST_SUCCESS" => self.cast(f, t, data),
+            "SPELL_ENERGIZE" => {
+                // recurso ganho (sufixo depois do bloco advanced: amount, overEnergize, powerType, maxPower)
+                if self.counting() && Self::is_group_player(f[5], hex(f[7])) {
+                    let s = 12 + advanced_at(f, 12).map_or(0, |a| a.len);
+                    let (amount, over, power) = (num(f.get(s)), num(f.get(s + 1)), num(f.get(s + 2)) as u32);
+                    let rel = self.rel(t);
+                    if let Some(r) = self.players.get_mut(f[5]).and_then(|p| p.rotation.as_mut()) {
+                        r.on_energize(rel, power, amount, over);
+                    }
+                }
+            }
             "SPELL_CAST_START" => {
                 // começo de um cast com tempo de cast (a leitura da rotação mede o tempo parado)
                 if self.counting() && Self::is_group_player(f[1], hex(f[3])) {
@@ -424,6 +435,14 @@ impl PullBuilder {
         };
         let (dst_guid, dst_name) = (f[5], f[6]);
         let is_player = Self::is_group_player(dst_guid, hex(f[7]));
+        // debuffs do player (ou do pet) num inimigo: uptime de DoT da rotação
+        if !is_player && self.counting() && matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") && f.get(12) == Some(&"DEBUFF") && Self::is_enemy(dst_guid, hex(f[7])) {
+            if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
+                if let Some(r) = self.players.get_mut(&owner).and_then(|p| p.rotation.as_mut()) {
+                    r.on_target_aura(rel, dst_guid, spell_id, f[0] == "SPELL_AURA_APPLIED");
+                }
+            }
+        }
         // buffs no player: leitura da rotação (procs, Trick Shots...)
         if is_player && self.counting() && matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") {
             if let Some(r) = self.players.get_mut(dst_guid).and_then(|p| p.rotation.as_mut()) {
@@ -584,8 +603,11 @@ impl PullBuilder {
                 }
                 self.raid_active[s] = true;
                 let p = self.player(&owner, if pet { "" } else { src_name });
-                if let Some(r) = p.rotation.as_mut() {
-                    r.on_damage(rel, dst_guid);
+                // alvos da rotação: só acerto direto do próprio player (pets e ticks de DoT espalhado inflariam a conta)
+                if !pet && f[0] != "SPELL_PERIODIC_DAMAGE" {
+                    if let Some(r) = p.rotation.as_mut() {
+                        r.on_damage(rel, dst_guid);
+                    }
                 }
                 p.damage_done += done;
                 p.damage_by_spell.entry((spell_id, pet)).or_insert_with(|| (spell_name.clone(), 0)).1 += done;
@@ -833,6 +855,15 @@ impl PullBuilder {
 
     fn unit_died(&mut self, f: &[&str], t: i64) {
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
+        // inimigo morto: fecha os DoTs que os players tinham nele
+        if Self::is_enemy(dst_guid, dst_flags) {
+            let rel = self.rel(t);
+            for p in self.players.values_mut() {
+                if let Some(r) = p.rotation.as_mut() {
+                    r.on_enemy_died(rel, dst_guid);
+                }
+            }
+        }
         if !Self::is_group_player(dst_guid, dst_flags) {
             return;
         }

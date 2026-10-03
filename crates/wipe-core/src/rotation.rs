@@ -6,7 +6,10 @@
 //!     spender (expirou ou foi sobrescrito) = desperdício;
 //!   - `requires_buff`: em AoE (N+ alvos), estes casts precisam do buff (ex.: Trick Shots);
 //!   - `downtime`: tempo sem castar estando vivo;
-//!   - `cooldown`: casts de cada cooldown vs. quantos cabiam no tempo vivo.
+//!   - `cooldown`: casts de cada cooldown vs. quantos cabiam no tempo vivo;
+//!   - `resource_waste`: recurso ganho acima do máximo (ex.: Maelstrom), pelo overEnergize;
+//!   - `dot_uptime`: tempo com o debuff do player no alvo (ex.: Flame Shock);
+//!   - `aoe_swap`: com N+ alvos, este cast deveria ser outro (ex.: Lightning Bolt -> Chain Lightning).
 //!
 //! O `RotationTracker` acompanha um player durante o pull (casts, buffs nele, quantos inimigos
 //! ele acertou nos últimos segundos) e no fim devolve os achados e o aproveitamento.
@@ -55,6 +58,9 @@ pub struct Ability {
     /// casts por cooldown (ex.: Explosive Shot sai duas vezes com Unstable Trigger)
     #[serde(default)]
     pub uses_per_cooldown: Option<u32>,
+    /// só existe nesta árvore de herói (o cooldown não é cobrado das outras)
+    #[serde(default)]
+    pub tree: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -81,9 +87,16 @@ pub struct Priority {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Opener {
     pub window_ms: i64,
+    /// false = basta tudo sair dentro da janela, em qualquer ordem (ex.: empilhar cooldowns)
+    #[serde(default = "yes")]
+    pub ordered: bool,
     /// sequência por árvore de herói
     #[serde(flatten)]
     pub by_tree: BTreeMap<String, Vec<String>>,
+}
+
+fn yes() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -134,6 +147,35 @@ pub enum Check {
         title: String,
         tip: String,
     },
+    ResourceWaste {
+        id: String,
+        /// tipo de recurso do log (0 mana, 1 rage, 3 energy, 7 soul shards, 8 astral power, 11 maelstrom...)
+        power_type: u32,
+        resource: String,
+        importance: String,
+        title: String,
+        tip: String,
+    },
+    DotUptime {
+        id: String,
+        debuff: String,
+        min_uptime: f32,
+        importance: String,
+        title: String,
+        tip: String,
+    },
+    AoeSwap {
+        id: String,
+        casts: Vec<String>,
+        instead: Vec<String>,
+        min_targets: usize,
+        /// com este buff o cast continua certo (ex.: Stormkeeper no Lightning Bolt)
+        #[serde(default)]
+        unless_buff: Option<String>,
+        importance: String,
+        title: String,
+        tip: String,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -177,7 +219,12 @@ impl RotationSpec {
                     buff(b)?;
                     casts.iter().chain(applied_by).try_for_each(ability)?;
                 }
-                Check::Downtime { .. } => {}
+                Check::Downtime { .. } | Check::ResourceWaste { .. } => {}
+                Check::DotUptime { debuff, .. } => buff(debuff)?,
+                Check::AoeSwap { casts, instead, unless_buff, .. } => {
+                    casts.iter().chain(instead).try_for_each(ability)?;
+                    unless_buff.iter().try_for_each(buff)?;
+                }
                 Check::Cooldown { spells, .. } => {
                     for s in spells {
                         ability(s)?;
@@ -334,6 +381,16 @@ pub(crate) struct RotationTracker {
     gaps: Vec<(i64, i64)>,
     dead_since: Option<i64>,
     dead_ms: i64,
+    /// intervalos morto (ms do pull), para o uptime de DoT
+    dead_spans: Vec<(i64, i64)>,
+    /// recurso: tipo -> (ganho, desperdiçado, momentos com desperdício)
+    energize: HashMap<u32, (i64, i64, Vec<(i64, i64)>)>,
+    /// debuff do player em cada inimigo: (debuff, inimigo) -> aplicado em
+    dots_on: HashMap<(String, String), i64>,
+    /// intervalos com o debuff em algum inimigo, por debuff
+    dot_spans: HashMap<String, Vec<(i64, i64)>>,
+    swap_total: HashMap<usize, u32>,
+    swap_miss: HashMap<usize, Vec<i64>>,
 }
 
 impl RotationTracker {
@@ -359,6 +416,12 @@ impl RotationTracker {
             gaps: Vec::new(),
             dead_since: None,
             dead_ms: 0,
+            dead_spans: Vec::new(),
+            energize: HashMap::new(),
+            dots_on: HashMap::new(),
+            dot_spans: HashMap::new(),
+            swap_total: HashMap::new(),
+            swap_miss: HashMap::new(),
         }
     }
 
@@ -403,6 +466,7 @@ impl RotationTracker {
             // voltou (battle rez)
             if let Some(d) = self.dead_since.take() {
                 self.dead_ms += t - d;
+                self.dead_spans.push((d, t));
             }
         } else if !had_start {
             self.act(t);
@@ -424,7 +488,49 @@ impl RotationTracker {
                 }
             }
         }
+        for (i, c) in self.spec.checks.iter().enumerate() {
+            if let Check::AoeSwap { casts, instead, min_targets, unless_buff, .. } = c {
+                if targets >= *min_targets && (casts.contains(&key) || instead.contains(&key)) {
+                    *self.swap_total.entry(i).or_default() += 1;
+                    let excused = unless_buff.as_ref().is_some_and(|b| self.active.contains(b) || self.removed_at.get(b).is_some_and(|r| t - r <= BUFF_GRACE_MS));
+                    if casts.contains(&key) && !excused {
+                        self.swap_miss.entry(i).or_default().push(t);
+                    }
+                }
+            }
+        }
         self.casts.push((t, key));
+    }
+
+    /// Recurso ganho pelo player: `over` = o que passou do máximo (desperdício).
+    pub fn on_energize(&mut self, t: i64, power_type: u32, amount: i64, over: i64) {
+        let e = self.energize.entry(power_type).or_default();
+        e.0 += amount.max(0);
+        e.1 += over.max(0);
+        if over > 0 {
+            e.2.push((t, over));
+        }
+    }
+
+    /// Inimigo morreu: os debuffs do player nele acabam aqui (não vem SPELL_AURA_REMOVED).
+    pub fn on_enemy_died(&mut self, t: i64, enemy: &str) {
+        let gone: Vec<(String, String)> = self.dots_on.keys().filter(|(_, e)| e == enemy).cloned().collect();
+        for k in gone {
+            if let Some(since) = self.dots_on.remove(&k) {
+                self.dot_spans.entry(k.0).or_default().push((since, t));
+            }
+        }
+    }
+
+    /// Debuff do player num inimigo (aplicado / removido).
+    pub fn on_target_aura(&mut self, t: i64, enemy: &str, spell_id: u32, applied: bool) {
+        let Some(debuff) = self.buff_by_id.get(&spell_id).cloned() else { return };
+        let key = (debuff.clone(), enemy.to_string());
+        if applied {
+            self.dots_on.entry(key).or_insert(t);
+        } else if let Some(since) = self.dots_on.remove(&key) {
+            self.dot_spans.entry(debuff).or_default().push((since, t));
+        }
     }
 
     /// Buff no próprio player (aplicado / removido).
@@ -528,6 +634,11 @@ impl RotationTracker {
         }
         if let Some(d) = self.dead_since.take() {
             self.dead_ms += end_ms - d;
+            self.dead_spans.push((d, end_ms));
+        }
+        // DoTs ainda ativos no fim
+        for ((debuff, _), since) in std::mem::take(&mut self.dots_on) {
+            self.dot_spans.entry(debuff).or_default().push((since, end_ms));
         }
         let spec = self.spec;
         let active_ms = (end_ms - START_GRACE_MS - self.dead_ms).max(1);
@@ -603,11 +714,96 @@ impl RotationTracker {
                         spell_id: None,
                     });
                 }
+                Check::ResourceWaste { id, power_type, resource, importance, title, tip } => {
+                    let Some((gained, waste, moments)) = self.energize.remove(power_type) else { continue };
+                    if gained <= 0 {
+                        continue;
+                    }
+                    let mut worst = moments.clone();
+                    worst.sort_by_key(|(_, o)| std::cmp::Reverse(*o));
+                    findings.push(RotationFinding {
+                        id: id.clone(),
+                        title: title.clone(),
+                        tip: tip.clone(),
+                        importance: importance.clone(),
+                        count: moments.len() as u32,
+                        rate: 1.0 - (waste as f32 / gained as f32).min(1.0),
+                        times: worst.iter().take(10).map(|(t, _)| *t).collect(),
+                        detail: format!("{waste} de {gained} {resource} desperdiçado ({:.0}%)", waste as f32 / gained as f32 * 100.0),
+                        spell_id: None,
+                    });
+                }
+                Check::DotUptime { id, debuff, min_uptime, importance, title, tip } => {
+                    let spans = self.dot_spans.remove(debuff).unwrap_or_default();
+                    if spans.is_empty() {
+                        continue;
+                    }
+                    // segundo a segundo: só conta vivo e com a raid batendo, depois da primeira aplicação
+                    let first = spans.iter().map(|(a, _)| *a).min().unwrap_or(0);
+                    let alive = |ms: i64| !self.dead_spans.iter().any(|(a, b)| ms >= *a && ms < *b);
+                    let covered = |ms: i64| spans.iter().any(|(a, b)| ms >= *a && ms < *b);
+                    let (mut total, mut up) = (0u32, 0u32);
+                    let mut drops = Vec::new();
+                    let mut was_up = true;
+                    let mut s = first / 1000;
+                    while s * 1000 < end_ms {
+                        let ms = s * 1000 + 500;
+                        if raid_active.get(s as usize).copied().unwrap_or(false) && alive(ms) {
+                            total += 1;
+                            let c = covered(ms);
+                            if c {
+                                up += 1;
+                            } else if was_up {
+                                drops.push(s * 1000);
+                            }
+                            was_up = c;
+                        }
+                        s += 1;
+                    }
+                    if total == 0 {
+                        continue;
+                    }
+                    let rate = up as f32 / total as f32;
+                    findings.push(RotationFinding {
+                        id: id.clone(),
+                        title: title.clone(),
+                        tip: tip.clone(),
+                        importance: importance.clone(),
+                        count: if rate < *min_uptime { drops.len() as u32 } else { 0 },
+                        rate,
+                        times: drops.into_iter().take(10).collect(),
+                        detail: format!("{} no alvo {:.0}% do tempo (meta {:.0}%)", spec.buffs[debuff].name, rate * 100.0, min_uptime * 100.0),
+                        spell_id: Some(spec.buffs[debuff].id),
+                    });
+                }
+                Check::AoeSwap { id, casts, instead, importance, title, tip, .. } => {
+                    let total = self.swap_total.get(&i).copied().unwrap_or(0);
+                    let miss = self.swap_miss.remove(&i).unwrap_or_default();
+                    if total == 0 {
+                        continue;
+                    }
+                    let n = miss.len() as u32;
+                    let names = |ks: &[String]| ks.iter().map(|k| spec.abilities[k].name.clone()).collect::<Vec<_>>().join("/");
+                    findings.push(RotationFinding {
+                        id: id.clone(),
+                        title: title.clone(),
+                        tip: tip.clone(),
+                        importance: importance.clone(),
+                        count: n,
+                        rate: 1.0 - n as f32 / total as f32,
+                        times: miss,
+                        detail: format!("{n} {} em AoE no lugar de {}", names(casts), names(instead)),
+                        spell_id: casts.first().map(|k| spec.abilities[k].id),
+                    });
+                }
                 Check::Cooldown { id, spells, min_usage, importance, title, tip } => {
                     let mut low = Vec::new();
                     let mut rates = Vec::new();
                     for s in spells {
                         let a = &spec.abilities[s];
+                        if a.tree.as_ref().is_some_and(|t| tree.is_some_and(|h| h.key != *t)) {
+                            continue;
+                        }
                         let cd = a.cooldown_ms.unwrap_or(1).max(1);
                         let per = a.uses_per_cooldown.unwrap_or(1);
                         let possible = (a.charges.unwrap_or(1) + (active_ms / cd) as u32) * per;
@@ -636,13 +832,25 @@ impl RotationTracker {
 
         let opener = tree.and_then(|t| spec.opener.by_tree.get(&t.key)).map(|expected| {
             let firsts: Vec<&String> = self.casts.iter().filter(|(t, _)| *t <= spec.opener.window_ms).map(|(_, k)| k).collect();
-            // esperado como subsequência: cada item precisa sair depois do anterior
-            let mut pos = 0;
+            // em ordem: subsequência (cada item depois do anterior); sem ordem: cada item uma vez na janela
             let mut missing = Vec::new();
-            for e in expected {
-                match firsts[pos..].iter().position(|k| *k == e) {
-                    Some(p) => pos += p + 1,
-                    None => missing.push(e),
+            if spec.opener.ordered {
+                let mut pos = 0;
+                for e in expected {
+                    match firsts[pos..].iter().position(|k| *k == e) {
+                        Some(p) => pos += p + 1,
+                        None => missing.push(e),
+                    }
+                }
+            } else {
+                let mut left: Vec<&String> = firsts.clone();
+                for e in expected {
+                    match left.iter().position(|k| *k == e) {
+                        Some(p) => {
+                            left.remove(p);
+                        }
+                        None => missing.push(e),
+                    }
                 }
             }
             let r = |k: &String| SpellRef { spell_id: spec.abilities[k].id, name: spec.abilities[k].name.clone() };
