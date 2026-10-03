@@ -154,7 +154,7 @@ export default function App() {
   /** Pulls novos no Discord, como imagem: wipe = motivo do wipe; kill = resumo do boss. */
   async function postToDiscord(fresh: Pull[], all: Pull[]) {
     const cfg = await discordGetConfig().catch(() => null);
-    if (!cfg?.webhook) return;
+    if (!cfg?.webhook || cfg.auto === false) return;
     for (const p of fresh) {
       if (p.success ? !cfg.onKill : !cfg.onWipe) continue;
       try {

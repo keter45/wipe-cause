@@ -30,6 +30,7 @@ export const KIND_LABEL: Record<string, string> = {
   enrage: 'Enrage',
   failure_event: 'Falha do raid',
   dispel: 'Dispel',
+  phase_duration: 'Tempo da fase',
   hp_balance: 'HP dos bosses',
   cc_required: 'CC',
   spread: 'Espalhar',
@@ -307,6 +308,28 @@ function RuleRow({
                 Tempo máximo até o dispel (s)
                 <input className="text-input" type="number" min={0} step={0.5} value={effective(m, ov, 'max_delay') ?? ''} onChange={(e) => onChange({ max_delay: num(e.target.value) })} />
               </label>
+            )}
+            {m.type === 'phase_duration' && (
+              <>
+                <label className="field sm">
+                  Tempo bom (s)
+                  <input className="text-input" type="number" min={0} step={0.5} value={effective(m, ov, 'target_s') ?? ''} onChange={(e) => onChange({ target_s: num(e.target.value) })} />
+                </label>
+                <label className="field sm">
+                  Acima disto, lenta (s)
+                  <input className="text-input" type="number" min={0} step={0.5} value={effective(m, ov, 'max_s') ?? ''} onChange={(e) => onChange({ max_s: num(e.target.value) })} />
+                </label>
+                {m.overrides && Object.keys(m.overrides).length > 0 && !ov?.target_s && !ov?.max_s && (
+                  <p className="muted small">
+                    O padrão muda por dificuldade (
+                    {Object.entries(m.overrides)
+                      .filter(([, o]) => o.target_s != null || o.max_s != null)
+                      .map(([d, o]) => `${d}: ${o.target_s ?? '—'}s / ${o.max_s ?? '—'}s`)
+                      .join(', ')}
+                    ); um ajuste aqui vale para todas.
+                  </p>
+                )}
+              </>
             )}
             <div className="field sm">
               Quem pode ser culpado

@@ -122,6 +122,14 @@ pub struct MechanicResult {
     /// dispel: cada debuff aplicado e o que aconteceu com ele
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub dispels: Vec<DispelOutcome>,
+    /// phase_duration: cada janela (intermissão) e quanto durou
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub phases: Vec<PhaseWindow>,
+    /// phase_duration: tempo bom e tempo máximo aceitável (ms)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -134,6 +142,21 @@ pub struct CastOutcome {
     /// quem cortou; None = o cast passou
     pub interrupted_by: Option<String>,
     pub interrupted_by_guid: Option<String>,
+}
+
+/// Uma janela de fase (ex.: intermissão em que o boss fica imune até o raid resolver a mecânica).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhaseWindow {
+    pub start: i64,
+    /// None = não terminou no tempo analisado (wipe na fase ou corte de mortes)
+    pub end: Option<i64>,
+    /// o raid wipou durante a fase
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub wiped: bool,
+    /// players que morreram dentro da fase (mecânica errada costuma matar vários de uma vez)
+    #[serde(skip_serializing_if = "is_zero")]
+    pub deaths: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]

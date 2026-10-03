@@ -1,10 +1,11 @@
 import { useState, type ReactElement } from 'react';
 import { Check, ClipboardCopy, FileCode, FileText, ImageDown, MessageSquare, Share2 } from 'lucide-react';
-import { discordPost, inTauri } from '../lib/api';
-import { cardHtml, cardPng, copyPng, fileSlug, printPdf, saveHtml, savePng, sendPngToDiscord } from '../lib/share';
-import { Popover } from './Popover';
-import { PlayerClassesContext, usePlayerClasses } from '../lib/players';
-import { useSetup } from '../lib/setup';
+import { discordPost, inTauri } from '../../lib/api';
+import { cardHtml, cardPng, copyPng, fileSlug, printPdf, saveHtml, savePng, sendPngToDiscord } from '../../lib/share';
+import { Popover } from '../Popover';
+import type { CardDetail } from './common';
+import { PlayerClassesContext, usePlayerClasses } from '../../lib/players';
+import { useSetup } from '../../lib/setup';
 
 type Action = 'copy' | 'png' | 'html' | 'pdf' | 'discord' | 'discordText';
 
@@ -26,20 +27,23 @@ const DONE: Record<Action, string> = {
 };
 
 /**
- * "Compartilhar": gera o cartão (`card()`) como imagem ou página, para quem não tem o app.
+ * "Compartilhar": gera o cartão (`card(detail)`) como imagem ou página, para quem não tem o app,
+ * em duas versões: o resumo (padrão) ou o completo (tudo aberto).
  * `name`: base do nome do arquivo e título. `pdf`: oferece PDF (links clicáveis).
  * `discord`: a mensagem de texto (resumo) para o canal da raid; sem webhook, o menu leva às
  * Configurações.
  */
-export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card: () => ReactElement; name: string; pdf?: boolean; discord?: () => unknown }) {
+export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card: (detail: CardDetail) => ReactElement; name: string; pdf?: boolean; discord?: () => unknown }) {
+  const [detail, setDetail] = useState<CardDetail>('summary');
   const classes = usePlayerClasses();
-  const card = () => <PlayerClassesContext.Provider value={classes}>{makeCard()}</PlayerClassesContext.Provider>;
+  const card = () => <PlayerClassesContext.Provider value={classes}>{makeCard(detail)}</PlayerClassesContext.Provider>;
   const [open, setOpen] = useState(false);
   const { status, openSettings } = useSetup();
   const hasDiscord = !!status?.discord?.webhook;
   const [busy, setBusy] = useState<Action | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const file = fileSlug(name) || 'wipe-cause';
+  const file = (fileSlug(name) || 'wipe-cause') + (detail === 'full' ? '-completo' : '');
+  const title = detail === 'full' ? `${name} (completo)` : name;
 
   async function run(a: Action) {
     setBusy(a);
@@ -48,14 +52,14 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
       if (a === 'discordText') {
         if (discord) await discordPost(discord());
       } else if (a === 'html') {
-        if (!(await saveHtml(await cardHtml(card(), name), `${file}.html`))) return;
+        if (!(await saveHtml(await cardHtml(card(), title), `${file}.html`))) return;
       } else if (a === 'pdf') {
-        await printPdf(await cardHtml(card(), name));
+        await printPdf(await cardHtml(card(), title));
       } else {
         const png = await cardPng(card());
         if (a === 'copy') await copyPng(png);
         else if (a === 'png' && !(await savePng(png, `${file}.png`))) return;
-        else if (a === 'discord') await sendPngToDiscord(png, `${file}.png`, name);
+        else if (a === 'discord') await sendPngToDiscord(png, `${file}.png`, title);
       }
       setMsg({ ok: true, text: DONE[a] });
     } catch (e) {
@@ -68,7 +72,8 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
   const actions: Action[] = [
     'copy',
     'png',
-    ...(pdf ? (['pdf'] as const) : []),
+    // PDF: links clicáveis e páginas; serve para o completo (e para quem pediu sempre)
+    ...(pdf || detail === 'full' ? (['pdf'] as const) : []),
     'html',
     ...(inTauri && hasDiscord ? ([...(discord ? (['discordText'] as const) : []), 'discord'] as const) : []),
   ];
@@ -89,7 +94,19 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
       }
     >
       <h4>Compartilhar</h4>
-      <p className="muted small">Um cartão com o resumo, para quem não tem o app.</p>
+      <p className="muted small">Um cartão para quem não tem o app.</p>
+      <div className="segmented sm share-detail" role="radiogroup" aria-label="Versão do cartão">
+        {(
+          [
+            ['summary', 'Resumo', 'O principal, para uma olhada no Discord'],
+            ['full', 'Completo', 'Tudo aberto: tabelas, cada morte, cada jogador'],
+          ] as const
+        ).map(([k, label, hint]) => (
+          <button key={k} role="radio" aria-checked={detail === k} className={detail === k ? 'active' : ''} title={hint} onClick={() => setDetail(k)}>
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="share-actions">
         {actions.map((a) => {
           const Icon = icons[a];

@@ -26,7 +26,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
 
   async function save() {
     try {
-      await discordSetConfig({ webhook: webhook.trim() || null, onWipe, onKill, onNight });
+      await discordSetConfig({ webhook: webhook.trim() || null, onWipe, onKill, onNight, auto: current?.auto ?? true });
       setMsg({ ok: true, text: webhook.trim() ? 'Salvo.' : 'Discord desligado.' });
       onSaved();
     } catch (e) {
@@ -67,6 +67,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
           <input type="checkbox" checked={onNight} onChange={(e) => setOnNight(e.target.checked)} /> o resumo da noite, no fim da raid
         </label>
       </div>
+      {current?.webhook && current.auto === false && <p className="small warn">O envio automático está pausado pelo botão Discord no topo do app.</p>}
       {msg && <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>{msg.text}</p>}
       <div className="set-actions">
         <button className="btn" onClick={test} disabled={!webhook.trim() || sending}>

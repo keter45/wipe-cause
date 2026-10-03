@@ -267,6 +267,8 @@ export interface DiscordConfig {
   onKill: boolean;
   /** resumo da noite no fim da raid (ao vivo) */
   onNight?: boolean;
+  /** chave geral do envio automático (botão no topo); ausente = ligado */
+  auto?: boolean;
 }
 
 export const discordGetConfig = () => invoke<DiscordConfig>('discord_get_config');

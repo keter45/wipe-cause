@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ShieldAlert, Skull, Target, TrendingDown } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { mmss, num, shortName } from '../lib/format';
-import { candidates, defaultReference, isHealer, outputPerSec, type Sample } from '../lib/performance';
+import { candidates, defaultReference, detectCooldowns, isHealer, outputPerSec, type Sample } from '../lib/performance';
 import { advantageWindows, castDiff, fairReference, losses, relevantSpells, myDeaths, myMechanicFailures, takenMoreThan, timelineOf, type AdvantageWindow, type Loss } from '../lib/solo';
 import { meIn, setSoloCharacter, useSoloCharacter } from '../lib/mode';
 import { loadTop, type TopRanking, type TopSample } from '../lib/wclApi';
@@ -16,8 +16,11 @@ import { RotationPanel, uniqueSeconds } from './RotationPanel';
 import { WclTopsButton } from './WclTops';
 import { ErrorBoundary } from './ErrorBoundary';
 import { OutputChart } from './SoloCharts';
-
-type RefMode = 'top' | 'raid' | 'self';
+import { CooldownCompare } from './perf/CooldownCompare';
+import { ShareMenu } from './share/ShareMenu';
+import { SoloShareCard } from './share/SoloCard';
+import { inTauri } from '../lib/api';
+import { useSetup } from '../lib/setup';
 
 /** Modo solo: o pull do ponto de vista de um player só, com o que ele pode corrigir. */
 export function SoloPullView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }) {
@@ -26,7 +29,8 @@ export function SoloPullView({ pull, nightPulls }: { pull: Pull; nightPulls: Pul
   if (!me) return <WhoAreYou pull={pull} />;
   return (
     <ErrorBoundary label="na sua análise" resetKey={`${pull.id}:${me.guid}`}>
-      <SoloPull key={me.guid} me={{ pull, player: me }} nightPulls={nightPulls} />
+      {/* a escolha da referência vale para os pulls do mesmo boss; trocou de boss, volta ao padrão */}
+      <SoloPull key={`${me.guid}:${pull.encounterId}:${pull.difficultyId}`} me={{ pull, player: me }} nightPulls={nightPulls} />
     </ErrorBoundary>
   );
 }
@@ -67,6 +71,58 @@ function WhoAreYou({ pull }: { pull: Pull }) {
   );
 }
 
+// ---- com quem comparar
+
+type RefGroup = 'top' | 'spec' | 'self' | 'other';
+interface RefOption {
+  key: string;
+  group: RefGroup;
+  label: string;
+  sample?: Sample;
+}
+
+const GROUPS: [RefGroup, string][] = [
+  ['top', 'Top do Warcraft Logs'],
+  ['spec', 'Sua spec na raid'],
+  ['self', 'Você em outros pulls'],
+  ['other', 'Outras specs neste pull'],
+];
+
+const sampleKey = (s: Sample) => `s:${s.pull.id}:${s.player.guid}`;
+const topId = (t: TopRanking) => `${t.code}:${t.fightId}`;
+const pullLabel = (p: Pull) => `pull ${p.pullNumber} (${p.success ? 'kill' : 'wipe'})`;
+
+/** "Fulano", "Fulano · pull 6 (kill)", "Você no pull 6 (kill)" */
+function sampleLabel(me: Sample, s: Sample): string {
+  if (s.player.guid === me.player.guid) return `Você no ${pullLabel(s.pull)}`;
+  return s.pull.id === me.pull.id ? shortName(s.player.name) : `${shortName(s.player.name)} · ${pullLabel(s.pull)}`;
+}
+
+/**
+ * Quem dá para escolher como referência: os tops da spec no Warcraft Logs, a mesma spec na noite
+ * (neste boss), você nos outros pulls e, neste pull, quem tem a mesma função em outra spec (só
+ * para o dano ao longo do pull e o dano tomado).
+ */
+function refOptions(me: Sample, list: Sample[], tops: TopRanking[] | null, wclReady: boolean, unit: string): RefOption[] {
+  const out: RefOption[] = [];
+  if (tops?.length)
+    tops.forEach((t, i) =>
+      out.push({ key: `top:${i}`, group: 'top', label: `#${i + 1} ${t.name} — ${num(t.amount)} ${unit}${t.itemLevel ? ` · ilvl ${t.itemLevel.toFixed(0)}` : ''}` }),
+    );
+  else if (tops == null) out.push({ key: 'top:0', group: 'top', label: wclReady ? 'Top #1 (buscando…)' : 'Top da spec (conectar o Warcraft Logs)' });
+  const tag = (s: Sample) => `${num(outputPerSec(s))} ${unit}${fairReference(me, s) ? '' : ' · viveu pouco'}`;
+  for (const s of list) {
+    const self = s.player.guid === me.player.guid;
+    out.push({ key: sampleKey(s), group: self ? 'self' : 'spec', label: `${sampleLabel(me, s)} — ${tag(s)}`, sample: s });
+  }
+  const others = me.pull.players
+    .filter((p) => p.guid !== me.player.guid && p.specId !== me.player.specId && p.role === me.player.role && (p.aliveMs ?? me.pull.analyzedMs) >= 30_000)
+    .map((player) => ({ pull: me.pull, player }))
+    .sort((a, b) => outputPerSec(b) - outputPerSec(a));
+  for (const s of others) out.push({ key: sampleKey(s), group: 'other', label: `${shortName(s.player.name)} (${specLabel(s.player.specId)}) — ${tag(s)}`, sample: s });
+  return out;
+}
+
 function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
   const seek = useSeek();
   const healer = isHealer(me.player);
@@ -74,33 +130,43 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
   const ls = useMemo(() => losses(me), [me]);
   const out = outputPerSec(me);
 
-  // ---- referência: top do Warcraft Logs, o melhor da raid ou você no seu melhor pull
-  const list = useMemo(() => candidates(me, nightPulls).filter((s) => fairReference(me, s)), [me, nightPulls]);
-  const selfBest = list.find((s) => s.player.guid === me.player.guid && outputPerSec(s) > out) ?? null;
+  // ---- referência: escolhida pelo player (top do Warcraft Logs, alguém da raid, você em outro
+  // pull ou outra spec); sem escolha, o top #1 ou o melhor da raid
+  const wclReady = inTauri && !!useSetup().status?.wcl?.configured;
+  const list = useMemo(() => candidates(me, nightPulls), [me, nightPulls]);
+  const fair = useMemo(() => list.filter((s) => fairReference(me, s)), [me, list]);
   const raidRef = defaultReference(
     me,
-    list.filter((s) => s.player.guid !== me.player.guid),
+    fair.filter((s) => s.player.guid !== me.player.guid),
   );
-  const [mode, setMode] = useState<RefMode>('top');
+  const selfBest = fair.find((s) => s.player.guid === me.player.guid && outputPerSec(s) > out) ?? null;
   const [tops, setTops] = useState<TopRanking[] | null>(null);
-  const [top, setTop] = useState<TopSample | null>(null);
+  const [loaded, setLoaded] = useState<Map<string, TopSample>>(new Map());
   const [topError, setTopError] = useState<string | null>(null);
-  const wantTop = mode === 'top' ? tops?.[0] ?? null : null;
+  const options = useMemo(() => refOptions(me, list, tops, wclReady, unit), [me, list, tops, wclReady, unit]);
+  const fallback = tops?.length || (wclReady && tops == null) ? 'top:0' : raidRef ? sampleKey(raidRef) : selfBest ? sampleKey(selfBest) : null;
+  const [choice, setChoice] = useState<string | null>(null);
+  const key = choice != null && options.some((o) => o.key === choice) ? choice : fallback;
+  const opt = options.find((o) => o.key === key) ?? null;
+  const wantTop = key?.startsWith('top:') ? tops?.[Number(key.slice(4))] ?? null : null;
+  const top = wantTop ? loaded.get(topId(wantTop)) ?? null : null;
   useEffect(() => {
-    if (!wantTop || (top && top.source.code === wantTop.code && top.source.fightId === wantTop.fightId)) return;
+    if (!wantTop || loaded.has(topId(wantTop))) return;
     let alive = true;
     setTopError(null);
-    loadTop(wantTop, me, 0)
-      .then((s) => alive && setTop(s))
+    loadTop(wantTop, me, tops?.indexOf(wantTop) ?? 0)
+      .then((s) => alive && setLoaded((m) => new Map(m).set(topId(wantTop), s)))
       .catch((e) => alive && setTopError(String(e)));
     return () => {
       alive = false;
     };
-  }, [wantTop?.code, wantTop?.fightId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const ref: Sample | null = mode === 'top' ? top : mode === 'raid' ? raidRef : selfBest;
-  const refLabel = mode === 'top' && top ? `${top.source.name} (top)` : mode === 'self' ? `Você no pull ${selfBest?.pull.pullNumber}` : ref ? shortName(ref.player.name) : 'Referência';
+  }, [wantTop, loaded, me, tops]);
+  const ref: Sample | null = key?.startsWith('top:') ? top : (opt?.sample ?? null);
+  const refLabel = !ref ? 'Referência' : wantTop ? `${wantTop.name} (top #${Number(key!.slice(4)) + 1})` : sampleLabel(me, ref);
+  const sameSpec = ref != null && ref.player.specId === me.player.specId;
   const refOut = ref ? outputPerSec(ref) : 0;
   const diff = refOut > 0 ? ((out - refOut) / refOut) * 100 : null;
+  const cds = useMemo(() => detectCooldowns([me, ...list, ...loaded.values()]), [me, list, loaded]);
 
   const deaths = myDeaths(me);
   const mechs = myMechanicFailures(me);
@@ -116,6 +182,10 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
           <span className="muted small">{specLabel(me.player.specId)}</span>
         </span>
         <CharacterPicker pull={me.pull} current={me.player} />
+        <ShareMenu
+          card={(detail) => <SoloShareCard me={me} ref_={ref} refLabel={refLabel} cds={cds} detail={detail} />}
+          name={`${shortName(me.player.name)} - ${me.pull.encounterName} ${me.pull.difficultyName} - pull ${me.pull.pullNumber}`}
+        />
       </div>
 
       <div className="death-stats perf-stats">
@@ -149,25 +219,34 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
         <h4>
           <TrendingDown size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> Onde a referência abriu vantagem
         </h4>
-        <div className="segmented sm" role="radiogroup" aria-label="Comparar com">
-          {(
-            [
-              ['top', 'Top do Warcraft Logs'],
-              ['raid', 'Melhor da raid'],
-              ['self', 'Seu melhor pull'],
-            ] as const
-          ).map(([k, label]) => (
-            <button key={k} role="radio" aria-checked={mode === k} className={mode === k ? 'active' : ''} onClick={() => setMode(k)}>
-              {label}
-            </button>
-          ))}
-        </div>
-        {mode === 'top' && <WclTopsButton me={me} onTops={setTops} />}
-        {mode === 'top' && wantTop && !top && <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? `Baixando o fight de ${wantTop.name}…`}</p>}
-        {mode === 'raid' && !raidRef && <p className="muted small">Ninguém mais jogou de {specLabel(me.player.specId)} neste boss na noite.</p>}
-        {mode === 'self' && !selfBest && <p className="muted small">Este é o seu melhor pull neste boss na noite.</p>}
-        {ref && <Advantage me={me} ref_={ref} refLabel={refLabel} unit={unit} />}
+        <label className="perf-field solo-ref">
+          <span className="muted small">Comparar com</span>
+          <select className="select" value={key ?? ''} onChange={(e) => setChoice(e.target.value)}>
+            {key == null && <option value="">—</option>}
+            {GROUPS.map(([g, label]) => {
+              const os = options.filter((o) => o.group === g);
+              return (
+                os.length > 0 && (
+                  <optgroup key={g} label={label}>
+                    {os.map((o) => (
+                      <option key={o.key} value={o.key}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )
+              );
+            })}
+          </select>
+        </label>
+        {(wclReady || key?.startsWith('top:')) && <WclTopsButton me={me} onTops={setTops} />}
+        {wantTop && !top && <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? `Baixando o fight de ${wantTop.name}…`}</p>}
+        {key == null && <p className="muted small">Ninguém mais jogou de {specLabel(me.player.specId)} neste boss na noite: escolha alguém de outra spec ou conecte o Warcraft Logs.</p>}
+        {ref && !sameSpec && <p className="muted small">Outra spec: dá para comparar o dano ao longo do pull e o dano tomado, mas não os casts e os cooldowns.</p>}
+        {ref && <Advantage me={me} ref_={ref} refLabel={refLabel} unit={unit} casts={sameSpec} />}
       </section>
+
+      {ref && sameSpec && <CooldownCompare me={me} ref_={ref} cds={cds} refName={refLabel} />}
 
       <Mechanics me={me} ref_={ref} refLabel={refLabel} seek={seek} />
 
@@ -254,7 +333,8 @@ const costLabel = (l: Loss) => (l.weightSec >= 25 ? 'custo alto' : l.weightSec >
 
 // ---- vantagem da referência
 
-function Advantage({ me, ref_, refLabel, unit }: { me: Sample; ref_: Sample; refLabel: string; unit: string }) {
+/** `casts`: mostrar os casts dos trechos (só faz sentido com a mesma spec). */
+function Advantage({ me, ref_, refLabel, unit, casts }: { me: Sample; ref_: Sample; refLabel: string; unit: string; casts: boolean }) {
   const [mine, ref] = [timelineOf(me.player), timelineOf(ref_.player)];
   const windows = useMemo(() => advantageWindows(me, ref_), [me, ref_]);
   const relevant = useMemo(() => relevantSpells(me.player, ref_.player), [me, ref_]);
@@ -269,7 +349,7 @@ function Advantage({ me, ref_, refLabel, unit }: { me: Sample; ref_: Sample; ref
       ) : (
         <div className="solo-windows">
           {windows.map((w, i) => (
-            <WindowCard key={w.startMs} n={i + 1} w={w} unit={unit} relevant={relevant} />
+            <WindowCard key={w.startMs} n={i + 1} w={w} unit={unit} relevant={relevant} casts={casts} />
           ))}
         </div>
       )}
@@ -280,9 +360,9 @@ function Advantage({ me, ref_, refLabel, unit }: { me: Sample; ref_: Sample; ref
 const LANE_MS = 15_000;
 const ICON_GAP_PCT = 4.5;
 
-function WindowCard({ n, w, unit, relevant }: { n: number; w: AdvantageWindow; unit: string; relevant: Set<string> }) {
+function WindowCard({ n, w, unit, relevant, casts }: { n: number; w: AdvantageWindow; unit: string; relevant: Set<string>; casts: boolean }) {
   const seek = useSeek();
-  const diff = castDiff(w, relevant);
+  const diff = casts ? castDiff(w, relevant) : [];
   const sec = (w.endMs - w.startMs) / 1000;
   return (
     <div className="solo-window">
@@ -311,8 +391,12 @@ function WindowCard({ n, w, unit, relevant }: { n: number; w: AdvantageWindow; u
           ))}
         </p>
       )}
-      <Lane label="Você" casts={w.myCasts} />
-      <Lane label="Referência" casts={w.refCasts} />
+      {casts && (
+        <>
+          <Lane label="Você" casts={w.myCasts} />
+          <Lane label="Referência" casts={w.refCasts} />
+        </>
+      )}
     </div>
   );
 }

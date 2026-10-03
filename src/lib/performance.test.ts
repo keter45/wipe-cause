@@ -56,8 +56,25 @@ describe('comparação de desempenho', () => {
   it('descobre cooldowns pelo intervalo entre usos', () => {
     const cds = detectCooldowns([meS, { pull: p, player: top }]);
     expect([...cds.keys()].sort((a, b) => a - b)).toEqual([1953, 12472]);
-    expect(cds.get(12472)).toEqual({ gapMs: 60_000, usage: 1 });
+    expect(cds.get(12472)).toEqual({ gapMs: 60_000, usage: 1, listed: true });
     expect(cds.get(1953)!.usage).toBe(0.5);
+  });
+
+  it('cooldowns menores da lista da classe entram mesmo com recarga curta ou um uso só', () => {
+    const a = player('A', { class: 'Shaman', aliveMs: 60_000, casts: [cast(191634, 'Stormkeeper', [0, 30_000]), cast(108281, 'Ancestral Guidance', [40_000])] });
+    const b = player('B', { class: 'Shaman', aliveMs: 60_000, casts: [cast(191634, 'Stormkeeper', [0, 30_000, 60_000]), cast(188196, 'Lightning Bolt', every(2000, 60_000))] });
+    const pp = pull(0, 0, 60_000, { players: [a, b] });
+    const cds = detectCooldowns([{ pull: pp, player: a }, { pull: pp, player: b }]);
+    expect(cds.get(191634)).toEqual({ gapMs: 30_000, usage: 1, listed: true });
+    expect(cds.get(108281)).toEqual({ gapMs: 120_000, usage: 0.5, listed: true });
+    expect(cds.has(188196)).toBe(false);
+    const rows = compareCooldowns({ pull: pp, player: a }, { pull: pp, player: b }, cds).rows;
+    expect(rows.map((r) => [r.name, r.mine.length, r.ref.length, r.core])).toEqual([
+      ['Stormkeeper', 2, 3, true],
+      ['Ancestral Guidance', 1, 0, true],
+    ]);
+    // recarga curta: um uso de diferença não vira alerta
+    expect(perfInsights({ pull: pp, player: a }, { pull: pp, player: b }, cds).some((i) => i.text.startsWith('Stormkeeper'))).toBe(false);
   });
 
   it('atraso do cooldown e ritmo da rotação', () => {

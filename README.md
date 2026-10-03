@@ -56,7 +56,7 @@ Fechar a janela deixa o app na bandeja (perto do relógio), com o ao vivo rodand
 
 O aviso do pull tem um campo para anotar o motivo do wipe na hora, do jeito que a raid percebeu (ele não some enquanto você escreve). A anotação fica salva no PC, aparece no topo do pull (onde dá para editar depois), marca o pull na lista, vai no cartão de compartilhar e entra no contexto do "Perguntar à IA".
 
-Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar* (imagem ou mensagem).
+Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar* (imagem ou mensagem). O botão **Discord** no topo pausa e religa o envio automático sem mexer nas opções (o *Compartilhar* continua funcionando).
 
 Para testar sem estar em raid: `node scripts/simulate-live.mjs <log antigo> <pasta Logs>` escreve alguns pulls de um log real, aos poucos, num `WoWCombatLog` novo.
 
@@ -68,7 +68,10 @@ Funciona com qualquer provedor no formato de chat da OpenAI, com presets para op
 
 ## Compartilhar
 
-O pull e o resumo do boss têm **Compartilhar**: gera um cartão com o resumo (resultado, gatilho, o que deu errado, mortes decisivas, notas mais baixas e o mapa da falha) para **copiar como imagem** e colar no Discord/WhatsApp, **salvar como PNG ou HTML** ou **enviar a imagem ao Discord** pelo webhook configurado.
+O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compartilhar**: gera um cartão para **copiar como imagem** e colar no Discord/WhatsApp, **salvar como PNG, HTML ou PDF** ou **enviar a imagem ao Discord** pelo webhook configurado. Cada cartão tem duas versões:
+
+- **Resumo** (padrão, e o que vai sozinho no ao vivo): o principal para uma olhada. No pull, o veredito, os 3 achados principais, as mortes decisivas, quem ficou abaixo de 80 e o mapa da falha com legenda; no boss, o HP de cada pull (número do pull e % em cada barra), as maiores causas, quem ficou abaixo de 80 e os destaques; no solo, os seus números contra a referência e os 3 erros que mais custaram.
+- **Completo**: tudo aberto, mais largo. Cada morte em ordem, as mecânicas com quem errou, os interrupts que passaram e a tabela dos jogadores (pull); o pull a pull e o placar (boss e noite); os trechos em que a referência abriu vantagem, os cooldowns e o dano tomado a mais (solo); rotação, poções e setup (desempenho).
 
 ## Nota por player
 
@@ -79,7 +82,7 @@ Cada player recebe uma nota de 0 a 100 por pull: parte de 100, perde pontos por 
 A aba **Desempenho** de cada pull compara um player com os **top players da mesma spec no Warcraft Logs**, com item level parecido (e tempo de kill parecido, se o pull foi kill). Na progressão não há tempo de kill: o fight do top é recortado no mesmo tempo que o player ficou vivo, então um wipe de 2:30 é comparado com os 2:30 iniciais do kill (sem o execute e sem as fases que o wipe não viu).
 
 - **Janelas de burst**: marque os cooldowns que quer comparar (os de dano da classe vêm marcados); cada uso vira um chip e mostra os casts de 3s antes a 20s depois numa linha do tempo, lado a lado com o mesmo uso do top.
-- **Cooldowns**: quando cada um foi usado, quantas vezes e se o 1º uso veio atrasado ou adiantado.
+- **Cooldowns**: quando cada um foi usado, quantas vezes (e quantas cabiam no tempo) e se o 1º uso veio atrasado ou adiantado. Entram os cooldowns da lista da classe, inclusive os menores (Colossus Smash, Stormkeeper, Ancestral Guidance, Touch of the Magi…), e os que o padrão de uso da noite mostra.
 - **Rotação**: casts por minuto e % do dano de cada habilidade, apontando o que ficou abaixo ou não foi usado.
 - **Setup**: poção de combate, distribuição de status, talentos diferentes (com nome e ícone) e itens lado a lado, com encantamentos e gemas que faltam.
 - **Exportar**: o relatório do jogador vira um cartão para copiar, salvar (PNG/HTML) ou mandar ao Discord — para quem não tem o app.
@@ -92,7 +95,8 @@ No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é po
 
 - **Pull → aba Você**: suas métricas, a sua sobrevivência e os seus erros de mecânica, em quatro partes.
   - **Para o próximo pull:** os seus erros ordenados pelo que custaram. Morte cedo, tempo parado, proc perdido e DoT fora do alvo viram uma estimativa de dano; mecânica e cooldown entram com peso pela gravidade. Cada um traz o momento (▶ no vídeo) e a dica.
-  - **Onde a referência abriu vantagem:** o seu dano a cada 5s contra uma referência, que pode ser o top do Warcraft Logs, o melhor da raid ou o seu melhor pull da noite (só referências que ficaram vivas pelo menos 60% do seu tempo). Os 3 trechos de maior diferença vêm com os casts de cada um lado a lado e o que a referência usou a mais.
+  - **Onde a referência abriu vantagem:** o seu dano a cada 5s contra uma referência que você escolhe: um dos tops da spec no Warcraft Logs, alguém da sua spec na raid, você em outro pull ou alguém de outra spec no mesmo pull (aí só o dano e o dano tomado). Sem escolha, vai o top #1 ou o melhor da raid que ficou vivo pelo menos 60% do seu tempo. Os 3 trechos de maior diferença vêm com os casts de cada um lado a lado e o que a referência usou a mais.
+  - **Cooldowns:** os seus usos contra os da referência numa linha do tempo, inclusive os cooldowns menores.
   - **Mecânicas:** só as suas (falhas nas regras do boss, mortes com o golpe final e o defensivo que estava disponível) e o dano que você tomou bem mais que a referência por minuto vivo, que costuma ser dano evitável.
   - **Rotação:** a leitura da rotação base da spec.
 - **Resumo da noite e do boss**: os seus pulls boss a boss, o melhor de cada um e os erros que se repetem.
@@ -131,7 +135,7 @@ Os textos saem em modelo ("X perdido: use antes de acabar"): vale revisar os pon
 
 ## Escala de interrupts e dispels
 
-Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem.
+Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem. Regras do tipo `phase_duration` cronometram uma fase em que o boss fica imune até o raid resolver a mecânica (ex.: o puzzle do Vitriolic Stasis no Entombed Sentinels): a aba Mecânicas mostra cada vez com a duração contra o tempo bom e o máximo, e o resumo do boss mostra a fase pull a pull, com o melhor da noite e as vezes em que o raid morreu nela.
 
 ## Posições
 

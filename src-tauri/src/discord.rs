@@ -17,6 +17,9 @@ pub struct DiscordConfig {
     pub on_kill: bool,
     #[serde(default = "settings::yes")]
     pub on_night: bool,
+    /// chave geral do envio automático; desligada, os de cima ficam guardados mas nada vai
+    #[serde(default = "settings::yes")]
+    pub auto: bool,
 }
 
 /// Aceita só webhooks do Discord (a URL vai direto para uma requisição HTTP).
@@ -29,7 +32,7 @@ pub fn valid_webhook(url: &str) -> bool {
 #[tauri::command]
 pub fn discord_get_config(app: AppHandle) -> DiscordConfig {
     let s = settings::load(&app);
-    DiscordConfig { webhook: s.discord_webhook, on_wipe: s.discord_on_wipe, on_kill: s.discord_on_kill, on_night: s.discord_on_night }
+    DiscordConfig { webhook: s.discord_webhook, on_wipe: s.discord_on_wipe, on_kill: s.discord_on_kill, on_night: s.discord_on_night, auto: s.discord_auto }
 }
 
 #[tauri::command]
@@ -45,6 +48,7 @@ pub fn discord_set_config(app: AppHandle, config: DiscordConfig) -> Result<(), S
         s.discord_on_wipe = config.on_wipe;
         s.discord_on_kill = config.on_kill;
         s.discord_on_night = config.on_night;
+        s.discord_auto = config.auto;
     })
 }
 

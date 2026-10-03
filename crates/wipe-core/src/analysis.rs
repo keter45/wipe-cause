@@ -1104,7 +1104,14 @@ impl PullBuilder {
         let rules_file = self.rules.as_ref().and_then(|r| r.files.first().cloned());
         let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).filter(|d| !d.ignored).collect();
         let trigger = pull_trigger(&deaths_view);
-        let mechanics = self.rules.map(|r| r.finish(&roles)).unwrap_or_default();
+        let mechanics = self
+            .rules
+            .map(|mut r| {
+                let deaths: Vec<i64> = pending.iter().map(|d| d.death.t).collect();
+                r.close_pull(duration_ms, success, &deaths);
+                r.finish(&roles)
+            })
+            .unwrap_or_default();
 
         let mut enemy_spells: Vec<EnemySpell> = self
             .enemy_spells

@@ -578,7 +578,6 @@ code,
 .verdict h3 {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
   margin: 0;
   font-size: 16px;
@@ -645,6 +644,9 @@ code,
   top: -20px;
   z-index: 5;
   display: flex;
+  /* janela estreita: as abas quebram em outra linha em vez de sumir na borda */
+  flex-wrap: wrap;
+  align-items: flex-end;
   gap: 2px;
   margin: 0 -28px 14px;
   padding: 0 28px;
@@ -3474,13 +3476,31 @@ td.warn {
 
 /* abas agrupadas por assunto: um separador fino entre os grupos */
 .tab-group {
+  position: relative;
   display: flex;
   gap: 2px;
+  padding-top: 14px;
+}
+/* o assunto de cada grupo de abas, em cima delas */
+.tab-group-label {
+  position: absolute;
+  top: 6px;
+  left: 12px;
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.tab-group + .tab-group .tab-group-label {
+  left: 20px;
 }
 .tab-group + .tab-group {
   margin-left: 8px;
   padding-left: 8px;
-  background: linear-gradient(var(--border), var(--border)) left center / 1px 16px no-repeat;
+  background: linear-gradient(var(--border), var(--border)) left calc(50% + 7px) / 1px 16px no-repeat;
 }
 .tabs .tab-ask svg {
   color: var(--accent);
@@ -3496,7 +3516,8 @@ td.warn {
   }
 }
 @media (max-width: 1180px) {
-  .topbar .live-state {
+  .topbar .live-state,
+  .topbar .topbar-label {
     display: none;
   }
 }
@@ -4871,4 +4892,230 @@ svg.wcl-mark {
 }
 .sparkline circle.best {
   fill: var(--accent);
+}
+
+/* envio automático ao Discord: pausado fica apagado, para não passar por ligado */
+.discord-auto.off {
+  color: var(--muted);
+}
+.discord-auto.on svg {
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------- cartões: resumo e completo */
+.share-detail {
+  margin: 8px 0 2px;
+}
+.share-card.wide {
+  width: 920px;
+}
+.share-card.perf-card.perf-card-summary {
+  width: 760px;
+}
+.share-section h4 .share-aside {
+  margin-left: 6px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.share-card li.share-more {
+  list-style: none;
+  margin-left: -16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.share-bad {
+  color: var(--wipe);
+}
+.share-figure {
+  margin: 12px 0 0;
+}
+.share-figure figcaption {
+  margin-top: 2px;
+}
+/* legenda do mapa de posições (as formas repetem as do mapa) */
+.share-legend {
+  margin: 6px 0 0;
+  max-width: 230px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.share-legend span {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 3px;
+  vertical-align: -1px;
+}
+.share-legend .lg-boss {
+  width: 8px;
+  height: 8px;
+  background: var(--wipe);
+  transform: rotate(45deg);
+}
+.share-legend .lg-player {
+  border-radius: 50%;
+  background: var(--muted);
+}
+.share-legend .lg-culprit {
+  border-radius: 50%;
+  border: 2px solid var(--major);
+}
+.share-card ol.share-deaths {
+  margin: 0;
+  padding-left: 20px;
+  columns: 2;
+  column-gap: 24px;
+}
+.share-card ol.share-deaths li {
+  break-inside: avoid;
+  margin-bottom: 2px;
+}
+.share-card ol.share-losses {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.share-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.share-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.share-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+.share-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.share-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+.share-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.share-stats strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+/* complemento do título da seção (ex.: "de 0:00 a 1:21") fica em caixa normal */
+.share-card h4 .muted,
+.share-card h4 .small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+/* ---------------------------------------------------------------- fases cronometradas (intermissões) */
+.phase-card,
+.phase-night {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.phase-card {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.phase-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.phase-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.phase-row {
+  display: grid;
+  grid-template-columns: 28px 40px minmax(120px, 1fr) 48px 120px auto;
+  align-items: center;
+  gap: 10px;
+}
+.phase-n {
+  color: var(--muted);
+  font-size: 12px;
+}
+.phase-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.phase-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--muted);
+}
+.phase-bar.good {
+  background: var(--kill);
+}
+.phase-bar.mid {
+  background: var(--minor);
+}
+.phase-bar.bad {
+  background: var(--wipe);
+}
+/* marcas do tempo bom (cheia) e do máximo (tracejada) */
+.phase-mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 0;
+  border-left: 2px solid var(--text);
+}
+.phase-mark.max {
+  border-left-style: dashed;
+  border-left-color: var(--wipe);
+}
+.phase-time {
+  text-align: right;
+}
+.phase-time.good,
+.phase-cell.good {
+  color: var(--kill);
+}
+.phase-time.mid,
+.phase-cell.mid {
+  color: var(--minor);
+}
+.phase-time.bad,
+.phase-cell.bad {
+  color: var(--wipe);
+}
+.phase-best {
+  color: var(--accent);
+}
+.phase-night {
+  margin-bottom: 16px;
+}
+.share-phase {
+  margin: 8px 0 0;
 }
