@@ -4534,3 +4534,15 @@ svg.wcl-mark {
     grid-template-columns: 1fr;
   }
 }
+
+/* spec sem rotação escrita ainda */
+.rot-wip {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--muted);
+  margin: 4px 0 12px;
+}
+.rot-wip .chip {
+  flex: none;
+}

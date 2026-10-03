@@ -109,7 +109,10 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
           <RotationPanel rotation={player.rotation} />
         </ErrorBoundary>
       ) : (
-        <p className="muted small">A rotação base de {specLabel(player.specId)} ainda não foi escrita: por enquanto, só a comparação abaixo.</p>
+        <p className="rot-wip small">
+          <span className="chip">Em construção</span> A leitura da rotação de {specLabel(player.specId)} ainda está sendo preparada. Por enquanto, use a
+          comparação com a referência abaixo.
+        </p>
       )}
       {/* erro na comparação de um jogador não some com o seletor: dá para escolher outro */}
       <ErrorBoundary label={`na comparação de ${shortName(player.name)}`} resetKey={player.guid}>
