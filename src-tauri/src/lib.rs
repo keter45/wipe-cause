@@ -13,7 +13,6 @@ mod wcl_auth;
 mod wcl_source;
 mod wcr;
 mod wcr_cloud;
-mod wowanalyzer;
 
 use serde::Serialize;
 use std::path::PathBuf;
@@ -145,7 +144,6 @@ pub fn run() {
             wcr_cloud::wcr_cloud_get_config,
             wcr_cloud::wcr_cloud_set_config,
             wcr_cloud::wcr_cloud_videos,
-            wowanalyzer::wowanalyzer_open,
             history::history_list,
             history::history_load,
             history::history_set_pinned,
