@@ -220,6 +220,9 @@ pub struct RotationSpec {
     pub priority: BTreeMap<String, Priority>,
     pub opener: Opener,
     pub checks: Vec<Check>,
+    /// casts no log que não são o player apertando um botão (procs, pegar alma): não contam como ação
+    #[serde(default)]
+    pub ignore_casts: Vec<u32>,
 }
 
 impl RotationSpec {
@@ -507,6 +510,9 @@ impl RotationTracker {
 
     pub fn on_cast(&mut self, t: i64, spell_id: u32) {
         self.resolve(t);
+        if self.spec.ignore_casts.contains(&spell_id) {
+            return;
+        }
         if self.markers.contains(&spell_id) {
             self.seen_markers.insert(spell_id);
         }

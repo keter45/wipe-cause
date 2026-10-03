@@ -11,6 +11,9 @@ sources:
   - title: SimulationCraft — APL demonhunter_havoc (midnight)
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/demonhunter_havoc.simc
 
+# Shattered Souls (pegar alma), o pulso do Consuming Fire e o segundo evento da The Hunt não são botões
+ignore_casts: [228537, 456640, 370966]
+
 key_points:
   - "Cooldowns curtos no cooldown: Eye Beam, Blade Dance / Death Sweep, Essence Break e Immolation Aura. Estourar Fury de vez em quando não é problema se a prioridade está certa."
   - "Gaste Fury com Chaos Strike / Annihilation, mas guarde o suficiente para o Blade Dance quando ele voltar."
