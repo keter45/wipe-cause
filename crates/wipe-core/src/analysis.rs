@@ -396,8 +396,8 @@ impl PullBuilder {
                     }
                 }
             }
-            "SPELL_CAST_START" => {
-                // começo de um cast com tempo de cast (a leitura da rotação mede o tempo parado)
+            "SPELL_CAST_START" | "SPELL_EMPOWER_START" => {
+                // começo de um cast com tempo de cast ou de um empower (a leitura da rotação mede o tempo parado)
                 if self.counting() && Self::is_group_player(f[1], hex(f[3])) {
                     let (rel, id) = (self.rel(t), f[9].parse().unwrap_or(0));
                     if let Some(r) = self.players.get_mut(f[1]).and_then(|p| p.rotation.as_mut()) {

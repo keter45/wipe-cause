@@ -519,7 +519,8 @@ impl RotationTracker {
         let gcd = self.downtime_cfg().map_or(1200, |(g, _)| g);
         let key = self.ability_by_id.get(&spell_id).cloned();
         // cast com tempo de cast terminou agora; instantâneo começa (e ocupa o GCD) agora
-        let had_start = self.casting_since.take().is_some_and(|s| t - s <= 4000 && t - s >= INSTANT_START_MS);
+        let started = self.casting_since.take();
+        let had_start = started.is_some_and(|s| t - s <= 4000 && t - s >= INSTANT_START_MS);
         if self.dead_since.is_some() {
             // voltou (battle rez)
             if let Some(d) = self.dead_since.take() {
@@ -527,7 +528,9 @@ impl RotationTracker {
                 self.dead_spans.push((d, t));
             }
         } else if !had_start {
-            self.act(t);
+            // sem o começo do cast (o WCL não manda o begincast): estima pelo tempo de cast da habilidade
+            let cast = if started.is_none() { key.as_ref().and_then(|k| self.spec.abilities[k].cast_ms).unwrap_or(0) } else { 0 };
+            self.act(t - cast);
         }
         let busy = key.as_ref().and_then(|k| self.spec.abilities[k].channel_ms).unwrap_or(if had_start { 0 } else { gcd });
         self.free_at = Some((t + busy).max(if had_start { t } else { t + gcd }));
@@ -1157,6 +1160,17 @@ mod tests {
         // Grimoire nunca usado conta; Doomguard e Power Siphon (opcionais) não aparecem
         assert!(res.cooldowns.iter().any(|c| c.name.starts_with("Grimoire") && c.casts == 0));
         assert!(!res.cooldowns.iter().any(|c| c.name == "Summon Doomguard" || c.name == "Power Siphon"));
+    }
+
+    #[test]
+    fn cast_without_start_estimates_its_cast_time() {
+        // fonte WCL: sem SPELL_CAST_START; o Aimed Shot (2,5s) começou ~4,2s, não em 6,7s
+        let mut r = RotationTracker::new(mm());
+        r.on_cast(2000, 185358); // Arcane Shot: livre a partir de 3,2s
+        r.on_cast(6700, 19434); // Aimed Shot terminou em 6,7s
+        r.on_cast(7900, 185358);
+        let res = r.finish(9000, &[true; 20]);
+        assert_eq!(res.downtime_ms, 1000);
     }
 
     #[test]

@@ -1,0 +1,131 @@
+# Devastation Evoker — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead e da APL do SimulationCraft (branch midnight).
+# Os textos são nossos; cooldowns e custos vêm dos tooltips do Wowhead.
+# Validada no log de 29/09 (Gödmentation — Scalecommander).
+#
+# Sem checagem de Essence estourada: a Essence regenera sozinha e não aparece no log como ganho.
+spec: 1467
+name: Devastation Evoker
+patch: "12.1"
+sources:
+  - title: Wowhead — Devastation Evoker Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/evoker/devastation/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL evoker_devastation (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/evoker_devastation.simc
+
+# Charged Blast sai sozinho (stacks do Pyre)
+ignore_casts: [370454]
+
+key_points:
+  - "Gerar e gastar: Disintegrate (Pyre em 3+ alvos) gasta Essence e Essence Burst; Living Flame e Azure Strike preenchem e dão Essence Burst."
+  - "Dragonrage é o cooldown principal: Fire Breath e Eternity Surge dentro dele o estendem (Animosity); Tip the Scales no Eternity Surge."
+  - "Fire Breath e Eternity Surge no rank 1, e no cooldown."
+  - "Scalecommander: Deep Breath no cooldown (cancele a animação assim que passar pelo alvo); cada empower libera o Mass Disintegrate."
+  - "Sempre castando: Hover para castar andando (guarde uma carga para o Dragonrage); Azure Strike é melhor do que ficar parado."
+  - "Gaste o Essence Burst antes de acumular o máximo, e o Burnout faz o próximo Living Flame instantâneo."
+
+hero_trees:
+  - key: scalecommander
+    name: Scalecommander
+    markers: [433874, 1261393] # Deep Breath do Scalecommander, buff Command Squadron
+  - key: flameshaper
+    name: Flameshaper
+    markers: [] # quem não usa o Deep Breath do Scalecommander
+
+abilities:
+  dragonrage: { id: 375087, name: Dragonrage, cooldown_ms: 120000 }
+  deep_breath: { id: 433874, alt_ids: [357210], name: Deep Breath, cooldown_ms: 120000, tree: scalecommander }
+  tip_the_scales: { id: 370553, name: Tip the Scales, cooldown_ms: 120000 }
+  eternity_surge: { id: 382411, alt_ids: [359073], name: Eternity Surge, cast_ms: 1000, cooldown_ms: 30000 }
+  fire_breath: { id: 382266, alt_ids: [357208], name: Fire Breath, cast_ms: 1000, cooldown_ms: 30000 }
+  disintegrate: { id: 356995, name: Disintegrate, channel_ms: 3000 }
+  pyre: { id: 357211, name: Pyre }
+  living_flame: { id: 361469, name: Living Flame, cast_ms: 2000 }
+  azure_strike: { id: 362969, name: Azure Strike }
+  hover: { id: 358267, name: Hover }
+
+buffs:
+  essence_burst: { id: 359618, name: Essence Burst }
+  burnout: { id: 375802, name: Burnout }
+
+priority:
+  scalecommander:
+    st:
+      - { spell: hover, note: "se estiver com as cargas cheias e o Deep Breath pronto logo" }
+      - { spell: deep_breath, note: "no cooldown (de novo quando o Strafing Run for acabar)" }
+      - { spell: dragonrage }
+      - { spell: tip_the_scales }
+      - { spell: eternity_surge, note: "rank 1" }
+      - { spell: fire_breath, note: "rank 1" }
+      - { spell: disintegrate, note: "com Essence Burst / Essence, Mass Disintegrate primeiro" }
+      - { spell: living_flame, note: "com Leaping Flames e Burnout" }
+      - { spell: azure_strike, note: "Azure Sweep, sem estourar Essence Burst" }
+      - { spell: living_flame, note: "preenche" }
+      - { spell: azure_strike, note: "no movimento" }
+    aoe:
+      - { spell: deep_breath }
+      - { spell: dragonrage }
+      - { spell: tip_the_scales, note: "no Eternity Surge" }
+      - { spell: fire_breath, note: "rank 1" }
+      - { spell: eternity_surge }
+      - { spell: pyre, note: "com 18+ Charged Blast em 3+ alvos" }
+      - { spell: disintegrate, note: "Mass Disintegrate" }
+      - { spell: pyre, note: "3+ alvos" }
+      - { spell: living_flame, note: "com Leaping Flames e Burnout" }
+      - { spell: azure_strike, note: "preenche" }
+  flameshaper:
+    st:
+      - { spell: dragonrage }
+      - { spell: tip_the_scales, note: "só no Eternity Surge" }
+      - { spell: eternity_surge }
+      - { spell: fire_breath, note: "rank 1, para manter o DoT" }
+      - { spell: disintegrate }
+      - { spell: living_flame, note: "com Leaping Flames e Burnout" }
+      - { spell: azure_strike, note: "Azure Sweep" }
+      - { spell: living_flame, note: "preenche" }
+    aoe:
+      - { spell: dragonrage }
+      - { spell: tip_the_scales, note: "no Eternity Surge" }
+      - { spell: fire_breath, note: "rank 1, antes do Dragonrage" }
+      - { spell: eternity_surge }
+      - { spell: pyre, note: "3+ alvos" }
+      - { spell: disintegrate }
+      - { spell: living_flame, note: "com Burnout" }
+      - { spell: azure_strike, note: "preenche" }
+
+# Abertura: Living Flame pré-cast e os cooldowns em sequência
+opener:
+  window_ms: 10000
+  ordered: false
+  scalecommander: [deep_breath, dragonrage, tip_the_scales, eternity_surge, fire_breath]
+  flameshaper: [dragonrage, tip_the_scales, eternity_surge, fire_breath]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem castar
+    tip: "Sempre castando: Hover para castar andando; Azure Strike é melhor do que ficar parado."
+  - kind: proc
+    id: essence_burst
+    buff: essence_burst
+    spenders: [disintegrate, pyre]
+    importance: medium
+    title: Essence Burst perdido
+    tip: "Essence Burst deixa o próximo Disintegrate / Pyre de graça: gaste antes de acumular no máximo ou expirar."
+  - kind: proc
+    id: burnout
+    buff: burnout
+    spenders: [living_flame]
+    importance: low
+    title: Burnout perdido
+    tip: "Burnout deixa o próximo Living Flame instantâneo: use antes de acabar."
+  - kind: cooldown
+    id: cooldowns
+    spells: [dragonrage, deep_breath, tip_the_scales, eternity_surge, fire_breath]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Dragonrage, Deep Breath e os empowers (Fire Breath, Eternity Surge) no cooldown."
