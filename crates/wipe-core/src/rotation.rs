@@ -43,7 +43,7 @@ pub struct Source {
 pub struct HeroTree {
     pub key: String,
     pub name: String,
-    /// spells que só essa árvore casta
+    /// spells que só essa árvore casta, ou buffs que só ela ganha
     pub markers: Vec<u32>,
 }
 
@@ -571,6 +571,10 @@ impl RotationTracker {
     /// Buff no próprio player: `stacks` = cargas depois do evento (0 = removido).
     pub fn on_aura(&mut self, t: i64, spell_id: u32, stacks: u32) {
         self.resolve(t);
+        // árvore de herói reconhecida por buff (ex.: Arcane Soul no Sunfury)
+        if stacks > 0 && self.markers.contains(&spell_id) {
+            self.seen_markers.insert(spell_id);
+        }
         let Some(buff) = self.buff_by_id.get(&spell_id).cloned() else { return };
         let before = self.stacks.get(&buff).copied().unwrap_or(0);
         if stacks == 0 {
@@ -867,7 +871,7 @@ impl RotationTracker {
                         count: n,
                         rate: 1.0 - n as f32 / mine.len() as f32,
                         times: miss,
-                        detail: format!("{n} de {} {} sem {} nos {}s antes", mine.len(), names(casts), names(after), within_ms / 1000),
+                        detail: format!("{n} de {} {} sem {} nos {}s antes", mine.len(), names(casts), names(after), *within_ms as f32 / 1000.0),
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
@@ -1113,5 +1117,17 @@ mod tests {
         // Grimoire nunca usado conta; Doomguard e Power Siphon (opcionais) não aparecem
         assert!(res.cooldowns.iter().any(|c| c.name.starts_with("Grimoire") && c.casts == 0));
         assert!(!res.cooldowns.iter().any(|c| c.name == "Summon Doomguard" || c.name == "Power Siphon"));
+    }
+
+    #[test]
+    fn hero_tree_by_buff_marker() {
+        let arcane = RotationBook::embedded().get(62).expect("arcane");
+        let mut r = RotationTracker::new(arcane);
+        r.on_cast(3000, 44425);
+        r.on_aura(3100, 451038, 1); // Arcane Soul: Sunfury
+        assert_eq!(r.finish(10000, &[true; 20]).tree.as_deref(), Some("Sunfury"));
+        let mut r = RotationTracker::new(arcane);
+        r.on_cast(3000, 44425);
+        assert_eq!(r.finish(10000, &[true; 20]).tree.as_deref(), Some("Spellslinger"));
     }
 }
