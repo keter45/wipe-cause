@@ -5,14 +5,12 @@ import { mmss, num, shortName } from '../lib/format';
 import {
   SECONDARY,
   SLOT_NAMES,
-  CD_LATE_MS,
   BURST_LEAD_MS,
   BURST_WINDOW_MS,
   burstCandidates,
   burstWindows,
   candidates,
   combatPotions,
-  compareCooldowns,
   compareItems,
   compareRotation,
   defaultReference,
@@ -25,7 +23,6 @@ import {
   totalCpm,
   type BurstSide,
   type BurstWindow,
-  type CooldownRow,
   type Sample,
 } from '../lib/performance';
 import { ShareMenu } from './ShareMenu';
@@ -37,6 +34,7 @@ import { useTooltip } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PerfLinks, WclTopsButton, perfLinks, useOwnFight, type PerfLink } from './WclTops';
 import { RotationPanel } from './RotationPanel';
+import { CooldownCompare, signedSec } from './CooldownCompare';
 import { loadTop, type TopRanking, type TopSample } from '../lib/wclApi';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
@@ -66,7 +64,6 @@ function refLabel(me: Sample, s: Sample): string {
   return `${who} · ${where}`;
 }
 
-const signedSec = (ms: number) => `${ms > 0 ? '+' : '−'}${Math.round(Math.abs(ms) / 1000)}s`;
 
 /** Comparação de desempenho com a mesma spec na noite (etapa 1: sem dados externos). */
 export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid }: { pull: Pull; nightPulls: Pull[]; wclCode?: string; defaultGuid?: string }) {
@@ -116,7 +113,7 @@ export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid }: { pu
       )}
       {/* erro na comparação de um jogador não some com o seletor: dá para escolher outro */}
       <ErrorBoundary label={`na comparação de ${shortName(player.name)}`} resetKey={player.guid}>
-        <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
+        <Comparison key={`${player.guid}:${pull.encounterId}:${pull.difficultyId}`} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
       </ErrorBoundary>
     </div>
   );
@@ -266,7 +263,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
       )}
 
       <Bursts me={me} ref_={ref} cds={cds} />
-      <Cooldowns me={me} ref_={ref} cds={cds} />
+      <CooldownCompare me={me} ref_={ref} cds={cds} />
       <Rotation me={me} ref_={ref} cds={cds} />
       <Potions me={me} ref_={ref} />
       <SetupView me={me.player} ref_={ref.player} />
@@ -519,7 +516,7 @@ export function PerfShareCard({
         </section>
       )}
 
-      <Cooldowns me={me} ref_={ref_} cds={cds} expanded />
+      <CooldownCompare me={me} ref_={ref_} cds={cds} expanded />
       <Rotation me={me} ref_={ref_} cds={cds} expanded />
       <Potions me={me} ref_={ref_} />
       <SetupView me={me.player} ref_={ref_.player} />
@@ -528,68 +525,6 @@ export function PerfShareCard({
         <span className="share-brand">Wipe Cause</span>
         <span className="muted">Por minuto vivo; cooldowns no tempo em que os dois estavam vivos.</span>
       </footer>
-    </div>
-  );
-}
-
-// ---- cooldowns
-
-/** `expanded`: tudo aberto e sem botões (cartão para exportar). */
-function Cooldowns({ me, ref_, cds, expanded = false }: { me: Sample; ref_: Sample; cds: ReturnType<typeof detectCooldowns>; expanded?: boolean }) {
-  const { windowMs, rows } = compareCooldowns(me, ref_, cds);
-  const [open, setShowAll] = useState(false);
-  const showAll = open || expanded;
-  if (rows.length === 0) return null;
-  const core = rows.filter((r) => r.core);
-  const shown = showAll || core.length === 0 ? rows : core;
-  return (
-    <section className="perf-section">
-      <h4>
-        Cooldowns <span className="muted small">de 0:00 a {mmss(windowMs)} (os dois vivos)</span>
-      </h4>
-      <div className="cd-legend small">
-        <span className="cd-dot mine" /> você <span className="cd-dot ref" /> referência
-      </div>
-      <div className="cd-rows">
-        {shown.map((r) => (
-          <CooldownLine key={r.spellId} r={r} windowMs={windowMs} />
-        ))}
-      </div>
-      {!expanded && core.length > 0 && core.length < rows.length && (
-        <button className="link small more-toggle" onClick={() => setShowAll(!showAll)} aria-expanded={showAll}>
-          <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${showAll ? 'open' : ''}`} aria-hidden />
-          {showAll ? 'Só os principais' : `Mostrar ${rows.length - core.length} de uso ocasional`}
-        </button>
-      )}
-    </section>
-  );
-}
-
-function CooldownLine({ r, windowMs }: { r: CooldownRow; windowMs: number }) {
-  const at = (t: number) => `${Math.min(100, (t / windowMs) * 100)}%`;
-  const fewer = r.core && r.mine.length < r.ref.length;
-  const late = r.core && r.firstDelta != null && Math.abs(r.firstDelta) > CD_LATE_MS;
-  return (
-    <div className="cd-row">
-      <SpellName spellId={r.spellId} name={r.name} size={16} />
-      <div className="cd-track" role="img" aria-label={`Você: ${r.mine.map(mmss).join(', ') || 'não usou'}. Referência: ${r.ref.map(mmss).join(', ') || 'não usou'}.`}>
-        <div className="cd-lane">
-          {r.mine.map((t, i) => (
-            <span key={i} className="cd-mark mine" style={{ left: at(t) }} title={`Você: ${mmss(t)}`} />
-          ))}
-        </div>
-        <div className="cd-lane">
-          {r.ref.map((t, i) => (
-            <span key={i} className="cd-mark ref" style={{ left: at(t) }} title={`Referência: ${mmss(t)}`} />
-          ))}
-        </div>
-      </div>
-      <span className={`cd-count num small ${fewer ? 'bad' : ''}`} title={r.possible ? `cabem ~${r.possible} usos no tempo (pelo intervalo visto)` : undefined}>
-        {r.mine.length} × {r.ref.length}
-      </span>
-      <span className={`cd-delta num small ${late ? 'warn' : 'muted'}`} title="1º uso: você em relação à referência">
-        {r.firstDelta != null ? `1º ${signedSec(r.firstDelta)}` : ''}
-      </span>
     </div>
   );
 }

@@ -5,7 +5,7 @@
 // dentro da janela em que os dois estavam vivos (0 até o menor tempo vivo).
 
 import type { GearItem, PlayerStats, Pull, SetupStats, SpellCasts } from '../types';
-import { COMBAT_POTION_NAMES, isMajorCooldown, knowsClass } from './cooldowns';
+import { COMBAT_POTION_NAMES, isMajorCooldown, knowsClass, listedCooldown } from './cooldowns';
 
 export interface Sample {
   pull: Pull;
@@ -104,23 +104,27 @@ export interface CooldownInfo {
   gapMs: number | null;
   /** fração dos pulls (da spec) em que foi usado: perto de 1 = faz parte do plano de dano/cura */
   usage: number;
+  /** da lista da classe (maior ou menor): sempre acompanhado */
+  listed: boolean;
 }
 
 /** Cooldown usado em pelo menos esta fração dos pulls da spec: não usar vira alerta. */
 export const CORE_COOLDOWN_USAGE = 0.6;
 
 /**
- * Cooldowns longos da spec, descobertos pelo padrão de uso na noite: nunca usados duas vezes
- * em menos de 40s, ou usados uma única vez em pulls longos.
+ * Cooldowns da spec: os da lista da classe (inclusive os menores, como Colossus Smash e
+ * Stormkeeper) e os descobertos pelo padrão de uso na noite: nunca usados duas vezes em menos de
+ * 40s, ou usados uma única vez em pulls longos.
  */
 export function detectCooldowns(samples: Sample[]): Map<number, CooldownInfo> {
-  const acc = new Map<number, { gap: number | null; maxCount: number; longSingle: boolean; excluded: boolean; used: number }>();
+  const acc = new Map<number, { gap: number | null; maxCount: number; longSingle: boolean; excluded: boolean; used: number; listed: { cdMs: number | null } | null }>();
   for (const s of samples) {
     const skip = utilityIds(s.player);
     for (const c of castsOf(s.player)) {
-      const a = acc.get(c.spellId) ?? { gap: null, maxCount: 0, longSingle: false, excluded: false, used: 0 };
+      const a = acc.get(c.spellId) ?? { gap: null, maxCount: 0, longSingle: false, excluded: false, used: 0, listed: null };
       a.used++;
       if (skip.has(c.spellId)) a.excluded = true;
+      a.listed ??= listedCooldown(s.player.class, s.player.role, c.spellId, c.name);
       const times = [...c.times].sort((x, y) => x - y);
       for (let i = 1; i < times.length; i++) {
         const g = times[i] - times[i - 1];
@@ -133,10 +137,17 @@ export function detectCooldowns(samples: Sample[]): Map<number, CooldownInfo> {
   }
   const out = new Map<number, CooldownInfo>();
   for (const [id, a] of acc) {
+    const usage = a.used / Math.max(1, samples.length);
+    if (a.listed) {
+      // recarga base, ou menos se o intervalo visto mostrar redução (talento, cargas)
+      const gapMs = a.listed.cdMs != null ? Math.min(a.gap ?? Infinity, a.listed.cdMs) : a.gap;
+      out.set(id, { gapMs, usage, listed: true });
+      continue;
+    }
     if (a.excluded) continue;
     const repeatedSlowly = a.gap != null && a.gap >= COOLDOWN_MIN_GAP_MS;
     const onlySingles = a.gap == null && a.maxCount === 1 && a.longSingle;
-    if (repeatedSlowly || onlySingles) out.set(id, { gapMs: a.gap, usage: a.used / Math.max(1, samples.length) });
+    if (repeatedSlowly || onlySingles) out.set(id, { gapMs: a.gap, usage, listed: false });
   }
   return out;
 }
@@ -177,7 +188,7 @@ export function compareCooldowns(me: Sample, ref: Sample, cds: Map<number, Coold
       mine,
       ref: refT,
       gapMs,
-      core: info.usage >= CORE_COOLDOWN_USAGE,
+      core: info.listed || info.usage >= CORE_COOLDOWN_USAGE,
       firstDelta: mine.length && refT.length ? mine[0] - refT[0] : null,
       possible: gapMs ? Math.floor(windowMs / gapMs) + 1 : null,
     };
@@ -482,8 +493,11 @@ export function perfInsights(me: Sample, ref: Sample, cds: Map<number, CooldownI
   }
   for (const r of compareCooldowns(me, ref, cds).rows) {
     if (!r.core) continue; // utilidade de ocasião (Heroic Leap, Time Warp): sem alerta
-    if (r.ref.length > r.mine.length)
+    // recarga curta (20-30s): um uso de diferença e o 1º uso fora de hora são ruído
+    const short = r.gapMs != null && r.gapMs < COOLDOWN_MIN_GAP_MS;
+    if (r.ref.length - r.mine.length >= (short ? 2 : 1))
       out.push({ tone: 'bad', spellId: r.spellId, text: `${r.name}: ${r.mine.length} uso${r.mine.length === 1 ? '' : 's'} contra ${r.ref.length} da referência no mesmo tempo` });
+    else if (short) continue;
     else if (r.firstDelta != null && r.firstDelta > CD_LATE_MS)
       out.push({ tone: 'warn', spellId: r.spellId, text: `${r.name}: 1º uso ${sec(r.firstDelta)} depois da referência` });
     else if (r.firstDelta != null && r.firstDelta < -CD_LATE_MS)
