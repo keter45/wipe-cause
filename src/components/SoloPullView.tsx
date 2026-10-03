@@ -16,7 +16,9 @@ import { RotationPanel, uniqueSeconds } from './RotationPanel';
 import { WclTopsButton } from './WclTops';
 import { ErrorBoundary } from './ErrorBoundary';
 import { OutputChart } from './SoloCharts';
-import { CooldownCompare } from './CooldownCompare';
+import { CooldownCompare } from './perf/CooldownCompare';
+import { ShareMenu } from './share/ShareMenu';
+import { SoloShareCard } from './share/SoloCard';
 import { inTauri } from '../lib/api';
 import { useSetup } from '../lib/setup';
 
@@ -180,6 +182,10 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
           <span className="muted small">{specLabel(me.player.specId)}</span>
         </span>
         <CharacterPicker pull={me.pull} current={me.player} />
+        <ShareMenu
+          card={(detail) => <SoloShareCard me={me} ref_={ref} refLabel={refLabel} cds={cds} detail={detail} />}
+          name={`${shortName(me.player.name)} - ${me.pull.encounterName} ${me.pull.difficultyName} - pull ${me.pull.pullNumber}`}
+        />
       </div>
 
       <div className="death-stats perf-stats">

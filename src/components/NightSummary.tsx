@@ -9,8 +9,9 @@ import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
-import { ShareMenu } from './ShareMenu';
-import { BossShareCard, NightShareCard } from './ShareCards';
+import { ShareMenu } from './share/ShareMenu';
+import { BossShareCard } from './share/BossCard';
+import { NightShareCard } from './share/NightCard';
 import { withErrorBoundary } from './ErrorBoundary';
 import { bossPayload } from '../lib/discord';
 
@@ -56,7 +57,7 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
           <span className="muted small">
             {bosses.length} boss{bosses.length > 1 ? 'es' : ''} · {s.pulls.length} pulls · {s.kills} kill{s.kills === 1 ? '' : 's'}
           </span>
-          <ShareMenu card={() => <NightShareCard pulls={allPulls} />} name={`Resumo da noite - ${clock(s.pulls[0])}`} />
+          <ShareMenu card={(detail) => <NightShareCard pulls={allPulls} detail={detail} />} name={`Resumo da noite - ${clock(s.pulls[0])}`} />
         </span>
       </header>
 
@@ -139,7 +140,7 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
           <BossName encounterId={pulls[0]?.encounterId} name={title} size={26} />
         </h2>
         <span className="head-actions">
-          <ShareMenu discord={() => bossPayload(title, s)} card={() => <BossShareCard title={title} pulls={pulls} />} name={`Resumo - ${title}`} />
+          <ShareMenu discord={() => bossPayload(title, s)} card={(detail) => <BossShareCard title={title} pulls={pulls} detail={detail} />} name={`Resumo - ${title}`} />
         </span>
       </header>
 

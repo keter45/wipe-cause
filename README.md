@@ -56,7 +56,7 @@ Fechar a janela deixa o app na bandeja (perto do relógio), com o ao vivo rodand
 
 O aviso do pull tem um campo para anotar o motivo do wipe na hora, do jeito que a raid percebeu (ele não some enquanto você escreve). A anotação fica salva no PC, aparece no topo do pull (onde dá para editar depois), marca o pull na lista, vai no cartão de compartilhar e entra no contexto do "Perguntar à IA".
 
-Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar* (imagem ou mensagem).
+Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar* (imagem ou mensagem). O botão **Discord** no topo pausa e religa o envio automático sem mexer nas opções (o *Compartilhar* continua funcionando).
 
 Para testar sem estar em raid: `node scripts/simulate-live.mjs <log antigo> <pasta Logs>` escreve alguns pulls de um log real, aos poucos, num `WoWCombatLog` novo.
 
@@ -68,7 +68,10 @@ Funciona com qualquer provedor no formato de chat da OpenAI, com presets para op
 
 ## Compartilhar
 
-O pull e o resumo do boss têm **Compartilhar**: gera um cartão com o resumo (resultado, gatilho, o que deu errado, mortes decisivas, notas mais baixas e o mapa da falha) para **copiar como imagem** e colar no Discord/WhatsApp, **salvar como PNG ou HTML** ou **enviar a imagem ao Discord** pelo webhook configurado.
+O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compartilhar**: gera um cartão para **copiar como imagem** e colar no Discord/WhatsApp, **salvar como PNG, HTML ou PDF** ou **enviar a imagem ao Discord** pelo webhook configurado. Cada cartão tem duas versões:
+
+- **Resumo** (padrão, e o que vai sozinho no ao vivo): o principal para uma olhada. No pull, o veredito, os 3 achados principais, as mortes decisivas, quem ficou abaixo de 80 e o mapa da falha com legenda; no boss, o HP de cada pull (número do pull e % em cada barra), as maiores causas, quem ficou abaixo de 80 e os destaques; no solo, os seus números contra a referência e os 3 erros que mais custaram.
+- **Completo**: tudo aberto, mais largo. Cada morte em ordem, as mecânicas com quem errou, os interrupts que passaram e a tabela dos jogadores (pull); o pull a pull e o placar (boss e noite); os trechos em que a referência abriu vantagem, os cooldowns e o dano tomado a mais (solo); rotação, poções e setup (desempenho).
 
 ## Nota por player
 

@@ -11,7 +11,9 @@ import { lowestBossHp } from './verdict';
 import { PlayerClassesContext, playerClasses } from './players';
 import { cardPng, fileSlug, sendPngToDiscord } from './share';
 import { pct } from './format';
-import { BossShareCard, NightShareCard, PullShareCard } from '../components/ShareCards';
+import { BossShareCard } from '../components/share/BossCard';
+import { NightShareCard } from '../components/share/NightCard';
+import { PullShareCard } from '../components/share/PullCard';
 
 /** Sem pull novo por isso, a raid acabou: vai o resumo da noite. */
 const NIGHT_IDLE_MS = 30 * 60_000;

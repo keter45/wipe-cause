@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { mmss } from '../lib/format';
-import { CD_LATE_MS, COOLDOWN_MIN_GAP_MS, compareCooldowns, type CooldownInfo, type CooldownRow, type Sample } from '../lib/performance';
-import { SpellName } from './SpellIcon';
+import { mmss } from '../../lib/format';
+import { CD_LATE_MS, COOLDOWN_MIN_GAP_MS, compareCooldowns, type CooldownInfo, type CooldownRow, type Sample } from '../../lib/performance';
+import { SpellName } from '../SpellIcon';
 
 export const signedSec = (ms: number) => {
   const s = Math.round(Math.abs(ms) / 1000);
@@ -12,7 +12,8 @@ export const signedSec = (ms: number) => {
 /**
  * Cooldowns dos dois lado a lado, no tempo em que ambos estavam vivos: os da lista da classe
  * (inclusive os menores) e os de uso frequente; os de ocasião ficam atrás de um botão.
- * `expanded`: tudo aberto e sem botões (cartão para exportar).
+ * `expanded`: tudo aberto e sem botões (cartão completo); `coreOnly`: só os principais e sem
+ * botões (cartão resumo).
  */
 export function CooldownCompare({
   me,
@@ -20,21 +21,24 @@ export function CooldownCompare({
   cds,
   refName = 'referência',
   expanded = false,
+  coreOnly = false,
 }: {
   me: Sample;
   ref_: Sample;
   cds: Map<number, CooldownInfo>;
   refName?: string;
   expanded?: boolean;
+  coreOnly?: boolean;
 }) {
   const { windowMs, rows: all } = compareCooldowns(me, ref_, cds);
   // usado só fora do tempo em que os dois estavam vivos: nada a comparar
   const rows = all.filter((r) => r.mine.length + r.ref.length > 0);
   const [open, setShowAll] = useState(false);
-  const showAll = open || expanded;
+  const showAll = (open || expanded) && !coreOnly;
   if (rows.length === 0) return null;
   const core = rows.filter((r) => r.core);
   const shown = showAll || core.length === 0 ? rows : core;
+  const toggle = !expanded && !coreOnly && core.length > 0 && core.length < rows.length;
   return (
     <section className="perf-section">
       <h4>
@@ -49,7 +53,7 @@ export function CooldownCompare({
           <CooldownLine key={r.spellId} r={r} windowMs={windowMs} refName={refName} />
         ))}
       </div>
-      {!expanded && core.length > 0 && core.length < rows.length && (
+      {toggle && (
         <button className="link small more-toggle" onClick={() => setShowAll(!showAll)} aria-expanded={showAll}>
           <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${showAll ? 'open' : ''}`} aria-hidden />
           {showAll ? 'Só os principais' : `Mostrar ${rows.length - core.length} de uso ocasional`}

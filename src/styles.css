@@ -4901,3 +4901,126 @@ svg.wcl-mark {
 .discord-auto.on svg {
   color: var(--accent);
 }
+
+/* ---------------------------------------------------------------- cartões: resumo e completo */
+.share-detail {
+  margin: 8px 0 2px;
+}
+.share-card.wide {
+  width: 920px;
+}
+.share-card.perf-card.perf-card-summary {
+  width: 760px;
+}
+.share-section h4 .share-aside {
+  margin-left: 6px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.share-card li.share-more {
+  list-style: none;
+  margin-left: -16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.share-bad {
+  color: var(--wipe);
+}
+.share-figure {
+  margin: 12px 0 0;
+}
+.share-figure figcaption {
+  margin-top: 2px;
+}
+/* legenda do mapa de posições (as formas repetem as do mapa) */
+.share-legend {
+  margin: 6px 0 0;
+  max-width: 230px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.share-legend span {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 3px;
+  vertical-align: -1px;
+}
+.share-legend .lg-boss {
+  width: 8px;
+  height: 8px;
+  background: var(--wipe);
+  transform: rotate(45deg);
+}
+.share-legend .lg-player {
+  border-radius: 50%;
+  background: var(--muted);
+}
+.share-legend .lg-culprit {
+  border-radius: 50%;
+  border: 2px solid var(--major);
+}
+.share-card ol.share-deaths {
+  margin: 0;
+  padding-left: 20px;
+  columns: 2;
+  column-gap: 24px;
+}
+.share-card ol.share-deaths li {
+  break-inside: avoid;
+  margin-bottom: 2px;
+}
+.share-card ol.share-losses {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.share-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.share-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.share-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+.share-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.share-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+.share-stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.share-stats strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+/* complemento do título da seção (ex.: "de 0:00 a 1:21") fica em caixa normal */
+.share-card h4 .muted,
+.share-card h4 .small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}

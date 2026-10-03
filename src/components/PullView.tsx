@@ -17,11 +17,11 @@ import { openExternal, type WcrVideo } from '../lib/api';
 import { SeekContext } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
-import { ShareMenu } from './ShareMenu';
-import { PullShareCard } from './ShareCards';
+import { ShareMenu } from './share/ShareMenu';
+import { PullShareCard } from './share/PullCard';
 import { AskView } from './AskView';
 import { ErrorBoundary } from './ErrorBoundary';
-import { PerformanceView } from './PerformanceView';
+import { PerformanceView } from './perf/PerformanceView';
 import { SpellIcon } from './SpellIcon';
 import { mechanicSpellId, mechanicSpellMap } from '../lib/spells';
 import { pullPayload } from '../lib/discord';
@@ -200,7 +200,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
             </button>
           )}
           {(video || wclCode) && <span className="toolbar-divider" aria-hidden />}
-          <ShareMenu discord={() => pullPayload(pull, wclCode)} card={() => <PullShareCard pull={pull} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
+          <ShareMenu discord={() => pullPayload(pull, wclCode)} card={(detail) => <PullShareCard pull={pull} detail={detail} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
         </span>
       </div>
 
