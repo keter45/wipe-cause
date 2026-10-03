@@ -4389,3 +4389,148 @@ svg.wcl-mark {
 .share-wipe {
   color: var(--text);
 }
+
+/* Desempenho → rotação (base escrita por spec) */
+.rotation {
+  margin: 12px 0 20px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.rotation-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rotation-head h3 {
+  margin: 0;
+}
+.rotation-head p {
+  margin: 2px 0 0;
+}
+.score-pill.big {
+  min-width: 52px;
+  padding: 4px 10px;
+  font-size: 22px;
+}
+.rotation-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 22px;
+}
+.rotation h4 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+}
+.rotation-findings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rot-finding {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+}
+.rot-finding p {
+  margin: 4px 0 0;
+}
+.rot-finding-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rot-kind {
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.rot-kind.imp-high {
+  background: color-mix(in srgb, var(--wipe) 22%, transparent);
+  color: var(--wipe);
+}
+.rot-kind.imp-medium,
+.rot-kind.imp-low {
+  background: color-mix(in srgb, var(--minor) 22%, transparent);
+  color: var(--minor);
+}
+.rot-rate {
+  height: 5px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wipe) 35%, transparent);
+  overflow: hidden;
+}
+.rot-rate > span {
+  display: block;
+  height: 100%;
+  background: var(--kill);
+  transform-origin: left;
+}
+.rot-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.rot-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.rot-fine {
+  margin: 8px 0 0;
+}
+.rot-seq {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.rot-seq > span:first-child {
+  width: 64px;
+}
+.rot-cds {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rot-cds td {
+  padding: 3px 4px;
+}
+.rot-cd-bar {
+  width: 40%;
+}
+.rot-cd-bar .rot-rate {
+  margin-top: 0;
+}
+.rot-points,
+.rot-prio {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rot-prio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.segmented.sm button {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+.rot-sources {
+  margin-top: 12px;
+}
+@media (max-width: 900px) {
+  .rotation-cols {
+    grid-template-columns: 1fr;
+  }
+}

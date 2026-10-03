@@ -234,6 +234,9 @@ pub struct PlayerStats {
     pub alive_ms: i64,
     /// Talentos, itens e status (COMBATANT_INFO do início do pull)
     pub setup: Option<Setup>,
+    /// rotação da spec (se ela tiver rotação base escrita): achados e aproveitamento
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rotation: Option<crate::rotation::RotationResult>,
 }
 
 #[derive(Debug, Clone, Serialize)]

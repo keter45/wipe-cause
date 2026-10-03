@@ -36,6 +36,7 @@ import { useTalentTree, type TalentTree } from '../lib/talents';
 import { useTooltip } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PerfLinks, WclTopsButton, perfLinks, useOwnFight, type PerfLink } from './WclTops';
+import { RotationPanel } from './RotationPanel';
 import { loadTop, type TopRanking, type TopSample } from '../lib/wclApi';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
@@ -103,6 +104,13 @@ export function PerformanceView({ pull, nightPulls, wclCode }: { pull: Pull; nig
           ))}
         </select>
       </label>
+      {player.rotation ? (
+        <ErrorBoundary label={`na rotação de ${shortName(player.name)}`} resetKey={player.guid}>
+          <RotationPanel rotation={player.rotation} />
+        </ErrorBoundary>
+      ) : (
+        <p className="muted small">A rotação base de {specLabel(player.specId)} ainda não foi escrita: por enquanto, só a comparação abaixo.</p>
+      )}
       {/* erro na comparação de um jogador não some com o seletor: dá para escolher outro */}
       <ErrorBoundary label={`na comparação de ${shortName(player.name)}`} resetKey={player.guid}>
         <Comparison key={player.guid} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />

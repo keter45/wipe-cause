@@ -4,6 +4,7 @@ pub mod analysis;
 pub mod data;
 pub mod peek;
 pub mod report;
+pub mod rotation;
 pub mod rules;
 pub mod setup;
 pub mod timestamp;

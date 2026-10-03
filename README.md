@@ -86,6 +86,14 @@ A aba **Desempenho** de cada pull compara um player com os **top players da mesm
 
 Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) e cole o client ID e o secret na aba (ficam no Gerenciador de Credenciais do Windows). As consultas enviam só boss, spec e códigos de report; as respostas ficam em cache. A comparação com a própria raid (outro da mesma spec, ou você mesmo em outra tentativa) fica na aba **Na própria raid**. Se o link do report da noite estiver cadastrado, o pull também ganha links para o seu fight no Warcraft Logs e no WoWAnalyzer.
 
+## Rotação
+
+Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.yaml` (pontos principais, prioridade por árvore de herói em alvo único e AoE, abertura e checagens), feita a partir do guia de rotação do Wowhead e da APL do SimulationCraft do patch. Na aba **Desempenho**, o log do player é lido contra ela: aproveitamento (0–100), os erros claros e os ajustes, com o momento de cada um (▶ no vídeo), a abertura e o uso dos cooldowns.
+
+Tipos de checagem: `proc` (buff que precisa ser gasto, ex.: Precise Shots), `requires_buff` (casts que em AoE pedem um buff, ex.: Trick Shots — só para quem tem o talento), `downtime` (tempo sem castar, só quando a raid estava batendo: intermissões não contam) e `cooldown` (usos vs. possíveis no tempo vivo).
+
+Primeira spec: **Marksmanship Hunter** (Sentinel e Dark Ranger).
+
 ## Escala de interrupts e dispels
 
 Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem.

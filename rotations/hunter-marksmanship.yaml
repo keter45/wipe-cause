@@ -1,0 +1,154 @@
+# Marksmanship Hunter — rotação base (Midnight Season 2, patch 12.1).
+# Escrita a partir do guia de rotação do Wowhead (TheAzortharion, 2026-08-24) e da APL do
+# SimulationCraft (branch midnight). Os textos são nossos; os números (cooldowns, cargas) vêm
+# dos tooltips do Wowhead. Validada no log de 29/09 (Kuraa, Antithesis, Bettaozor — Sentinel).
+spec: 254
+name: Marksmanship Hunter
+patch: "12.1"
+sources:
+  - title: Wowhead — Marksmanship Hunter Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/hunter/marksmanship/rotation-cooldowns-pve-dps
+  - title: SimulationCraft — APL hunter_marksmanship (midnight)
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/hunter_marksmanship.simc
+
+# O que mais pesa no dano, em ordem (aparece no app como "pontos principais")
+key_points:
+  - "Sempre castando: tempo parado é a maior perda de dano. Steady Shot preenche e dá para castar andando."
+  - "Todo Precise Shots é gasto: depois de cada Aimed Shot vem um spender (Arcane Shot; Multi-Shot com 2+ alvos; Kill Shot no Sentinel, Black Arrow no Dark Ranger). Rapid Fire gasta o próprio (Unload)."
+  - "Aimed Shot, Rapid Fire, Explosive Shot (duas vezes seguidas, Unstable Trigger), Volley e Trueshot no cooldown."
+  - "Em AoE com Trick Shots: nunca Aimed Shot ou Rapid Fire sem o buff Trick Shots (o Multi-Shot coloca)."
+  - "Trueshot: o último da luta espera 30 stacks de Bullseye. Sentinel: Moonlight Chakram com ~5 s de Trueshot restando."
+  - "Mover só fora do cast de Aimed Shot."
+
+# Árvore de herói, reconhecida pelo que o player casta na luta
+hero_trees:
+  - key: sentinel
+    name: Sentinel
+    markers: [1264949] # Moonlight Chakram
+  - key: dark_ranger
+    name: Dark Ranger
+    markers: [466930] # Black Arrow
+
+abilities:
+  aimed_shot: { id: 19434, name: Aimed Shot, cast_ms: 2500, cooldown_ms: 15000, charges: 2 }
+  rapid_fire: { id: 257044, name: Rapid Fire, channel_ms: 2000, cooldown_ms: 16000 }
+  explosive_shot: { id: 212431, name: Explosive Shot, cooldown_ms: 30000, uses_per_cooldown: 2 }
+  volley: { id: 260243, name: Volley, cooldown_ms: 45000 }
+  trueshot: { id: 288613, name: Trueshot, cooldown_ms: 120000 }
+  arcane_shot: { id: 185358, name: Arcane Shot }
+  multishot: { id: 257620, name: Multi-Shot }
+  kill_shot: { id: 53351, name: Kill Shot }
+  black_arrow: { id: 466930, name: Black Arrow }
+  wailing_arrow: { id: 392060, name: Wailing Arrow }
+  moonlight_chakram: { id: 1264949, name: Moonlight Chakram }
+  steady_shot: { id: 56641, name: Steady Shot, cast_ms: 1800 }
+
+buffs:
+  precise_shots: { id: 260242, name: Precise Shots }
+  trick_shots: { id: 257622, name: Trick Shots }
+  unstable_trigger: { id: 1301778, name: Unstable Trigger }
+  lock_and_load: { id: 194594, name: Lock and Load }
+  trueshot: { id: 288613, name: Trueshot }
+  bullseye: { id: 204090, name: Bullseye }
+
+# Prioridade (do mais para o menos importante), por árvore. Mostrada no app com os ícones.
+priority:
+  sentinel:
+    st:
+      - { spell: explosive_shot, note: "no cooldown; duas vezes seguidas (Unstable Trigger)" }
+      - { spell: volley, note: "no cooldown" }
+      - { spell: trueshot, note: "no cooldown; o último da luta com 30 stacks de Bullseye" }
+      - { spell: moonlight_chakram, note: "com ~5 s de Trueshot restando" }
+      - { spell: rapid_fire, note: "no cooldown" }
+      - { spell: kill_shot, note: "para gastar Precise Shots" }
+      - { spell: arcane_shot, note: "para gastar Precise Shots" }
+      - { spell: aimed_shot, note: "no cooldown" }
+      - { spell: moonlight_chakram, note: "quando nada acima estiver pronto" }
+      - { spell: steady_shot, note: "preenche; nunca ficar parado" }
+    aoe:
+      - { spell: explosive_shot, note: "no cooldown, os dois em alvos diferentes" }
+      - { spell: volley, note: "no cooldown" }
+      - { spell: trueshot, note: "no cooldown" }
+      - { spell: moonlight_chakram, note: "se o Trueshot estiver acabando" }
+      - { spell: multishot, note: "gasta Precise Shots e recoloca Trick Shots" }
+      - { spell: rapid_fire, note: "com Trick Shots; cortar o último tick com Multi-Shot" }
+      - { spell: aimed_shot, note: "no cooldown, com Trick Shots" }
+      - { spell: moonlight_chakram }
+      - { spell: steady_shot }
+  dark_ranger:
+    st:
+      - { spell: black_arrow, note: "com Precise Shots" }
+      - { spell: explosive_shot, note: "no cooldown; duas vezes seguidas (Unstable Trigger)" }
+      - { spell: volley, note: "no cooldown" }
+      - { spell: aimed_shot, note: "no Trueshot sem Precise Shots se Black Arrow estiver pronto, ou para não estourar as 2 cargas" }
+      - { spell: trueshot, note: "no cooldown; o último da luta com 30 stacks de Bullseye" }
+      - { spell: rapid_fire, note: "no cooldown" }
+      - { spell: wailing_arrow, note: "no cooldown" }
+      - { spell: arcane_shot, note: "para gastar Precise Shots" }
+      - { spell: aimed_shot, note: "no cooldown" }
+      - { spell: black_arrow }
+      - { spell: steady_shot, note: "preenche; nunca ficar parado" }
+    aoe:
+      - { spell: explosive_shot, note: "no cooldown, os dois em alvos diferentes" }
+      - { spell: volley, note: "no cooldown" }
+      - { spell: aimed_shot, note: "com Trick Shots, se for chegar a 2 cargas" }
+      - { spell: black_arrow, note: "com Precise Shots" }
+      - { spell: multishot, note: "para ativar Trick Shots se estiver sem" }
+      - { spell: trueshot, note: "no cooldown" }
+      - { spell: rapid_fire, note: "com Trick Shots" }
+      - { spell: wailing_arrow, note: "se Black Arrow não estiver pronto" }
+      - { spell: multishot, note: "para gastar Precise Shots" }
+      - { spell: aimed_shot, note: "no cooldown, com Trick Shots" }
+      - { spell: black_arrow }
+      - { spell: steady_shot }
+
+# Abertura: os cooldowns que devem sair primeiro, nesta ordem (o Aimed Shot é pré-cast, ~2,5 s antes do pull)
+opener:
+  window_ms: 15000
+  sentinel: [explosive_shot, explosive_shot, volley, trueshot, rapid_fire]
+  dark_ranger: [black_arrow, explosive_shot, explosive_shot, volley, trueshot]
+
+checks:
+  - kind: proc
+    id: precise_shots
+    buff: precise_shots
+    spenders: [arcane_shot, multishot, kill_shot, black_arrow]
+    # com Unload, o Rapid Fire gasta o próprio Precise Shots durante o canal
+    channel: { spell: rapid_fire, ms: 3500 }
+    importance: high
+    title: Precise Shots desperdiçado
+    tip: "Depois de cada Aimed Shot, gaste o Precise Shots (Arcane Shot, ou Multi-Shot com 2+ alvos) antes do próximo Aimed Shot."
+  - kind: proc
+    id: unstable_trigger
+    buff: unstable_trigger
+    spenders: [explosive_shot]
+    importance: medium
+    title: Segundo Explosive Shot perdido
+    tip: "Com Unstable Trigger, o Explosive Shot sai duas vezes seguidas: use o segundo logo em seguida."
+  - kind: requires_buff
+    id: trick_shots
+    casts: [aimed_shot, rapid_fire]
+    buff: trick_shots
+    min_targets: 3
+    # só quem joga o talento Trick Shots (o Multi-Shot coloca o buff); sem ele (Aspect of the Hydra),
+    # o Trick Shots que aparece vem do Volley e não é exigido
+    applied_by: [multishot]
+    importance: high
+    title: Aimed Shot / Rapid Fire sem Trick Shots em AoE
+    tip: "Com 3+ alvos, Multi-Shot antes para colocar Trick Shots: sem ele, o tiro acerta só um."
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: Tempo sem castar
+    tip: "Sempre castando: se nada estiver pronto, Steady Shot (dá para castar andando)."
+  - kind: cooldown
+    id: cooldowns
+    # Aimed Shot e Rapid Fire ficam de fora: haste, Trueshot e Lock and Load mudam o cooldown deles
+    # (o "no cooldown" deles aparece no tempo parado e nos procs)
+    spells: [trueshot, volley, explosive_shot]
+    min_usage: 0.8
+    importance: medium
+    title: Cooldown parado
+    tip: "Use no cooldown: cada uso a menos é dano que não volta."
