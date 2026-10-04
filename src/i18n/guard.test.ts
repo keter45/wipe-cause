@@ -70,6 +70,7 @@ function textOf(line: string): string {
   const lone = /^\s*[^<>{}=;()[\]]*[A-Za-zÀ-ú][^<>{}=;()[\]]*$/.test(line) && !/^\s*(import|export|const|let|return|if|else|case|type|interface|function)\b/.test(line) ? [line] : [];
   return [...strings, ...jsx, ...lone]
     .join(' ')
+    .replace(/\b[A-Za-z_]\w*(\.\w+)+/g, ' ') // acesso a propriedade (e.nativeEvent.offsetX) é código
     .replace(/\$\{[^}]*\}/g, ' ') // interpolações de template são código
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/\b[a-z]+[A-Z]\w*\b/g, ' '); // camelCase: identificador, não texto
@@ -89,7 +90,6 @@ export function portugueseLines(file: string): { line: number; text: string }[] 
 
 /** Arquivos ainda não migrados para os dicionários (a lista só pode diminuir). */
 export const PENDING = new Set<string>([
-  'components/NightSummary.tsx',
   'components/SoloPullView.tsx',
   'components/DeathList.tsx',
   'components/RuleTuning.tsx',
@@ -98,9 +98,7 @@ export const PENDING = new Set<string>([
   'components/perf/sections.tsx',
   'components/PullView.tsx',
   'components/Header.tsx',
-  'components/SoloNight.tsx',
   'components/LogBrowser.tsx',
-  'components/TrendsView.tsx',
   'components/settings/FirstSteps.tsx',
   'components/perf/PerformanceView.tsx',
   'components/share/ShareMenu.tsx',
@@ -132,11 +130,9 @@ export const PENDING = new Set<string>([
   'components/InterruptsView.tsx',
   'components/PositionMap.tsx',
   'components/LiveToast.tsx',
-  'components/ErrorBoundary.tsx',
   'components/settings/StartupForm.tsx',
   'components/SoloCharts.tsx',
   'components/UpdateBanner.tsx',
-  'main.tsx',
 ]);
 
 describe('internacionalização', () => {

@@ -1,6 +1,8 @@
 import { Component, useEffect, useState, type ComponentType, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, ClipboardCopy, RotateCcw, X } from 'lucide-react';
 import { dismissError, errorMessage, onErrors, type AppError } from '../lib/errors';
+import { messagesOf, useMessages } from '../i18n';
+import { errorMsg } from './ErrorBoundary.i18n';
 
 interface Props {
   children: ReactNode;
@@ -40,20 +42,21 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error == null) return this.props.children;
     const retry = () => this.setState({ error: null, stack: '' });
+    const t = messagesOf(errorMsg);
     return (
       <div className={`error-box ${this.props.full ? 'full' : ''}`} role="alert">
         <h3>
-          <AlertTriangle size={16} strokeWidth={1.75} aria-hidden /> Algo deu errado {this.props.label}
+          <AlertTriangle size={16} strokeWidth={1.75} aria-hidden /> {t.title(this.props.label)}
         </h3>
         <p className="small">{errorMessage(this.state.error)}</p>
-        <p className="muted small">O resto do app continua funcionando. Se repetir, copie os detalhes e mande para quem mantém o app.</p>
+        <p className="muted small">{t.rest}</p>
         <div className="error-actions">
           <button className="btn sm" onClick={retry}>
-            <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> Tentar de novo
+            <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> {t.retry}
           </button>
           {this.props.full && (
             <button className="btn sm" onClick={() => window.location.reload()}>
-              Recarregar o app
+              {t.reload}
             </button>
           )}
           <CopyDetails text={this.state.stack || errorMessage(this.state.error)} />
@@ -63,10 +66,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-/** Componente com a própria proteção: um erro dentro dele não derruba a tela em volta. */
-export function withErrorBoundary<P extends object>(Inner: ComponentType<P>, label: string) {
+/**
+ * Componente com a própria proteção: um erro dentro dele não derruba a tela em volta. `label`:
+ * onde quebrou, no idioma atual ("no resumo da noite").
+ */
+export function withErrorBoundary<P extends object>(Inner: ComponentType<P>, label: () => string) {
   const Wrapped = (props: P) => (
-    <ErrorBoundary label={label}>
+    <ErrorBoundary label={label()}>
       <Inner {...props} />
     </ErrorBoundary>
   );
@@ -75,6 +81,7 @@ export function withErrorBoundary<P extends object>(Inner: ComponentType<P>, lab
 }
 
 function CopyDetails({ text }: { text: string }) {
+  const t = useMessages(errorMsg);
   const [done, setDone] = useState(false);
   return (
     <button
@@ -86,13 +93,14 @@ function CopyDetails({ text }: { text: string }) {
           .catch(() => {})
       }
     >
-      <ClipboardCopy size={14} strokeWidth={1.5} aria-hidden /> {done ? 'Copiado' : 'Copiar detalhes'}
+      <ClipboardCopy size={14} strokeWidth={1.5} aria-hidden /> {done ? t.copied : t.copy}
     </button>
   );
 }
 
 /** Erros fora da tela (promessas sem tratamento, chamadas ao backend) como aviso no canto. */
 export function ErrorToasts() {
+  const t = useMessages(errorMsg);
   const [errors, setErrors] = useState<AppError[]>([]);
   useEffect(() => onErrors(setErrors), []);
   if (errors.length === 0) return null;
@@ -106,7 +114,7 @@ export function ErrorToasts() {
             <span className="small">{e.message}</span>
           </div>
           <CopyDetails text={e.detail} />
-          <button className="icon-btn sm" onClick={() => dismissError(e.id)} aria-label="Fechar">
+          <button className="icon-btn sm" onClick={() => dismissError(e.id)} aria-label={t.close}>
             <X size={14} strokeWidth={1.5} aria-hidden />
           </button>
         </div>
