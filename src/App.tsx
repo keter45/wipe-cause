@@ -40,6 +40,7 @@ import { matchVideos } from './lib/wcr';
 import { raidOnly } from './lib/content';
 import { PlayerClassesContext, playerClasses } from './lib/players';
 import { SettingsView } from './components/settings/SettingsView';
+import { useLocale } from './i18n';
 import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
 
 /** O que ocupa a área principal: a análise aberta, a lista de logs, a evolução ou as configurações. */
@@ -76,6 +77,8 @@ function markOnboarded() {
 }
 
 export default function App() {
+  // trocar o idioma remonta as telas (textos montados em memória saem de novo), sem perder o log aberto
+  const locale = useLocale();
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   // NIGHT = visão geral; chave de boss = resumo do boss; null = pull selecionado
@@ -328,7 +331,7 @@ export default function App() {
   return (
     <SetupContext.Provider value={{ status: setup.status, reload: setup.reload, openSettings }}>
     <PlayerClassesContext.Provider value={classes}>
-    <div className="app">
+    <div className="app" key={locale}>
       <Header
         report={report}
         busy={status.kind === 'loading'}
