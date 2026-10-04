@@ -9,7 +9,8 @@ import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
 import { PositionMap, dist, mainEnemy } from './PositionMap';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from '../lib/massDeaths';
-import { tr } from '../i18n';
+import { messagesOf, tr, useMessages } from '../i18n';
+import { deathMsg } from './DeathList.i18n';
 
 interface Props {
   deaths: Death[];
@@ -25,18 +26,15 @@ interface Props {
   onMark?: (d: Death) => void;
 }
 
-export const DEATH_KIND: Record<Death['deathKind'], { label: string; title: string }> = {
-  spike: { label: 'Spike', title: 'Saiu de 60%+ de HP para 0 em até 3s: dano grande de uma vez' },
-  slow: { label: 'Morte lenta', title: 'Ficou 6s+ abaixo de 50% antes de morrer' },
-  normal: { label: 'Normal', title: 'Nem spike, nem morte lenta' },
-  unknown: { label: '?', title: 'Sem dados de HP (Advanced Combat Logging desligado?)' },
-};
+/** Tipo da morte (rótulo e explicação) no idioma atual. */
+export const deathKind = (k: Death['deathKind']) => messagesOf(deathMsg).kind[k];
 
 export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, onMark }: Props) {
+  const t = useMessages(deathMsg);
   const [open, setOpen] = useState<string | null>(null);
   const seek = useSeek();
   const mass = massDeathKeys(deaths);
-  if (deaths.length === 0) return <p className="muted pad">Ninguém morreu neste pull.</p>;
+  if (deaths.length === 0) return <p className="muted pad">{t.nobodyDied}</p>;
 
   return (
     <div className="deaths">
@@ -54,10 +52,10 @@ export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, 
                     {shortName(d.name)}
                   </span>
                   {d.role === 'tank' && <span className="role-tag">tank</span>}
-                  {d.ignored && <span className="role-tag">ignorada</span>}
+                  {d.ignored && <span className="role-tag">{t.ignored}</span>}
                   {mass.has(deathKey(d)) && (
-                    <span className="role-tag mass" title={`${MASS_DEATH_MIN} ou mais mortes ao mesmo tempo: consequência do wipe, não conta na nota do player`}>
-                      wipe geral
+                    <span className="role-tag mass" title={t.massTitle(MASS_DEATH_MIN)}>
+                      {t.mass}
                     </span>
                   )}
                 </span>
@@ -73,36 +71,36 @@ export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, 
                       <span className="kb-sub">
                         {d.killingBlow.source}
                         {d.causedBy && (
-                          <span className="chip mech with-icon" title={`${Math.round(d.causedBy.pct)}% do dano recebido nos últimos 15s`}>
-                            causa: <SpellName spellId={mechanicSpells.get(d.causedBy.key)} name={d.causedBy.name} size={14} />
+                          <span className="chip mech with-icon" title={t.causeTitle(Math.round(d.causedBy.pct))}>
+                            {t.cause} <SpellName spellId={mechanicSpells.get(d.causedBy.key)} name={d.causedBy.name} size={14} />
                           </span>
                         )}
                       </span>
                     </>
                   ) : (
-                    <span className="muted">golpe final desconhecido</span>
+                    <span className="muted">{t.unknownKillingBlow}</span>
                   )}
                 </span>
                 <span className="death-flags">
                   {(d.deathKind === 'spike' || d.deathKind === 'slow') && (
-                    <span className={`flag kind-${d.deathKind}`} title={DEATH_KIND[d.deathKind].title}>
-                      {DEATH_KIND[d.deathKind].label}
+                    <span className={`flag kind-${d.deathKind}`} title={t.kind[d.deathKind].title}>
+                      {t.kind[d.deathKind].label}
                     </span>
                   )}
                   {d.stats.underhealed && (
-                    <span className="flag bad" title="Cura recebida nos últimos 10s abaixo de 25% do HP máximo">
-                      pouca cura
+                    <span className="flag bad" title={t.lowHealTitle}>
+                      {t.lowHeal}
                     </span>
                   )}
                 </span>
-                <span className="death-res" aria-label="Recursos usados antes de morrer">
+                <span className="death-res" aria-label={t.resourcesAria}>
                   <Res state={d.defensivesRecent.length ? 'ok' : d.defensivesAvailable.length ? 'bad' : 'na'} label={defTitle(d)} icon={Shield} />
                   <Res
                     state={d.usedHealthstone ? 'ok' : d.healthstoneKnown ? 'bad' : 'na'}
-                    label={d.usedHealthstone ? 'Usou healthstone' : d.healthstoneKnown ? 'Tinha healthstone e não usou' : 'Sem healthstone no log'}
+                    label={d.usedHealthstone ? t.usedHealthstone : d.healthstoneKnown ? t.unusedHealthstone : t.noHealthstone}
                     icon={Gem}
                   />
-                  <Res state={d.usedHealthPotion ? 'ok' : 'bad'} label={d.usedHealthPotion ? 'Usou poção de vida' : 'Não usou poção de vida'} icon={FlaskConical} />
+                  <Res state={d.usedHealthPotion ? 'ok' : 'bad'} label={d.usedHealthPotion ? t.usedPotion : t.noPotion} icon={FlaskConical} />
                 </span>
                 <ChevronRight size={16} strokeWidth={1.5} className="chev" aria-hidden />
               </button>
@@ -113,19 +111,17 @@ export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, 
         );
       })}
       <p className="muted small">
-        {cutoffT != null
-          ? `Mortes marcadas "ignorada" vieram depois do corte (${mmss(cutoffT)}): nada depois dele conta (dano, cura, erros, falhas).`
-          : 'Mortes esmaecidas aconteceram depois das primeiras (efeito cascata).'}
-        {' '}Ícones: defensivo · healthstone · poção (verde = usou, vermelho = tinha e não usou).
+        {cutoffT != null ? t.cutoffNote(mmss(cutoffT)) : t.cascadeNote} {t.iconsNote}
       </p>
     </div>
   );
 }
 
 function defTitle(d: Death): string {
-  if (d.defensivesRecent.length) return `Defensivo: usou ${d.defensivesRecent.map((x) => x.name).join(', ')}`;
-  if (d.defensivesAvailable.length) return `Defensivo: não usou (tinha ${d.defensivesAvailable.map((x) => x.name).join(', ')})`;
-  return 'Defensivo: nenhum nos últimos 10s';
+  const t = messagesOf(deathMsg);
+  if (d.defensivesRecent.length) return t.defUsed(d.defensivesRecent.map((x) => x.name).join(', '));
+  if (d.defensivesAvailable.length) return t.defUnused(d.defensivesAvailable.map((x) => x.name).join(', '));
+  return t.defNone;
 }
 
 /** Recurso usado/não usado antes da morte: ícone + cor + rótulo acessível (nunca só cor). */
@@ -138,12 +134,7 @@ function Res({ state, label, icon: Icon }: { state: 'ok' | 'bad' | 'na'; label: 
 }
 
 type RecapFilter = 'all' | 'damage' | 'heal' | 'aura';
-const FILTERS: { key: RecapFilter; label: string }[] = [
-  { key: 'all', label: 'Tudo' },
-  { key: 'damage', label: 'Dano' },
-  { key: 'heal', label: 'Cura' },
-  { key: 'aura', label: 'Defensivos e debuffs' },
-];
+const FILTERS: RecapFilter[] = ['all', 'damage', 'heal', 'aura'];
 
 function DeathDetail({
   death,
@@ -156,6 +147,7 @@ function DeathDetail({
   mechanicSpells: Map<string, number>;
   onMark?: (d: Death) => void;
 }) {
+  const t = useMessages(deathMsg);
   const [marked, setMarked] = useState(false);
   const s = death.stats;
   const [filter, setFilter] = useState<RecapFilter>('all');
@@ -176,20 +168,20 @@ function DeathDetail({
               onMark(death);
               setMarked(true);
             }}
-            title="Para quando o erro não aparece nas regras: entra no veredito e na nota"
+            title={t.markTitle}
           >
-            {marked ? 'Marcado como erro' : 'Essa morte foi erro do player: marcar'}
+            {marked ? t.marked : t.mark}
           </button>
         </p>
       )}
       <div className="death-stats">
-        <Stat label="Tipo" value={DEATH_KIND[death.deathKind].label} title={DEATH_KIND[death.deathKind].title} />
-        <Stat label="Abaixo de 50%" value={s.belowHalfMs != null ? `${(s.belowHalfMs / 1000).toFixed(1)}s` : '—'} />
-        <Stat label="Maior HP nos 3s finais" value={s.maxHpPctLast3s != null ? `${Math.round(s.maxHpPctLast3s)}%` : '—'} />
-        <Stat label="Dano recebido (10s)" value={num(s.damageTaken10s)} />
+        <Stat label={t.type} value={t.kind[death.deathKind].label} title={t.kind[death.deathKind].title} />
+        <Stat label={t.belowHalf} value={s.belowHalfMs != null ? `${(s.belowHalfMs / 1000).toFixed(1)}s` : '—'} />
+        <Stat label={t.maxHp} value={s.maxHpPctLast3s != null ? `${Math.round(s.maxHpPctLast3s)}%` : '—'} />
+        <Stat label={t.damage10} value={num(s.damageTaken10s)} />
         <Stat
-          label="Cura recebida (10s)"
-          value={`${num(s.healingReceived10s)}${s.healingPctOfMax10s != null ? ` · ${Math.round(s.healingPctOfMax10s)}% do HP` : ''}`}
+          label={t.heal10}
+          value={`${num(s.healingReceived10s)}${s.healingPctOfMax10s != null ? t.ofHp(Math.round(s.healingPctOfMax10s)) : ''}`}
           bad={s.underhealed}
         />
       </div>
@@ -198,17 +190,17 @@ function DeathDetail({
         <div className="recap-notes">
           {death.mechanicDamage.length > 0 && (
             <p className="recap-note">
-              <span className="muted">Dano de mecânicas com falha</span>
+              <span className="muted">{t.mechDamage}</span>
               {death.mechanicDamage.map((m) => (
                 <span key={m.key} className="chip mech with-icon">
-                  <SpellName spellId={mechanicSpells.get(m.key)} name={m.name} size={14} /> {Math.round(m.pct)}%{m.failT != null ? ` · falhou aos ${mmss(m.failT)}` : ''}
+                  <SpellName spellId={mechanicSpells.get(m.key)} name={m.name} size={14} /> {Math.round(m.pct)}%{m.failT != null ? t.failedAt(mmss(m.failT)) : ''}
                 </span>
               ))}
             </p>
           )}
           {death.defensivesAvailable.length > 0 && death.defensivesRecent.length === 0 && (
             <p className="recap-note">
-              <span className="muted">Defensivos disponíveis e não usados</span>
+              <span className="muted">{t.unusedDefensives}</span>
               {death.defensivesAvailable.map((a) => (
                 <span key={a.spellId} className="chip with-icon">
                   <SpellIcon spellId={a.spellId} size={14} />
@@ -222,7 +214,7 @@ function DeathDetail({
 
       {death.debuffs.length > 0 && (
         <>
-          <h4 className="recap-title">Debuffs na hora da morte</h4>
+          <h4 className="recap-title">{t.debuffs}</h4>
           <ul className="debuffs">
             {death.debuffs.map((a) => (
               <DebuffRow key={a.spellId} a={a} deathT={death.t} />
@@ -235,12 +227,12 @@ function DeathDetail({
 
       <div className="recap-toolbar">
         <h4 className="recap-title">
-          Últimos 15s <span className="muted small">· mais recente primeiro</span>
+          {t.last15} <span className="muted small">{t.newestFirst}</span>
         </h4>
-        <div className="segmented" role="tablist" aria-label="Filtrar eventos">
+        <div className="segmented" role="tablist" aria-label={t.filterAria}>
           {FILTERS.map((f) => (
-            <button key={f.key} role="tab" aria-selected={filter === f.key} className={filter === f.key ? 'active' : ''} onClick={() => setFilter(f.key)}>
-              {f.label}
+            <button key={f} role="tab" aria-selected={filter === f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>
+              {t.filters[f]}
             </button>
           ))}
         </div>
@@ -249,10 +241,10 @@ function DeathDetail({
       <table className="recap-table">
         <thead>
           <tr>
-            <th>Tempo</th>
-            <th>Evento</th>
-            <th>Origem</th>
-            <th className="num">Valor</th>
+            <th>{t.time}</th>
+            <th>{t.event}</th>
+            <th>{t.source}</th>
+            <th className="num">{t.value}</th>
             <th>HP</th>
           </tr>
         </thead>
@@ -263,7 +255,7 @@ function DeathDetail({
           {recap.length === 0 && (
             <tr>
               <td colSpan={5} className="muted">
-                Nenhum evento deste tipo.
+                {t.noEvents}
               </td>
             </tr>
           )}
@@ -279,6 +271,7 @@ const NEAR_YD = 8;
 
 /** Mini mapa da hora da morte + distâncias (boss, quem estava perto). */
 function DeathPosition({ death, classes }: { death: Death; classes: Map<string, string | null> }) {
+  const t = useMessages(deathMsg);
   const snap = death.positions!;
   const me = snap.units.find((u) => u.guid === death.guid);
   const boss = mainEnemy(snap);
@@ -293,22 +286,20 @@ function DeathPosition({ death, classes }: { death: Death; classes: Map<string, 
     <div className="death-pos">
       <PositionMap snap={snap} classes={classes} marks={new Map([[death.guid, 'dead']])} size={220} />
       <div className="death-pos-facts">
-        <h4 className="recap-title">Onde estava</h4>
+        <h4 className="recap-title">{t.where}</h4>
         {!me ? (
-          <p className="muted small">Posição de quem morreu não apareceu no log nos últimos segundos.</p>
+          <p className="muted small">{t.noPosition}</p>
         ) : (
           <>
             {boss && (
-              <p>
-                A <strong>{dist(me, boss).toFixed(0)} jardas</strong> do {boss.name}
-              </p>
+              <p>{t.yardsFrom(dist(me, boss).toFixed(0), boss.name)}</p>
             )}
             <p>
               {near.length === 0 ? (
-                <>Ninguém a menos de {NEAR_YD} jardas</>
+                <>{t.nobodyNear(NEAR_YD)}</>
               ) : (
                 <>
-                  {near.length} player{near.length > 1 ? 's' : ''} a menos de {NEAR_YD} jd:{' '}
+                  {t.near(near.length, NEAR_YD)}
                   {near.slice(0, 6).map((x, i) => (
                     <span key={x.u.guid}>
                       {i > 0 && ', '}
@@ -320,7 +311,7 @@ function DeathPosition({ death, classes }: { death: Death; classes: Map<string, 
             </p>
           </>
         )}
-        <p className="muted small">Anéis a cada 10 jardas do boss. Pontos apagados: posição vista há mais de 2s. A orientação pode não bater com a do jogo; as distâncias batem.</p>
+        <p className="muted small">{t.mapHint}</p>
       </div>
     </div>
   );
@@ -336,6 +327,7 @@ function Stat({ label, value, title, bad }: { label: string; value: string; titl
 }
 
 function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
+  const t = useMessages(deathMsg);
   const [show, setShow] = useState(false);
   const tip = useTooltip(a.spellId, show);
   return (
@@ -346,15 +338,15 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
         {a.stacks > 1 && <span className="stacks">×{a.stacks}</span>}
         {a.mechanic && <span className="chip mech">{a.mechanic}</span>}
         <span className="muted small">
-          {a.source} · há {relSeconds(deathT - a.appliedT)}
+          {a.source} · {t.ago(relSeconds(deathT - a.appliedT))}
         </span>
         <ChevronRight size={14} strokeWidth={1.5} className="chev" aria-hidden />
       </button>
       {show && (
         <div className="debuff-desc small">
-          {a.tip && <p>Como evitar: {tr(a.tip)}</p>}
-          {tip === undefined && <p className="muted">Buscando descrição…</p>}
-          {tip === null && <p className="muted">Sem descrição disponível.</p>}
+          {a.tip && <p>{t.howToAvoid(tr(a.tip))}</p>}
+          {tip === undefined && <p className="muted">{t.fetching}</p>}
+          {tip === null && <p className="muted">{t.noDesc}</p>}
           {tip && <p className="tooltip-text">{tip.text}</p>}
           <button className="link" onClick={() => openExternal(wowheadUrl(a.spellId))}>
             Wowhead #{a.spellId} <ExternalLink size={12} strokeWidth={1.5} className="inline-icon" aria-hidden />
@@ -368,7 +360,7 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
 function RecapRow({ e, deathT, killingBlow }: { e: RecapEntry; deathT: number; killingBlow: boolean }) {
   const sign = e.kind === 'damage' ? '−' : e.kind === 'heal' ? '+' : '';
   return (
-    <tr className={`recap-${e.kind} ${killingBlow ? 'kb-row' : ''}`} title={killingBlow ? 'Golpe final' : undefined}>
+    <tr className={`recap-${e.kind} ${killingBlow ? 'kb-row' : ''}`} title={killingBlow ? messagesOf(deathMsg).killingBlow : undefined}>
       <td className="muted num-cell">{relSeconds(e.t - deathT)}</td>
       <td>
         <SpellName spellId={e.spellId} name={e.spellName} size={16} />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SlidersHorizontal, Star } from 'lucide-react';
-import { RuleTuning, KIND_LABEL } from './RuleTuning';
+import { RuleTuning, kindLabel } from './RuleTuning';
 import { Colored, PlayerName } from './Names';
 import type { MechanicResult, Pull } from '../types';
 import { mmss, num } from '../lib/format';
@@ -9,26 +9,23 @@ import { PlayAt } from './VideoPanel';
 import { SpellName } from './SpellIcon';
 import { PositionMap, type Mark } from './PositionMap';
 import { PullPhaseTimes } from './PhaseTimes';
-import { tr } from '../i18n';
-
-const SEVERITY_LABEL: Record<string, string> = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', none: 'Info' };
+import { tr, useMessages } from '../i18n';
+import { mechMsg } from './MechanicsView.i18n';
 
 /** `onRulesChanged`: os ajustes foram salvos; reanalisar o log aberto. */
 export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesChanged?: () => void }) {
+  const t = useMessages(mechMsg);
   const [tuning, setTuning] = useState(false);
   if (tuning) return <RuleTuning pull={pull} onSaved={() => onRulesChanged?.()} onClose={() => setTuning(false)} />;
   const tuneButton = (
     <button className="btn sm" onClick={() => setTuning(true)}>
-      <SlidersHorizontal size={14} strokeWidth={1.5} aria-hidden /> Ajustar regras deste boss
+      <SlidersHorizontal size={14} strokeWidth={1.5} aria-hidden /> {t.tune}
     </button>
   );
   if (!pull.rulesFile) {
     return (
       <div className="pad">
-        <p className="muted">
-          Ainda não há regras para <strong>{pull.encounterName}</strong>. Gere com a skill <code>boss-rules</code> a partir de um guia e dos
-          spell IDs da aba “Habilidades do boss”.
-        </p>
+        <p className="muted">{t.noRules(pull.encounterName)}</p>
         {tuneButton}
       </div>
     );
@@ -43,34 +40,31 @@ export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesCha
   return (
     <div className="mechanics">
       <div className="mechanics-bar">
-        {pull.mechanics.some((m) => m.tuned?.length || m.focus || m.custom) && <span className="muted small">Regras com ajustes seus.</span>}
+        {pull.mechanics.some((m) => m.tuned?.length || m.focus || m.custom) && <span className="muted small">{t.yourAdjustments}</span>}
         <span className="topbar-spacer" />
         {tuneButton}
       </div>
       {pull.cutoffT != null && (
-        <p className="muted small">Contando só até a morte que fechou o corte ({mmss(pull.cutoffT)}); o que veio depois é ignorado.</p>
+        <p className="muted small">{t.cutoff(mmss(pull.cutoffT))}</p>
       )}
       <PullPhaseTimes pull={pull} />
-      {failed.length === 0 && <p className="muted pad">Nenhuma falha de mecânica detectada neste pull.</p>}
+      {failed.length === 0 && <p className="muted pad">{t.noFailures}</p>}
       {failed.map((m) => (
         <MechanicCard key={m.key} m={m} classes={classes} />
       ))}
       {clean.length > 0 && (
-        <p className="muted small">
-          Sem falhas: {clean.map((m) => m.name).join(', ')}
-        </p>
+        <p className="muted small">{t.clean(clean.map((m) => m.name).join(', '))}</p>
       )}
       {notEvaluated.length > 0 && (
-        <p className="muted small">
-          Ainda não avaliadas automaticamente: {notEvaluated.map((m) => m.name).join(', ')}
-        </p>
+        <p className="muted small">{t.notEvaluated(notEvaluated.map((m) => m.name).join(', '))}</p>
       )}
-      <p className="muted small">Regras: {pull.rulesFile}</p>
+      <p className="muted small">{t.rulesFile(pull.rulesFile)}</p>
     </div>
   );
 }
 
 function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, string | null> }) {
+  const t = useMessages(mechMsg);
   const [showEvents, setShowEvents] = useState(false);
   const [snapIdx, setSnapIdx] = useState<number | null>(null);
   const snaps = m.snapshots ?? [];
@@ -81,17 +75,23 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
   return (
     <section className={`mechanic finding ${m.severity === 'none' ? 'info' : m.severity}`}>
       <header className="mechanic-head">
-        <span className="badge">{SEVERITY_LABEL[m.severity] ?? m.severity}</span>
+        <span className="badge">{t.severity[m.severity] ?? m.severity}</span>
         {m.focus && (
-          <span className="focus-mark" title="Foco da progressão">
-            <Star size={14} strokeWidth={1.75} fill="currentColor" aria-label="Foco" />
+          <span className="focus-mark" title={t.focus}>
+            <Star size={14} strokeWidth={1.75} fill="currentColor" aria-label={t.focusMark} />
           </span>
         )}
         <strong>
           <SpellName spellId={m.spellId} name={m.name} size={20} />
         </strong>
-        <span className="muted small">{KIND_LABEL[m.kind] ?? m.kind}</span>
-        {m.custom ? <span className="chip mech">sua regra</span> : m.tuned?.length ? <span className="chip mech" title={`Ajustado: ${m.tuned.join(', ')}`}>ajustada</span> : null}
+        <span className="muted small">{kindLabel(m.kind)}</span>
+        {m.custom ? (
+          <span className="chip mech">{t.yourRule}</span>
+        ) : m.tuned?.length ? (
+          <span className="chip mech" title={t.adjustedTitle(m.tuned.join(', '))}>
+            {t.adjusted}
+          </span>
+        ) : null}
         <span className="mechanic-count">{m.failures}×</span>
       </header>
       {tr(m.summary) && (
@@ -99,7 +99,7 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           <Colored text={tr(m.summary)} />
         </p>
       )}
-      {tr(m.tip) && <p className="muted small">Como evitar: {tr(m.tip)}</p>}
+      {tr(m.tip) && <p className="muted small">{t.howToAvoid(tr(m.tip))}</p>}
 
       {blamed.length > 0 && (
         <table className="mechanic-players">
@@ -109,12 +109,12 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
                 <td>
                   <PlayerName name={p.name} guid={p.guid} />
                 </td>
-                <td className="num">{m.kind === 'stack_limit' ? `${p.count} stacks` : `${p.count}×`}</td>
+                <td className="num">{m.kind === 'stack_limit' ? t.stacks(p.count) : `${p.count}×`}</td>
                 <td className="num muted">{p.amount ? num(p.amount) : ''}</td>
                 <td className="muted">
                   {p.firstT != null && (
                     <>
-                      1ª vez {mmss(p.firstT)} <PlayAt t={p.firstT} seek={seek} />
+                      {t.firstTime(mmss(p.firstT))} <PlayAt t={p.firstT} seek={seek} />
                     </>
                   )}
                 </td>
@@ -125,11 +125,11 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
       )}
       {m.dispels && m.dispels.length > 0 && (
         <p className="small dispel-line">
-          <span className="muted">Dispels: </span>
+          <span className="muted">{t.dispels}</span>
           {m.dispels.map((d, i) => (
             <span key={i} className={d.delayMs == null ? 'bad' : ''}>
               {i > 0 && ' · '}
-              <PlayerName name={d.target} /> {d.delayMs == null ? 'sem dispel' : `${(d.delayMs / 1000).toFixed(1).replace('.', ',')}s`}
+              <PlayerName name={d.target} /> {d.delayMs == null ? t.noDispel : `${(d.delayMs / 1000).toFixed(1)}s`}
               {d.dispelledBy && (
                 <span className="muted">
                   {' '}
@@ -142,7 +142,7 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
       )}
       {credits.length > 0 && (
         <p className="small">
-          <span className="muted">{m.kind === 'interrupt' ? 'Cortaram: ' : m.kind === 'dispel' ? 'Dispelaram: ' : 'Ajudaram: '}</span>
+          <span className="muted">{m.kind === 'interrupt' ? t.interrupted : m.kind === 'dispel' ? t.dispelled : t.helped}</span>
           {credits.map((p, i) => (
             <span key={p.guid}>
               {i > 0 && ', '}
@@ -153,7 +153,7 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
       )}
       {snaps.length > 0 && (
         <div className="mechanic-snaps">
-          <span className="muted small">Posições na falha:</span>
+          <span className="muted small">{t.positionsAt}</span>
           {snaps.map((sn, i) => (
             <button key={sn.t} className={`link small ${snapIdx === i ? 'active' : ''}`} onClick={() => setSnapIdx(snapIdx === i ? null : i)} aria-expanded={snapIdx === i}>
               {mmss(sn.t)}
@@ -166,19 +166,16 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           <PositionMap snap={snaps[snapIdx]} classes={classes} marks={culpritMarks(m)} size={240} />
           <div className="death-pos-facts">
             <p className="small">
-              {m.kind === 'failure_event' && blamed.length > 0
-                ? 'Anel laranja: quem carregava o que explodiu.'
-                : 'Onde cada um estava no instante da falha.'}{' '}
-              <PlayAt t={snaps[snapIdx].t} seek={seek} label="ver no vídeo" />
+              {m.kind === 'failure_event' && blamed.length > 0 ? t.culpritRing : t.whereAtFailure} <PlayAt t={snaps[snapIdx].t} seek={seek} label={t.watchVideo} />
             </p>
-            <p className="muted small">Anéis a cada 10 jardas do boss. A orientação pode não bater com a do jogo; as distâncias batem.</p>
+            <p className="muted small">{t.mapHint}</p>
           </div>
         </div>
       )}
       {m.events.length > 0 && (
         <>
           <button className="link small" onClick={() => setShowEvents(!showEvents)}>
-            {showEvents ? 'Esconder' : 'Ver'} linha do tempo ({m.events.length})
+            {t.timeline(showEvents, m.events.length)}
           </button>
           {showEvents && (
             <ul className="plain small timeline">

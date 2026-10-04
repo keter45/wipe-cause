@@ -64,7 +64,8 @@ function stripComments(src: string): string {
 
 /** Trechos que parecem texto: strings, templates e texto de JSX (o resto é código). */
 function textOf(line: string): string {
-  const strings = [...line.matchAll(/'([^'\\]|\\.)*'|"([^"\\]|\\.)*"|`[^`]*`/g)].map((m) => m[0]);
+  // string de uma palavra só sem acento ('na', 'ok', 'e') é chave de código, não frase
+  const strings = [...line.matchAll(/'([^'\\]|\\.)*'|"([^"\\]|\\.)*"|`[^`]*`/g)].map((m) => m[0]).filter((s) => /\s/.test(s.trim().slice(1, -1)) || ACCENT.test(s));
   // `=>` e `->` não abrem texto de JSX (arrow function, tipo genérico)
   const jsx = [...line.matchAll(/(?<![=-])>([^<>{}]*)</g)].map((m) => m[1]);
   const lone = /^\s*[^<>{}=;()[\]]*[A-Za-zÀ-ú][^<>{}=;()[\]]*$/.test(line) && !/^\s*(import|export|const|let|return|if|else|case|type|interface|function)\b/.test(line) ? [line] : [];
@@ -90,9 +91,6 @@ export function portugueseLines(file: string): { line: number; text: string }[] 
 
 /** Arquivos ainda não migrados para os dicionários (a lista só pode diminuir). */
 export const PENDING = new Set<string>([
-  'components/SoloPullView.tsx',
-  'components/DeathList.tsx',
-  'components/RuleTuning.tsx',
   'components/Sidebar.tsx',
   'components/CreateRule.tsx',
   'components/perf/sections.tsx',
@@ -104,7 +102,6 @@ export const PENDING = new Set<string>([
   'components/share/ShareMenu.tsx',
   'components/share/BossCard.tsx',
   'components/share/SoloCard.tsx',
-  'components/MechanicsView.tsx',
   'App.tsx',
   'components/RotationPanel.tsx',
   'components/WclTops.tsx',

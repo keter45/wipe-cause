@@ -4,9 +4,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { inTauri } from './api';
 import type { MechanicSeverity, Pull } from '../types';
-import { tr } from '../i18n';
+import { messagesOf, tr, type Loc } from '../i18n';
 import { wclMsg } from './wcl.i18n';
-import { messagesOf } from '../i18n';
 
 /** Mecânica como está no YAML (o padrão). */
 export interface RuleMechanic {
@@ -22,8 +21,9 @@ export interface RuleMechanic {
   max_s?: number;
   roles?: string[];
   difficulty?: string[];
-  tip?: string;
-  message?: string;
+  /** nas regras do app: { pt, en }; nas do usuário: o texto que ele escreveu */
+  tip?: Loc;
+  message?: Loc;
   detect?: Record<string, unknown>;
   overrides?: Record<string, Record<string, unknown>>;
   notes?: string;
@@ -114,6 +114,8 @@ export function cleanTuning(t: Tuning, base: RuleMechanic[]): Tuning {
       if (k === 'enabled' && v === true) continue;
       if (k === 'focus' && v === false) continue;
       if (b && k !== 'enabled' && k !== 'focus' && JSON.stringify(b[k]) === JSON.stringify(v)) continue;
+      // texto igual ao da regra no idioma atual não é ajuste
+      if (b && (k === 'tip' || k === 'message') && v === tr(b[k] as Loc | undefined)) continue;
       (out as Record<string, unknown>)[k] = v;
     }
     if (Object.keys(out).length) mechanics[key] = out;
@@ -143,7 +145,10 @@ export function parseTuningFile(text: string, encounterId: number): Tuning {
 
 /** Valor efetivo de um campo: o ajuste, senão o padrão. */
 export function effective<K extends keyof MechanicTuning>(base: RuleMechanic, ov: MechanicTuning | undefined, k: K): MechanicTuning[K] | undefined {
-  return (ov?.[k] ?? (base as MechanicTuning)[k]) as MechanicTuning[K] | undefined;
+  const v = ov?.[k] ?? (base as Record<string, unknown>)[k];
+  // textos da regra do app vêm nas duas línguas: o campo mostra o do idioma atual
+  if (k === 'tip' || k === 'message') return (v == null ? undefined : tr(v as Loc)) as MechanicTuning[K] | undefined;
+  return v as MechanicTuning[K] | undefined;
 }
 
 /** Tipos em que cada hit é erro de quem tomou (a tolerância faz sentido). */
