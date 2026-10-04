@@ -5,6 +5,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { inTauri } from './api';
 import type { MechanicSeverity, Pull } from '../types';
 import { tr } from '../i18n';
+import { wclMsg } from './wcl.i18n';
+import { messagesOf } from '../i18n';
 
 /** Mecânica como está no YAML (o padrão). */
 export interface RuleMechanic {
@@ -130,12 +132,12 @@ export function parseTuningFile(text: string, encounterId: number): Tuning {
   try {
     raw = JSON.parse(text);
   } catch {
-    throw new Error('O arquivo não é um JSON válido.');
+    throw new Error(messagesOf(wclMsg).tuningNotJson);
   }
   const o = raw as Partial<Tuning> & { boss?: string };
   if (!o || typeof o !== 'object' || typeof o.encounter_id !== 'number' || typeof o.mechanics !== 'object')
-    throw new Error('O arquivo não é de ajustes de regras do Wipe Cause.');
-  if (o.encounter_id !== encounterId) throw new Error(`Esses ajustes são de outro boss${o.boss ? ` (${o.boss})` : ''}.`);
+    throw new Error(messagesOf(wclMsg).tuningNotOurs);
+  if (o.encounter_id !== encounterId) throw new Error(messagesOf(wclMsg).tuningOtherBoss(o.boss ?? null));
   return { encounter_id: o.encounter_id, name: o.name ?? null, mechanics: o.mechanics ?? {}, custom: Array.isArray(o.custom) ? o.custom : [] };
 }
 

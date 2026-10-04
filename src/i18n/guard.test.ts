@@ -65,10 +65,12 @@ function stripComments(src: string): string {
 /** Trechos que parecem texto: strings, templates e texto de JSX (o resto é código). */
 function textOf(line: string): string {
   const strings = [...line.matchAll(/'([^'\\]|\\.)*'|"([^"\\]|\\.)*"|`[^`]*`/g)].map((m) => m[0]);
-  const jsx = [...line.matchAll(/>([^<>{}]*)</g)].map((m) => m[1]);
+  // `=>` e `->` não abrem texto de JSX (arrow function, tipo genérico)
+  const jsx = [...line.matchAll(/(?<![=-])>([^<>{}]*)</g)].map((m) => m[1]);
   const lone = /^\s*[^<>{}=;()[\]]*[A-Za-zÀ-ú][^<>{}=;()[\]]*$/.test(line) && !/^\s*(import|export|const|let|return|if|else|case|type|interface|function)\b/.test(line) ? [line] : [];
   return [...strings, ...jsx, ...lone]
     .join(' ')
+    .replace(/\$\{[^}]*\}/g, ' ') // interpolações de template são código
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/\b[a-z]+[A-Z]\w*\b/g, ' '); // camelCase: identificador, não texto
 }
@@ -88,7 +90,6 @@ export function portugueseLines(file: string): { line: number; text: string }[] 
 /** Arquivos ainda não migrados para os dicionários (a lista só pode diminuir). */
 export const PENDING = new Set<string>([
   'components/NightSummary.tsx',
-  'lib/aiContext.ts',
   'components/SoloPullView.tsx',
   'components/DeathList.tsx',
   'components/RuleTuning.tsx',
@@ -98,7 +99,6 @@ export const PENDING = new Set<string>([
   'components/PullView.tsx',
   'components/Header.tsx',
   'components/SoloNight.tsx',
-  'lib/verdict.ts',
   'components/LogBrowser.tsx',
   'components/TrendsView.tsx',
   'components/settings/FirstSteps.tsx',
@@ -107,12 +107,9 @@ export const PENDING = new Set<string>([
   'components/share/BossCard.tsx',
   'components/share/SoloCard.tsx',
   'components/MechanicsView.tsx',
-  'lib/discord.ts',
-  'lib/performance.ts',
   'App.tsx',
   'components/RotationPanel.tsx',
   'components/WclTops.tsx',
-  'components/AskView.tsx',
   'components/settings/AiForm.tsx',
   'components/settings/WclApiForm.tsx',
   'components/share/PullCard.tsx',
@@ -122,36 +119,23 @@ export const PENDING = new Set<string>([
   'components/PullList.tsx',
   'components/PhaseTimes.tsx',
   'components/settings/DiscordForm.tsx',
-  'lib/ai.ts',
   'components/LiveControls.tsx',
   'components/settings/WcrCloudForm.tsx',
   'components/VideoPanel.tsx',
-  'lib/solo.ts',
-  'lib/trends.ts',
   'components/CutoffStepper.tsx',
   'components/EnemySpellsTable.tsx',
   'components/PullMarks.tsx',
   'components/share/NightCard.tsx',
   'components/share/PerfCard.tsx',
   'components/WclOpen.tsx',
-  'lib/score.ts',
   'components/settings/FolderForm.tsx',
-  'lib/live.ts',
   'components/InterruptsView.tsx',
   'components/PositionMap.tsx',
-  'lib/rules.ts',
-  'lib/useWclParses.ts',
-  'lib/wclApi.ts',
   'components/LiveToast.tsx',
-  'lib/discordLive.tsx',
   'components/ErrorBoundary.tsx',
   'components/settings/StartupForm.tsx',
   'components/SoloCharts.tsx',
   'components/UpdateBanner.tsx',
-  'lib/api.ts',
-  'lib/setup.ts',
-  'lib/talents.ts',
-  'lib/wclParses.ts',
   'main.tsx',
 ]);
 

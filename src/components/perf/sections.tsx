@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { GearItem, PlayerStats } from '../../types';
 import { mmss, num } from '../../lib/format';
-import { SECONDARY, SLOT_NAMES, BURST_LEAD_MS, BURST_WINDOW_MS, burstCandidates, burstWindows, combatPotions, compareItems, compareRotation, detectCooldowns, isHealer, statSplit, talentDiff, type BurstSide, type BurstWindow, type Sample } from '../../lib/performance';
+import { SECONDARY, slotName, statLabel, BURST_LEAD_MS, BURST_WINDOW_MS, burstCandidates, burstWindows, combatPotions, compareItems, compareRotation, detectCooldowns, isHealer, statSplit, talentDiff, type BurstSide, type BurstWindow, type Sample } from '../../lib/performance';
 import { specLabel } from '../../lib/specs';
 import { useTalentTree, type TalentTree } from '../../lib/talents';
 import { useTooltip } from '../../lib/wowhead';
@@ -280,7 +280,7 @@ export function SetupView({ me, ref_ }: { me: PlayerStats; ref_: PlayerStats }) 
                 const d = mSplit[s.key] - rSplit[s.key];
                 return (
                   <tr key={s.key}>
-                    <td>{s.label}</td>
+                    <td>{statLabel(s.key)}</td>
                     <td className={`num ${Math.abs(d) >= 8 ? 'warn' : ''}`}>
                       {mSplit[s.key].toFixed(0)}% <span className="muted small">({num(ms.stats[s.key])})</span>
                     </td>
@@ -336,7 +336,7 @@ export function SetupView({ me, ref_ }: { me: PlayerStats; ref_: PlayerStats }) 
           <tbody>
             {items.map((r) => (
               <tr key={r.slot} className={r.mine?.itemId !== r.ref?.itemId ? 'diff' : ''}>
-                <td className="muted small">{SLOT_NAMES[r.slot]}</td>
+                <td className="muted small">{slotName(r.slot)}</td>
                 <td>
                   <ItemCell item={r.mine} missingEnchant={r.missingEnchant} missingGems={r.missingGems} />
                 </td>

@@ -10,6 +10,8 @@ import { PERSONAL_BLAME } from './blame';
 import { analyzePull } from './verdict';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
 import { getMarks } from './marks';
+import { messagesOf } from '../i18n';
+import { scoreMsg } from './score.i18n';
 
 /** Desconto por erro, pela gravidade da regra. */
 const PENALTY: Record<string, number> = { wipe: 25, major: 12, minor: 4, none: 0 };
@@ -28,6 +30,7 @@ export interface PlayerScore {
 }
 
 export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p)): Map<string, PlayerScore> {
+  const t = messagesOf(scoreMsg);
   const out = new Map<string, PlayerScore>();
   const verdict = analyzePull(p, assignments);
   const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
@@ -59,7 +62,7 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
     if (!groups?.length) continue;
     for (const k of checkAssignments(m, groups).kickers) {
       const guid = byName.get(k.name);
-      if (guid && k.missed) add(guid, k.missed * MISSED_KICK, `${m.name} passou na vez (${k.missed}×)`);
+      if (guid && k.missed) add(guid, k.missed * MISSED_KICK, t.missedTurn(m.name, k.missed));
     }
   }
 
@@ -69,13 +72,13 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
   for (const d of p.deaths) {
     if (d.ignored) continue;
     if (mass.has(deathKey(d))) {
-      massNote.set(d.guid, `morreu no wipe geral aos ${mmss(d.t)} (${MASS_DEATH_MIN}+ mortes juntas: não conta)`);
+      massNote.set(d.guid, t.massDeath(mmss(d.t), MASS_DEATH_MIN));
       continue;
     }
     if (!firstDeath.has(d.guid)) firstDeath.set(d.guid, d.t);
     if (!decisive.has(`${d.guid}:${d.t}`)) continue;
-    add(d.guid, DECISIVE_DEATH, `morte decisiva aos ${mmss(d.t)}`);
-    if (d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0) add(d.guid, DEATH_WITH_DEFENSIVE, 'morreu com defensivo sobrando');
+    add(d.guid, DECISIVE_DEATH, t.decisiveDeath(mmss(d.t)));
+    if (d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0) add(d.guid, DEATH_WITH_DEFENSIVE, t.withDefensive);
   }
 
   const span = Math.max(1, p.analyzedMs ?? p.durationMs);
@@ -85,7 +88,7 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
     const alive = died != null ? Math.min(1, died / span) : 1;
     const factor = 0.5 + 0.5 * alive;
     const parts = [...(pen?.parts ?? [])];
-    if (died != null) parts.push(`vivo ${Math.round(alive * 100)}% do pull (×${factor.toFixed(2).replace('.', ',')})`);
+    if (died != null) parts.push(t.alive(Math.round(alive * 100), factor));
     const note = massNote.get(x.guid);
     if (note && died == null) parts.push(note);
     const score = Math.round(Math.max(0, 100 - (pen?.total ?? 0)) * factor);

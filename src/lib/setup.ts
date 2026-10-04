@@ -31,7 +31,7 @@ const DEMO: SetupStatus = {
   wcrDir: null,
   discord: { webhook: null, onWipe: true, onKill: true },
   // ?demoAiSetup=1 mostra a aba da IA sem provedor
-  ai: typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('demoAiSetup') ? null : { provider: 'demo', baseUrl: '', model: 'demonstração', hasKey: true },
+  ai: typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('demoAiSetup') ? null : { provider: 'demo', baseUrl: '', model: 'demo', hasKey: true },
   wcl: { configured: false, clientId: null },
   openWithWow: false,
   wcrCloud: null,

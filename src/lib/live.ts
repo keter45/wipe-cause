@@ -10,6 +10,8 @@ import type { LogReport, Pull } from '../types';
 import { analyzeLog, inTauri, liveStart, liveStatus, liveStop, logsList, onLiveReport, onLiveStatus, type LiveStatus } from './api';
 import { fetchGuildReports, groupNights, uniquePulls, LIVE_MS } from './guildNights';
 import type { WclGuild } from './wclApi';
+import { messagesOf } from '../i18n';
+import { liveMsg } from './live.i18n';
 
 const OFF: LiveStatus = { active: false, state: 'stopped', file: null, encounter: null, analyzed: 0, message: null };
 const WCL_POLL_MS = 60_000;
@@ -62,16 +64,16 @@ export function useLive(onReport: (r: LogReport, newPulls: Pull[]) => void, guil
         const night = groupNights(await fetchGuildReports(g, 1)).find((n) => n.live) ?? null;
         if (!wcl.current) return;
         if (!night) {
-          setStatus((s) => ({ ...s, state: 'watching', file: null, message: `Esperando alguém da ${g.name} ligar o log ao vivo no Warcraft Logs…` }));
+          setStatus((s) => ({ ...s, state: 'watching', file: null, message: messagesOf(liveMsg).waiting(g.name) }));
           return;
         }
         const pulls = uniquePulls(night.reports).length;
         const who = [...new Set(night.reports.map((r) => r.owner).filter(Boolean))].join(', ');
         if (night.path === w.path && pulls === w.pulls) {
-          setStatus((s) => ({ ...s, state: 'watching', file: night.path, message: `Report ao vivo de ${who} no Warcraft Logs` }));
+          setStatus((s) => ({ ...s, state: 'watching', file: night.path, message: messagesOf(liveMsg).liveReport(who) }));
           return;
         }
-        setStatus((s) => ({ ...s, state: 'analyzing', file: night.path, message: `Report ao vivo de ${who} no Warcraft Logs` }));
+        setStatus((s) => ({ ...s, state: 'analyzing', file: night.path, message: messagesOf(liveMsg).liveReport(who) }));
         const r = await analyzeLog(night.path, deathCutoff, () => {});
         if (!wcl.current) return;
         w.path = night.path;
@@ -105,7 +107,7 @@ export function useLive(onReport: (r: LogReport, newPulls: Pull[]) => void, guil
         }
         await liveStop().catch(() => {});
         wcl.current = { timer: 0, path: null, pulls: 0, busy: false };
-        setStatus({ active: true, state: 'watching', file: null, encounter: null, analyzed: 0, message: `Procurando o report ao vivo da ${guild.name}…` });
+        setStatus({ active: true, state: 'watching', file: null, encounter: null, analyzed: 0, message: messagesOf(liveMsg).searching(guild.name) });
         void wclTick(guild, deathCutoff);
         wcl.current.timer = window.setInterval(() => void wclTick(guild, deathCutoff), WCL_POLL_MS);
       } catch (e) {

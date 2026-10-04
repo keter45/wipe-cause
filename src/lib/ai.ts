@@ -3,6 +3,10 @@
 // de partida — "Carregar modelos" busca a lista atual no provedor.
 
 import { invoke } from '@tauri-apps/api/core';
+import { messagesOf } from '../i18n';
+import { aiPresetMsg } from './ai.i18n';
+
+const t = () => messagesOf(aiPresetMsg);
 
 export interface AiPreset {
   id: string;
@@ -21,7 +25,9 @@ export const PRESETS: AiPreset[] = [
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     model: 'gemini-3.8-flash',
     keyUrl: 'https://aistudio.google.com/apikey',
-    note: 'Plano gratuito sem cartão (modelos Flash). No gratuito, o Google pode usar as perguntas para treinar modelos.',
+    get note() {
+      return t().gemini;
+    },
   },
   {
     id: 'groq',
@@ -29,7 +35,9 @@ export const PRESETS: AiPreset[] = [
     baseUrl: 'https://api.groq.com/openai/v1',
     model: 'openai/gpt-oss-120b',
     keyUrl: 'https://console.groq.com/keys',
-    note: 'Plano gratuito sem cartão, respostas muito rápidas. Tem limite de pedidos por minuto.',
+    get note() {
+      return t().groq;
+    },
   },
   {
     id: 'openrouter',
@@ -37,23 +45,33 @@ export const PRESETS: AiPreset[] = [
     baseUrl: 'https://openrouter.ai/api/v1',
     model: '',
     keyUrl: 'https://openrouter.ai/keys',
-    note: 'Vários modelos gratuitos (terminados em ":free"); a lista muda com frequência — use "Carregar modelos".',
+    get note() {
+      return t().openrouter;
+    },
   },
   {
     id: 'ollama',
-    label: 'Ollama (no seu PC)',
+    get label() {
+      return t().ollamaLabel;
+    },
     baseUrl: 'http://localhost:11434/v1',
     model: '',
     keyUrl: null,
-    note: 'Roda no seu computador: grátis, offline e privado. Precisa do Ollama instalado e de um modelo baixado (ex.: ollama pull qwen3).',
+    get note() {
+      return t().ollama;
+    },
   },
   {
     id: 'custom',
-    label: 'Outro (compatível com OpenAI)',
+    get label() {
+      return t().customLabel;
+    },
     baseUrl: '',
     model: '',
     keyUrl: null,
-    note: 'Qualquer serviço com a API de chat da OpenAI (LM Studio, Mistral, OpenAI...).',
+    get note() {
+      return t().custom;
+    },
   },
 ];
 

@@ -6,6 +6,8 @@ import { invoke } from '@tauri-apps/api/core';
 import type { PlayerStats, Pull } from '../types';
 import { ownFight } from './wclApi';
 import { WCL_DIFFICULTY } from './wcl';
+import { messagesOf } from '../i18n';
+import { wclMsg } from './wcl.i18n';
 
 export type ParseMetric = 'dps' | 'hps';
 
@@ -90,7 +92,7 @@ const KILL_QUERY = `query Ranks($code: String!, $fight: Int!) {
 /** Parse de cada player no kill (guid -> parse), cada um no ranking do seu papel. */
 export async function fetchKillParses(code: string, pull: Pull): Promise<Map<string, PlayerParse>> {
   const fight = await ownFight(code, pull);
-  if (!fight) throw new Error('Este kill não foi achado no report do Warcraft Logs.');
+  if (!fight) throw new Error(messagesOf(wclMsg).killMissing);
   const d = await query<any>(KILL_QUERY, { code, fight: fight.fightId }, `ranks-${code}-${fight.fightId}-${today()}`);
   const byMetric = { dps: rankingEntries(d?.reportData?.report?.dps, 'dps'), hps: rankingEntries(d?.reportData?.report?.hps, 'hps') };
   const out = new Map<string, PlayerParse>();

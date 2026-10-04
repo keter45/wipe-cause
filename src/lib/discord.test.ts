@@ -27,7 +27,7 @@ describe('pullPayload', () => {
     const mech = e.fields.find((f) => f.name === 'Erros de mecânica')!;
     expect(mech.value).toBe('**Virulent Mutation (detonação)** — 1 detonação de orb roxo: Rainface');
     expect(e.fields.find((f) => f.name === 'Morreram sem defensivo')!.value).toBe('A');
-    expect(e.footer!.text).toBe('22:48 · 0:36 · 1 mortes');
+    expect(e.footer!.text).toBe('22:48 · 0:36 · 1 morte');
   });
 
   it('respeita o limite de 1024 caracteres por campo', () => {

@@ -6,6 +6,8 @@
 
 import type { GearItem, PlayerStats, Pull, SetupStats, SpellCasts } from '../types';
 import { COMBAT_POTION_NAMES, isMajorCooldown, knowsClass, listedCooldown } from './cooldowns';
+import { messagesOf } from '../i18n';
+import { perfMsg } from './performance.i18n';
 
 export interface Sample {
   pull: Pull;
@@ -82,8 +84,9 @@ export function defaultReference(me: Sample, list: Sample[]): Sample | null {
 
 // ---- consumíveis
 
-const POTION = /potion|poção|pocao|elixir|flask|frasco/i;
-const HEALTH = /health|healing|vida|cura|healthstone|pedra de vida/i;
+// nomes de item no log em inglês ou português (cliente pt-BR)
+const POTION = /potion|poção|pocao|elixir|flask|frasco/i; // i18n-ignore
+const HEALTH = /health|healing|vida|cura|healthstone|pedra de vida/i; // i18n-ignore
 
 export const isCombatPotion = (name: string) => (POTION.test(name) && !HEALTH.test(name)) || COMBAT_POTION_NAMES.includes(name);
 const isHealthConsumable = (name: string) => HEALTH.test(name) && (POTION.test(name) || /healthstone|pedra de vida/i.test(name));
@@ -415,12 +418,10 @@ export const combatPotions = (s: Sample): ConsumableUse[] =>
 
 // ---- setup
 
-export const SECONDARY: { key: keyof SetupStats; label: string }[] = [
-  { key: 'crit', label: 'Crítico' },
-  { key: 'haste', label: 'Aceleração' },
-  { key: 'mastery', label: 'Maestria' },
-  { key: 'versatility', label: 'Versatilidade' },
-];
+export const SECONDARY: { key: keyof SetupStats }[] = [{ key: 'crit' }, { key: 'haste' }, { key: 'mastery' }, { key: 'versatility' }];
+
+/** Nome do status secundário no idioma do app. */
+export const statLabel = (key: string) => messagesOf(perfMsg).stats[key] ?? key;
 
 /** Cada secundário como % da soma dos quatro (a "distribuição de status"). */
 export function statSplit(stats: SetupStats): Record<string, number> {
@@ -428,10 +429,8 @@ export function statSplit(stats: SetupStats): Record<string, number> {
   return Object.fromEntries(SECONDARY.map((s) => [s.key, (stats[s.key] / total) * 100]));
 }
 
-export const SLOT_NAMES = [
-  'Cabeça', 'Pescoço', 'Ombros', 'Camisa', 'Peito', 'Cintura', 'Pernas', 'Pés', 'Pulsos', 'Mãos',
-  'Anel 1', 'Anel 2', 'Berloque 1', 'Berloque 2', 'Costas', 'Arma', 'Mão secundária', 'Tabardo',
-];
+/** Nome do slot de equipamento (0 = cabeça … 17 = tabardo) no idioma do app. */
+export const slotName = (slot: number) => messagesOf(perfMsg).slots[slot] ?? `#${slot}`;
 
 export interface ItemRow {
   slot: number;
@@ -483,37 +482,37 @@ const sec = (ms: number) => `${Math.round(Math.abs(ms) / 1000)}s`;
 
 /** Os pontos que mais importam, na ordem de impacto. */
 export function perfInsights(me: Sample, ref: Sample, cds: Map<number, CooldownInfo>): PerfInsight[] {
+  const t = messagesOf(perfMsg);
   const out: PerfInsight[] = [];
   const [mo, ro] = [outputPerSec(me), outputPerSec(ref)];
-  const what = isHealer(me.player) ? 'Cura' : 'Dano';
   if (ro > 0) {
     const diff = ((mo - ro) / ro) * 100;
     if (Math.abs(diff) >= 3)
-      out.push({ tone: diff < 0 ? (diff < -15 ? 'bad' : 'warn') : 'good', text: `${what} por segundo vivo ${Math.abs(diff).toFixed(0)}% ${diff < 0 ? 'abaixo' : 'acima'} da referência` });
+      out.push({ tone: diff < 0 ? (diff < -15 ? 'bad' : 'warn') : 'good', text: t.outputDiff(isHealer(me.player), Math.round(Math.abs(diff)), diff < 0) });
   }
   for (const r of compareCooldowns(me, ref, cds).rows) {
     if (!r.core) continue; // utilidade de ocasião (Heroic Leap, Time Warp): sem alerta
     // recarga curta (20-30s): um uso de diferença e o 1º uso fora de hora são ruído
     const short = r.gapMs != null && r.gapMs < COOLDOWN_MIN_GAP_MS;
     if (r.ref.length - r.mine.length >= (short ? 2 : 1))
-      out.push({ tone: 'bad', spellId: r.spellId, text: `${r.name}: ${r.mine.length} uso${r.mine.length === 1 ? '' : 's'} contra ${r.ref.length} da referência no mesmo tempo` });
+      out.push({ tone: 'bad', spellId: r.spellId, text: t.fewerUses(r.name, r.mine.length, r.ref.length) });
     else if (short) continue;
     else if (r.firstDelta != null && r.firstDelta > CD_LATE_MS)
-      out.push({ tone: 'warn', spellId: r.spellId, text: `${r.name}: 1º uso ${sec(r.firstDelta)} depois da referência` });
+      out.push({ tone: 'warn', spellId: r.spellId, text: t.firstLate(r.name, sec(r.firstDelta)) });
     else if (r.firstDelta != null && r.firstDelta < -CD_LATE_MS)
-      out.push({ tone: 'warn', spellId: r.spellId, text: `${r.name}: 1º uso ${sec(r.firstDelta)} antes da referência` });
+      out.push({ tone: 'warn', spellId: r.spellId, text: t.firstEarly(r.name, sec(r.firstDelta)) });
   }
   for (const r of compareRotation(me, ref, cds)) {
-    if (r.flag === 'missing') out.push({ tone: 'bad', spellId: r.spellId, text: `${r.name}: não usou (referência: ${r.refCpm.toFixed(1)}/min)` });
-    else if (r.flag === 'low') out.push({ tone: 'warn', spellId: r.spellId, text: `${r.name}: ${r.mineCpm.toFixed(1)}/min contra ${r.refCpm.toFixed(1)}/min` });
+    if (r.flag === 'missing') out.push({ tone: 'bad', spellId: r.spellId, text: t.notUsed(r.name, r.refCpm.toFixed(1)) });
+    else if (r.flag === 'low') out.push({ tone: 'warn', spellId: r.spellId, text: t.lowCpm(r.name, r.mineCpm.toFixed(1), r.refCpm.toFixed(1)) });
   }
-  if (combatPotions(ref).length > 0 && combatPotions(me).length === 0) out.push({ tone: 'warn', text: 'Sem poção de combate (a referência usou)' });
+  if (combatPotions(ref).length > 0 && combatPotions(me).length === 0) out.push({ tone: 'warn', text: t.noCombatPotion });
   const [ms, rs] = [me.player.setup, ref.player.setup];
   if (ms && rs) {
     const enchants = compareItems(ms.items, rs.items).filter((i) => i.missingEnchant);
-    if (enchants.length) out.push({ tone: 'warn', text: `Sem encantamento: ${enchants.map((i) => SLOT_NAMES[i.slot]).join(', ')}` });
-    const t = talentDiff(ms.talents, rs.talents);
-    if (t.onlyRef.length) out.push({ tone: 'warn', text: `${t.onlyRef.length} talento${t.onlyRef.length > 1 ? 's' : ''} diferente${t.onlyRef.length > 1 ? 's' : ''} da referência` });
+    if (enchants.length) out.push({ tone: 'warn', text: t.noEnchant(enchants.map((i) => slotName(i.slot)).join(', ')) });
+    const td = talentDiff(ms.talents, rs.talents);
+    if (td.onlyRef.length) out.push({ tone: 'warn', text: t.talents(td.onlyRef.length) });
   }
   const rank = { bad: 0, warn: 1, good: 2 } as const;
   return out.sort((a, b) => rank[a.tone] - rank[b.tone]);

@@ -2,6 +2,8 @@
 // melhorando (causas de wipe, melhor HP) e o que se repete com cada player.
 
 import type { Pull } from '../types';
+import { messagesOf } from '../i18n';
+import { trendsMsg } from './trends.i18n';
 import { shortName } from './format';
 import { bossKey, summarizeNight, type NightSummary } from './night';
 import { raidOnly } from './content';
@@ -159,6 +161,7 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
 }
 
 function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend[]): string[] {
+  const t = messagesOf(trendsMsg);
   const out: string[] = [];
   if (nights.length < 2) return out;
   const first = nights[0];
@@ -167,10 +170,10 @@ function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend
   // progresso
   const hpOf = (n: TrendNight) => (n.summary.kills ? 0 : n.summary.best?.hp ?? null);
   const kill = nights.find((n) => n.summary.kills > 0);
-  if (kill) out.push(`Kill em ${kill.label}, depois de ${nights.slice(0, nights.indexOf(kill) + 1).reduce((s, n) => s + n.summary.pulls.length, 0)} pulls no total.`);
+  if (kill) out.push(t.killAt(kill.label, nights.slice(0, nights.indexOf(kill) + 1).reduce((s, n) => s + n.summary.pulls.length, 0)));
   else {
     const hps = nights.map(hpOf).filter((x): x is number => x != null);
-    if (hps.length >= 2) out.push(`Melhor pull por noite: ${hps.map((h) => `${h.toFixed(1)}%`).join(' → ')}.`);
+    if (hps.length >= 2) out.push(t.bestPerNight(hps.map((h) => `${h.toFixed(1)}%`).join(' → ')));
   }
 
   // causas que caíram ou subiram entre a primeira e a última noite
@@ -180,7 +183,7 @@ function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend
     const pa = pctOf(a, first.summary.wipes);
     const pb = pctOf(b, last.summary.wipes);
     if (Math.abs(pa - pb) < 15) continue;
-    out.push(`${c.name}: gatilho em ${pa}% dos wipes em ${first.label} → ${pb}% em ${last.label}${pb < pa ? ' (melhorou)' : ' (piorou)'}.`);
+    out.push(t.causeTrend(c.name, pa, first.label, pb, last.label, pb < pa));
   }
 
   // quem mais melhorou / piorou de nota entre a primeira e a última noite em que jogou
@@ -191,9 +194,9 @@ function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend
     })
     .filter((x) => x.n >= 2 && Math.abs(x.b - x.a) >= 10)
     .sort((x, y) => y.b - y.a - (x.b - x.a));
-  if (deltas[0] && deltas[0].b > deltas[0].a) out.push(`${shortName(deltas[0].p.name)} foi quem mais melhorou: nota ${deltas[0].a} → ${deltas[0].b}.`);
+  if (deltas[0] && deltas[0].b > deltas[0].a) out.push(t.improved(shortName(deltas[0].p.name), deltas[0].a, deltas[0].b));
   const worst = deltas[deltas.length - 1];
-  if (worst && worst.b < worst.a) out.push(`${shortName(worst.p.name)} caiu de nota: ${worst.a} → ${worst.b}.`);
+  if (worst && worst.b < worst.a) out.push(t.dropped(shortName(worst.p.name), worst.a, worst.b));
 
   // o que se repete com cada player
   const repeat = players
@@ -202,9 +205,7 @@ function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend
     .slice(0, 5);
   for (const p of repeat) {
     const [killer, n] = p.topKiller!;
-    out.push(
-      `${shortName(p.name)} morreu para ${killer} ${n}× em ${p.topKillerNights} noites${p.topKillerNoDefensive ? `, ${p.topKillerNoDefensive} delas com defensivo sobrando` : ''}.`,
-    );
+    out.push(t.repeatDeaths(shortName(p.name), killer, n, p.topKillerNights, p.topKillerNoDefensive));
   }
   return out;
 }
