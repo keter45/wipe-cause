@@ -1,7 +1,9 @@
 // Escreve o modelo da rotação no mesmo formato dos YAMLs escritos à mão em rotations/.
 
 const isToken = (s) => /^[a-z][a-z0-9_]*$/.test(s);
-const scalar = (v) => (typeof v === 'string' ? (isToken(v) ? v : JSON.stringify(v)) : String(v));
+// texto nas duas línguas: { pt: "...", en: "..." }
+const scalar = (v) =>
+  typeof v === 'string' ? (isToken(v) ? v : JSON.stringify(v)) : v && typeof v === 'object' && 'pt' in v ? `{ pt: ${JSON.stringify(v.pt)}, en: ${JSON.stringify(v.en)} }` : String(v);
 const inlineValue = (v) => (Array.isArray(v) ? `[${v.map((x) => (typeof x === 'string' && isToken(x) ? x : scalar(x))).join(', ')}]` : scalar(v));
 const inlineMap = (o) =>
   `{ ${Object.entries(o)

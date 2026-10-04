@@ -15,12 +15,12 @@ sources:
 ignore_casts: [341263]
 
 key_points:
-  - "Shadow Word: Madness o máximo de tempo no alvo, e sem estourar Insanity (é o único gasto)."
-  - "Shadow Word: Pain e Vampiric Touch sempre no alvo (Tentacle Slam aplica o Vampiric Touch em vários)."
-  - "Cooldowns curtos antes dos longos: Mind Blast, Tentacle Slam, Halo / Void Torrent; Voidform e Power Infusion juntos, no cooldown."
-  - "Dentro do Voidform, Void Volley tem prioridade: não deixe um cast dele se perder."
-  - "Reaja aos procs (Shadowy Insight, Mind Devourer) e use Mind Flay: Insanity com o Madness ativo."
-  - "No movimento: Tentacle Slam, Shadow Word: Death ou Shadow Word: Pain."
+  - { pt: "Shadow Word: Madness o máximo de tempo no alvo, e sem estourar Insanity (é o único gasto).", en: "Shadow Word: Madness on the target as long as possible, and without capping Insanity (it's the only spender)." }
+  - { pt: "Shadow Word: Pain e Vampiric Touch sempre no alvo (Tentacle Slam aplica o Vampiric Touch em vários).", en: "Shadow Word: Pain and Vampiric Touch always on the target (Tentacle Slam applies Vampiric Touch to several)." }
+  - { pt: "Cooldowns curtos antes dos longos: Mind Blast, Tentacle Slam, Halo / Void Torrent; Voidform e Power Infusion juntos, no cooldown.", en: "Short cooldowns before long ones: Mind Blast, Tentacle Slam, Halo / Void Torrent; Voidform and Power Infusion together, on cooldown." }
+  - { pt: "Dentro do Voidform, Void Volley tem prioridade: não deixe um cast dele se perder.", en: "Inside Voidform, Void Volley has priority: don't let a cast of it go to waste." }
+  - { pt: "Reaja aos procs (Shadowy Insight, Mind Devourer) e use Mind Flay: Insanity com o Madness ativo.", en: "React to the procs (Shadowy Insight, Mind Devourer) and use Mind Flay: Insanity with Madness up." }
+  - { pt: "No movimento: Tentacle Slam, Shadow Word: Death ou Shadow Word: Pain.", en: "While moving: Tentacle Slam, Shadow Word: Death or Shadow Word: Pain." }
 
 hero_trees:
   - key: archon
@@ -55,49 +55,49 @@ buffs:
 priority:
   archon:
     st:
-      - { spell: shadow_word_pain, note: "se não estiver no alvo" }
-      - { spell: tentacle_slam, note: "para manter o Vampiric Touch (ou Vampiric Touch na mão)" }
+      - { spell: shadow_word_pain, note: { pt: "se não estiver no alvo", en: "if it's not on the target" } }
+      - { spell: tentacle_slam, note: { pt: "para manter o Vampiric Touch (ou Vampiric Touch na mão)", en: "to keep Vampiric Touch up (or hard-cast Vampiric Touch)" } }
       - { spell: halo }
       - { spell: voidform }
       - { spell: power_infusion }
-      - { spell: shadow_word_madness, note: "se não estiver ativo, for cair ou a Insanity for estourar" }
+      - { spell: shadow_word_madness, note: { pt: "se não estiver ativo, for cair ou a Insanity for estourar", en: "if it's not up, about to fall off or Insanity would cap" } }
       - { spell: mind_blast }
-      - { spell: mind_flay_insanity, note: "com o Madness ativo" }
-      - { spell: shadow_word_madness, note: "dentro do Voidform" }
-      - { spell: tentacle_slam, note: "sem alvos novos para DoT ou com movimento chegando" }
-      - { spell: shadow_word_death, note: "alvo abaixo de 20%" }
+      - { spell: mind_flay_insanity, note: { pt: "com o Madness ativo", en: "with Madness up" } }
+      - { spell: shadow_word_madness, note: { pt: "dentro do Voidform", en: "inside Voidform" } }
+      - { spell: tentacle_slam, note: { pt: "sem alvos novos para DoT ou com movimento chegando", en: "with no new targets to DoT or movement coming" } }
+      - { spell: shadow_word_death, note: { pt: "alvo abaixo de 20%", en: "target below 20%" } }
       - { spell: void_volley }
-      - { spell: mind_flay, note: "preenche; interrompa quando algo acima ficar pronto" }
+      - { spell: mind_flay, note: { pt: "preenche; interrompa quando algo acima ficar pronto", en: "filler; interrupt it when something above is ready" } }
     aoe:
       - { spell: shadow_word_pain }
-      - { spell: tentacle_slam, note: "Vampiric Touch em todos" }
+      - { spell: tentacle_slam, note: { pt: "Vampiric Touch em todos", en: "Vampiric Touch on everything" } }
       - { spell: halo }
       - { spell: voidform }
       - { spell: power_infusion }
-      - { spell: shadow_word_madness, note: "no alvo principal (Psychic Link espalha)" }
+      - { spell: shadow_word_madness, note: { pt: "no alvo principal (Psychic Link espalha)", en: "on the main target (Psychic Link spreads it)" } }
       - { spell: mind_blast }
       - { spell: mind_flay_insanity }
       - { spell: void_volley }
       - { spell: mind_flay }
   voidweaver:
     st:
-      - { spell: shadow_word_pain, note: "manter" }
-      - { spell: tentacle_slam, note: "para manter o Vampiric Touch" }
+      - { spell: shadow_word_pain, note: { pt: "manter", en: "keep it up" } }
+      - { spell: tentacle_slam, note: { pt: "para manter o Vampiric Touch", en: "to keep Vampiric Touch up" } }
       - { spell: voidform }
       - { spell: power_infusion }
-      - { spell: shadow_word_death, note: "alvo com escudo de absorção" }
-      - { spell: void_blast, note: "com o Madness ativo ou o Entropic Rift acabando" }
-      - { spell: shadow_word_madness, note: "se não estiver ativo, for cair, a Insanity for estourar ou com Entropic Rift" }
-      - { spell: void_torrent, note: "abre o Entropic Rift" }
+      - { spell: shadow_word_death, note: { pt: "alvo com escudo de absorção", en: "target with an absorb shield" } }
+      - { spell: void_blast, note: { pt: "com o Madness ativo ou o Entropic Rift acabando", en: "with Madness up or Entropic Rift ending" } }
+      - { spell: shadow_word_madness, note: { pt: "se não estiver ativo, for cair, a Insanity for estourar ou com Entropic Rift", en: "if it's not up, about to fall off, Insanity would cap or with Entropic Rift" } }
+      - { spell: void_torrent, note: { pt: "abre o Entropic Rift", en: "opens Entropic Rift" } }
       - { spell: mind_blast }
       - { spell: shadow_word_madness }
-      - { spell: tentacle_slam, note: "sem alvos novos para DoT" }
-      - { spell: shadow_word_death, note: "alvo abaixo de 20%" }
+      - { spell: tentacle_slam, note: { pt: "sem alvos novos para DoT", en: "with no new targets to DoT" } }
+      - { spell: shadow_word_death, note: { pt: "alvo abaixo de 20%", en: "target below 20%" } }
       - { spell: void_volley }
-      - { spell: mind_flay, note: "preenche" }
+      - { spell: mind_flay, note: { pt: "preenche", en: "filler" } }
     aoe:
       - { spell: shadow_word_pain }
-      - { spell: tentacle_slam, note: "Vampiric Touch em todos" }
+      - { spell: tentacle_slam, note: { pt: "Vampiric Touch em todos", en: "Vampiric Touch on everything" } }
       - { spell: voidform }
       - { spell: power_infusion }
       - { spell: void_blast }
@@ -120,40 +120,40 @@ checks:
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem castar
-    tip: "Sempre castando: no movimento, Tentacle Slam, Shadow Word: Death ou Shadow Word: Pain."
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre castando: no movimento, Tentacle Slam, Shadow Word: Death ou Shadow Word: Pain.", en: "Always casting: while moving, Tentacle Slam, Shadow Word: Death or Shadow Word: Pain." }
   - kind: resource_waste
     id: insanity
     power_type: 13
     resource: Insanity
     importance: high
-    title: Insanity desperdiçada
-    tip: "Gaste com Shadow Word: Madness antes de chegar a 100."
+    title: { pt: "Insanity desperdiçada", en: "Insanity wasted" }
+    tip: { pt: "Gaste com Shadow Word: Madness antes de chegar a 100.", en: "Spend with Shadow Word: Madness before reaching 100." }
   - kind: dot_uptime
     id: shadow_word_pain
     debuff: shadow_word_pain
     min_uptime: 0.9
     importance: medium
-    title: "Shadow Word: Pain fora do alvo"
-    tip: "Shadow Word: Pain sempre no alvo."
+    title: { pt: "Shadow Word: Pain fora do alvo", en: "Shadow Word: Pain off the target" }
+    tip: { pt: "Shadow Word: Pain sempre no alvo.", en: "Shadow Word: Pain always on the target." }
   - kind: dot_uptime
     id: vampiric_touch
     debuff: vampiric_touch
     min_uptime: 0.9
     importance: medium
-    title: Vampiric Touch fora do alvo
-    tip: "Vampiric Touch sempre no alvo: Tentacle Slam aplica, ou na mão."
+    title: { pt: "Vampiric Touch fora do alvo", en: "Vampiric Touch off the target" }
+    tip: { pt: "Vampiric Touch sempre no alvo: Tentacle Slam aplica, ou na mão.", en: "Vampiric Touch always on the target: Tentacle Slam applies it, or hard-cast it." }
   - kind: dot_uptime
     id: shadow_word_madness
     debuff: shadow_word_madness
     min_uptime: 0.85
     importance: medium
-    title: "Shadow Word: Madness fora do alvo"
-    tip: "Mantenha o Shadow Word: Madness o máximo de tempo: renove antes de cair."
+    title: { pt: "Shadow Word: Madness fora do alvo", en: "Shadow Word: Madness off the target" }
+    tip: { pt: "Mantenha o Shadow Word: Madness o máximo de tempo: renove antes de cair.", en: "Keep Shadow Word: Madness up as long as possible: refresh it before it falls off." }
   - kind: cooldown
     id: cooldowns
     spells: [voidform, power_infusion, halo, void_torrent]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Voidform e Power Infusion juntos, no cooldown; Halo / Void Torrent no cooldown."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Voidform e Power Infusion juntos, no cooldown; Halo / Void Torrent no cooldown.", en: "Voidform and Power Infusion together, on cooldown; Halo / Void Torrent on cooldown." }

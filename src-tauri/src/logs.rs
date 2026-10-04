@@ -13,6 +13,7 @@ use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
 use tauri::{AppHandle, Manager};
 use wipe_core::peek::LogPeek;
+use wipe_core::i18n::pick;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -162,7 +163,7 @@ pub fn logs_list(app: AppHandle) -> LogsScan {
     };
     let shown = Some(dir.display().to_string());
     if !dir.is_dir() {
-        let warning = Some("A pasta não existe ou não está acessível.".into());
+        let warning = Some(pick("A pasta não existe ou não está acessível.", "The folder doesn't exist or isn't accessible."));
         return LogsScan { dir: shown, source: source.into(), files: Vec::new(), warning };
     }
     let files: Vec<LogFile> = with_index(&app, |index| {
@@ -181,7 +182,7 @@ pub fn logs_list(app: AppHandle) -> LogsScan {
             })
             .collect()
     });
-    let warning = files.is_empty().then(|| "Nenhum combat log (WoWCombatLog*.txt) nesta pasta.".to_string());
+    let warning = files.is_empty().then(|| pick("Nenhum combat log (WoWCombatLog*.txt) nesta pasta.", "No combat log (WoWCombatLog*.txt) in this folder."));
     LogsScan { dir: shown, source: source.into(), files, warning }
 }
 

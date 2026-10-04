@@ -21,6 +21,7 @@ import { ShareMenu } from './share/ShareMenu';
 import { SoloShareCard } from './share/SoloCard';
 import { inTauri } from '../lib/api';
 import { useSetup } from '../lib/setup';
+import { tr } from '../i18n';
 
 /** Modo solo: o pull do ponto de vista de um player só, com o que ele pode corrigir. */
 export function SoloPullView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }) {
@@ -465,8 +466,8 @@ function Mechanics({ me, ref_, refLabel, seek }: { me: Sample; ref_: Sample | nu
         <div key={m.key} className="solo-mech">
           {m.spellId != null ? <SpellIcon spellId={m.spellId} size={18} /> : <ShieldAlert size={16} strokeWidth={1.5} aria-hidden />}
           <div>
-            <strong>{m.name}</strong> <span className="muted small">{p.message || `${p.count} erro${p.count > 1 ? 's' : ''}`}</span>
-            {m.tip && <p className="muted small">{m.tip}</p>}
+            <strong>{m.name}</strong> <span className="muted small">{tr(p.message) || `${p.count} erro${p.count > 1 ? 's' : ''}`}</span>
+            {tr(m.tip) && <p className="muted small">{tr(m.tip)}</p>}
           </div>
           {(times[0] ?? p.firstT) != null && <At t={(times[0] ?? p.firstT)!} seek={seek} />}
         </div>

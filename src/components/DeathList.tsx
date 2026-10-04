@@ -9,6 +9,7 @@ import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
 import { PositionMap, dist, mainEnemy } from './PositionMap';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from '../lib/massDeaths';
+import { tr } from '../i18n';
 
 interface Props {
   deaths: Death[];
@@ -351,7 +352,7 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
       </button>
       {show && (
         <div className="debuff-desc small">
-          {a.tip && <p>Como evitar: {a.tip}</p>}
+          {a.tip && <p>Como evitar: {tr(a.tip)}</p>}
           {tip === undefined && <p className="muted">Buscando descrição…</p>}
           {tip === null && <p className="muted">Sem descrição disponível.</p>}
           {tip && <p className="tooltip-text">{tip.text}</p>}

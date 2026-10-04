@@ -4,6 +4,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { inTauri } from './api';
 import type { MechanicSeverity, Pull } from '../types';
+import { tr } from '../i18n';
 
 /** Mecânica como está no YAML (o padrão). */
 export interface RuleMechanic {
@@ -74,7 +75,7 @@ function demoRules(pull: Pull): BossRules {
     file: pull.rulesFile ?? null,
     mechanics: pull.mechanics
       .filter((m) => !m.custom)
-      .map((m) => ({ key: m.key, name: m.name, type: m.kind, severity: m.severity, tip: m.tip })),
+      .map((m) => ({ key: m.key, name: m.name, type: m.kind, severity: m.severity, tip: tr(m.tip) })),
     tuning,
   };
 }

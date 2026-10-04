@@ -1,4 +1,7 @@
 // Espelho de crates/wipe-core/src/report.rs (serde camelCase).
+// Textos com `Loc` vêm do núcleo nas duas línguas (análises antigas: só português); use `tr()`.
+
+import type { Loc } from './i18n';
 
 export interface LogReport {
   file: string;
@@ -173,7 +176,7 @@ export interface DeathAura {
   source: string;
   appliedT: number;
   mechanic: string | null;
-  tip: string | null;
+  tip: Loc | null;
 }
 
 export interface MechanicShare {
@@ -263,7 +266,7 @@ export interface MechanicResult {
   spellId: number | null;
   kind: string;
   severity: MechanicSeverity;
-  tip: string;
+  tip: Loc;
   /** foco da progressão (marcado pelo usuário) */
   focus?: boolean;
   /** campos ajustados pelo usuário */
@@ -272,7 +275,7 @@ export interface MechanicResult {
   custom?: boolean;
   evaluated: boolean;
   failures: number;
-  summary: string;
+  summary: Loc;
   players: MechanicPlayer[];
   events: MechanicEvent[];
   /** posições nas primeiras falhas coletivas */
@@ -325,13 +328,13 @@ export interface MechanicPlayer {
   firstT: number | null;
   /** true = ajudou (interrupt, soak); false = errou */
   credit: boolean;
-  message: string;
+  message: Loc;
 }
 
 export interface MechanicEvent {
   t: number;
   player: string | null;
-  detail: string;
+  detail: Loc;
 }
 
 /** Foto das posições num momento do pull (coordenadas do mundo, em jardas). */
@@ -359,15 +362,15 @@ export interface RotationFinding {
   id: string;
   /** tipo da checagem (proc, downtime, dot_uptime, cooldown, resource_waste...); análises antigas não têm */
   kind?: string;
-  title: string;
-  tip: string;
+  title: Loc;
+  tip: Loc;
   importance: 'high' | 'medium' | 'low';
   count: number;
   /** aproveitamento 0–1 */
   rate: number;
   /** ms desde o início do pull */
   times: number[];
-  detail: string;
+  detail: Loc;
   spellId: number | null;
 }
 
@@ -383,8 +386,8 @@ export interface RotationResult {
   downtimeMs: number;
   activeMs: number;
   cooldowns: { spellId: number; name: string; casts: number; possible: number; usage: number }[];
-  keyPoints: string[];
-  prioritySt: (RotationSpellRef & { note: string | null })[];
-  priorityAoe: (RotationSpellRef & { note: string | null })[];
+  keyPoints: Loc[];
+  prioritySt: (RotationSpellRef & { note: Loc | null })[];
+  priorityAoe: (RotationSpellRef & { note: Loc | null })[];
   sources: { title: string; url: string }[];
 }

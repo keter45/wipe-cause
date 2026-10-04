@@ -6,6 +6,7 @@ use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::AppHandle;
+use wipe_core::i18n::pick;
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -40,7 +41,7 @@ pub fn discord_set_config(app: AppHandle, config: DiscordConfig) -> Result<(), S
     let webhook = settings::clean_dir(config.webhook);
     if let Some(w) = &webhook {
         if !valid_webhook(w) {
-            return Err("Isso não parece um webhook do Discord (https://discord.com/api/webhooks/…).".into());
+            return Err(pick("Isso não parece um webhook do Discord (https://discord.com/api/webhooks/…).", "That doesn't look like a Discord webhook (https://discord.com/api/webhooks/…)."));
         }
     }
     settings::update(&app, |s| {
@@ -58,18 +59,18 @@ pub fn discord_set_config(app: AppHandle, config: DiscordConfig) -> Result<(), S
 pub async fn discord_post(app: AppHandle, payload: serde_json::Value, webhook: Option<String>) -> Result<(), String> {
     let url = webhook
         .or_else(|| settings::load(&app).discord_webhook)
-        .ok_or("Nenhum webhook do Discord configurado.")?;
+        .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
     if !valid_webhook(&url) {
-        return Err("Webhook do Discord inválido.".into());
+        return Err(pick("Webhook do Discord inválido.", "Invalid Discord webhook."));
     }
     tauri::async_runtime::spawn_blocking(move || {
         let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(15)).build();
         match agent.post(&url).send_json(payload) {
             Ok(_) => Ok(()),
-            Err(ureq::Error::Status(404, _)) => Err("O Discord não achou esse webhook (foi apagado?).".into()),
+            Err(ureq::Error::Status(404, _)) => Err(pick("O Discord não achou esse webhook (foi apagado?).", "Discord couldn't find that webhook (was it deleted?).")),
             Err(ureq::Error::Status(429, _)) => Err("O Discord limitou os envios; tente de novo em alguns segundos.".into()),
             Err(ureq::Error::Status(code, r)) => Err(format!("O Discord recusou a mensagem ({code}): {}", r.into_string().unwrap_or_default())),
-            Err(e) => Err(format!("Sem conexão com o Discord: {e}")),
+            Err(e) => Err(pick(format!("Sem conexão com o Discord: {e}"), format!("No connection to Discord: {e}"))),
         }
     })
     .await
@@ -82,9 +83,9 @@ pub async fn discord_post(app: AppHandle, payload: serde_json::Value, webhook: O
 pub async fn discord_post_image(app: AppHandle, payload: serde_json::Value, file_name: String, data_b64: String, webhook: Option<String>) -> Result<(), String> {
     let url = webhook
         .or_else(|| settings::load(&app).discord_webhook)
-        .ok_or("Nenhum webhook do Discord configurado.")?;
+        .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
     if !valid_webhook(&url) {
-        return Err("Webhook do Discord inválido.".into());
+        return Err(pick("Webhook do Discord inválido.", "Invalid Discord webhook."));
     }
     let png = base64::engine::general_purpose::STANDARD.decode(data_b64).map_err(|e| e.to_string())?;
     let (content_type, body) = multipart(&payload.to_string(), &file_name, &png);
@@ -92,9 +93,9 @@ pub async fn discord_post_image(app: AppHandle, payload: serde_json::Value, file
         let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(30)).build();
         match agent.post(&url).set("Content-Type", &content_type).send_bytes(&body) {
             Ok(_) => Ok(()),
-            Err(ureq::Error::Status(413, _)) => Err("Imagem grande demais para o Discord.".into()),
+            Err(ureq::Error::Status(413, _)) => Err(pick("Imagem grande demais para o Discord.", "Image too large for Discord.")),
             Err(ureq::Error::Status(code, r)) => Err(format!("O Discord recusou a imagem ({code}): {}", r.into_string().unwrap_or_default())),
-            Err(e) => Err(format!("Sem conexão com o Discord: {e}")),
+            Err(e) => Err(pick(format!("Sem conexão com o Discord: {e}"), format!("No connection to Discord: {e}"))),
         }
     })
     .await

@@ -7,6 +7,7 @@ import type { NightSummary } from './night';
 import { analyzePull, lowestBossHp } from './verdict';
 import { bossUrl } from './wcl';
 import { assignmentsFor, checkAssignments } from './assignments';
+import { tr } from '../i18n';
 
 export interface DiscordEmbed {
   title: string;
@@ -63,7 +64,7 @@ export function pullPayload(p: Pull, wclCode?: string | null): DiscordPayload {
         .filter((x) => !x.credit)
         .slice(0, 5)
         .map((x) => shortName(x.name));
-      return `**${m.name}** — ${m.summary || `${m.failures}×`}${who.length ? `: ${who.join(', ')}` : ''}`;
+      return `**${m.name}** — ${tr(m.summary) || `${m.failures}×`}${who.length ? `: ${who.join(', ')}` : ''}`;
     });
   const deaths = v.decisiveDeaths.map((d) => `${shortName(d.name)} (${mmss(d.t)}) — ${d.killingBlowMechanic ?? d.killingBlow?.spellName ?? '?'}`);
   const noDefensive = [...new Set(v.decisiveDeaths.filter((d) => d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0).map((d) => shortName(d.name)))];

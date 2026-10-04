@@ -14,12 +14,12 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/hunter_beast_mastery.simc
 
 key_points:
-  - "Bestial Wrath no cooldown, sempre: perder um uso perde muito dano."
-  - "Kill Command nunca com 2 cargas, sempre com Nature's Ally, e o máximo deles dentro do Bestial Wrath."
-  - "Barbed Shot antes de chegar a 2 cargas e logo antes do Bestial Wrath."
-  - "Cobra Shot com Cobra Fang; no resto, preenche."
-  - "Pets no alvo certo (macros de ataque, Dash manual); em AoE, Wild Thrash para ativar o Beast Cleave antes do Bestial Wrath."
-  - "Dark Ranger: Black Arrow no cooldown e o Wailing Arrow antes de acabar."
+  - { pt: "Bestial Wrath no cooldown, sempre: perder um uso perde muito dano.", en: "Bestial Wrath on cooldown, always: losing a use loses a lot of damage." }
+  - { pt: "Kill Command nunca com 2 cargas, sempre com Nature's Ally, e o máximo deles dentro do Bestial Wrath.", en: "Kill Command never at 2 charges, always with Nature's Ally, and as many as possible inside Bestial Wrath." }
+  - { pt: "Barbed Shot antes de chegar a 2 cargas e logo antes do Bestial Wrath.", en: "Barbed Shot before reaching 2 charges and right before Bestial Wrath." }
+  - { pt: "Cobra Shot com Cobra Fang; no resto, preenche.", en: "Cobra Shot with Cobra Fang; otherwise, filler." }
+  - { pt: "Pets no alvo certo (macros de ataque, Dash manual); em AoE, Wild Thrash para ativar o Beast Cleave antes do Bestial Wrath.", en: "Pets on the right target (attack macros, manual Dash); in AoE, Wild Thrash to activate Beast Cleave before Bestial Wrath." }
+  - { pt: "Dark Ranger: Black Arrow no cooldown e o Wailing Arrow antes de acabar.", en: "Dark Ranger: Black Arrow on cooldown and Wailing Arrow before it expires." }
 
 hero_trees:
   - key: pack_leader
@@ -43,36 +43,36 @@ buffs: {}
 priority:
   pack_leader:
     st:
-      - { spell: barbed_shot, note: "se o Bestial Wrath volta em 3s ou for chegar a 2 cargas" }
+      - { spell: barbed_shot, note: { pt: "se o Bestial Wrath volta em 3s ou for chegar a 2 cargas", en: "if Bestial Wrath is back in 3s or it would reach 2 charges" } }
       - { spell: bestial_wrath }
-      - { spell: kill_command, note: "com Howl of the Pack Leader ou Nature's Ally" }
-      - { spell: cobra_shot, note: "com Cobra Fang" }
+      - { spell: kill_command, note: { pt: "com Howl of the Pack Leader ou Nature's Ally", en: "with Howl of the Pack Leader or Nature's Ally" } }
+      - { spell: cobra_shot, note: { pt: "com Cobra Fang", en: "with Cobra Fang" } }
       - { spell: barbed_shot }
       - { spell: cobra_shot }
     aoe:
-      - { spell: barbed_shot, note: "no alvo prioritário, antes de 2 cargas" }
+      - { spell: barbed_shot, note: { pt: "no alvo prioritário, antes de 2 cargas", en: "on the priority target, before 2 charges" } }
       - { spell: wild_thrash }
-      - { spell: bestial_wrath, note: "com o Beast Cleave ativo" }
-      - { spell: kill_command, note: "com Howl of the Pack Leader ou Nature's Ally" }
-      - { spell: cobra_shot, note: "com Cobra Fang" }
-      - { spell: barbed_shot, note: "no alvo prioritário (sem espalhar)" }
+      - { spell: bestial_wrath, note: { pt: "com o Beast Cleave ativo", en: "with Beast Cleave up" } }
+      - { spell: kill_command, note: { pt: "com Howl of the Pack Leader ou Nature's Ally", en: "with Howl of the Pack Leader or Nature's Ally" } }
+      - { spell: cobra_shot, note: { pt: "com Cobra Fang", en: "with Cobra Fang" } }
+      - { spell: barbed_shot, note: { pt: "no alvo prioritário (sem espalhar)", en: "on the priority target (no spreading)" } }
       - { spell: cobra_shot }
   dark_ranger:
     st:
-      - { spell: barbed_shot, note: "se o Bestial Wrath volta em 3s" }
+      - { spell: barbed_shot, note: { pt: "se o Bestial Wrath volta em 3s", en: "if Bestial Wrath is back in 3s" } }
       - { spell: bestial_wrath }
-      - { spell: kill_command, note: "com Nature's Ally" }
+      - { spell: kill_command, note: { pt: "com Nature's Ally", en: "with Nature's Ally" } }
       - { spell: black_arrow }
       - { spell: barbed_shot }
-      - { spell: wailing_arrow, note: "sem deixar o Kill Command chegar a 2 cargas" }
+      - { spell: wailing_arrow, note: { pt: "sem deixar o Kill Command chegar a 2 cargas", en: "without letting Kill Command reach 2 charges" } }
       - { spell: cobra_shot }
     aoe:
-      - { spell: bestial_wrath, note: "com o Beast Cleave ativo" }
+      - { spell: bestial_wrath, note: { pt: "com o Beast Cleave ativo", en: "with Beast Cleave up" } }
       - { spell: wild_thrash }
-      - { spell: kill_command, note: "com Nature's Ally" }
-      - { spell: black_arrow, note: "na frente do pack (Bleak Powder)" }
+      - { spell: kill_command, note: { pt: "com Nature's Ally", en: "with Nature's Ally" } }
+      - { spell: black_arrow, note: { pt: "na frente do pack (Bleak Powder)", en: "in front of the pack (Bleak Powder)" } }
       - { spell: wailing_arrow }
-      - { spell: barbed_shot, note: "no alvo prioritário" }
+      - { spell: barbed_shot, note: { pt: "no alvo prioritário", en: "on the priority target" } }
       - { spell: cobra_shot }
 
 # Abertura: Barbed Shot (duas vezes), Bestial Wrath com o pet no alvo e Kill Command
@@ -88,12 +88,12 @@ checks:
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem atirar
-    tip: "Tudo é instantâneo: atire andando, e Cobra Shot sempre que não houver nada acima."
+    title: { pt: "Tempo sem atirar", en: "Time not shooting" }
+    tip: { pt: "Tudo é instantâneo: atire andando, e Cobra Shot sempre que não houver nada acima.", en: "Everything is instant: shoot while moving, and Cobra Shot whenever nothing above is up." }
   - kind: cooldown
     id: cooldowns
     spells: [bestial_wrath, kill_command, barbed_shot, black_arrow]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Bestial Wrath no cooldown; Kill Command e Barbed Shot nunca parados com 2 cargas."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Bestial Wrath no cooldown; Kill Command e Barbed Shot nunca parados com 2 cargas.", en: "Bestial Wrath on cooldown; Kill Command and Barbed Shot never sitting at 2 charges." }

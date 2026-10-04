@@ -29,8 +29,8 @@ mechanics:
     source_unit: nekzali
     severity: wipe
     detect: { enrage_aura_id: 1284034 }
-    tip: "Cada Soulcoil Ignition e cada esqueleto que chega no poço dão energia; matar antes de encher."
-    message: "Nek'zali encheu a energia (Uncoiled Rage)"
+    tip: { pt: "Cada Soulcoil Ignition e cada esqueleto que chega no poço dão energia; matar antes de encher.", en: "Every Soulcoil Ignition and every skeleton that reaches the well gives energy; kill her before it fills." }
+    message: { pt: "Nek'zali encheu a energia (Uncoiled Rage)", en: "Nek'zali filled her energy (Uncoiled Rage)" }
 
   - key: soulcoil_well_adds
     name: "Soulcoil Well (esqueletos)"
@@ -38,8 +38,8 @@ mechanics:
     source_unit: restless_amani
     severity: major
     detect: { cast_id: 1287533 }
-    tip: "Focar os esqueletos e quebrar o escudo antes que cheguem ao centro; cada um que chega dá stack de Soulcoil Rite e energia."
-    message: "Esqueletos chegando ao poço"
+    tip: { pt: "Focar os esqueletos e quebrar o escudo antes que cheguem ao centro; cada um que chega dá stack de Soulcoil Rite e energia.", en: "Focus the skeletons and break the shield before they reach the center; each one that arrives gives a Soulcoil Rite stack and energy." }
+    message: { pt: "Esqueletos chegando ao poço", en: "Skeletons reaching the well" }
     notes: "Gravebound Advance (1287533) é a caminhada; ainda sem evento que prove que um esqueleto chegou ao poço."
 
   # ---------- Fase 1 ----------
@@ -49,8 +49,8 @@ mechanics:
     source_unit: nekzali
     severity: none
     detect: { damage_ids: [1288772], aura_id: 1288772 }
-    tip: "DoT de 5 stacks do Soulcoil Ignition; +1 stack por esqueleto que chega ao poço."
-    message: "Soulcoil Rite"
+    tip: { pt: "DoT de 5 stacks do Soulcoil Ignition; +1 stack por esqueleto que chega ao poço.", en: "5-stack DoT from Soulcoil Ignition; +1 stack per skeleton that reaches the well." }
+    message: { pt: "Soulcoil Rite", en: "Soulcoil Rite" }
 
   - key: ritual_burn
     name: "Ritual Burn"
@@ -59,8 +59,8 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: none
     detect: { aura_id: 1297624 }
-    tip: "Vulnerabilidade acumulada junto do Soulcoil Rite; guardar cura/defensivos para os Ignitions."
-    message: "Ritual Burn"
+    tip: { pt: "Vulnerabilidade acumulada junto do Soulcoil Rite; guardar cura/defensivos para os Ignitions.", en: "Vulnerability that stacks with Soulcoil Rite; save healing/defensives for the Ignitions." }
+    message: { pt: "Ritual Burn", en: "Ritual Burn" }
 
   - key: essence_rend
     name: "Essence Rend"
@@ -69,8 +69,8 @@ mechanics:
     severity: minor
     detect: { aura_id: 1287434 }
     max_delay: 8
-    tip: "Marcados vão para a borda da sala antes do dispel, para o Latent Cultist cair longe."
-    message: "{count} Essence Rend sem dispel a tempo"
+    tip: { pt: "Marcados vão para a borda da sala antes do dispel, para o Latent Cultist cair longe.", en: "Marked players go to the edge of the room before the dispel, so the Latent Cultist lands far away." }
+    message: { pt: "{count} Essence Rend sem dispel a tempo", en: "{count} Essence Rend not dispelled in time" }
     notes: "O dispel só deve sair na borda; max_delay 8s é generoso de propósito. 1287427 é a marcação inicial (sem origem)."
 
   - key: latent_cultist
@@ -79,8 +79,8 @@ mechanics:
     source_unit: nekzali
     severity: minor
     detect: { damage_ids: [1288554, 1292899] }
-    tip: "Não encostar nos Latent Cultists que flutuam pela sala."
-    message: "{player} encostou em Latent Cultist ({count}x)"
+    tip: { pt: "Não encostar nos Latent Cultists que flutuam pela sala.", en: "Don't touch the Latent Cultists floating around the room." }
+    message: { pt: "{player} encostou em Latent Cultist ({count}x)", en: "{player} touched a Latent Cultist ({count}x)" }
 
   - key: anguished_echoes
     name: "Anguished Echoes"
@@ -88,8 +88,8 @@ mechanics:
     source_unit: nekzali
     severity: minor
     detect: { damage_ids: [1294846] }
-    tip: "Evitar os espíritos."
-    message: "{player} tomou Anguished Echoes ({count}x)"
+    tip: { pt: "Evitar os espíritos.", en: "Avoid the spirits." }
+    message: { pt: "{player} tomou Anguished Echoes ({count}x)", en: "{player} took Anguished Echoes ({count}x)" }
     notes: "Poucos hits por pull, sempre em 1-2 players: parece evitável. Confirmar a origem no vídeo."
 
   - key: possession_barrage
@@ -98,8 +98,8 @@ mechanics:
     source_unit: nekzali
     severity: none
     detect: { damage_ids: [1292034], aura_id: 1284103 }
-    tip: "Tank leva o boss para longe e o raid fica atrás dele; o dano cai com a distância."
-    message: "Possession Barrage"
+    tip: { pt: "Tank leva o boss para longe e o raid fica atrás dele; o dano cai com a distância.", en: "The tank takes the boss far away and the raid stays behind; the damage falls off with distance." }
+    message: { pt: "Possession Barrage", en: "Possession Barrage" }
     notes: "O raid inteiro toma dano (queda com a distância), então não dá para culpar pelo log."
 
   - key: hollowing_strikes
@@ -109,8 +109,8 @@ mechanics:
     roles: [tank]
     severity: minor
     detect: { aura_id: 1284109, damage_ids: [1284109] }
-    tip: "Trocar de tank pelos stacks (DoT e cura reduzida)."
-    message: "{player} chegou a {stacks} stacks de Hollowing Strikes"
+    tip: { pt: "Trocar de tank pelos stacks (DoT e cura reduzida).", en: "Tank swap on stacks (DoT and reduced healing)." }
+    message: { pt: "{player} chegou a {stacks} stacks de Hollowing Strikes", en: "{player} reached {stacks} stacks of Hollowing Strikes" }
     notes: "Sem warn_stacks: calibrar o número de troca com pulls reais."
 
   - key: corpse_blight
@@ -119,8 +119,8 @@ mechanics:
     source_unit: restless_amani
     severity: none
     detect: { damage_ids: [1307939, 1294729], aura_id: 1307939 }
-    tip: "DoT no raid quando cada esqueleto morre; espaçar as mortes ajuda a cura."
-    message: "Corpse Blight"
+    tip: { pt: "DoT no raid quando cada esqueleto morre; espaçar as mortes ajuda a cura.", en: "Raid DoT when each skeleton dies; spacing the kills helps the healing." }
+    message: { pt: "Corpse Blight", en: "Corpse Blight" }
 
   - key: vessel_of_awakening
     name: "Vessel of Awakening"
@@ -129,8 +129,8 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: major
     detect: { fail_ids: [1297630] }
-    tip: "Queimar os corpos dos esqueletos com as chamas antes que levantem."
-    message: "{count} vez(es) os corpos levantaram (Vessel of Awakening)"
+    tip: { pt: "Queimar os corpos dos esqueletos com as chamas antes que levantem.", en: "Burn the skeleton corpses with the flames before they rise." }
+    message: { pt: "{count} vez(es) os corpos levantaram (Vessel of Awakening)", en: "Corpses rose {count} time(s) (Vessel of Awakening)" }
     notes: "No log o dano sai dos Restless Amani e pega o raid inteiro de uma vez; tratado como corpos não queimados. Confirmar."
 
   # ---------- Mítico: poço ----------
@@ -141,8 +141,8 @@ mechanics:
     difficulty: [mythic]
     severity: none
     detect: { damage_ids: [1293214], aura_id: 1293214 }
-    tip: "Enquanto o Drowned Echo vive o raid é puxado e toma dano; mandar o grupo do poço matar rápido."
-    message: "Grasping Depths"
+    tip: { pt: "Enquanto o Drowned Echo vive o raid é puxado e toma dano; mandar o grupo do poço matar rápido.", en: "While the Drowned Echo is alive the raid is pulled and takes damage; send the well group to kill it fast." }
+    message: { pt: "Grasping Depths", en: "Grasping Depths" }
 
   - key: soul_exhaustion
     name: "Soul Exhaustion"
@@ -151,8 +151,8 @@ mechanics:
     difficulty: [mythic]
     severity: none
     detect: { aura_id: 1300235 }
-    tip: "Quem entrou no poço fica vulnerável: alternar os grupos."
-    message: "Soul Exhaustion"
+    tip: { pt: "Quem entrou no poço fica vulnerável: alternar os grupos.", en: "Whoever went into the well becomes vulnerable: alternate groups." }
+    message: { pt: "Soul Exhaustion", en: "Soul Exhaustion" }
 
   - key: immortal_coil
     name: "Immortal Coil"
@@ -161,8 +161,8 @@ mechanics:
     difficulty: [mythic]
     severity: none
     detect: { damage_ids: [1308227] }
-    tip: "Dano em quem está dentro do poço."
-    message: "Immortal Coil"
+    tip: { pt: "Dano em quem está dentro do poço.", en: "Damage to whoever is inside the well." }
+    message: { pt: "Immortal Coil", en: "Immortal Coil" }
 
   - key: swirling_spirit
     name: "Swirling Spirit"
@@ -171,8 +171,8 @@ mechanics:
     difficulty: [mythic]
     severity: none
     detect: { damage_ids: [1300239] }
-    tip: "Dano do Drowned Echo em quem está no poço."
-    message: "Swirling Spirit"
+    tip: { pt: "Dano do Drowned Echo em quem está no poço.", en: "Drowned Echo damage to whoever is in the well." }
+    message: { pt: "Swirling Spirit", en: "Swirling Spirit" }
 
   - key: invoke
     name: "Invoke"
@@ -180,8 +180,8 @@ mechanics:
     source_unit: nekzali
     severity: minor
     detect: { cast_id: 1299673, aura_id: 1299722 }
-    tip: "Move os Latent Cultists; no Mítico, não estar castando quando sai (interrompe por 3s)."
-    message: "Invoke"
+    tip: { pt: "Move os Latent Cultists; no Mítico, não estar castando quando sai (interrompe por 3s).", en: "Moves the Latent Cultists; on Mythic, don't be casting when it goes off (3s lockout)." }
+    message: { pt: "Invoke", en: "Invoke" }
 
   # ---------- Intermissão ----------
   - key: ritual_of_awakening
@@ -190,8 +190,8 @@ mechanics:
     source_unit: nekzali
     severity: none
     detect: { cast_id: 1295124 }
-    tip: "Em 50% o boss fica imune até os dois Echo of Jawae morrerem."
-    message: "Ritual of Awakening"
+    tip: { pt: "Em 50% o boss fica imune até os dois Echo of Jawae morrerem.", en: "At 50% the boss becomes immune until both Echo of Jawae die." }
+    message: { pt: "Ritual of Awakening", en: "Ritual of Awakening" }
 
   - key: soul_transfer
     name: "Soul Transfer"
@@ -199,8 +199,8 @@ mechanics:
     source_unit: echo_of_jawae
     severity: major
     detect: { damage_ids: [1295085] }
-    tip: "Não ficar na linha entre o Echo e o boss quando o canal termina."
-    message: "{player} foi atingido pelo Soul Transfer ({count}x)"
+    tip: { pt: "Não ficar na linha entre o Echo e o boss quando o canal termina.", en: "Don't stand on the line between the Echo and the boss when the channel ends." }
+    message: { pt: "{player} foi atingido pelo Soul Transfer ({count}x)", en: "{player} was hit by Soul Transfer ({count}x)" }
 
   - key: hungering_pyre
     name: "Hungering Pyre"
@@ -208,8 +208,8 @@ mechanics:
     source_unit: echo_of_jawae
     severity: none
     detect: { damage_ids: [1289855], cast_id: 1294742 }
-    tip: "Soak dividido com o tank; quem não soaka ganha Slithering Flame."
-    message: "Hungering Pyre"
+    tip: { pt: "Soak dividido com o tank; quem não soaka ganha Slithering Flame.", en: "Soak shared with the tank; whoever doesn't soak gets Slithering Flame." }
+    message: { pt: "Hungering Pyre", en: "Hungering Pyre" }
 
   - key: slithering_flame
     name: "Slithering Flame"
@@ -217,8 +217,8 @@ mechanics:
     source_unit: echo_of_jawae
     severity: none
     detect: { damage_ids: [1294933], aura_id: 1294933 }
-    tip: "DoT em quem não soakou o Hungering Pyre; no Heroico explode e queima os corpos (Cremation)."
-    message: "Slithering Flame"
+    tip: { pt: "DoT em quem não soakou o Hungering Pyre; no Heroico explode e queima os corpos (Cremation).", en: "DoT on whoever didn't soak Hungering Pyre; on Heroic it explodes and burns the corpses (Cremation)." }
+    message: { pt: "Slithering Flame", en: "Slithering Flame" }
 
   - key: cremation
     name: "Cremation"
@@ -227,8 +227,8 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: none
     detect: { damage_ids: [1289875], aura_id: 1289875 }
-    tip: "Explosão do Slithering Flame: posicionar em cima dos corpos para queimá-los."
-    message: "Cremation"
+    tip: { pt: "Explosão do Slithering Flame: posicionar em cima dos corpos para queimá-los.", en: "Slithering Flame explosion: position on top of the corpses to burn them." }
+    message: { pt: "Cremation", en: "Cremation" }
 
   # ---------- Fase 2 ----------
   - key: uncoiling
@@ -237,5 +237,5 @@ mechanics:
     source_unit: nekzali
     severity: none
     detect: { damage_ids: [1292315] }
-    tip: "Dano pulsante no raid até o fim da luta."
-    message: "Uncoiling"
+    tip: { pt: "Dano pulsante no raid até o fim da luta.", en: "Pulsing raid damage until the end of the fight." }
+    message: { pt: "Uncoiling", en: "Uncoiling" }

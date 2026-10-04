@@ -16,6 +16,7 @@ use tauri::{AppHandle, Manager};
 use wipe_core::rules::RuleBook;
 use wipe_core::wcl::{covered_by, dedupe, is_short_wipe, WclAnalyzer};
 use wipe_core::{merge_pulls, AnalyzeOptions, LogReport, Pull};
+use wipe_core::i18n::pick;
 
 /// "Caminho" de uma análise do Warcraft Logs (no lugar do arquivo de log).
 pub const PREFIX: &str = "wcl:";
@@ -185,7 +186,7 @@ pub fn analyze(
         let data = api_query(REPORT_QUERY, &serde_json::json!({ "code": code }))?;
         let report = &data["reportData"]["report"];
         if report.is_null() {
-            return Err(format!("Report {code} não encontrado no Warcraft Logs (ele é privado ou o código está errado)."));
+            return Err(pick(format!("Report {code} não encontrado no Warcraft Logs (ele é privado ou o código está errado)."), format!("Report {code} not found on Warcraft Logs (it's private or the code is wrong).")));
         }
         analyzer.add_report(report, None)?;
         spans.push((report["startTime"].as_i64().unwrap_or(0), report["endTime"].as_i64().unwrap_or(0)));
@@ -193,7 +194,7 @@ pub fn analyze(
     // o app é para raid: fights de masmorra (M+) nem entram
     let all: Vec<_> = dedupe(analyzer.fights()).into_iter().filter(|f| !wipe_core::data::is_dungeon(f.difficulty_id, f.size)).collect();
     if all.is_empty() {
-        return Err("Nenhum boss nos reports.".into());
+        return Err(pick("Nenhum boss nos reports.", "No bosses in the reports."));
     }
 
     // 1) o que já está num log do PC
@@ -295,7 +296,7 @@ mod tests {
     #[test]
     fn slim_keeps_only_what_the_engine_reads() {
         let v = slim(vec![
-            serde_json::json!({ "type": "resourcechange", "timestamp": 1 }),
+            serde_json::json!({ "type": "refreshbuff", "timestamp": 1 }),
             serde_json::json!({ "type": "damage", "timestamp": 2, "amount": 5, "classResources": [1], "fight": 3 }),
             serde_json::json!({ "type": "combatantinfo", "timestamp": 3, "gear": [] }),
         ]);

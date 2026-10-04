@@ -11,5 +11,5 @@ mechanics:
     severity: minor
     # ENVIRONMENTAL_DAMAGE (queda, lava, afogamento...) usa spell id 0 no wipe-core
     detect: { damage_ids: [0] }
-    tip: "Queda, lava, fogo no chão: posicionamento."
-    message: "{player} tomou dano de ambiente {count}x"
+    tip: { pt: "Queda, lava, fogo no chão: posicionamento.", en: "Falling, lava, fire on the ground: positioning." }
+    message: { pt: "{player} tomou dano de ambiente {count}x", en: "{player} took environmental damage {count}x" }

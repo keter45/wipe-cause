@@ -95,7 +95,7 @@ const pct = (x) => (x == null ? '-' : `${Math.round(x * 100)}%`);
 function aggregate(results) {
   const cal = { n: results.length, checks: {}, cooldowns: {}, downtimePct: [], trees: {}, opener: 0 };
   for (const { rotation: r } of results) {
-    for (const f of r.findings) (cal.checks[f.id] ??= { title: f.title, rates: [] }).rates.push(f.rate);
+    for (const f of r.findings) (cal.checks[f.id] ??= { title: f.title?.pt ?? f.title, rates: [] }).rates.push(f.rate);
     for (const c of r.cooldowns) (cal.cooldowns[c.name] ??= []).push(c.usage);
     if (r.activeMs > 0) cal.downtimePct.push(r.downtimeMs / r.activeMs);
     cal.trees[r.tree ?? '?'] = (cal.trees[r.tree ?? '?'] ?? 0) + 1;

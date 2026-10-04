@@ -2,6 +2,8 @@
 //!
 //! Formato documentado em `.claude/skills/boss-rules/references/schema.md`.
 
+use crate::i18n::Text;
+use crate::tx;
 use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PhaseWindow, Positions};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -10,6 +12,11 @@ use yaml_serde::Value;
 
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/encounters.rs"));
+}
+
+/// Regras embutidas no binário: (caminho, conteúdo).
+pub fn embedded_sources() -> &'static [(&'static str, &'static str)] {
+    embedded::EMBEDDED
 }
 
 /// Hits do mesmo spell com menos que isso de intervalo são a mesma "rajada".
@@ -123,11 +130,11 @@ pub struct Mechanic {
     #[serde(default)]
     pub difficulty: Vec<String>,
     #[serde(default)]
-    pub tip: String,
+    pub tip: Text,
     #[serde(default)]
-    pub message: String,
+    pub message: Text,
     /// texto por jogador numa falha coletiva (ex.: culpado da explosão); padrão = `message`
-    pub blame_message: Option<String>,
+    pub blame_message: Option<Text>,
     #[serde(default)]
     pub detect: Detect,
     #[serde(default)]
@@ -543,10 +550,10 @@ impl RuleTracker {
     }
 
     /// Mecânica (nome, dica) a que pertence uma aura.
-    pub fn aura_mechanic(&self, spell_id: u32) -> Option<(&str, &str)> {
+    pub fn aura_mechanic(&self, spell_id: u32) -> Option<(&str, &Text)> {
         self.hooks.get(&spell_id)?.iter().find_map(|(i, h)| {
             matches!(h, Hook::Aura | Hook::SoakAura | Hook::Enrage)
-                .then(|| (self.mechs[*i].name.as_str(), self.mechs[*i].tip.as_str()))
+                .then(|| (self.mechs[*i].name.as_str(), &self.mechs[*i].tip))
         })
     }
 
@@ -590,7 +597,8 @@ impl RuleTracker {
                     if new_burst {
                         st.failures += 1;
                         st.fail_times.push(t);
-                        push_event(st, t, None, format!("{} (falha)", m.name));
+                        let n = &m.name;
+                        push_event(st, t, None, tx!("{n} (falha)", "{n} (failure)"));
                         failed.push(i);
                     }
                     st.last_fail_t = Some(t);
@@ -610,7 +618,7 @@ impl RuleTracker {
                     }
                     if m.kind.per_hit_blame() {
                         bump(&mut st.players, guid, name, amount, t);
-                        push_event(st, t, Some(name), m.name.clone());
+                        push_event(st, t, Some(name), Text::same(m.name.clone()));
                     } else if matches!(m.kind, MechanicType::Soak | MechanicType::TankSoak) {
                         bump(&mut st.credits, guid, name, amount, t);
                     }
@@ -666,7 +674,8 @@ impl RuleTracker {
                         let warn = m.warn_stacks.unwrap_or(u32::MAX);
                         if stacks == warn || m.lethal_stacks == Some(stacks) {
                             p.first_t.get_or_insert(t);
-                            push_event(st, t, Some(name), format!("{} stacks de {}", stacks, m.name));
+                            let n = &m.name;
+                            push_event(st, t, Some(name), tx!("{stacks} stacks de {n}", "{stacks} stacks of {n}"));
                         }
                     }
                 }
@@ -703,13 +712,15 @@ impl RuleTracker {
                         let p = st.phases.last_mut().unwrap();
                         p.end = Some(t);
                         let secs = (t - p.start) as f64 / 1000.0;
-                        push_event(st, t, None, format!("{} em {}", m.name, fmt_secs(secs)));
+                        let (n, pt, en) = (&m.name, fmt_secs(secs, false), fmt_secs(secs, true));
+                        push_event(st, t, None, tx!("{n} em {pt}", "{n} in {en}"));
                     }
                 }
                 Hook::Enrage if stacks > 0 => {
                     st.failures += 1;
                     st.fail_times.push(t);
-                    push_event(st, t, Some(name), format!("{} em {}", m.name, name));
+                    let n = &m.name;
+                    push_event(st, t, Some(name), tx!("{n} em {name}", "{n} on {name}"));
                 }
                 _ => {}
             }
@@ -723,7 +734,8 @@ impl RuleTracker {
                 let st = &mut self.state[i];
                 st.failures += 1;
                 st.fail_times.push(t);
-                push_event(st, t, None, format!("{} completou {}", source, self.mechs[i].name));
+                let n = &self.mechs[i].name;
+                push_event(st, t, None, tx!("{source} completou {n}", "{source} finished {n}"));
                 st.casts.push(CastOutcome {
                     t,
                     source_guid: source_guid.to_string(),
@@ -841,7 +853,7 @@ impl RuleTracker {
                         first_t: p.first_t,
                         credit: false,
                         message: render(
-                            m.blame_message.as_deref().unwrap_or(&m.message),
+                            m.blame_message.as_ref().unwrap_or(&m.message),
                             &p.name,
                             if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count },
                             lethal,
@@ -878,7 +890,7 @@ impl RuleTracker {
                     amount: p.amount,
                     first_t: p.first_t,
                     credit: true,
-                    message: String::new(),
+                    message: Text::default(),
                 })
                 .collect();
             credits.sort_by(|a, b| b.count.cmp(&a.count).then(a.name.cmp(&b.name)));
@@ -904,7 +916,7 @@ impl RuleTracker {
             } else if collective {
                 render(&m.message, "", st.failures, lethal)
             } else {
-                String::new()
+                Text::default()
             };
             out.push(MechanicResult {
                 spell_id,
@@ -963,42 +975,64 @@ fn judge_dispel(m: &Mechanic, st: &mut MechState, i: usize) {
         return;
     }
     let what = match d.delay_ms {
-        None => "sem dispel".to_string(),
-        Some(ms) => format!("dispel em {:.1}s", ms as f64 / 1000.0),
+        None => Text::new("sem dispel", "no dispel"),
+        Some(ms) => {
+            let s = ms as f64 / 1000.0;
+            Text::new(format!("dispel em {}", fmt_secs(s, false)), format!("dispel after {}", fmt_secs(s, true)))
+        }
     };
     let (t0, guid, target) = (d.t, d.target_guid.clone(), d.target.clone());
     st.failures += 1;
     st.fail_times.push(t0);
     bump(&mut st.players, &guid, &target, 0, t0);
-    push_event(st, t0, Some(&target), format!("{} {}", m.name, what));
+    let n = &m.name;
+    push_event(st, t0, Some(&target), Text::new(format!("{n} {}", what.pt), format!("{n} {}", what.en)));
 }
 
 /// "2 de 9 Venomfang sem dispel a tempo · dispel médio 2,4s"
 /// "3 intermissões: 18s, 13s, 14s · média 15s (alvo 12s)"
-fn phase_summary(phases: &[PhaseWindow], target_s: Option<f64>) -> String {
+fn phase_summary(phases: &[PhaseWindow], target_s: Option<f64>) -> Text {
     if phases.is_empty() {
-        return String::new();
+        return Text::default();
     }
+    Text::new(phase_summary_in(phases, target_s, false), phase_summary_in(phases, target_s, true))
+}
+
+fn phase_summary_in(phases: &[PhaseWindow], target_s: Option<f64>, en: bool) -> String {
     // média só das fases limpas: a que acabou com o raid morrendo não mede a velocidade
     let done: Vec<f64> = phases.iter().filter(|p| p.deaths < PHASE_FAIL_DEATHS).filter_map(|p| p.end.map(|e| (e - p.start) as f64 / 1000.0)).collect();
     let list: Vec<String> = phases
         .iter()
         .map(|p| {
             let time = match p.end {
-                Some(e) => fmt_secs((e - p.start) as f64 / 1000.0),
+                Some(e) => fmt_secs((e - p.start) as f64 / 1000.0, en),
                 None if p.wiped => "wipe".into(),
                 None => "?".into(),
             };
-            match p.deaths {
-                0 => time,
-                1 => format!("{time} (1 morte)"),
-                n => format!("{time} ({n} mortes)"),
+            match (p.deaths, en) {
+                (0, _) => time,
+                (1, false) => format!("{time} (1 morte)"),
+                (n, false) => format!("{time} ({n} mortes)"),
+                (1, true) => format!("{time} (1 death)"),
+                (n, true) => format!("{time} ({n} deaths)"),
             }
         })
         .collect();
-    let avg = if done.len() > 1 { format!(" · média {}", fmt_secs(done.iter().sum::<f64>() / done.len() as f64)) } else { String::new() };
-    let target = target_s.map(|s| format!(" (alvo {})", fmt_secs(s))).unwrap_or_default();
-    format!("{}: {}{avg}{target}", if phases.len() == 1 { "1 vez".to_string() } else { format!("{} vezes", phases.len()) }, list.join(", "))
+    let avg = if done.len() > 1 {
+        let s = fmt_secs(done.iter().sum::<f64>() / done.len() as f64, en);
+        if en { format!(" · average {s}") } else { format!(" · média {s}") }
+    } else {
+        String::new()
+    };
+    let target = target_s.map(|s| if en { format!(" (target {})", fmt_secs(s, true)) } else { format!(" (alvo {})", fmt_secs(s, false)) }).unwrap_or_default();
+    let n = phases.len();
+    let times = match (n, en) {
+        (1, false) => "1 vez".to_string(),
+        (n, false) => format!("{n} vezes"),
+        (1, true) => "1 time".to_string(),
+        (n, true) => format!("{n} times"),
+    };
+    format!("{times}: {}{avg}{target}", list.join(", "))
 }
 
 /// A aura sai no tick do servidor (segundo cheio + alguns ms): compara em segundos arredondados.
@@ -1007,18 +1041,25 @@ fn round_s(ms: i64) -> i64 {
 }
 
 /// "13s" / "8,5s"
-fn fmt_secs(s: f64) -> String {
+fn fmt_secs(s: f64, en: bool) -> String {
     if (s - s.round()).abs() < 0.05 {
         format!("{}s", s.round() as i64)
+    } else if en {
+        format!("{s:.1}s")
     } else {
         format!("{s:.1}s").replace('.', ",")
     }
 }
 
-fn dispel_summary(name: &str, failures: u32, dispels: &[DispelOutcome]) -> String {
+fn dispel_summary(name: &str, failures: u32, dispels: &[DispelOutcome]) -> Text {
     let done: Vec<i64> = dispels.iter().filter_map(|d| d.delay_ms).collect();
-    let avg = if done.is_empty() { String::new() } else { format!(" · dispel médio {:.1}s", done.iter().sum::<i64>() as f64 / done.len() as f64 / 1000.0).replace('.', ",") };
-    format!("{failures} de {} {name} sem dispel a tempo{avg}", dispels.len())
+    let avg = (!done.is_empty()).then(|| done.iter().sum::<i64>() as f64 / done.len() as f64 / 1000.0);
+    let total = dispels.len();
+    let (avg_pt, avg_en) = match avg {
+        Some(a) => (format!(" · dispel médio {}", format!("{a:.1}s").replace('.', ",")), format!(" · average dispel {a:.1}s")),
+        None => (String::new(), String::new()),
+    };
+    tx!("{failures} de {total} {name} sem dispel a tempo{avg_pt}", "{failures} of {total} {name} not dispelled in time{avg_en}")
 }
 
 fn bump(map: &mut HashMap<String, PlayerHits>, guid: &str, name: &str, amount: i64, t: i64) {
@@ -1031,19 +1072,20 @@ fn bump(map: &mut HashMap<String, PlayerHits>, guid: &str, name: &str, amount: i
     p.first_t.get_or_insert(t);
 }
 
-fn push_event(st: &mut MechState, t: i64, player: Option<&str>, detail: String) {
+fn push_event(st: &mut MechState, t: i64, player: Option<&str>, detail: Text) {
     if st.events.len() < MAX_EVENTS {
         st.events.push(MechanicEvent { t, player: player.map(str::to_string), detail });
     }
 }
 
-fn render(template: &str, player: &str, count: u32, lethal: Option<u32>) -> String {
+fn render(template: &Text, player: &str, count: u32, lethal: Option<u32>) -> Text {
     let short = player.split('-').next().unwrap_or(player);
-    template
-        .replace("{player}", short)
-        .replace("{count}", &count.to_string())
-        .replace("{stacks}", &count.to_string())
-        .replace("{lethal_stacks}", &lethal.map(|l| l.to_string()).unwrap_or_default())
+    template.map(|t| {
+        t.replace("{player}", short)
+            .replace("{count}", &count.to_string())
+            .replace("{stacks}", &count.to_string())
+            .replace("{lethal_stacks}", &lethal.map(|l| l.to_string()).unwrap_or_default())
+    })
 }
 
 #[cfg(test)]
@@ -1105,7 +1147,7 @@ mechanics:
         let puddle = get("puddle");
         assert_eq!(puddle.failures, 1);
         assert_eq!(puddle.players.len(), 1);
-        assert_eq!(puddle.players[0].message, "Um pisou 2x");
+        assert_eq!(puddle.players[0].message.pt, "Um pisou 2x");
         let venom = get("venom");
         assert_eq!(venom.players[0].count, 4);
         assert_eq!(venom.failures, 1, "1 player passou do warn_stacks");
@@ -1162,8 +1204,8 @@ mechanics:
         let get = |k: &str| res.iter().find(|r| r.key == k).unwrap();
         let det = get("detonation");
         assert_eq!(det.failures, 1);
-        assert_eq!(det.summary, "1 detonação(ões)");
-        assert_eq!(det.players.iter().map(|p| p.message.as_str()).collect::<Vec<_>>(), ["Carrier carregava o orb"]);
+        assert_eq!(det.summary.pt, "1 detonação(ões)");
+        assert_eq!(det.players.iter().map(|p| p.message.pt.as_str()).collect::<Vec<_>>(), ["Carrier carregava o orb"]);
         let bomb = get("bomb");
         assert_eq!(bomb.players.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Um-R"]);
         assert_eq!(get("double").players[0].count, 1);
@@ -1197,7 +1239,8 @@ mechanics:
         let res = tr.finish(&HashMap::new());
         let m = &res[0];
         assert_eq!(m.failures, 2);
-        assert_eq!(m.summary, "2 de 3 Venomfang sem dispel a tempo · dispel médio 3,8s");
+        assert_eq!(m.summary.pt, "2 de 3 Venomfang sem dispel a tempo · dispel médio 3,8s");
+        assert_eq!(m.summary.en, "2 of 3 Venomfang not dispelled in time · average dispel 3.8s");
         assert_eq!(m.dispels.iter().map(|d| d.delay_ms).collect::<Vec<_>>(), [Some(1_500), Some(6_000), None]);
         let blamed: Vec<&str> = m.players.iter().filter(|p| !p.credit).map(|p| p.name.as_str()).collect();
         assert_eq!(blamed.len(), 2);
@@ -1293,6 +1336,7 @@ mechanics:
         assert!(m.phases[3].wiped && m.phases[3].end.is_none());
         assert_eq!(m.failures, 3); // a lenta, a com mortes e o wipe
         assert_eq!(m.target_ms, Some(10_000));
-        assert_eq!(m.summary, "4 vezes: 12s, 18s, 6s (3 mortes), wipe · média 15s (alvo 10s)");
+        assert_eq!(m.summary.pt, "4 vezes: 12s, 18s, 6s (3 mortes), wipe · média 15s (alvo 10s)");
+        assert_eq!(m.summary.en, "4 times: 12s, 18s, 6s (3 deaths), wipe · average 15s (target 10s)");
     }
 }

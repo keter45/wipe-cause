@@ -9,6 +9,7 @@ import { analyzePull, lowestBossHp, lowestBossHpAtEnd } from './verdict';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
 import { getNote } from './notes';
 import { getMarks } from './marks';
+import { tr } from '../i18n';
 
 const SEVERITY: Record<string, string> = { wipe: 'causa wipe', major: 'grave', minor: 'leve', none: 'info' };
 const KIND: Record<string, string> = {
@@ -126,16 +127,16 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
       const blamed = m.players.filter((x) => !x.credit);
       const credit = m.players.filter((x) => x.credit);
       const lines = [
-        `- ${m.name} [${KIND[m.kind] ?? m.kind}, ${SEVERITY[m.severity] ?? m.severity}] — FALHOU ${m.failures}×.${m.summary ? ` ${m.summary}.` : ''}${m.tip ? ` Dica: ${m.tip}` : ''}`,
+        `- ${m.name} [${KIND[m.kind] ?? m.kind}, ${SEVERITY[m.severity] ?? m.severity}] — FALHOU ${m.failures}×.${tr(m.summary) ? ` ${tr(m.summary)}.` : ''}${tr(m.tip) ? ` Dica: ${tr(m.tip)}` : ''}`,
       ];
       if (blamed.length) lines.push(`  Envolvidos: ${blamed.map((x) => `${shortName(x.name)} (${m.kind === 'stack_limit' ? `${x.count} stacks` : `${x.count}×`}${x.firstT != null ? `, 1ª vez ${mmss(x.firstT)}` : ''})`).join(', ')}`);
       if (credit.length) lines.push(`  Ajudaram/cortaram: ${credit.map((x) => `${shortName(x.name)} (${x.count})`).join(', ')}`);
       if (m.dispels?.length)
         lines.push(`  Dispels: ${m.dispels.map((d) => `${shortName(d.target)} ${d.delayMs == null ? 'sem dispel' : `${(d.delayMs / 1000).toFixed(1)}s por ${shortName(d.dispelledBy ?? '?')}`}`).join('; ')}`);
-      if (m.events?.length) lines.push(`  Eventos: ${m.events.slice(0, MAX_MECH_EVENTS).map((e) => `${mmss(e.t)} ${e.player ? `${shortName(e.player)} ` : ''}${e.detail}`).join('; ')}`);
+      if (m.events?.length) lines.push(`  Eventos: ${m.events.slice(0, MAX_MECH_EVENTS).map((e) => `${mmss(e.t)} ${e.player ? `${shortName(e.player)} ` : ''}${tr(e.detail)}`).join('; ')}`);
       out.push(lines.join('\n'));
     }
-    if (rest.length) out.push(`Sem falhas: ${rest.map((m) => `${m.name}${m.tip ? ` (${m.tip})` : ''}`).join('; ')}`);
+    if (rest.length) out.push(`Sem falhas: ${rest.map((m) => `${m.name}${tr(m.tip) ? ` (${tr(m.tip)})` : ''}`).join('; ')}`);
   }
 
   // interrupts: casts que passaram e escala
@@ -168,7 +169,7 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
   // linha do tempo resumida
   const timeline: [number, string][] = [];
   if (p.trigger) timeline.push([p.trigger.t, `GATILHO do wipe: ${p.trigger.name} (${p.trigger.deaths} mortes ligadas)`]);
-  for (const m of p.mechanics) for (const e of (m.events ?? []).slice(0, MAX_MECH_EVENTS)) timeline.push([e.t, `${m.name}: ${e.player ? `${shortName(e.player)} ` : ''}${e.detail}`]);
+  for (const m of p.mechanics) for (const e of (m.events ?? []).slice(0, MAX_MECH_EVENTS)) timeline.push([e.t, `${m.name}: ${e.player ? `${shortName(e.player)} ` : ''}${tr(e.detail)}`]);
   for (const d of counted) timeline.push([d.t, `morre ${shortName(d.name)}`]);
   timeline.sort((a, b) => a[0] - b[0]);
   if (timeline.length) out.push('\n## Linha do tempo\n' + timeline.slice(0, MAX_TIMELINE).map(([t, s]) => `${mmss(t)} ${s}`).join('\n'));

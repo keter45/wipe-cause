@@ -15,12 +15,12 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/warlock_destruction.simc
 
 key_points:
-  - "Não estoure Soul Shards: Chaos Bolt (Shadowburn quando disponível) antes de chegar ao máximo."
-  - "Wither (Hellcaller) ou Immolate (Diabolist) sempre no alvo, renovando no pandemic."
-  - "Conflagrate para não ficar com 2 cargas, e os Backdraft que ele dá vão no Chaos Bolt."
-  - "Summon Infernal e Malevolence no cooldown, e gaste todos os Soul Shards dentro deles."
-  - "Soul Fire no cooldown com menos de 4 Soul Shards; Incinerate gera no resto."
-  - "Diabolist: Infernal Bolt com 2 ou menos Soul Shards; Ruination no alvo com mais inimigos em volta."
+  - { pt: "Não estoure Soul Shards: Chaos Bolt (Shadowburn quando disponível) antes de chegar ao máximo.", en: "Don't cap Soul Shards: Chaos Bolt (Shadowburn when available) before reaching the cap." }
+  - { pt: "Wither (Hellcaller) ou Immolate (Diabolist) sempre no alvo, renovando no pandemic.", en: "Wither (Hellcaller) or Immolate (Diabolist) always on the target, refreshing in pandemic." }
+  - { pt: "Conflagrate para não ficar com 2 cargas, e os Backdraft que ele dá vão no Chaos Bolt.", en: "Conflagrate so it doesn't sit at 2 charges, and the Backdraft it gives goes into Chaos Bolt." }
+  - { pt: "Summon Infernal e Malevolence no cooldown, e gaste todos os Soul Shards dentro deles.", en: "Summon Infernal and Malevolence on cooldown, and spend every Soul Shard inside them." }
+  - { pt: "Soul Fire no cooldown com menos de 4 Soul Shards; Incinerate gera no resto.", en: "Soul Fire on cooldown at fewer than 4 Soul Shards; Incinerate builds the rest." }
+  - { pt: "Diabolist: Infernal Bolt com 2 ou menos Soul Shards; Ruination no alvo com mais inimigos em volta.", en: "Diabolist: Infernal Bolt at 2 or fewer Soul Shards; Ruination on the target with the most enemies around." }
 
 hero_trees:
   - key: hellcaller
@@ -53,39 +53,39 @@ buffs:
 priority:
   hellcaller:
     st:
-      - { spell: wither, note: "manter no alvo" }
-      - { spell: summon_infernal, note: "no cooldown" }
-      - { spell: malevolence, note: "no cooldown" }
-      - { spell: shadowburn, note: "quando disponível e perto de estourar Soul Shards" }
-      - { spell: chaos_bolt, note: "para não estourar Soul Shards" }
-      - { spell: soul_fire, note: "com menos de 4 Soul Shards" }
-      - { spell: conflagrate, note: "para não ficar com 2 cargas, ou no movimento" }
-      - { spell: conflagrate, note: "gera Soul Shard e Backdraft (gaste no Chaos Bolt)" }
-      - { spell: incinerate, note: "gera Soul Shard (preenche)" }
+      - { spell: wither, note: { pt: "manter no alvo", en: "keep it on the target" } }
+      - { spell: summon_infernal, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: malevolence, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: shadowburn, note: { pt: "quando disponível e perto de estourar Soul Shards", en: "when available and close to capping Soul Shards" } }
+      - { spell: chaos_bolt, note: { pt: "para não estourar Soul Shards", en: "to avoid capping Soul Shards" } }
+      - { spell: soul_fire, note: { pt: "com menos de 4 Soul Shards", en: "at fewer than 4 Soul Shards" } }
+      - { spell: conflagrate, note: { pt: "para não ficar com 2 cargas, ou no movimento", en: "so it doesn't sit at 2 charges, or while moving" } }
+      - { spell: conflagrate, note: { pt: "gera Soul Shard e Backdraft (gaste no Chaos Bolt)", en: "builds Soul Shard and Backdraft (spend it on Chaos Bolt)" } }
+      - { spell: incinerate, note: { pt: "gera Soul Shard (preenche)", en: "builds Soul Shard (filler)" } }
     aoe:
-      - { spell: wither, note: "no máximo de alvos" }
-      - { spell: malevolence, note: "com o Wither no máximo de alvos" }
-      - { spell: havoc, note: "num segundo alvo" }
-      - { spell: rain_of_fire, note: "3+ alvos sem Havoc, 5+ com Havoc" }
-      - { spell: chaos_bolt, note: "até 5 alvos com Havoc ativo" }
+      - { spell: wither, note: { pt: "no máximo de alvos", en: "on as many targets as possible" } }
+      - { spell: malevolence, note: { pt: "com o Wither no máximo de alvos", en: "with Wither on as many targets as possible" } }
+      - { spell: havoc, note: { pt: "num segundo alvo", en: "on a second target" } }
+      - { spell: rain_of_fire, note: { pt: "3+ alvos sem Havoc, 5+ com Havoc", en: "3+ targets without Havoc, 5+ with Havoc" } }
+      - { spell: chaos_bolt, note: { pt: "até 5 alvos com Havoc ativo", en: "up to 5 targets with Havoc up" } }
       - { spell: conflagrate }
       - { spell: incinerate }
   diabolist:
     st:
-      - { spell: immolate, note: "manter no alvo" }
-      - { spell: summon_infernal, note: "no cooldown" }
-      - { spell: shadowburn, note: "quando disponível e perto de estourar Soul Shards" }
-      - { spell: chaos_bolt, note: "para não estourar; com 4+ Soul Shards e Infernal Bolt pronto" }
-      - { spell: soul_fire, note: "com menos de 4 Soul Shards" }
-      - { spell: ruination, note: "quando aparecer" }
-      - { spell: infernal_bolt, note: "com 2 ou menos Soul Shards" }
-      - { spell: conflagrate, note: "para não ficar com 2 cargas" }
-      - { spell: incinerate, note: "gera Soul Shard (preenche)" }
+      - { spell: immolate, note: { pt: "manter no alvo", en: "keep it on the target" } }
+      - { spell: summon_infernal, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: shadowburn, note: { pt: "quando disponível e perto de estourar Soul Shards", en: "when available and close to capping Soul Shards" } }
+      - { spell: chaos_bolt, note: { pt: "para não estourar; com 4+ Soul Shards e Infernal Bolt pronto", en: "to avoid capping; at 4+ Soul Shards and Infernal Bolt ready" } }
+      - { spell: soul_fire, note: { pt: "com menos de 4 Soul Shards", en: "at fewer than 4 Soul Shards" } }
+      - { spell: ruination, note: { pt: "quando aparecer", en: "when it procs" } }
+      - { spell: infernal_bolt, note: { pt: "com 2 ou menos Soul Shards", en: "at 2 or fewer Soul Shards" } }
+      - { spell: conflagrate, note: { pt: "para não ficar com 2 cargas", en: "so it doesn't sit at 2 charges" } }
+      - { spell: incinerate, note: { pt: "gera Soul Shard (preenche)", en: "builds Soul Shard (filler)" } }
     aoe:
-      - { spell: immolate, note: "no alvo principal e nos que vivem mais de 10s" }
+      - { spell: immolate, note: { pt: "no alvo principal e nos que vivem mais de 10s", en: "on the main target and on those living more than 10s" } }
       - { spell: havoc }
-      - { spell: chaos_bolt, note: "o Diabolist sempre gasta com Chaos Bolt" }
-      - { spell: infernal_bolt, note: "com 2 ou menos Soul Shards" }
+      - { spell: chaos_bolt, note: { pt: "o Diabolist sempre gasta com Chaos Bolt", en: "Diabolist always spends with Chaos Bolt" } }
+      - { spell: infernal_bolt, note: { pt: "com 2 ou menos Soul Shards", en: "at 2 or fewer Soul Shards" } }
       - { spell: conflagrate }
       - { spell: incinerate }
 
@@ -102,33 +102,33 @@ checks:
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem castar
-    tip: "Sempre castando: no movimento, Conflagrate e Shadowburn; Demonic Circle e Gateway para encurtar o caminho."
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre castando: no movimento, Conflagrate e Shadowburn; Demonic Circle e Gateway para encurtar o caminho.", en: "Always casting: while moving, Conflagrate and Shadowburn; Demonic Circle and Gateway to shorten the path." }
   - kind: dot_uptime
     id: wither
     debuff: wither
     min_uptime: 0.9
     importance: medium
-    title: Wither fora do alvo
-    tip: "Wither sempre no alvo: renove no pandemic."
+    title: { pt: "Wither fora do alvo", en: "Wither off the target" }
+    tip: { pt: "Wither sempre no alvo: renove no pandemic.", en: "Wither always on the target: refresh in pandemic." }
   - kind: dot_uptime
     id: immolate
     debuff: immolate
     min_uptime: 0.9
     importance: medium
-    title: Immolate fora do alvo
-    tip: "Immolate sempre no alvo: renove no pandemic."
+    title: { pt: "Immolate fora do alvo", en: "Immolate off the target" }
+    tip: { pt: "Immolate sempre no alvo: renove no pandemic.", en: "Immolate always on the target: refresh in pandemic." }
   - kind: proc
     id: backdraft
     buff: backdraft
     spenders: [chaos_bolt, incinerate, soul_fire]
     importance: low
-    title: Backdraft perdido
-    tip: "O Backdraft do Conflagrate acelera o próximo Chaos Bolt: não deixe expirar."
+    title: { pt: "Backdraft perdido", en: "Backdraft lost" }
+    tip: { pt: "O Backdraft do Conflagrate acelera o próximo Chaos Bolt: não deixe expirar.", en: "Conflagrate's Backdraft speeds up the next Chaos Bolt: don't let it expire." }
   - kind: cooldown
     id: cooldowns
     spells: [summon_infernal, malevolence, soul_fire, conflagrate]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Summon Infernal e Malevolence no cooldown; Soul Fire e Conflagrate sem ficar parados."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Summon Infernal e Malevolence no cooldown; Soul Fire e Conflagrate sem ficar parados.", en: "Summon Infernal and Malevolence on cooldown; Soul Fire and Conflagrate never sitting." }

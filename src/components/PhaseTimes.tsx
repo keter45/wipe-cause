@@ -4,6 +4,7 @@ import { useSeek } from '../lib/wcr';
 import { failedPhase, phaseLabel, phaseMechanics, phaseSec, phaseTone, phasesOfNight } from '../lib/phases';
 import { SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
+import { tr } from '../i18n';
 
 const ordinal = (i: number) => `${i + 1}ª`;
 const secs = (ms: number | undefined) => (ms != null ? `${Math.round(ms / 1000)}s` : '—');
@@ -70,7 +71,7 @@ function PhaseCard({ m }: { m: MechanicResult }) {
           );
         })}
       </ol>
-      {m.tip && <p className="muted small">{m.tip}</p>}
+      {tr(m.tip) && <p className="muted small">{tr(m.tip)}</p>}
     </section>
   );
 }

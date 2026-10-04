@@ -9,6 +9,7 @@ import { PlayAt } from './VideoPanel';
 import { SpellName } from './SpellIcon';
 import { PositionMap, type Mark } from './PositionMap';
 import { PullPhaseTimes } from './PhaseTimes';
+import { tr } from '../i18n';
 
 const SEVERITY_LABEL: Record<string, string> = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', none: 'Info' };
 
@@ -93,12 +94,12 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
         {m.custom ? <span className="chip mech">sua regra</span> : m.tuned?.length ? <span className="chip mech" title={`Ajustado: ${m.tuned.join(', ')}`}>ajustada</span> : null}
         <span className="mechanic-count">{m.failures}×</span>
       </header>
-      {m.summary && (
+      {tr(m.summary) && (
         <p className="mechanic-summary">
-          <Colored text={m.summary} />
+          <Colored text={tr(m.summary)} />
         </p>
       )}
-      {m.tip && <p className="muted small">Como evitar: {m.tip}</p>}
+      {tr(m.tip) && <p className="muted small">Como evitar: {tr(m.tip)}</p>}
 
       {blamed.length > 0 && (
         <table className="mechanic-players">
@@ -190,7 +191,7 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
                   ) : (
                     ''
                   )}
-                  {e.detail} <PlayAt t={e.t} seek={seek} />
+                  {tr(e.detail)} <PlayAt t={e.t} seek={seek} />
                 </li>
               ))}
             </ul>

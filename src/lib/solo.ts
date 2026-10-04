@@ -12,6 +12,7 @@ import { PERSONAL_BLAME } from './blame';
 import { bossKey } from './night';
 import { castsOf, isHealer, outputPerSec, type Sample } from './performance';
 import { meIn } from './mode';
+import { tr } from '../i18n';
 
 /** Janela da linha do tempo do núcleo (TIMELINE_MS). */
 export const BUCKET_MS = 5_000;
@@ -115,8 +116,8 @@ export function losses(s: Sample): Loss[] {
       key: `mech:${m.key}`,
       kind: m.kind === 'avoidable_damage' ? 'avoidable' : 'mechanic',
       title: `${m.name}: ${mp.count} erro${mp.count > 1 ? 's' : ''}`,
-      detail: mp.message || m.summary,
-      tip: m.tip,
+      detail: tr(mp.message) || tr(m.summary),
+      tip: tr(m.tip),
       lost: null,
       weightSec: MECHANIC_SEC[m.severity] * Math.min(3, mp.count),
       times: times.length ? times : mp.firstT != null ? [mp.firstT] : [],
@@ -127,7 +128,7 @@ export function losses(s: Sample): Loss[] {
 }
 
 function findingLoss(f: RotationFinding, s: Sample, ops: number, perCast: number): Loss | null {
-  const base = { key: `rot:${f.id}`, title: f.title, detail: f.detail, tip: f.tip, times: f.times, spellId: f.spellId };
+  const base = { key: `rot:${f.id}`, title: tr(f.title), detail: tr(f.detail), tip: tr(f.tip), times: f.times, spellId: f.spellId };
   // análises antigas não têm o tipo: os ids padrão das rotações escritas resolvem o principal
   const kind = f.kind ?? (f.id === 'cooldowns' ? 'cooldown' : f.id === 'always_be_casting' ? 'downtime' : '');
   if (kind === 'downtime') {
@@ -142,7 +143,7 @@ function findingLoss(f: RotationFinding, s: Sample, ops: number, perCast: number
   }
   if (kind === 'dot_uptime') {
     // dano do DoT no tempo em que estava no alvo, estendido ao tempo em que faltou
-    const dmg = spellAmount(s.player, f.spellId, subject(f.title));
+    const dmg = spellAmount(s.player, f.spellId, subject(typeof f.title === 'string' ? f.title : f.title.pt));
     const lost = f.rate > 0.05 ? dmg * ((1 - f.rate) / f.rate) : null;
     return { ...base, kind: 'dot', lost, weightSec: lost != null && ops > 0 ? lost / ops : FINDING_SEC[f.importance] };
   }

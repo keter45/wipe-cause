@@ -8,6 +8,7 @@ import { PositionMap, type Mark } from '../PositionMap';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import { BossName, Colored } from '../Names';
 import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, timeOf, type CardDetail } from './common';
+import { tr } from '../../i18n';
 
 const SUMMARY = { findings: 3, deaths: 3, scores: 4 };
 
@@ -143,7 +144,7 @@ function PullDetails({ pull: p }: { pull: Pull }) {
               const who = m.players.filter((x) => !x.credit && x.count > 0);
               return (
                 <li key={m.key} className={m.severity}>
-                  {m.spellId != null && <SpellIcon spellId={m.spellId} size={16} />} <strong>{m.name}</strong> — {m.summary || `${m.failures} falha${m.failures > 1 ? 's' : ''}`}
+                  {m.spellId != null && <SpellIcon spellId={m.spellId} size={16} />} <strong>{m.name}</strong> — {tr(m.summary) || `${m.failures} falha${m.failures > 1 ? 's' : ''}`}
                   {who.length > 0 && (
                     <span className="share-muted">
                       {' '}

@@ -25,8 +25,8 @@ mechanics:
     source_unit: morzahi
     severity: wipe
     detect: { cast_id: 1297075 }
-    tip: "Achar o peixe nas caixas e bater numa tartaruga antes da energia encher; a tartaruga escolhida ganha a ultimate."
-    message: "Final Ascension"
+    tip: { pt: "Achar o peixe nas caixas e bater numa tartaruga antes da energia encher; a tartaruga escolhida ganha a ultimate.", en: "Find the fish in the crates and hit one turtle before the energy fills; the chosen turtle gets the ultimate." }
+    message: { pt: "Final Ascension", en: "Final Ascension" }
     notes: "Nos logs só há kills: falta ver um Final Ascension que passou para saber o ID da falha (1292779 também aparece)."
 
   - key: malevolent_presence
@@ -35,15 +35,15 @@ mechanics:
     source_unit: morzahi
     severity: none
     detect: { damage_ids: [1295450] }
-    tip: "Dano contínuo no raid."
-    message: "Malevolent Presence"
+    tip: { pt: "Dano contínuo no raid.", en: "Constant raid damage." }
+    message: { pt: "Malevolent Presence", en: "Malevolent Presence" }
 
   - key: kill_evenly
     name: "Matar juntos"
     type: info
     severity: major
-    tip: "Cada tartaruga ganha um efeito de enrage se as outras morrerem antes: baixar as três juntas (no Heroico, só uma outra perto da Nama)."
-    message: "Matar as tartarugas juntas"
+    tip: { pt: "Cada tartaruga ganha um efeito de enrage se as outras morrerem antes: baixar as três juntas (no Heroico, só uma outra perto da Nama).", en: "Each turtle gets an enrage effect if the others die first: bring all three down together (on Heroic, only one other near Nama)." }
+    message: { pt: "Matar as tartarugas juntas", en: "Kill the turtles together" }
     notes: "United Defense (Heroico+) e os enrages ainda sem ID no log."
 
   # ---------- Gebbo: caixas ----------
@@ -53,8 +53,8 @@ mechanics:
     source_unit: gebbo
     severity: minor
     detect: { damage_ids: [1291935] }
-    tip: "Sair das marcas onde as caixas caem."
-    message: "{player} foi atingido por uma caixa ({count}x)"
+    tip: { pt: "Sair das marcas onde as caixas caem.", en: "Get out of the marks where the crates land." }
+    message: { pt: "{player} foi atingido por uma caixa ({count}x)", en: "{player} was hit by a crate ({count}x)" }
 
   - key: relic_rupture
     name: "Relic Rupture"
@@ -62,8 +62,8 @@ mechanics:
     source_unit: useless_junk
     severity: major
     detect: { fail_ids: [1310027] }
-    tip: "Pisar nas caixas antes dos 25s (uma delas tem o peixe)."
-    message: "{count} caixa(s) explodiram sem ninguém pisar"
+    tip: { pt: "Pisar nas caixas antes dos 25s (uma delas tem o peixe).", en: "Step on the crates before 25s (one of them has the fish)." }
+    message: { pt: "{count} caixa(s) explodiram sem ninguém pisar", en: "{count} crate(s) exploded with nobody stepping on them" }
 
   - key: splinters
     name: "Splinters"
@@ -71,8 +71,8 @@ mechanics:
     source_unit: gebbo
     severity: none
     detect: { damage_ids: [1312853, 1308853], aura_id: 1312853 }
-    tip: "DoT de quem pisa nas caixas (no Mítico vai para o raid inteiro): dividir as caixas."
-    message: "Splinters"
+    tip: { pt: "DoT de quem pisa nas caixas (no Mítico vai para o raid inteiro): dividir as caixas.", en: "DoT on whoever steps on the crates (on Mythic it goes to the whole raid): split the crates." }
+    message: { pt: "Splinters", en: "Splinters" }
 
   - key: explosive_surprise
     name: "Explosive Surprise"
@@ -80,8 +80,8 @@ mechanics:
     source_unit: gebbo
     severity: major
     detect: { damage_ids: [1296245, 1297650] }
-    tip: "Levar a bomba para a borda e pular nos cogumelos para escapar da onda."
-    message: "{player} foi pego pela Explosive Surprise ({count}x)"
+    tip: { pt: "Levar a bomba para a borda e pular nos cogumelos para escapar da onda.", en: "Take the bomb to the edge and jump on the mushrooms to escape the wave." }
+    message: { pt: "{player} foi pego pela Explosive Surprise ({count}x)", en: "{player} was caught by Explosive Surprise ({count}x)" }
     notes: "1296245 = onda, 1297650 = fogo que fica no chão. Poucos hits na amostra."
 
   # ---------- Nama ----------
@@ -91,8 +91,8 @@ mechanics:
     source_unit: nama
     severity: none
     detect: { damage_ids: [1300237, 1310500], cast_id: 1296095 }
-    tip: "Dividir o raid entre os três círculos de soak."
-    message: "Mighty Thud"
+    tip: { pt: "Dividir o raid entre os três círculos de soak.", en: "Split the raid across the three soak circles." }
+    message: { pt: "Mighty Thud", en: "Mighty Thud" }
     notes: "Sem ID de falha no log (não viu círculo sem soak)."
 
   - key: shell_spin
@@ -101,8 +101,8 @@ mechanics:
     source_unit: nama
     severity: minor
     detect: { cast_id: 1296062, aura_id: 1291918 }
-    tip: "Melee leva as conchas para a borda, longe dos ranged."
-    message: "Shell Spin"
+    tip: { pt: "Melee leva as conchas para a borda, longe dos ranged.", en: "Melee take the shells to the edge, away from the ranged." }
+    message: { pt: "Shell Spin", en: "Shell Spin" }
 
   - key: steady_strikes
     name: "Steady Strikes"
@@ -111,8 +111,8 @@ mechanics:
     roles: [tank]
     severity: minor
     detect: { aura_id: 1291929 }
-    tip: "Vulnerabilidade física que sobe a cada ataque: acompanhar os stacks."
-    message: "{player} chegou a {stacks} stacks de Steady Strikes"
+    tip: { pt: "Vulnerabilidade física que sobe a cada ataque: acompanhar os stacks.", en: "Physical vulnerability that grows with each attack: watch the stacks." }
+    message: { pt: "{player} chegou a {stacks} stacks de Steady Strikes", en: "{player} reached {stacks} stacks of Steady Strikes" }
     notes: "Chega a 58 stacks no log; sem warn_stacks até calibrar."
 
   # ---------- Iku ----------
@@ -123,8 +123,8 @@ mechanics:
     severity: minor
     detect: { cast_id: 1286922 }
     accept: [interrupt, cc]
-    tip: "Cortar o bolt do Iku; se passar, dispelar o DoT."
-    message: "{count} Icebound Flames passaram sem interrupt"
+    tip: { pt: "Cortar o bolt do Iku; se passar, dispelar o DoT.", en: "Interrupt Iku's bolt; if it goes through, dispel the DoT." }
+    message: { pt: "{count} Icebound Flames passaram sem interrupt", en: "{count} Icebound Flames went through without an interrupt" }
 
   - key: icebound_flames_dot
     name: "Burning Flames / Piercing Frost"
@@ -132,8 +132,8 @@ mechanics:
     source_unit: iku
     severity: none
     detect: { damage_ids: [1310667, 1310662] }
-    tip: "DoT do Icebound Flames que passou."
-    message: "Icebound Flames"
+    tip: { pt: "DoT do Icebound Flames que passou.", en: "DoT from the Icebound Flames that went through." }
+    message: { pt: "Icebound Flames", en: "Icebound Flames" }
 
   - key: blink_nova
     name: "Blink Nova"
@@ -141,8 +141,8 @@ mechanics:
     source_unit: iku
     severity: none
     detect: { damage_ids: [1294334], aura_id: 1296025 }
-    tip: "Marcado vai para longe do raid; o dano cai com a distância."
-    message: "Blink Nova"
+    tip: { pt: "Marcado vai para longe do raid; o dano cai com a distância.", en: "The marked player moves away from the raid; the damage falls off with distance." }
+    message: { pt: "Blink Nova", en: "Blink Nova" }
 
   - key: frostfire_volley
     name: "Frostfire Volley"
@@ -150,8 +150,8 @@ mechanics:
     source_unit: iku
     severity: major
     detect: { damage_ids: [1295893, 1295985], cast_id: 1295891 }
-    tip: "Fogo solta a poça de um lado e gelo do outro; depois entrar numa poça oposta para limpar o DoT (nunca encostar no debuff oposto)."
-    message: "Frostfire Volley"
+    tip: { pt: "Fogo solta a poça de um lado e gelo do outro; depois entrar numa poça oposta para limpar o DoT (nunca encostar no debuff oposto).", en: "Fire drops its pool on one side and frost on the other; then step into an opposite pool to clear the DoT (never touch the opposite debuff)." }
+    message: { pt: "Frostfire Volley", en: "Frostfire Volley" }
     notes: "Ainda sem separar a explosão (encostar no debuff oposto) do dano normal."
 
   - key: frostfire_patches
@@ -160,8 +160,8 @@ mechanics:
     source_unit: iku
     severity: none
     detect: { damage_ids: [1297648, 1297649] }
-    tip: "Entrar numa poça oposta limpa o DoT: o dano é esperado."
-    message: "Fire / Frost Patch"
+    tip: { pt: "Entrar numa poça oposta limpa o DoT: o dano é esperado.", en: "Stepping into an opposite pool clears the DoT: the damage is expected." }
+    message: { pt: "Fire / Frost Patch", en: "Fire / Frost Patch" }
 
   - key: shredding_shards
     name: "Shredding Shards"
@@ -170,8 +170,8 @@ mechanics:
     roles: [tank]
     severity: none
     detect: { damage_ids: [1310616], aura_id: 1295858 }
-    tip: "DoT e +50% de dano mágico no tank: trocar a cada cast."
-    message: "Shredding Shards"
+    tip: { pt: "DoT e +50% de dano mágico no tank: trocar a cada cast.", en: "DoT and +50% magic damage on the tank: swap every cast." }
+    message: { pt: "Shredding Shards", en: "Shredding Shards" }
 
   # ---------- Sala ----------
   - key: evil_eyes
@@ -180,5 +180,5 @@ mechanics:
     source_unit: creepy_statue
     severity: minor
     detect: { damage_ids: [1292764] }
-    tip: "Desviar dos círculos das estátuas."
-    message: "{player} tomou Evil Eyes ({count}x)"
+    tip: { pt: "Desviar dos círculos das estátuas.", en: "Dodge the statues' circles." }
+    message: { pt: "{player} tomou Evil Eyes ({count}x)", en: "{player} took Evil Eyes ({count}x)" }

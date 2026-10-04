@@ -7,6 +7,7 @@ import { useSeek } from '../lib/wcr';
 import { scoreTone } from '../lib/score';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
+import { tr } from '../i18n';
 
 /** Momentos em ordem, um por segundo (vários no mesmo segundo viram um ▶ só). */
 export const uniqueSeconds = (times: number[]) => {
@@ -54,10 +55,10 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
                   <div className="rot-finding-head">
                     <span className={`rot-kind imp-${f.importance}`}>{KIND[f.importance]}</span>
                     {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}
-                    <strong>{f.title}</strong>
+                    <strong>{tr(f.title)}</strong>
                   </div>
-                  <p className="small">{f.detail}</p>
-                  <p className="muted small">{f.tip}</p>
+                  <p className="small">{tr(f.detail)}</p>
+                  <p className="muted small">{tr(f.tip)}</p>
                   <div className="rot-rate" aria-label={`aproveitamento ${Math.round(f.rate * 100)}%`}>
                     <span style={{ transform: `scaleX(${f.rate})` }} />
                   </div>
@@ -136,7 +137,7 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
           <h4>Pontos principais da spec</h4>
           <ol className="rot-points small">
             {r.keyPoints.map((k, i) => (
-              <li key={i}>{k}</li>
+              <li key={i}>{tr(k)}</li>
             ))}
           </ol>
           <h4 className="rot-prio-head">
@@ -156,7 +157,7 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
             {prio.map((p, i) => (
               <li key={i}>
                 <SpellName spellId={p.spellId} name={p.name} size={16} />
-                {p.note && <span className="muted"> — {p.note}</span>}
+                {p.note && <span className="muted"> — {tr(p.note)}</span>}
               </li>
             ))}
           </ol>

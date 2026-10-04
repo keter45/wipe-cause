@@ -339,3 +339,6 @@ export async function revealInExplorer(path: string) {
   const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
   await revealItemInDir(path);
 }
+
+/** Idioma da UI para o backend (mensagens de erro, menu da bandeja, avisos do Windows). */
+export const setBackendLocale = (locale: string) => (inTauri ? invoke<void>('set_locale', { locale }).catch(() => {}) : Promise.resolve());

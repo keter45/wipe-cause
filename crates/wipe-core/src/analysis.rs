@@ -1239,7 +1239,7 @@ fn attribute_death(d: &mut Death, rules: &RuleTracker) {
     for a in &mut d.debuffs {
         if let Some((name, tip)) = rules.aura_mechanic(a.spell_id) {
             a.mechanic = Some(name.to_string());
-            a.tip = (!tip.is_empty()).then(|| tip.to_string());
+            a.tip = (!tip.is_empty()).then(|| tip.clone());
         }
     }
     d.caused_by = match kb_mech {

@@ -24,8 +24,8 @@ mechanics:
     source_unit: vashnik
     severity: none
     detect: { cast_id: 1284663 }
-    tip: "Levar o boss às fontes escolhidas: ele ganha as habilidades das duas mais próximas."
-    message: "Imbibe"
+    tip: { pt: "Levar o boss às fontes escolhidas: ele ganha as habilidades das duas mais próximas.", en: "Take the boss to the chosen fountains: it gains the abilities of the two closest." }
+    message: { pt: "Imbibe", en: "Imbibe" }
 
   - key: fountain_expulsion
     name: "Conflagrating / Gloom Expulsion"
@@ -33,8 +33,8 @@ mechanics:
     source_unit: vashnik
     severity: none
     detect: { damage_ids: [1298587, 1298583] }
-    tip: "Dano no raid quando uma fonte é ativada."
-    message: "Expulsion"
+    tip: { pt: "Dano no raid quando uma fonte é ativada.", en: "Raid damage when a fountain is activated." }
+    message: { pt: "Expulsion", en: "Expulsion" }
 
   - key: toxic_vapor
     name: "Toxic Vapor"
@@ -42,8 +42,8 @@ mechanics:
     source_unit: vashnik
     severity: none
     detect: { damage_ids: [1284561] }
-    tip: "Dano contínuo que sobe a cada Imbibe: a luta aperta com o tempo."
-    message: "Toxic Vapor"
+    tip: { pt: "Dano contínuo que sobe a cada Imbibe: a luta aperta com o tempo.", en: "Constant damage that grows with every Imbibe: the fight gets harder over time." }
+    message: { pt: "Toxic Vapor", en: "Toxic Vapor" }
 
   # ---------- Mítico: tumores ----------
   - key: malignance
@@ -53,8 +53,8 @@ mechanics:
     difficulty: [mythic]
     severity: wipe
     detect: { fail_ids: [1304459] }
-    tip: "Destruir todos os Malignant Tumors com as ondas da Plague Froth; tumor que sobra pulsa no raid até wipar."
-    message: "{count} pulso(s) de Malignance — tumor não destruído"
+    tip: { pt: "Destruir todos os Malignant Tumors com as ondas da Plague Froth; tumor que sobra pulsa no raid até wipar.", en: "Destroy every Malignant Tumor with the Plague Froth waves; a leftover tumor pulses on the raid until it wipes." }
+    message: { pt: "{count} pulso(s) de Malignance — tumor não destruído", en: "{count} Malignance pulse(s) — tumor not destroyed" }
 
   # ---------- Plague Froth ----------
   - key: plague_froth
@@ -63,8 +63,8 @@ mechanics:
     source_unit: vashnik
     severity: none
     detect: { damage_ids: [1281925], aura_id: 1281913 }
-    tip: "Marcados com a cruz se espalham; as ondas saem nas direções marcadas."
-    message: "Plague Froth"
+    tip: { pt: "Marcados com a cruz se espalham; as ondas saem nas direções marcadas.", en: "Players marked with the cross spread; the waves go out in the marked directions." }
+    message: { pt: "Plague Froth", en: "Plague Froth" }
 
   - key: plague_wave
     name: "Plague Wave"
@@ -72,8 +72,8 @@ mechanics:
     source_unit: vashnik
     severity: minor
     detect: { damage_ids: [1295798] }
-    tip: "Espalhar e sair da direção das ondas (no Mítico, mirar as ondas nos tumores)."
-    message: "{player} foi atingido por Plague Wave ({count}x)"
+    tip: { pt: "Espalhar e sair da direção das ondas (no Mítico, mirar as ondas nos tumores).", en: "Spread and get out of the waves' path (on Mythic, aim the waves at the tumors)." }
+    message: { pt: "{player} foi atingido por Plague Wave ({count}x)", en: "{player} was hit by Plague Wave ({count}x)" }
 
   # ---------- Malignant Catalyst (Heroico+) ----------
   - key: malignant_catalyst
@@ -85,8 +85,8 @@ mechanics:
     detect:
       damage_ids: [1282602]     # Catalytic Bile em quem soaka
       fail_ids: [1282616]       # círculo sem ninguém: explode no raid todo
-    tip: "Ter alguém em cada círculo de soak."
-    message: "{count} círculo(s) do Malignant Catalyst sem soak"
+    tip: { pt: "Ter alguém em cada círculo de soak.", en: "Have someone in every soak circle." }
+    message: { pt: "{count} círculo(s) do Malignant Catalyst sem soak", en: "{count} Malignant Catalyst circle(s) without a soak" }
 
   - key: malignant_catalyst_burst
     name: "Malignant Catalyst (pulso)"
@@ -95,8 +95,8 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: none
     detect: { damage_ids: [1282525], cast_id: 1282509 }
-    tip: "Pulso no raid que cria os círculos de soak."
-    message: "Malignant Catalyst"
+    tip: { pt: "Pulso no raid que cria os círculos de soak.", en: "Raid pulse that creates the soak circles." }
+    message: { pt: "Malignant Catalyst", en: "Malignant Catalyst" }
 
   # ---------- Infecções ----------
   - key: exploding_infection
@@ -105,8 +105,8 @@ mechanics:
     source_unit: vashnik
     severity: none
     detect: { damage_ids: [1295209, 1295173], aura_id: 1295173 }
-    tip: "Marcado sai para longe do raid antes de explodir (o dano cai com a distância)."
-    message: "Caustic Explosion"
+    tip: { pt: "Marcado sai para longe do raid antes de explodir (o dano cai com a distância).", en: "The marked player moves away from the raid before it explodes (the damage falls off with distance)." }
+    message: { pt: "Caustic Explosion", en: "Caustic Explosion" }
     notes: "Caustic Explosion (1295209) pega o raid inteiro com queda por distância: sem culpa pelo log."
 
   - key: stygian_infection
@@ -115,8 +115,8 @@ mechanics:
     source_unit: vashnik
     severity: none
     detect: { aura_id: 1294994, damage_ids: [1294994] }
-    tip: "Absorção de cura enorme: curar o quanto antes para parar os swirlies."
-    message: "Stygian Infection"
+    tip: { pt: "Absorção de cura enorme: curar o quanto antes para parar os swirlies.", en: "Huge healing absorb: heal it as soon as possible to stop the swirlies." }
+    message: { pt: "Stygian Infection", en: "Stygian Infection" }
 
   - key: stygian_burst
     name: "Stygian Burst"
@@ -124,8 +124,8 @@ mechanics:
     source_unit: vashnik
     severity: minor
     detect: { damage_ids: [1302489] }
-    tip: "Desviar dos swirlies em volta de quem tem Stygian Infection."
-    message: "{player} tomou Stygian Burst ({count}x)"
+    tip: { pt: "Desviar dos swirlies em volta de quem tem Stygian Infection.", en: "Dodge the swirlies around whoever has Stygian Infection." }
+    message: { pt: "{player} tomou Stygian Burst ({count}x)", en: "{player} took Stygian Burst ({count}x)" }
 
   - key: virulent_fumes
     name: "Virulent Fumes"
@@ -133,8 +133,8 @@ mechanics:
     source_unit: vashnik
     severity: none
     detect: { damage_ids: [1291467], aura_id: 1291461 }
-    tip: "Dano leve no raid."
-    message: "Virulent Fumes"
+    tip: { pt: "Dano leve no raid.", en: "Light raid damage." }
+    message: { pt: "Virulent Fumes", en: "Virulent Fumes" }
 
   # ---------- Adds ----------
   - key: burning_presence
@@ -143,8 +143,8 @@ mechanics:
     source_unit: burning_venom
     severity: none
     detect: { damage_ids: [1305901, 1285979, 1280189], aura_id: 1285979 }
-    tip: "Burning Venom pulsa no raid e explode ao morrer: matar um de cada vez, com alguns segundos entre eles."
-    message: "Burning Presence"
+    tip: { pt: "Burning Venom pulsa no raid e explode ao morrer: matar um de cada vez, com alguns segundos entre eles.", en: "Burning Venom pulses on the raid and explodes on death: kill them one at a time, a few seconds apart." }
+    message: { pt: "Burning Presence", en: "Burning Presence" }
 
   - key: congealing_bolt
     name: "Congealing Bolt"
@@ -152,8 +152,8 @@ mechanics:
     source_unit: shrouded_venom
     severity: none
     detect: { damage_ids: [1305833], aura_id: 1305833 }
-    tip: "Matar os Shrouded Venom atravessando o escudo; os stacks do bolt somam."
-    message: "Congealing Bolt"
+    tip: { pt: "Matar os Shrouded Venom atravessando o escudo; os stacks do bolt somam.", en: "Kill the Shrouded Venoms through the shield; the bolt stacks add up." }
+    message: { pt: "Congealing Bolt", en: "Congealing Bolt" }
 
   - key: umbral_ejection
     name: "Umbral Ejection"
@@ -161,8 +161,8 @@ mechanics:
     source_unit: shrouded_venom
     severity: minor
     detect: { damage_ids: [1286737] }
-    tip: "Desviar dos swirlies quando o Shrouded Venom morre."
-    message: "{player} tomou Umbral Ejection ({count}x)"
+    tip: { pt: "Desviar dos swirlies quando o Shrouded Venom morre.", en: "Dodge the swirlies when the Shrouded Venom dies." }
+    message: { pt: "{player} tomou Umbral Ejection ({count}x)", en: "{player} took Umbral Ejection ({count}x)" }
 
   - key: clotting_venom
     name: "Splitting Clot"
@@ -170,8 +170,8 @@ mechanics:
     source_unit: clotting_venom
     severity: minor
     detect: { cast_id: 1291530 }
-    tip: "Clotting Venom se divide ao morrer: matar também os pedaços antes de chegarem ao centro."
-    message: "Clotting Venom"
+    tip: { pt: "Clotting Venom se divide ao morrer: matar também os pedaços antes de chegarem ao centro.", en: "Clotting Venom splits on death: also kill the pieces before they reach the center." }
+    message: { pt: "Clotting Venom", en: "Clotting Venom" }
 
   # ---------- Tank ----------
   - key: dripping_fangs
@@ -181,5 +181,5 @@ mechanics:
     roles: [tank]
     severity: none
     detect: { damage_ids: [1280934, 1280935], aura_id: 1280934 }
-    tip: "Tankbuster com 100% de vulnerabilidade: trocar de tank a cada um."
-    message: "Dripping Fangs"
+    tip: { pt: "Tankbuster com 100% de vulnerabilidade: trocar de tank a cada um.", en: "Tankbuster with 100% vulnerability: swap tanks on each one." }
+    message: { pt: "Dripping Fangs", en: "Dripping Fangs" }

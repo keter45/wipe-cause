@@ -40,8 +40,8 @@ mechanics: [ ... ]              # lista de regras (abaixo)
 | `roles` | não | `[tank, healer, dps]` — quem pode ser culpado; default todos |
 | `difficulty` | não | lista; default = todas do cabeçalho |
 | `overrides` | não | mapa dificuldade → campos que mudam (`mythic: { severity: wipe }`) |
-| `tip` | sim | o que fazer, 1 frase, pt-BR, palavras próprias |
-| `message` | sim | texto do relatório quando dispara (placeholders `{player}` `{count}` `{spell}` `{time}` `{stacks}`) |
+| `tip` | sim | o que fazer, 1 frase, palavras próprias, nas duas línguas: `{ pt: "...", en: "..." }` |
+| `message` | sim | texto do relatório quando dispara (placeholders `{player}` `{count}` `{spell}` `{time}` `{stacks}`), nas duas línguas: `{ pt: "...", en: "..." }` |
 | `needs_id` | não | `true` enquanto algum ID estiver `null` |
 | `notes` | não | observações de calibração |
 

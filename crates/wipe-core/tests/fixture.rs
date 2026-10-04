@@ -113,7 +113,7 @@ fn boss_rules_are_applied() {
     assert_eq!(vf.failures, 2);
     assert_eq!(vf.spell_id, Some(1294605), "ícone da mecânica = spell de dano");
     assert_eq!(vf.players[0].name, "Curandeira-Azralon");
-    assert_eq!(vf.players[0].message, "Curandeira foi atingido pelo feixe do Vile Flood (2x)");
+    assert_eq!(vf.players[0].message.pt, "Curandeira foi atingido pelo feixe do Vile Flood (2x)");
     // a morte fica ligada à mecânica
     assert_eq!(p1.deaths[0].killing_blow_mechanic.as_deref(), Some("Vile Flood"));
 

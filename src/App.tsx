@@ -14,6 +14,7 @@ import {
   rememberFile,
   sameLog,
   sourceName,
+  setBackendLocale,
   type HistoryEntry,
 } from './lib/api';
 import { BossSummary, NightOverview } from './components/NightSummary';
@@ -79,6 +80,9 @@ function markOnboarded() {
 export default function App() {
   // trocar o idioma remonta as telas (textos montados em memória saem de novo), sem perder o log aberto
   const locale = useLocale();
+  useEffect(() => {
+    void setBackendLocale(locale);
+  }, [locale]);
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   // NIGHT = visão geral; chave de boss = resumo do boss; null = pull selecionado

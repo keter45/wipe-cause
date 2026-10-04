@@ -5,6 +5,7 @@ import { mmss, pct, shortName } from './format';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { spellIdByName } from './spells';
 import { getMarks } from './marks';
+import { tr } from '../i18n';
 
 export type Severity = 'wipe' | 'major' | 'minor' | 'info';
 
@@ -76,12 +77,12 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
       severity: m.severity === 'minor' ? 'major' : m.severity,
       focus: m.focus,
       spellId: m.spellId,
-      title: m.summary || `${m.name}: ${blamed.length} jogador(es)`,
-      detail: m.summary
-        ? m.tip
+      title: tr(m.summary) || `${m.name}: ${blamed.length} jogador(es)`,
+      detail: tr(m.summary)
+        ? tr(m.tip)
         : blamed
             .slice(0, 4)
-            .map((x) => x.message || shortName(x.name))
+            .map((x) => tr(x.message) || shortName(x.name))
             .join(' · ') + (blamed.length > 4 ? ` · +${blamed.length - 4}` : ''),
     });
   }

@@ -13,12 +13,12 @@ sources:
 
 # O que mais pesa no dano, em ordem (aparece no app como "pontos principais")
 key_points:
-  - "Sempre castando: tempo parado é a maior perda de dano. Steady Shot preenche e dá para castar andando."
-  - "Todo Precise Shots é gasto: depois de cada Aimed Shot vem um spender (Arcane Shot; Multi-Shot com 2+ alvos; Kill Shot no Sentinel, Black Arrow no Dark Ranger). Rapid Fire gasta o próprio (Unload)."
-  - "Aimed Shot, Rapid Fire, Explosive Shot (duas vezes seguidas, Unstable Trigger), Volley e Trueshot no cooldown."
-  - "Em AoE com Trick Shots: nunca Aimed Shot ou Rapid Fire sem o buff Trick Shots (o Multi-Shot coloca)."
-  - "Trueshot: o último da luta espera 30 stacks de Bullseye. Sentinel: Moonlight Chakram com ~5 s de Trueshot restando."
-  - "Mover só fora do cast de Aimed Shot."
+  - { pt: "Sempre castando: tempo parado é a maior perda de dano. Steady Shot preenche e dá para castar andando.", en: "Always casting: idle time is the biggest damage loss. Steady Shot fills and can be cast while moving." }
+  - { pt: "Todo Precise Shots é gasto: depois de cada Aimed Shot vem um spender (Arcane Shot; Multi-Shot com 2+ alvos; Kill Shot no Sentinel, Black Arrow no Dark Ranger). Rapid Fire gasta o próprio (Unload).", en: "Every Precise Shots is spent: each Aimed Shot is followed by a spender (Arcane Shot; Multi-Shot on 2+ targets; Kill Shot for Sentinel, Black Arrow for Dark Ranger). Rapid Fire spends its own (Unload)." }
+  - { pt: "Aimed Shot, Rapid Fire, Explosive Shot (duas vezes seguidas, Unstable Trigger), Volley e Trueshot no cooldown.", en: "Aimed Shot, Rapid Fire, Explosive Shot (twice in a row, Unstable Trigger), Volley and Trueshot on cooldown." }
+  - { pt: "Em AoE com Trick Shots: nunca Aimed Shot ou Rapid Fire sem o buff Trick Shots (o Multi-Shot coloca).", en: "In AoE with Trick Shots: never Aimed Shot or Rapid Fire without the Trick Shots buff (Multi-Shot applies it)." }
+  - { pt: "Trueshot: o último da luta espera 30 stacks de Bullseye. Sentinel: Moonlight Chakram com ~5 s de Trueshot restando.", en: "Trueshot: the last one of the fight waits for 30 Bullseye stacks. Sentinel: Moonlight Chakram with ~5 s of Trueshot left." }
+  - { pt: "Mover só fora do cast de Aimed Shot.", en: "Move only outside the Aimed Shot cast." }
 
 # Árvore de herói, reconhecida pelo que o player casta na luta
 hero_trees:
@@ -55,50 +55,50 @@ buffs:
 priority:
   sentinel:
     st:
-      - { spell: explosive_shot, note: "no cooldown; duas vezes seguidas (Unstable Trigger)" }
-      - { spell: volley, note: "no cooldown" }
-      - { spell: trueshot, note: "no cooldown; o último da luta com 30 stacks de Bullseye" }
-      - { spell: moonlight_chakram, note: "com ~5 s de Trueshot restando" }
-      - { spell: rapid_fire, note: "no cooldown" }
-      - { spell: kill_shot, note: "para gastar Precise Shots" }
-      - { spell: arcane_shot, note: "para gastar Precise Shots" }
-      - { spell: aimed_shot, note: "no cooldown" }
-      - { spell: moonlight_chakram, note: "quando nada acima estiver pronto" }
-      - { spell: steady_shot, note: "preenche; nunca ficar parado" }
+      - { spell: explosive_shot, note: { pt: "no cooldown; duas vezes seguidas (Unstable Trigger)", en: "on cooldown; twice in a row (Unstable Trigger)" } }
+      - { spell: volley, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: trueshot, note: { pt: "no cooldown; o último da luta com 30 stacks de Bullseye", en: "on cooldown; the last one of the fight at 30 Bullseye stacks" } }
+      - { spell: moonlight_chakram, note: { pt: "com ~5 s de Trueshot restando", en: "with ~5 s of Trueshot left" } }
+      - { spell: rapid_fire, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: kill_shot, note: { pt: "para gastar Precise Shots", en: "to spend Precise Shots" } }
+      - { spell: arcane_shot, note: { pt: "para gastar Precise Shots", en: "to spend Precise Shots" } }
+      - { spell: aimed_shot, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: moonlight_chakram, note: { pt: "quando nada acima estiver pronto", en: "when nothing above is ready" } }
+      - { spell: steady_shot, note: { pt: "preenche; nunca ficar parado", en: "filler; never stand still" } }
     aoe:
-      - { spell: explosive_shot, note: "no cooldown, os dois em alvos diferentes" }
-      - { spell: volley, note: "no cooldown" }
-      - { spell: trueshot, note: "no cooldown" }
-      - { spell: moonlight_chakram, note: "se o Trueshot estiver acabando" }
-      - { spell: multishot, note: "gasta Precise Shots e recoloca Trick Shots" }
-      - { spell: rapid_fire, note: "com Trick Shots; cortar o último tick com Multi-Shot" }
-      - { spell: aimed_shot, note: "no cooldown, com Trick Shots" }
+      - { spell: explosive_shot, note: { pt: "no cooldown, os dois em alvos diferentes", en: "on cooldown, both on different targets" } }
+      - { spell: volley, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: trueshot, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: moonlight_chakram, note: { pt: "se o Trueshot estiver acabando", en: "if Trueshot is ending" } }
+      - { spell: multishot, note: { pt: "gasta Precise Shots e recoloca Trick Shots", en: "spends Precise Shots and reapplies Trick Shots" } }
+      - { spell: rapid_fire, note: { pt: "com Trick Shots; cortar o último tick com Multi-Shot", en: "with Trick Shots; clip the last tick with Multi-Shot" } }
+      - { spell: aimed_shot, note: { pt: "no cooldown, com Trick Shots", en: "on cooldown, with Trick Shots" } }
       - { spell: moonlight_chakram }
       - { spell: steady_shot }
   dark_ranger:
     st:
-      - { spell: black_arrow, note: "com Precise Shots" }
-      - { spell: explosive_shot, note: "no cooldown; duas vezes seguidas (Unstable Trigger)" }
-      - { spell: volley, note: "no cooldown" }
-      - { spell: aimed_shot, note: "no Trueshot sem Precise Shots se Black Arrow estiver pronto, ou para não estourar as 2 cargas" }
-      - { spell: trueshot, note: "no cooldown; o último da luta com 30 stacks de Bullseye" }
-      - { spell: rapid_fire, note: "no cooldown" }
-      - { spell: wailing_arrow, note: "no cooldown" }
-      - { spell: arcane_shot, note: "para gastar Precise Shots" }
-      - { spell: aimed_shot, note: "no cooldown" }
+      - { spell: black_arrow, note: { pt: "com Precise Shots", en: "with Precise Shots" } }
+      - { spell: explosive_shot, note: { pt: "no cooldown; duas vezes seguidas (Unstable Trigger)", en: "on cooldown; twice in a row (Unstable Trigger)" } }
+      - { spell: volley, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: aimed_shot, note: { pt: "no Trueshot sem Precise Shots se Black Arrow estiver pronto, ou para não estourar as 2 cargas", en: "in Trueshot without Precise Shots if Black Arrow is ready, or to avoid capping the 2 charges" } }
+      - { spell: trueshot, note: { pt: "no cooldown; o último da luta com 30 stacks de Bullseye", en: "on cooldown; the last one of the fight at 30 Bullseye stacks" } }
+      - { spell: rapid_fire, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: wailing_arrow, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: arcane_shot, note: { pt: "para gastar Precise Shots", en: "to spend Precise Shots" } }
+      - { spell: aimed_shot, note: { pt: "no cooldown", en: "on cooldown" } }
       - { spell: black_arrow }
-      - { spell: steady_shot, note: "preenche; nunca ficar parado" }
+      - { spell: steady_shot, note: { pt: "preenche; nunca ficar parado", en: "filler; never stand still" } }
     aoe:
-      - { spell: explosive_shot, note: "no cooldown, os dois em alvos diferentes" }
-      - { spell: volley, note: "no cooldown" }
-      - { spell: aimed_shot, note: "com Trick Shots, se for chegar a 2 cargas" }
-      - { spell: black_arrow, note: "com Precise Shots" }
-      - { spell: multishot, note: "para ativar Trick Shots se estiver sem" }
-      - { spell: trueshot, note: "no cooldown" }
-      - { spell: rapid_fire, note: "com Trick Shots" }
-      - { spell: wailing_arrow, note: "se Black Arrow não estiver pronto" }
-      - { spell: multishot, note: "para gastar Precise Shots" }
-      - { spell: aimed_shot, note: "no cooldown, com Trick Shots" }
+      - { spell: explosive_shot, note: { pt: "no cooldown, os dois em alvos diferentes", en: "on cooldown, both on different targets" } }
+      - { spell: volley, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: aimed_shot, note: { pt: "com Trick Shots, se for chegar a 2 cargas", en: "with Trick Shots, if it would reach 2 charges" } }
+      - { spell: black_arrow, note: { pt: "com Precise Shots", en: "with Precise Shots" } }
+      - { spell: multishot, note: { pt: "para ativar Trick Shots se estiver sem", en: "to apply Trick Shots if it's missing" } }
+      - { spell: trueshot, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: rapid_fire, note: { pt: "com Trick Shots", en: "with Trick Shots" } }
+      - { spell: wailing_arrow, note: { pt: "se Black Arrow não estiver pronto", en: "if Black Arrow isn't ready" } }
+      - { spell: multishot, note: { pt: "para gastar Precise Shots", en: "to spend Precise Shots" } }
+      - { spell: aimed_shot, note: { pt: "no cooldown, com Trick Shots", en: "on cooldown, with Trick Shots" } }
       - { spell: black_arrow }
       - { spell: steady_shot }
 
@@ -116,15 +116,15 @@ checks:
     # com Unload, o Rapid Fire gasta o próprio Precise Shots durante o canal
     channel: { spell: rapid_fire, ms: 3500 }
     importance: high
-    title: Precise Shots desperdiçado
-    tip: "Depois de cada Aimed Shot, gaste o Precise Shots (Arcane Shot, ou Multi-Shot com 2+ alvos) antes do próximo Aimed Shot."
+    title: { pt: "Precise Shots desperdiçado", en: "Precise Shots wasted" }
+    tip: { pt: "Depois de cada Aimed Shot, gaste o Precise Shots (Arcane Shot, ou Multi-Shot com 2+ alvos) antes do próximo Aimed Shot.", en: "After each Aimed Shot, spend Precise Shots (Arcane Shot, or Multi-Shot on 2+ targets) before the next Aimed Shot." }
   - kind: proc
     id: unstable_trigger
     buff: unstable_trigger
     spenders: [explosive_shot]
     importance: medium
-    title: Segundo Explosive Shot perdido
-    tip: "Com Unstable Trigger, o Explosive Shot sai duas vezes seguidas: use o segundo logo em seguida."
+    title: { pt: "Segundo Explosive Shot perdido", en: "Second Explosive Shot lost" }
+    tip: { pt: "Com Unstable Trigger, o Explosive Shot sai duas vezes seguidas: use o segundo logo em seguida.", en: "With Unstable Trigger, Explosive Shot goes out twice in a row: use the second one right away." }
   - kind: requires_buff
     id: trick_shots
     casts: [aimed_shot, rapid_fire]
@@ -134,15 +134,15 @@ checks:
     # o Trick Shots que aparece vem do Volley e não é exigido
     applied_by: [multishot]
     importance: high
-    title: Aimed Shot / Rapid Fire sem Trick Shots em AoE
-    tip: "Com 3+ alvos, Multi-Shot antes para colocar Trick Shots: sem ele, o tiro acerta só um."
+    title: { pt: "Aimed Shot / Rapid Fire sem Trick Shots em AoE", en: "Aimed Shot / Rapid Fire without Trick Shots in AoE" }
+    tip: { pt: "Com 3+ alvos, Multi-Shot antes para colocar Trick Shots: sem ele, o tiro acerta só um.", en: "On 3+ targets, Multi-Shot first to apply Trick Shots: without it, the shot hits only one." }
   - kind: downtime
     id: always_be_casting
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem castar
-    tip: "Sempre castando: se nada estiver pronto, Steady Shot (dá para castar andando)."
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre castando: se nada estiver pronto, Steady Shot (dá para castar andando).", en: "Always casting: if nothing is ready, Steady Shot (castable while moving)." }
   - kind: cooldown
     id: cooldowns
     # Aimed Shot e Rapid Fire ficam de fora: haste, Trueshot e Lock and Load mudam o cooldown deles
@@ -150,5 +150,5 @@ checks:
     spells: [trueshot, volley, explosive_shot]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Use no cooldown: cada uso a menos é dano que não volta."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Use no cooldown: cada uso a menos é dano que não volta.", en: "Use it on cooldown: every missed use is damage you don't get back." }

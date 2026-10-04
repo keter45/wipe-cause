@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 use rule_tuning::tuning_dir;
 use wipe_core::LogReport;
+use wipe_core::i18n::pick;
 
 #[derive(Clone, Serialize)]
 struct Progress {
@@ -50,10 +51,10 @@ pub(crate) fn analyze_and_save(app: &AppHandle, path: &str, death_cutoff: u32, t
         }
         wcl_source::analyze(app, &codes, book, &opts, tz_hours, progress)?
     } else {
-        wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| format!("não foi possível ler {path}: {e}"))?
+        wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| pick(format!("não foi possível ler {path}: {e}"), format!("could not read {path}: {e}")))?
     };
     if let Err(e) = history::save(app, &report, path) {
-        eprintln!("não foi possível salvar no histórico: {e}");
+        eprintln!("could not save to history: {e}");
     }
     Ok(report)
 }
@@ -75,7 +76,16 @@ async fn analyze_log(app: AppHandle, path: String, death_cutoff: Option<u32>, tz
 fn save_file(path: String, data_b64: String) -> Result<(), String> {
     use base64::Engine;
     let bytes = base64::engine::general_purpose::STANDARD.decode(data_b64).map_err(|e| e.to_string())?;
-    std::fs::write(&path, bytes).map_err(|e| format!("não foi possível salvar {path}: {e}"))
+    std::fs::write(&path, bytes).map_err(|e| pick(format!("não foi possível salvar {path}: {e}"), format!("could not save {path}: {e}")))
+}
+
+/// Idioma escolhido na UI: vale para as mensagens do backend, o menu da bandeja e os avisos do
+/// Windows (e fica salvo para o app abrir já nele, mesmo escondido na bandeja).
+#[tauri::command]
+fn set_locale(app: AppHandle, locale: String) -> Result<(), String> {
+    wipe_core::i18n::set_english(locale == "en");
+    tray::relabel(&app);
+    settings::update(&app, |s| s.locale = Some(locale))
 }
 
 /// Caminho da pasta de regras do usuário, para mostrar na UI.
@@ -95,6 +105,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         // fechar a janela esconde na bandeja (o ao vivo continua); Sair fica no menu do ícone
         .setup(|app| {
+            wipe_core::i18n::set_english(settings::load(app.handle()).locale.as_deref() == Some("en"));
             tray::setup(app.handle())?;
             // a janela nasce escondida: aparece, a não ser quando o Windows abriu o app na bandeja
             if !std::env::args().any(|a| a == startup::TRAY_ARG) {
@@ -107,6 +118,7 @@ pub fn run() {
         .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             analyze_log,
+            set_locale,
             rules_dir,
             rule_tuning::rules_get,
             rule_tuning::rules_save_tuning,

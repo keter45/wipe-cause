@@ -12,6 +12,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
+use wipe_core::i18n::pick;
 
 const KEYRING_SERVICE: &str = "wipe-cause";
 const TOKEN_URL: &str = "https://www.warcraftlogs.com/oauth/token";
@@ -35,9 +36,12 @@ fn agent() -> ureq::Agent {
 
 fn http_error(code: u16, body: String) -> String {
     match code {
-        400 | 401 | 403 => "O Warcraft Logs recusou o client ID/secret. Confira os dois em warcraftlogs.com/api/clients.".into(),
-        429 => "Limite de pontos da API do Warcraft Logs atingido nesta hora. Tente de novo mais tarde.".into(),
-        _ => format!("O Warcraft Logs respondeu {code}: {}", body.chars().take(300).collect::<String>()),
+        400 | 401 | 403 => pick("O Warcraft Logs recusou o client ID/secret. Confira os dois em warcraftlogs.com/api/clients.", "Warcraft Logs rejected the client ID/secret. Check both at warcraftlogs.com/api/clients."),
+        429 => pick("Limite de pontos da API do Warcraft Logs atingido nesta hora. Tente de novo mais tarde.", "Warcraft Logs API point limit reached for this hour. Try again later."),
+        _ => {
+            let body: String = body.chars().take(300).collect();
+            pick(format!("O Warcraft Logs respondeu {code}: {body}"), format!("Warcraft Logs answered {code}: {body}"))
+        }
     }
 }
 
@@ -56,16 +60,21 @@ fn token(id: &str, secret: &str) -> Result<String, String> {
     let json: serde_json::Value = match res {
         Ok(r) => r.into_json().map_err(|e| e.to_string())?,
         Err(ureq::Error::Status(code, r)) => return Err(http_error(code, r.into_string().unwrap_or_default())),
-        Err(e) => return Err(format!("Sem conexão com o Warcraft Logs: {e}")),
+        Err(e) => return Err(pick(format!("Sem conexão com o Warcraft Logs: {e}"), format!("No connection to Warcraft Logs: {e}"))),
     };
-    let t = json["access_token"].as_str().ok_or("Resposta de token inválida do Warcraft Logs.")?.to_string();
+    let t = json["access_token"].as_str().ok_or_else(|| pick("Resposta de token inválida do Warcraft Logs.", "Invalid token response from Warcraft Logs."))?.to_string();
     let secs = json["expires_in"].as_u64().unwrap_or(3600).saturating_sub(300).max(60);
     *TOKEN.lock().unwrap() = Some((t.clone(), Instant::now() + Duration::from_secs(secs)));
     Ok(t)
 }
 
 /// Erro 401: o token não vale mais.
-pub(crate) const UNAUTHORIZED: &str = "Sessão do Warcraft Logs expirou; tente de novo.";
+/// Sessão expirada: marcador interno (refaz o token e tenta de novo); vira mensagem no idioma atual se sobrar.
+pub(crate) const UNAUTHORIZED: &str = "wcl-unauthorized";
+
+fn unauthorized_message() -> String {
+    pick("Sessão do Warcraft Logs expirou; tente de novo.", "The Warcraft Logs session expired; try again.")
+}
 
 /// POST de uma consulta GraphQL com um token (do client ou do usuário).
 pub(crate) fn post_graphql(url: &str, token: &str, query: &str, variables: &serde_json::Value) -> Result<serde_json::Value, String> {
@@ -77,11 +86,12 @@ pub(crate) fn post_graphql(url: &str, token: &str, query: &str, variables: &serd
         Ok(r) => r.into_json().map_err(|e| e.to_string())?,
         Err(ureq::Error::Status(401, _)) => return Err(UNAUTHORIZED.into()),
         Err(ureq::Error::Status(code, r)) => return Err(http_error(code, r.into_string().unwrap_or_default())),
-        Err(e) => return Err(format!("Sem conexão com o Warcraft Logs: {e}")),
+        Err(e) => return Err(pick(format!("Sem conexão com o Warcraft Logs: {e}"), format!("No connection to Warcraft Logs: {e}"))),
     };
     if let Some(errs) = json["errors"].as_array().filter(|e| !e.is_empty()) {
         let msg: Vec<&str> = errs.iter().filter_map(|e| e["message"].as_str()).collect();
-        return Err(format!("Erro na consulta ao Warcraft Logs: {}", msg.join("; ")));
+        let m = msg.join("; ");
+        return Err(pick(format!("Erro na consulta ao Warcraft Logs: {m}"), format!("Warcraft Logs query error: {m}")));
     }
     Ok(json["data"].clone())
 }
@@ -90,6 +100,7 @@ pub(crate) fn graphql(id: &str, secret: &str, query: &str, variables: &serde_jso
     let res = post_graphql(API_URL, &token(id, secret)?, query, variables);
     if res.as_ref().is_err_and(|e| e == UNAUTHORIZED) {
         *TOKEN.lock().unwrap() = None; // token revogado: tenta de novo na próxima
+        return Err(unauthorized_message());
     }
     res
 }
@@ -101,11 +112,11 @@ pub(crate) fn api_query(query: &str, variables: &serde_json::Value) -> Result<se
         let res = post_graphql(crate::wcl_auth::USER_API, &t, query, variables);
         if res.as_ref().is_err_and(|e| e == UNAUTHORIZED) {
             crate::wcl_auth::forget_session();
-            return Err("O login do Warcraft Logs expirou. Entre de novo em Configurações → Warcraft Logs.".into());
+            return Err(pick("O login do Warcraft Logs expirou. Entre de novo em Configurações → Warcraft Logs.", "The Warcraft Logs login expired. Sign in again in Settings → Warcraft Logs."));
         }
         return res;
     }
-    let (id, secret) = credentials().ok_or("Entre com sua conta do Warcraft Logs (Configurações → Warcraft Logs).")?;
+    let (id, secret) = credentials().ok_or_else(|| pick("Entre com sua conta do Warcraft Logs (Configurações → Warcraft Logs).", "Sign in with your Warcraft Logs account (Settings → Warcraft Logs)."))?;
     graphql(&id, &secret, query, variables)
 }
 
@@ -140,12 +151,12 @@ pub async fn wcl_set_config(client_id: String, client_secret: String) -> Result<
         return Ok(());
     }
     if id.is_empty() || secret.is_empty() {
-        return Err("Preencha o client ID e o client secret.".into());
+        return Err(pick("Preencha o client ID e o client secret.", "Fill in the client ID and the client secret."));
     }
     let (i, s) = (id.clone(), secret.clone());
     tauri::async_runtime::spawn_blocking(move || token(&i, &s)).await.map_err(|e| e.to_string())??;
-    entry("wcl-client-id")?.set_password(&id).map_err(|e| format!("não foi possível guardar: {e}"))?;
-    entry("wcl-client-secret")?.set_password(&secret).map_err(|e| format!("não foi possível guardar: {e}"))?;
+    entry("wcl-client-id")?.set_password(&id).map_err(|e| pick(format!("não foi possível guardar: {e}"), format!("could not store: {e}")))?;
+    entry("wcl-client-secret")?.set_password(&secret).map_err(|e| pick(format!("não foi possível guardar: {e}"), format!("could not store: {e}")))?;
     Ok(())
 }
 
