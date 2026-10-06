@@ -68,7 +68,14 @@ function textOf(line: string): string {
   const strings = [...line.matchAll(/'([^'\\]|\\.)*'|"([^"\\]|\\.)*"|`[^`]*`/g)].map((m) => m[0]).filter((s) => /\s/.test(s.trim().slice(1, -1)) || ACCENT.test(s));
   // `=>` e `->` não abrem texto de JSX (arrow function, tipo genérico)
   const jsx = [...line.matchAll(/(?<![=-])>([^<>{}]*)</g)].map((m) => m[1]);
-  const lone = /^\s*[^<>{}=;()[\]]*[A-Za-zÀ-ú][^<>{}=;()[\]]*$/.test(line) && !/^\s*(import|export|const|let|return|if|else|case|type|interface|function)\b/.test(line) ? [line] : [];
+  // linha solta de texto (JSX quebrado em várias linhas); chave de objeto e identificador sozinho são código
+  const lone =
+    /^\s*[^<>{}=;()[\]]*[A-Za-zÀ-ú][^<>{}=;()[\]]*$/.test(line) &&
+    !/^\s*(import|export|const|let|return|if|else|case|type|interface|function)\b/.test(line) &&
+    !/^\s*[\w$]+\??:\s/.test(line) &&
+    !/^\s*[\w$.]+,?\s*$/.test(line)
+      ? [line]
+      : [];
   return [...strings, ...jsx, ...lone]
     .join(' ')
     .replace(/\b[A-Za-z_]\w*(\.\w+)+/g, ' ') // acesso a propriedade (e.nativeEvent.offsetX) é código
@@ -91,14 +98,12 @@ export function portugueseLines(file: string): { line: number; text: string }[] 
 
 /** Arquivos ainda não migrados para os dicionários (a lista só pode diminuir). */
 export const PENDING = new Set<string>([
-  'components/Sidebar.tsx',
-  'components/CreateRule.tsx',
-  'components/perf/sections.tsx',
+
   'components/PullView.tsx',
   'components/Header.tsx',
   'components/LogBrowser.tsx',
   'components/settings/FirstSteps.tsx',
-  'components/perf/PerformanceView.tsx',
+
   'components/share/ShareMenu.tsx',
   'components/share/BossCard.tsx',
   'components/share/SoloCard.tsx',
@@ -109,7 +114,7 @@ export const PENDING = new Set<string>([
   'components/settings/WclApiForm.tsx',
   'components/share/PullCard.tsx',
   'components/AssignmentsPanel.tsx',
-  'components/perf/CooldownCompare.tsx',
+
   'components/PlayersTable.tsx',
   'components/PullList.tsx',
   'components/PhaseTimes.tsx',
@@ -121,7 +126,7 @@ export const PENDING = new Set<string>([
   'components/EnemySpellsTable.tsx',
   'components/PullMarks.tsx',
   'components/share/NightCard.tsx',
-  'components/share/PerfCard.tsx',
+
   'components/WclOpen.tsx',
   'components/settings/FolderForm.tsx',
   'components/InterruptsView.tsx',

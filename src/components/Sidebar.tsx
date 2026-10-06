@@ -7,6 +7,8 @@ import { BossIcon, BossName } from './Names';
 import type { UpdateState } from '../lib/updater';
 import { missingRequired, useSetup } from '../lib/setup';
 import { NIGHT, PullList, type PullListProps } from './PullList';
+import { intlLocale, useMessages } from '../i18n';
+import { sidebarMsg } from './Sidebar.i18n';
 
 interface Props extends PullListProps {
   history: HistoryEntry[];
@@ -36,6 +38,7 @@ interface Props extends PullListProps {
  */
 export function Sidebar(props: Props) {
   const { history, report } = props;
+  const t = useMessages(sidebarMsg);
   const isOpen = (e: HistoryEntry) => report != null && sameLog(e.logPath, report.file);
   const pinned = history.filter((e) => e.pinned);
   const recent = history.filter((e) => !e.pinned);
@@ -54,18 +57,18 @@ export function Sidebar(props: Props) {
   );
 
   return (
-    <aside className="sidebar" aria-label="Análises">
+    <aside className="sidebar" aria-label={t.aria}>
       <div className="sidebar-top">
-        <button className="icon-btn sidebar-collapse" onClick={props.onCollapse} title="Recolher barra lateral" aria-label="Recolher barra lateral">
+        <button className="icon-btn sidebar-collapse" onClick={props.onCollapse} title={t.collapse} aria-label={t.collapse}>
           <PanelLeftClose size={16} strokeWidth={1.5} aria-hidden />
         </button>
         {inTauri ? (
           <button className={`side-item new ${props.page === 'browse' ? 'active' : ''}`} onClick={props.onNew} aria-current={props.page === 'browse' ? 'page' : undefined}>
-            <Plus size={16} strokeWidth={2} aria-hidden /> Nova análise
+            <Plus size={16} strokeWidth={2} aria-hidden /> {t.newAnalysis}
           </button>
         ) : (
           <label className="side-item new">
-            <Plus size={16} strokeWidth={2} aria-hidden /> Abrir relatório JSON
+            <Plus size={16} strokeWidth={2} aria-hidden /> {t.openJson}
             <input
               type="file"
               accept=".json"
@@ -78,13 +81,13 @@ export function Sidebar(props: Props) {
           </label>
         )}
         <button className={`side-item ${props.page === 'trends' ? 'active' : ''}`} onClick={props.onTrends} aria-current={props.page === 'trends' ? 'page' : undefined}>
-          <TrendingUp size={16} strokeWidth={1.5} aria-hidden /> Evolução
+          <TrendingUp size={16} strokeWidth={1.5} aria-hidden /> {t.trends}
         </button>
       </div>
 
       <div className="sidebar-scroll">
         {current && (
-          <Section title="Aberta agora">
+          <Section title={t.openNow}>
             <div className={`side-entry ${collapsed ? '' : 'open'}`}>
               <div className="side-item entry active">
                 <button className="entry-main" onClick={toggleOpen} title={current.file} aria-expanded={!collapsed}>
@@ -99,11 +102,11 @@ export function Sidebar(props: Props) {
           </Section>
         )}
 
-        {pinned.length > 0 && <Section title="Fixadas">{pinned.map(row)}</Section>}
+        {pinned.length > 0 && <Section title={t.pinned}>{pinned.map(row)}</Section>}
 
         {recent.length > 0 && (
           <Section
-            title="Recentes"
+            title={t.recent}
             action={
               confirmAll ? (
                 <span className="confirm-inline">
@@ -114,14 +117,14 @@ export function Sidebar(props: Props) {
                       setConfirmAll(false);
                     }}
                   >
-                    Apagar {recent.length}
+                    {t.deleteN(recent.length)}
                   </button>
                   <button className="confirm-no" onClick={() => setConfirmAll(false)}>
-                    Cancelar
+                    {t.cancel}
                   </button>
                 </span>
               ) : (
-                <button className="icon-btn sm" onClick={() => setConfirmAll(true)} title="Apagar todas as análises não fixadas" aria-label="Apagar todas as análises não fixadas">
+                <button className="icon-btn sm" onClick={() => setConfirmAll(true)} title={t.deleteUnpinned} aria-label={t.deleteUnpinned}>
                   <Trash size={14} strokeWidth={1.5} aria-hidden />
                 </button>
               )
@@ -132,7 +135,7 @@ export function Sidebar(props: Props) {
         )}
 
         {history.length === 0 && !current && (
-          <p className="sidebar-empty">As análises ficam salvas aqui, com data. Abra um combat log para começar.</p>
+          <p className="sidebar-empty">{t.empty}</p>
         )}
       </div>
 
@@ -156,9 +159,9 @@ function Section({ title, action, children }: { title: string; action?: ReactNod
   );
 }
 
+/** "24/09 21:05" (pt) / "09/24, 9:05 PM" (en) */
 function savedLabel(ms: number): string {
-  const d = new Date(ms);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return new Date(ms).toLocaleString(intlLocale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 function EntryRow({
@@ -168,15 +171,16 @@ function EntryRow({
   onToggle,
   ...props
 }: { entry: HistoryEntry; open: boolean; expanded: boolean; onToggle: () => void } & Props) {
+  const t = useMessages(sidebarMsg);
   const [confirm, setConfirm] = useState(false);
   const info = [
-    `${e.pulls} pulls`,
-    e.kills ? `${e.kills} kill${e.kills > 1 ? 's' : ''}` : null,
-    e.bestHp != null && !e.kills ? `melhor ${pct(e.bestHp)}` : null,
-    e.deathCutoff ? `corte ${e.deathCutoff} mortes` : null,
-    `salvo ${savedLabel(e.savedAt)}`,
+    t.pulls(e.pulls),
+    e.kills ? t.kills(e.kills) : null,
+    e.bestHp != null && !e.kills ? t.best(pct(e.bestHp)) : null,
+    e.deathCutoff ? t.cutoff(e.deathCutoff) : null,
+    t.saved(savedLabel(e.savedAt)),
     `${(e.size / 1e6).toFixed(1)} MB`,
-    e.logExists ? null : 'log original não encontrado',
+    e.logExists ? null : t.logMissing,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -186,7 +190,7 @@ function EntryRow({
       <div className={`side-item entry ${open ? 'active' : ''} ${confirm ? 'confirming' : ''}`}>
         {confirm ? (
           <span className="confirm-inline full">
-            <span className="confirm-text">Apagar “{e.title}”?</span>
+            <span className="confirm-text">{t.confirmDelete(e.title)}</span>
             <button
               className="confirm-yes"
               onClick={() => {
@@ -194,10 +198,10 @@ function EntryRow({
                 setConfirm(false);
               }}
             >
-              Apagar
+              {t.delete}
             </button>
             <button className="confirm-no" onClick={() => setConfirm(false)} autoFocus>
-              Cancelar
+              {t.cancel}
             </button>
           </span>
         ) : (
@@ -207,18 +211,18 @@ function EntryRow({
               <span className="entry-title">
                 <BossName encounterId={e.encounterId} name={e.title} size={16} />
               </span>
-              {!e.logExists && <FileX size={13} strokeWidth={1.5} className="entry-missing" aria-label="log original não encontrado" />}
+              {!e.logExists && <FileX size={13} strokeWidth={1.5} className="entry-missing" aria-label={t.logMissing} />}
             </button>
             <span className="entry-actions">
               <button
                 className="icon-btn sm"
                 onClick={() => props.onTogglePin(e)}
-                title={e.pinned ? 'Desafixar' : 'Fixar (manter)'}
-                aria-label={e.pinned ? 'Desafixar' : 'Fixar'}
+                title={e.pinned ? t.unpin : t.pinKeep}
+                aria-label={e.pinned ? t.unpin : t.pin}
               >
                 {e.pinned ? <PinOff size={14} strokeWidth={1.5} aria-hidden /> : <Pin size={14} strokeWidth={1.5} aria-hidden />}
               </button>
-              <button className="icon-btn sm" onClick={() => setConfirm(true)} title="Apagar do histórico" aria-label="Apagar do histórico">
+              <button className="icon-btn sm" onClick={() => setConfirm(true)} title={t.deleteFromHistory} aria-label={t.deleteFromHistory}>
                 <Trash size={14} strokeWidth={1.5} aria-hidden />
               </button>
             </span>
@@ -232,14 +236,15 @@ function EntryRow({
 
 /** Configurações no rodapé; um alerta quando falta algo essencial (a pasta de logs). */
 function SettingsItem({ active, onClick }: { active: boolean; onClick: () => void }) {
+  const t = useMessages(sidebarMsg);
   const { status } = useSetup();
   const missing = missingRequired(status);
   return (
     <button className={`side-item ${active ? 'active' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
-      <Settings size={16} strokeWidth={1.5} aria-hidden /> Configurações
+      <Settings size={16} strokeWidth={1.5} aria-hidden /> {t.settings}
       {missing && (
-        <span className="side-alert" title="Falta configurar a pasta de logs do WoW">
-          falta configurar
+        <span className="side-alert" title={t.missingTitle}>
+          {t.missing}
         </span>
       )}
     </button>
@@ -248,21 +253,22 @@ function SettingsItem({ active, onClick }: { active: boolean; onClick: () => voi
 
 /** Versão no rodapé, na linha das Configurações: clique procura atualização; ponto = versão nova. */
 function VersionChip({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
+  const t = useMessages(sidebarMsg);
   const label =
     state.kind === 'checking'
-      ? 'Procurando atualizações…'
+      ? t.checking
       : state.kind === 'none'
-        ? 'Você está na versão mais recente'
+        ? t.latest
         : state.kind === 'available'
-          ? `Versão ${state.version} disponível`
+          ? t.available(state.version)
           : state.kind === 'downloading'
-            ? 'Baixando atualização…'
-            : 'Procurar atualizações';
+            ? t.downloading
+            : t.check;
   const busy = state.kind === 'checking' || state.kind === 'downloading';
   return (
     <button className={`version-chip ${state.kind === 'available' ? 'has-update' : ''}`} onClick={onCheck} disabled={busy} title={label} aria-label={`Wipe Cause ${version ?? ''}: ${label}`}>
       {busy ? <RefreshCw size={11} strokeWidth={1.75} className="spin" aria-hidden /> : state.kind === 'available' && <span className="update-dot" aria-hidden />}
-      {version ? `v${version}` : 'versão'}
+      {version ? `v${version}` : t.version}
     </button>
   );
 }
@@ -280,6 +286,7 @@ interface RailProps {
 
 /** Barra lateral recolhida: uma coluna de ícones (40px) com os atalhos e as análises recentes. */
 export function SidebarRail({ history, report, page, onNew, onTrends, onSettings, onOpenEntry, onExpand }: RailProps) {
+  const t = useMessages(sidebarMsg);
   const { status } = useSetup();
   const isOpen = (e: HistoryEntry) => report != null && sameLog(e.logPath, report.file);
   const entries = [...history.filter((e) => e.pinned), ...history.filter((e) => !e.pinned)].slice(0, 8);
@@ -289,10 +296,10 @@ export function SidebarRail({ history, report, page, onNew, onTrends, onSettings
     </button>
   );
   return (
-    <nav className="sidebar-rail" aria-label="Análises">
-      {item('Mostrar barra lateral', false, onExpand, <PanelLeftOpen size={16} strokeWidth={1.5} aria-hidden />)}
-      {inTauri && item('Nova análise', page === 'browse', onNew, <Plus size={16} strokeWidth={2} aria-hidden />, 'new')}
-      {item('Evolução', page === 'trends', onTrends, <TrendingUp size={16} strokeWidth={1.5} aria-hidden />)}
+    <nav className="sidebar-rail" aria-label={t.aria}>
+      {item(t.expand, false, onExpand, <PanelLeftOpen size={16} strokeWidth={1.5} aria-hidden />)}
+      {inTauri && item(t.newAnalysis, page === 'browse', onNew, <Plus size={16} strokeWidth={2} aria-hidden />, 'new')}
+      {item(t.trends, page === 'trends', onTrends, <TrendingUp size={16} strokeWidth={1.5} aria-hidden />)}
       <span className="rail-sep" aria-hidden />
       <div className="rail-entries">
         {/* análise aberta que ainda não está no histórico (ex.: relatório JSON) */}
@@ -302,7 +309,7 @@ export function SidebarRail({ history, report, page, onNew, onTrends, onSettings
         ))}
       </div>
       {item(
-        missingRequired(status) ? 'Configurações (falta configurar a pasta de logs)' : 'Configurações',
+        missingRequired(status) ? t.settingsMissing : t.settings,
         page === 'settings',
         onSettings,
         <Settings size={16} strokeWidth={1.5} aria-hidden />,
