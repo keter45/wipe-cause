@@ -55,7 +55,7 @@ Regras novas vão em `encounters/<raid>/<boss>.yaml` (embutidas no build). Para 
 
 ## Regras de escrita
 
-- **Sempre nas duas línguas.** O app é pt-BR e inglês: `tip`, `message` e `blame_message` são `{ pt: "...", en: "..." }` (o teste `embedded_texts_are_bilingual` falha se faltar uma). Nomes de habilidades, bosses e mecânicas ficam em inglês nas duas. Para converter um arquivo escrito numa língua só: `node scripts/i18n-yaml.mjs extract <saida.json>`, traduzir e `apply`.
+- **Sempre nas duas línguas.** O app é pt-BR e inglês: `tip`, `message` e `blame_message` são `{ pt: "...", en: "..." }` (o teste `embedded_texts_are_bilingual` falha se faltar uma). Nomes de habilidades, bosses e mecânicas ficam em inglês nas duas, inclusive o qualificador entre parênteses (`"Guillotine (double soak)"`, não `"(soak duplo)"`); o teste `english_side_and_names_have_no_portuguese` confere. Para converter um arquivo escrito numa língua só: `node scripts/i18n-yaml.mjs extract <saida.json>`, traduzir e `apply`.
 - **Não copie a prosa do guia.** Escreva `tip` e `message` com suas próprias palavras, curtas. Guarde a URL em `source`.
 - `message` é o que aparece no relatório quando a regra dispara; use placeholders `{player}`, `{count}`, `{spell}`, `{time}`.
 - Diferenças por dificuldade vão em `difficulty` (lista) e `overrides` — não crie arquivos separados por dificuldade.
