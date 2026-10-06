@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Download, X } from 'lucide-react';
 import type { UpdateState } from '../lib/updater';
-import { useMessages } from '../i18n';
+import { useLocale, useMessages } from '../i18n';
+import { notesIn } from '../lib/releaseNotes';
 import { updateMsg } from './misc.i18n';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 /** Faixa abaixo do header quando há versão nova (ou durante o download). */
 export function UpdateBanner({ state, onInstall, onDismiss }: Props) {
   const t = useMessages(updateMsg);
+  const locale = useLocale();
   const [showNotes, setShowNotes] = useState(false);
   if (state.kind !== 'available' && state.kind !== 'downloading' && state.kind !== 'error') return null;
 
@@ -56,7 +58,7 @@ export function UpdateBanner({ state, onInstall, onDismiss }: Props) {
           </button>
         </span>
       </div>
-      {showNotes && <pre className="update-notes">{state.notes}</pre>}
+      {showNotes && <pre className="update-notes">{notesIn(state.notes, locale)}</pre>}
     </div>
   );
 }
