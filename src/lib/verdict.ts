@@ -1,7 +1,7 @@
 // Heurísticas genéricas de "por que deu wipe". Regras específicas de boss virão de encounters/*.yaml.
 
 import type { Death, Pull } from '../types';
-import { mmss, pct, shortName } from './format';
+import { mmss, pct, shortName, damageSource } from './format';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { spellIdByName } from './spells';
 import { getMarks } from './marks';
@@ -124,7 +124,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
       severity: 'wipe',
       spellId: d.killingBlow?.spellId ?? null,
       title: t.tankDied(shortName(d.name), mmss(d.t)),
-      detail: d.killingBlow ? t.killingBlow(d.killingBlow.spellName, d.killingBlow.source) : undefined,
+      detail: d.killingBlow ? t.killingBlow(d.killingBlow.spellName, damageSource(d.killingBlow.source)) : undefined,
       player: d.guid,
     });
   }

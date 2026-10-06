@@ -23,6 +23,14 @@ export function num(n: number): string {
   return f.format(n);
 }
 
+/** Origem de dano para exibir: o núcleo grava marcadores para o ambiente e para dano sem origem (análises antigas, o texto em português). */
+export function damageSource(source: string): string {
+  const t = messagesOf(formatMsg);
+  if (source === '@environment' || source === 'Ambiente') return t.environment; // i18n-ignore: valor de análises antigas
+  if (source === '@none' || source === '(sem origem)') return t.noSource; // i18n-ignore: valor de análises antigas
+  return source;
+}
+
 export function pct(n: number | null | undefined, digits = 1): string {
   return n == null ? '—' : `${n.toFixed(digits)}%`;
 }

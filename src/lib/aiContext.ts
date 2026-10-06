@@ -4,7 +4,7 @@
 
 import type { Death, Pull } from '../types';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
-import { mmss, num, pct, ROLE_LABEL, shortName } from './format';
+import { mmss, num, pct, ROLE_LABEL, shortName, damageSource } from './format';
 import { scorePull } from './score';
 import { analyzePull, lowestBossHp, lowestBossHpAtEnd } from './verdict';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
@@ -30,7 +30,7 @@ function deathLine(d: Death, byGuid: Map<string, Pull['players'][number]>): stri
   const t = messagesOf(aiMsg);
   const p = byGuid.get(d.guid);
   const who = `${shortName(d.name)} (${d.role ? ROLE_LABEL[d.role] : '?'}${p?.class ? `, ${p.class}` : ''})`;
-  const kb = d.killingBlow ? t.killingBlow(d.killingBlow.spellName, num(d.killingBlow.amount), d.killingBlow.source) : t.killingBlowUnknown;
+  const kb = d.killingBlow ? t.killingBlow(d.killingBlow.spellName, num(d.killingBlow.amount), damageSource(d.killingBlow.source)) : t.killingBlowUnknown;
   const parts = [
     kb,
     d.causedBy ? t.cause(d.causedBy.name, Math.round(d.causedBy.pct)) : null,

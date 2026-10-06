@@ -83,6 +83,7 @@ export default function App() {
   const locale = useLocale();
   useEffect(() => {
     void setBackendLocale(locale);
+    document.documentElement.lang = locale === 'en' ? 'en' : 'pt-BR';
   }, [locale]);
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);

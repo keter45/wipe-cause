@@ -47,7 +47,7 @@ fn get(path: &str, user: &str, pass: &str) -> Result<serde_json::Value, String> 
         Ok(r) => r.into_json().map_err(|e| e.to_string()),
         Err(ureq::Error::Status(401, _)) => Err(pick("A nuvem do Warcraft Recorder recusou a conta: confira o usuário e a senha (os mesmos do Recorder).", "The Warcraft Recorder cloud rejected the account: check the user and password (the same as in the Recorder).")),
         Err(ureq::Error::Status(403, _)) => Err(pick("Sua conta não tem acesso aos vídeos desta guilda na nuvem do Warcraft Recorder.", "Your account has no access to this guild's videos in the Warcraft Recorder cloud.")),
-        Err(ureq::Error::Status(code, _)) => Err(format!("A nuvem do Warcraft Recorder respondeu {code}.")),
+        Err(ureq::Error::Status(code, _)) => Err(pick(format!("A nuvem do Warcraft Recorder respondeu {code}."), format!("The Warcraft Recorder cloud replied {code}."))),
         Err(e) => Err(pick(format!("Sem conexão com a nuvem do Warcraft Recorder: {e}"), format!("No connection to the Warcraft Recorder cloud: {e}"))),
     }
 }
@@ -114,7 +114,7 @@ pub async fn wcr_cloud_set_config(app: AppHandle, user: String, pass: String, gu
         return Ok(available); // a UI pede para escolher
     }
     if !available.iter().any(|g| g.eq_ignore_ascii_case(&chosen)) {
-        let (none_pt, none_en) = if available.is_empty() { ("nenhuma".to_string(), "none".to_string()) } else { (available.join(", "), available.join(", ")) };
+        let (none_pt, none_en) = if available.is_empty() { ("nenhuma".to_string(), "none".to_string()) } else { (available.join(", "), available.join(", ")) }; // i18n-ignore: par pt/en
         return Err(pick(format!("A conta não está na guilda \"{chosen}\" da nuvem. Guildas da conta: {none_pt}."), format!("The account isn't in the \"{chosen}\" guild in the cloud. Account guilds: {none_en}.")));
     }
     let chosen = available.iter().find(|g| g.eq_ignore_ascii_case(&chosen)).cloned().unwrap_or(chosen);

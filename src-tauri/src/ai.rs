@@ -67,7 +67,10 @@ pub fn ai_get_config(app: AppHandle) -> Option<AiConfig> {
 #[tauri::command]
 pub fn ai_set_config(app: AppHandle, config: AiConfig, api_key: Option<String>) -> Result<(), String> {
     if !valid_base_url(&config.base_url) {
-        return Err("A URL precisa começar com https:// (ou http://localhost para modelos locais).".into());
+        return Err(pick(
+            "A URL precisa começar com https:// (ou http://localhost para modelos locais).",
+            "The URL must start with https:// (or http://localhost for local models).",
+        ));
     }
     if let Some(k) = api_key {
         let entry = key_entry(&config.provider)?;

@@ -8,6 +8,11 @@ use crate::rules::{RuleBook, RuleTracker};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Janela do death recap.
+/// Origem de dano do ambiente (queda, lava...) e de dano sem origem no log: marcadores que a
+/// interface traduz (o relatório salvo não fica preso a uma língua).
+pub const ENVIRONMENT: &str = "@environment";
+pub const NO_SOURCE: &str = "@none";
+
 const RECAP_WINDOW_MS: i64 = 15_000;
 /// Janela para "defensivo usado logo antes de morrer".
 const RECENT_DEFENSIVE_MS: i64 = 10_000;
@@ -491,7 +496,7 @@ impl PullBuilder {
             return;
         }
         let mechanic = self.rules.as_ref().and_then(|r| r.aura_mechanic(spell_id)).map(|(n, _)| n.to_string());
-        let source = if f[2] == "nil" { "(sem origem)" } else { f[2] };
+        let source = if f[2] == "nil" { NO_SOURCE } else { f[2] };
         let p = self.player(dst_guid, dst_name);
         if stacks == 0 {
             p.debuffs.remove(&spell_id);
@@ -603,7 +608,7 @@ impl PullBuilder {
         // ENVIRONMENTAL_DAMAGE: o tipo (Falling, Lava, ...) vem depois do bloco advanced
         let env_type = if f[0] == "ENVIRONMENTAL_DAMAGE" {
             s += 1;
-            f.get(s - 1).copied().unwrap_or("Ambiente")
+            f.get(s - 1).copied().unwrap_or("Environment")
         } else {
             ""
         };
@@ -651,8 +656,8 @@ impl PullBuilder {
         // dano tomado por player
         if Self::is_group_player(dst_guid, dst_flags) {
             let source_label = match (src_name, f[0]) {
-                (_, "ENVIRONMENTAL_DAMAGE") => "Ambiente".to_string(),
-                ("nil" | "", _) => "(sem origem)".to_string(),
+                (_, "ENVIRONMENTAL_DAMAGE") => ENVIRONMENT.to_string(),
+                ("nil" | "", _) => NO_SOURCE.to_string(),
                 (name, _) => name.to_string(),
             };
             if counting && (Self::is_enemy(src_guid, src_flags) || src_guid == NIL_GUID) {
@@ -1402,6 +1407,6 @@ mod tests {
         let p = b.players.get("Player-3209-0B7FC6E4").unwrap();
         assert_eq!(p.damage_taken, 44148);
         let e = p.recap.back().unwrap();
-        assert_eq!((e.spell_name.as_str(), e.source.as_str()), ("Falling", "Ambiente"));
+        assert_eq!((e.spell_name.as_str(), e.source.as_str()), ("Falling", ENVIRONMENT));
     }
 }

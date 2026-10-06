@@ -11,6 +11,7 @@ import type { Pull, PlayerStats, RotationFinding } from '../types';
 import { PERSONAL_BLAME } from './blame';
 import { bossKey } from './night';
 import { castsOf, isHealer, outputPerSec, type Sample } from './performance';
+import { damageSource } from './format';
 import { meIn } from './mode';
 import { messagesOf, tr } from '../i18n';
 import { soloMsg } from './solo.i18n';
@@ -94,7 +95,7 @@ export function losses(s: Sample): Loss[] {
       !death.usedHealthstone && death.healthstoneKnown ? t.noHealthstone : null,
       !death.usedHealthPotion ? t.noPotion : null,
     ].filter(Boolean);
-    const kb = death.killingBlow ? `${death.killingBlow.spellName} (${death.killingBlow.source})` : t.unknownCause;
+    const kb = death.killingBlow ? `${death.killingBlow.spellName} (${damageSource(death.killingBlow.source)})` : t.unknownCause;
     const lost = ops * (remainingMs / 1000);
     out.push({
       key: `death:${death.t}`,

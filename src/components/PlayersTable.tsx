@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { PlayerStats } from '../types';
 import { scoreTone, type PlayerScore } from '../lib/score';
-import { classColor, mmss, num, ROLE_LABEL, shortName } from '../lib/format';
+import { classColor, mmss, num, ROLE_LABEL, shortName, damageSource } from '../lib/format';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { parseColor, type PlayerParse } from '../lib/wclParses';
 import type { ParseState } from '../lib/useWclParses';
@@ -168,7 +168,7 @@ function PlayerRow({
                         <td>
                           <SpellName spellId={a.spellId} name={a.name} />
                         </td>
-                        <td className="muted">{a.source}</td>
+                        <td className="muted">{damageSource(a.source)}</td>
                         <td className="num">{a.hits}×</td>
                         <td className="num">{num(a.amount)}</td>
                       </tr>

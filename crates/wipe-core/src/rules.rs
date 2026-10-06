@@ -369,7 +369,7 @@ impl RuleBook {
                 Ok(())
             }
             Err(e) => {
-                let msg = format!("ajustes do boss {}: {e}", t.encounter_id);
+                let msg = crate::i18n::pick(format!("ajustes do boss {}: {e}", t.encounter_id), format!("boss adjustments {}: {e}", t.encounter_id));
                 self.errors.push(msg.clone());
                 Err(msg)
             }
@@ -1011,8 +1011,8 @@ fn phase_summary_in(phases: &[PhaseWindow], target_s: Option<f64>, en: bool) -> 
             };
             match (p.deaths, en) {
                 (0, _) => time,
-                (1, false) => format!("{time} (1 morte)"),
-                (n, false) => format!("{time} ({n} mortes)"),
+                (1, false) => format!("{time} (1 morte)"), // i18n-ignore: par pt/en (en vem do parâmetro)
+                (n, false) => format!("{time} ({n} mortes)"), // i18n-ignore: par pt/en
                 (1, true) => format!("{time} (1 death)"),
                 (n, true) => format!("{time} ({n} deaths)"),
             }
@@ -1020,7 +1020,7 @@ fn phase_summary_in(phases: &[PhaseWindow], target_s: Option<f64>, en: bool) -> 
         .collect();
     let avg = if done.len() > 1 {
         let s = fmt_secs(done.iter().sum::<f64>() / done.len() as f64, en);
-        if en { format!(" · average {s}") } else { format!(" · média {s}") }
+        if en { format!(" · average {s}") } else { format!(" · média {s}") } // i18n-ignore: par pt/en
     } else {
         String::new()
     };
@@ -1056,7 +1056,7 @@ fn dispel_summary(name: &str, failures: u32, dispels: &[DispelOutcome]) -> Text 
     let avg = (!done.is_empty()).then(|| done.iter().sum::<i64>() as f64 / done.len() as f64 / 1000.0);
     let total = dispels.len();
     let (avg_pt, avg_en) = match avg {
-        Some(a) => (format!(" · dispel médio {}", format!("{a:.1}s").replace('.', ",")), format!(" · average dispel {a:.1}s")),
+        Some(a) => (format!(" · dispel médio {}", format!("{a:.1}s").replace('.', ",")), format!(" · average dispel {a:.1}s")), // i18n-ignore: par pt/en
         None => (String::new(), String::new()),
     };
     tx!("{failures} de {total} {name} sem dispel a tempo{avg_pt}", "{failures} of {total} {name} not dispelled in time{avg_en}")

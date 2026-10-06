@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Check, Plus } from 'lucide-react';
 import type { Pull } from '../types';
-import { num } from '../lib/format';
+import { num, damageSource } from '../lib/format';
 import { rulesGet } from '../lib/rules';
 import { SpellName } from './SpellIcon';
 import { CreateRule } from './CreateRule';
@@ -59,7 +59,7 @@ export function EnemySpellsTable({ pull, onRulesChanged }: { pull: Pull; onRules
                   <SpellName spellId={s.spellId} name={s.name} />
                 </td>
                 <td className="muted mono">{s.spellId}</td>
-                <td className="muted">{s.sources.join(', ')}</td>
+                <td className="muted">{s.sources.map(damageSource).join(', ')}</td>
                 <td className="num">{s.casts || ''}</td>
                 <td className="num">{s.hitsOnPlayers || ''}</td>
                 <td className="num">{s.damageToPlayers ? num(s.damageToPlayers) : ''}</td>

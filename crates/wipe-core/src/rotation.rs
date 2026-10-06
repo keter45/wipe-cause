@@ -268,7 +268,7 @@ impl RotationSpec {
                     for s in spells {
                         ability(s)?;
                         if self.abilities[s].cooldown_ms.is_none() {
-                            return Err(format!("{s} sem cooldown_ms"));
+                            return Err(crate::i18n::pick(format!("{s} sem cooldown_ms"), format!("{s} without cooldown_ms")));
                         }
                     }
                 }
@@ -815,7 +815,7 @@ impl RotationTracker {
                         times: miss,
                         detail: {
                             let b = &spec.buffs[buff].name;
-                            let (aoe_pt, aoe_en) = if *min_targets > 1 { (" em AoE", " in AoE") } else { ("", "") };
+                            let (aoe_pt, aoe_en) = if *min_targets > 1 { (" em AoE", " in AoE") } else { ("", "") }; // i18n-ignore: par pt/en
                             tx!("{n} de {total} casts{aoe_pt} sem {b}", "{n} of {total} casts{aoe_en} without {b}")
                         },
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
@@ -867,7 +867,7 @@ impl RotationTracker {
                         times: worst.iter().take(10).map(|(t, _)| *t).collect(),
                         detail: {
                             let pct = waste as f32 / total as f32 * 100.0;
-                            let (only_pt, only_en) = if from.is_empty() { ("", "") } else { (", só nos geradores castados", ", only from cast generators") };
+                            let (only_pt, only_en) = if from.is_empty() { ("", "") } else { (", só nos geradores castados", ", only from cast generators") }; // i18n-ignore: par pt/en
                             tx!("{waste} de {total} {resource} desperdiçado ({pct:.0}%){only_pt}", "{waste} of {total} {resource} wasted ({pct:.0}%){only_en}")
                         },
                         spell_id: None,

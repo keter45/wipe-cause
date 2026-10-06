@@ -68,8 +68,11 @@ pub async fn discord_post(app: AppHandle, payload: serde_json::Value, webhook: O
         match agent.post(&url).send_json(payload) {
             Ok(_) => Ok(()),
             Err(ureq::Error::Status(404, _)) => Err(pick("O Discord não achou esse webhook (foi apagado?).", "Discord couldn't find that webhook (was it deleted?).")),
-            Err(ureq::Error::Status(429, _)) => Err("O Discord limitou os envios; tente de novo em alguns segundos.".into()),
-            Err(ureq::Error::Status(code, r)) => Err(format!("O Discord recusou a mensagem ({code}): {}", r.into_string().unwrap_or_default())),
+            Err(ureq::Error::Status(429, _)) => Err(pick("O Discord limitou os envios; tente de novo em alguns segundos.", "Discord is rate limiting; try again in a few seconds.")),
+            Err(ureq::Error::Status(code, r)) => {
+                let body = r.into_string().unwrap_or_default();
+                Err(pick(format!("O Discord recusou a mensagem ({code}): {body}"), format!("Discord rejected the message ({code}): {body}")))
+            }
             Err(e) => Err(pick(format!("Sem conexão com o Discord: {e}"), format!("No connection to Discord: {e}"))),
         }
     })

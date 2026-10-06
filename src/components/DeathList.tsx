@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronRight, ExternalLink, FlaskConical, Gem, Shield } from 'lucide-react';
 import type { Death, DeathAura, RecapEntry } from '../types';
-import { classColor, mmss, num, relSeconds, shortName } from '../lib/format';
+import { classColor, mmss, num, relSeconds, shortName, damageSource } from '../lib/format';
 import { useTooltip, wowheadUrl } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { openExternal } from '../lib/api';
@@ -69,7 +69,7 @@ export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, 
                         <span className="dmg">{num(d.killingBlow.amount)}</span>
                       </span>
                       <span className="kb-sub">
-                        {d.killingBlow.source}
+                        {damageSource(d.killingBlow.source)}
                         {d.causedBy && (
                           <span className="chip mech with-icon" title={t.causeTitle(Math.round(d.causedBy.pct))}>
                             {t.cause} <SpellName spellId={mechanicSpells.get(d.causedBy.key)} name={d.causedBy.name} size={14} />
@@ -338,7 +338,7 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
         {a.stacks > 1 && <span className="stacks">×{a.stacks}</span>}
         {a.mechanic && <span className="chip mech">{a.mechanic}</span>}
         <span className="muted small">
-          {a.source} · {t.ago(relSeconds(deathT - a.appliedT))}
+          {damageSource(a.source)} · {t.ago(relSeconds(deathT - a.appliedT))}
         </span>
         <ChevronRight size={14} strokeWidth={1.5} className="chev" aria-hidden />
       </button>
@@ -366,7 +366,7 @@ function RecapRow({ e, deathT, killingBlow }: { e: RecapEntry; deathT: number; k
         <SpellName spellId={e.spellId} name={e.spellName} size={16} />
         {e.overkill > 0 && <span className="muted"> (overkill {num(e.overkill)})</span>}
       </td>
-      <td className="muted">{e.source}</td>
+      <td className="muted">{damageSource(e.source)}</td>
       <td className="num">
         {e.kind === 'buff' || e.kind === 'debuff' ? '—' : `${sign}${num(e.amount)}`}
         {e.absorbed > 0 && <span className="muted"> ({num(e.absorbed)} abs)</span>}

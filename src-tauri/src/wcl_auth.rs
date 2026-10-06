@@ -281,7 +281,11 @@ fn finish_login(id: &str, verifier: &str, state: &str, query: &str) -> Result<Wc
         return Err(pick("Resposta de login inválida (state não confere).", "Invalid login response (state doesn't match)."));
     }
     if let Some(err) = query_param(query, "error") {
-        return Err(if err == "access_denied" { "Login cancelado no Warcraft Logs.".into() } else { format!("O Warcraft Logs recusou o login: {err}") });
+        return Err(if err == "access_denied" {
+            pick("Login cancelado no Warcraft Logs.", "Login cancelled on Warcraft Logs.")
+        } else {
+            pick(format!("O Warcraft Logs recusou o login: {err}"), format!("Warcraft Logs rejected the login: {err}"))
+        });
     }
     let code = query_param(query, "code").ok_or_else(|| pick("O Warcraft Logs não devolveu o código de login.", "Warcraft Logs didn't return the login code."))?;
     let redirect = redirect_uri();
