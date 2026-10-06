@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { BookOpen, ExternalLink } from 'lucide-react';
-import type { RotationFinding, RotationResult } from '../types';
+import type { RotationResult } from '../types';
 import { mmss } from '../lib/format';
 import { openExternal } from '../lib/api';
 import { useSeek } from '../lib/wcr';
 import { scoreTone } from '../lib/score';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
-import { tr } from '../i18n';
+import { tr, useMessages } from '../i18n';
+import { rotationMsg } from './RotationPanel.i18n';
 
 /** Momentos em ordem, um por segundo (vários no mesmo segundo viram um ▶ só). */
 export const uniqueSeconds = (times: number[]) => {
@@ -15,14 +16,13 @@ export const uniqueSeconds = (times: number[]) => {
   return [...times].sort((a, b) => a - b).filter((t) => !seen.has(Math.floor(t / 1000)) && !!seen.add(Math.floor(t / 1000)));
 };
 
-const KIND: Record<RotationFinding['importance'], string> = { high: 'Erro', medium: 'Ajuste', low: 'Detalhe' };
-
 /**
  * A rotação do player comparada com a rotação base escrita da spec: aproveitamento, os erros
  * (com o momento, para ver no vídeo), a abertura, o uso dos cooldowns e a prioridade da spec.
  */
 export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
   const seek = useSeek();
+  const t = useMessages(rotationMsg);
   const [aoe, setAoe] = useState(false);
   const problems = r.findings.filter((f) => f.count > 0 && f.id !== 'cooldowns');
   const fine = r.findings.filter((f) => f.count === 0 && f.id !== 'cooldowns');
@@ -32,42 +32,39 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
     <section className="rotation">
       <header className="rotation-head">
         <div>
-          <h3>Rotação</h3>
-          <p className="muted small">
-            Comparada com a rotação base de {r.specName}
-            {r.tree ? ` (${r.tree})` : ''}, patch {r.patch}.
-          </p>
+          <h3>{t.title}</h3>
+          <p className="muted small">{t.comparedWith(r.specName, r.tree ?? null, r.patch)}</p>
         </div>
-        <span className={`score-pill big ${scoreTone(r.score)}`} title="Aproveitamento: média das checagens, pesadas pela importância">
+        <span className={`score-pill big ${scoreTone(r.score)}`} title={t.scoreTitle}>
           {r.score}
         </span>
       </header>
 
       <div className="rotation-cols">
         <div>
-          <h4>O que corrigir</h4>
+          <h4>{t.toFix}</h4>
           {problems.length === 0 ? (
-            <p className="muted small">Nenhum erro claro nesta luta.</p>
+            <p className="muted small">{t.noErrors}</p>
           ) : (
             <ul className="plain rotation-findings">
               {problems.map((f) => (
                 <li key={f.id} className={`rot-finding imp-${f.importance}`}>
                   <div className="rot-finding-head">
-                    <span className={`rot-kind imp-${f.importance}`}>{KIND[f.importance]}</span>
+                    <span className={`rot-kind imp-${f.importance}`}>{t.kind[f.importance]}</span>
                     {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}
                     <strong>{tr(f.title)}</strong>
                   </div>
                   <p className="small">{tr(f.detail)}</p>
                   <p className="muted small">{tr(f.tip)}</p>
-                  <div className="rot-rate" aria-label={`aproveitamento ${Math.round(f.rate * 100)}%`}>
+                  <div className="rot-rate" aria-label={t.rateAria(Math.round(f.rate * 100))}>
                     <span style={{ transform: `scaleX(${f.rate})` }} />
                   </div>
                   {f.times.length > 0 && (
                     <p className="rot-times small">
-                      {uniqueSeconds(f.times).slice(0, 8).map((t) => (
-                        <span key={t} className="rot-time">
-                          {mmss(t)}
-                          <PlayAt t={t} seek={seek} />
+                      {uniqueSeconds(f.times).slice(0, 8).map((at) => (
+                        <span key={at} className="rot-time">
+                          {mmss(at)}
+                          <PlayAt t={at} seek={seek} />
                         </span>
                       ))}
                       {uniqueSeconds(f.times).length > 8 && <span className="muted"> +{uniqueSeconds(f.times).length - 8}</span>}
@@ -79,26 +76,24 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
           )}
           {fine.length > 0 && (
             <p className="muted small rot-fine">
-              Sem erro: {fine.map((f) => f.title).join(' · ')}
+              {t.fine(fine.map((f) => tr(f.title)).join(' · '))}
             </p>
           )}
 
           {r.opener && (
             <>
-              <h4>Abertura</h4>
+              <h4>{t.opener}</h4>
               <p className={`small ${r.opener.ok ? 'ok-text' : ''}`}>
-                {r.opener.ok
-                  ? 'Na ordem certa.'
-                  : `Fora da ordem ou faltando: ${r.opener.missing.map((m) => m.name).join(', ')}.`}
+                {r.opener.ok ? t.openerOk : t.openerMissing(r.opener.missing.map((m) => m.name).join(', '))}
               </p>
               <div className="rot-seq">
-                <span className="muted small">Esperado</span>
+                <span className="muted small">{t.expected}</span>
                 {r.opener.expected.map((s, i) => (
                   <SpellIcon key={i} spellId={s.spellId} size={22} />
                 ))}
               </div>
               <div className="rot-seq">
-                <span className="muted small">Você</span>
+                <span className="muted small">{t.you}</span>
                 {r.opener.actual.map((s, i) => (
                   <SpellIcon key={i} spellId={s.spellId} size={22} />
                 ))}
@@ -108,7 +103,7 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
 
           {r.cooldowns.length > 0 && (
             <>
-              <h4>Cooldowns</h4>
+              <h4>{t.cooldowns}</h4>
               <table className="rot-cds small">
                 <tbody>
                   {r.cooldowns.map((c) => (
@@ -128,24 +123,24 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
                   ))}
                 </tbody>
               </table>
-              <p className="muted small">Usos possíveis pelo cooldown no tempo vivo.</p>
+              <p className="muted small">{t.cdHint}</p>
             </>
           )}
         </div>
 
         <aside>
-          <h4>Pontos principais da spec</h4>
+          <h4>{t.keyPoints}</h4>
           <ol className="rot-points small">
             {r.keyPoints.map((k, i) => (
               <li key={i}>{tr(k)}</li>
             ))}
           </ol>
           <h4 className="rot-prio-head">
-            Prioridade
+            {t.priority}
             {r.priorityAoe.length > 0 && (
-              <span className="segmented sm" role="radiogroup" aria-label="Alvos">
+              <span className="segmented sm" role="radiogroup" aria-label={t.targets}>
                 <button role="radio" aria-checked={!aoe} className={!aoe ? 'active' : ''} onClick={() => setAoe(false)}>
-                  Alvo único
+                  {t.single}
                 </button>
                 <button role="radio" aria-checked={aoe} className={aoe ? 'active' : ''} onClick={() => setAoe(true)}>
                   AoE
@@ -162,7 +157,7 @@ export function RotationPanel({ rotation: r }: { rotation: RotationResult }) {
             ))}
           </ol>
           <p className="muted small rot-sources">
-            <BookOpen size={12} strokeWidth={1.5} aria-hidden /> Fontes:{' '}
+            <BookOpen size={12} strokeWidth={1.5} aria-hidden /> {t.sources}{' '}
             {r.sources.map((s, i) => (
               <span key={s.url}>
                 {i > 0 && ' · '}

@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { openExternal } from '../../lib/api';
 import { PRESETS, aiChat, aiGetConfig, aiListModels, aiSetConfig, type AiConfig } from '../../lib/ai';
+import { useMessages } from '../../i18n';
+import { aiFormMsg } from './AiForm.i18n';
 
 /** Provedor do "Perguntar à IA": todos com opção gratuita; a chave fica no cofre do Windows. */
 export function AiForm({ current, onSaved }: { current: AiConfig | null; onSaved: () => void }) {
+  const t = useMessages(aiFormMsg);
   const [provider, setProvider] = useState(current?.provider && current.provider !== 'demo' ? current.provider : 'gemini');
   const preset = PRESETS.find((p) => p.id === provider) ?? PRESETS[0];
   const same = current?.provider === provider;
@@ -31,7 +34,7 @@ export function AiForm({ current, onSaved }: { current: AiConfig | null; onSaved
     try {
       const list = await aiListModels(provider, baseUrl, key);
       setModels(list);
-      setMsg({ ok: true, text: `${list.length} modelos disponíveis: escolha na lista do campo "Modelo".` });
+      setMsg({ ok: true, text: t.models(list.length) });
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
     } finally {
@@ -46,10 +49,10 @@ export function AiForm({ current, onSaved }: { current: AiConfig | null; onSaved
       const cfg: AiConfig = { provider, baseUrl, model, hasKey: current?.hasKey ?? false };
       await aiSetConfig(cfg, key ? key : undefined);
       if (test) {
-        const r = await aiChat([{ role: 'user', content: 'Responda só: ok' }]);
-        setMsg({ ok: true, text: `Conectado. Resposta do modelo: "${r.trim().slice(0, 60)}"` });
+        const r = await aiChat([{ role: 'user', content: t.testPrompt }]);
+        setMsg({ ok: true, text: t.connected(r.trim().slice(0, 60)) });
       } else {
-        setMsg({ ok: true, text: 'Salvo.' });
+        setMsg({ ok: true, text: t.saved });
       }
       if (await aiGetConfig()) {
         setKey('');
@@ -67,7 +70,7 @@ export function AiForm({ current, onSaved }: { current: AiConfig | null; onSaved
   const ready = !!model && !!baseUrl && (!needsKey || !!key || !!keySaved);
   return (
     <>
-      <div className="segmented wrap" role="radiogroup" aria-label="Provedor">
+      <div className="segmented wrap" role="radiogroup" aria-label={t.provider}>
         {PRESETS.map((p) => (
           <button key={p.id} role="radio" aria-checked={provider === p.id} className={provider === p.id ? 'active' : ''} onClick={() => pick(p.id)}>
             {p.label}
@@ -79,10 +82,10 @@ export function AiForm({ current, onSaved }: { current: AiConfig | null; onSaved
       {needsKey && (
         <label className="field">
           <span className="field-label">
-            Chave de API
+            {t.apiKey}
             {preset.keyUrl && (
               <button type="button" className="link small" onClick={() => openExternal(preset.keyUrl!)}>
-                Criar chave grátis <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
+                {t.createKey} <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
               </button>
             )}
           </span>
@@ -92,22 +95,22 @@ export function AiForm({ current, onSaved }: { current: AiConfig | null; onSaved
             autoComplete="off"
             spellCheck={false}
             value={key}
-            placeholder={keySaved ? '•••••••• (salva — deixe vazio para manter)' : 'cole a chave aqui'}
+            placeholder={keySaved ? t.keySaved : t.pasteKey}
             onChange={(e) => setKey(e.target.value)}
           />
         </label>
       )}
       <div className="field-row">
         <label className="field">
-          URL da API
+          {t.apiUrl}
           <input className="text-input" value={baseUrl} spellCheck={false} onChange={(e) => setBaseUrl(e.target.value)} />
         </label>
         <label className="field">
-          Modelo
+          {t.model}
           <span className="model-row">
-            <input className="text-input" list="ai-models" value={model} spellCheck={false} placeholder="nome do modelo" onChange={(e) => setModel(e.target.value)} />
+            <input className="text-input" list="ai-models" value={model} spellCheck={false} placeholder={t.modelName} onChange={(e) => setModel(e.target.value)} />
             <button type="button" className="btn sm" onClick={loadModels} disabled={busy || !baseUrl}>
-              Carregar modelos
+              {t.loadModels}
             </button>
           </span>
           <datalist id="ai-models">
@@ -121,13 +124,13 @@ export function AiForm({ current, onSaved }: { current: AiConfig | null; onSaved
       {msg && <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>{msg.text}</p>}
       <div className="set-actions">
         <button className="btn" onClick={() => save(true)} disabled={busy || !ready}>
-          Salvar e testar
+          {t.saveTest}
         </button>
         <button className="btn primary" onClick={() => save(false)} disabled={busy || !ready}>
-          Salvar
+          {t.save}
         </button>
       </div>
-      <p className="muted small">O dossiê do pull (com os nomes dos players) vai para o provedor escolhido a cada pergunta.</p>
+      <p className="muted small">{t.privacy}</p>
     </>
   );
 }

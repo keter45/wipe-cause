@@ -6,6 +6,8 @@ import { shortName } from '../lib/format';
 import { fetchRankings, ownFight, pickTops, wclFightUrl, wowAnalyzerUrl, type TopRanking } from '../lib/wclApi';
 import { useSetup } from '../lib/setup';
 import type { Sample } from '../lib/performance';
+import { messagesOf, useMessages } from '../i18n';
+import { wclTopsMsg } from './WclTops.i18n';
 
 /**
  * Busca dos tops da spec, automática quando o client da API já está salvo (os rankings ficam em
@@ -13,6 +15,7 @@ import type { Sample } from '../lib/performance';
  */
 export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRanking[]) => void }) {
   const { status, openSettings } = useSetup();
+  const t = useMessages(wclTopsMsg);
   const configured = !!status?.wcl?.configured;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -25,18 +28,18 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
     }
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!inTauri) return <p className="muted small">Comparar com os top players do Warcraft Logs funciona no app instalado.</p>;
+  if (!inTauri) return <p className="muted small">{t.appOnly}</p>;
   if (!status) return null;
   if (!configured)
     return (
       <div className="panel setup-cta">
         <Trophy size={20} strokeWidth={1.5} className="muted" aria-hidden />
         <div>
-          <h3>Compare com os top players da spec</h3>
-          <p className="muted small">Conecte o Warcraft Logs (grátis, uma vez só) para ver a rotação, os cooldowns e o setup de quem tem o melhor parse neste boss.</p>
+          <h3>{t.ctaTitle}</h3>
+          <p className="muted small">{t.ctaText}</p>
         </div>
         <button className="btn primary" onClick={() => openSettings('wcl')}>
-          <Settings2 size={14} strokeWidth={1.5} aria-hidden /> Conectar
+          <Settings2 size={14} strokeWidth={1.5} aria-hidden /> {t.connect}
         </button>
       </div>
     );
@@ -47,7 +50,7 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
     try {
       const all = await fetchRankings(me.pull, me.player.specId!, me.player.role === 'healer');
       const tops = pickTops(all, me.player.setup?.itemLevel ?? null, me.pull.success ? me.pull.durationMs : null);
-      if (tops.length === 0) setMsg('Nenhum parse desta spec neste boss e dificuldade no Warcraft Logs ainda.');
+      if (tops.length === 0) setMsg(t.noParses);
       onTops(tops);
     } catch (e) {
       setMsg(String(e));
@@ -60,15 +63,15 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
     <div className="wcl-tops">
       {busy ? (
         <span className="muted small">
-          <Trophy size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> Buscando os tops da spec no Warcraft Logs…
+          <Trophy size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.searching}
         </span>
       ) : (
         <button className="link small" onClick={search}>
-          buscar de novo
+          {t.searchAgain}
         </button>
       )}
       <button className="link small" onClick={() => openSettings('wcl')}>
-        trocar client
+        {t.changeClient}
       </button>
       {msg && <p className="small bad">{msg}</p>}
     </div>
@@ -100,7 +103,7 @@ export function useOwnFight(pull: Pull, playerName: string, wclCode?: string): O
 }
 
 export interface PerfLink {
-  who: 'Você' | 'Referência';
+  who: 'you' | 'ref';
   label: string;
   url: string;
 }
@@ -115,12 +118,12 @@ export function perfLinks(
   const out: PerfLink[] = [];
   const myName = shortName(playerName);
   if (own && wclCode) {
-    if (own.actorId != null) out.push({ who: 'Você', label: 'Warcraft Logs', url: wclFightUrl({ code: wclCode, fightId: own.fightId, actorId: own.actorId }) });
-    out.push({ who: 'Você', label: 'WoWAnalyzer', url: wowAnalyzerUrl({ code: wclCode, fightId: own.fightId, name: myName }) });
+    if (own.actorId != null) out.push({ who: 'you', label: 'Warcraft Logs', url: wclFightUrl({ code: wclCode, fightId: own.fightId, actorId: own.actorId }) });
+    out.push({ who: 'you', label: 'WoWAnalyzer', url: wowAnalyzerUrl({ code: wclCode, fightId: own.fightId, name: myName }) });
   }
   if (top) {
-    out.push({ who: 'Referência', label: `Warcraft Logs (${top.name})`, url: wclFightUrl(top) });
-    out.push({ who: 'Referência', label: `WoWAnalyzer (${top.name})`, url: wowAnalyzerUrl(top) });
+    out.push({ who: 'ref', label: `Warcraft Logs (${top.name})`, url: wclFightUrl(top) });
+    out.push({ who: 'ref', label: `WoWAnalyzer (${top.name})`, url: wowAnalyzerUrl(top) });
   }
   return out;
 }
@@ -132,7 +135,7 @@ export function PerfLinks({ links }: { links: PerfLink[] }) {
     <p className="perf-links small">
       {links.map((l, i) => (
         <span key={l.url}>
-          {(i === 0 || links[i - 1].who !== l.who) && <span className="muted">{l.who}: </span>}
+          {(i === 0 || links[i - 1].who !== l.who) && <span className="muted">{messagesOf(wclTopsMsg).who[l.who]}: </span>}
           <button className="link" onClick={() => openExternal(l.url)}>
             {l.label} <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
           </button>

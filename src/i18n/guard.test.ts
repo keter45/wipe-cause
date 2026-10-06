@@ -99,14 +99,7 @@ export function portugueseLines(file: string): { line: number; text: string }[] 
 /** Arquivos ainda não migrados para os dicionários (a lista só pode diminuir). */
 export const PENDING = new Set<string>([
 
-  'components/settings/FirstSteps.tsx',
 
-  'App.tsx',
-  'components/RotationPanel.tsx',
-  'components/WclTops.tsx',
-  'components/settings/AiForm.tsx',
-  'components/settings/WclApiForm.tsx',
-  'components/AssignmentsPanel.tsx',
 
   'components/PlayersTable.tsx',
   'components/PullList.tsx',

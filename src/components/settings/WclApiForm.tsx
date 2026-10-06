@@ -3,6 +3,8 @@ import { ExternalLink, LogIn, LogOut } from 'lucide-react';
 import { openExternal } from '../../lib/api';
 import { autoLiveEnabled, setAutoLiveEnabled } from '../../lib/autoLive';
 import { wclLogin, wclLogout, wclSetConfig, type WclConfig } from '../../lib/wclApi';
+import { useMessages } from '../../i18n';
+import { wclApiMsg } from './WclApiForm.i18n';
 
 const CLIENTS_URL = 'https://www.warcraftlogs.com/api/clients/';
 
@@ -11,16 +13,17 @@ const CLIENTS_URL = 'https://www.warcraftlogs.com/api/clients/';
  * ou, avançado, um client próprio da API v2 (só reports públicos).
  */
 export function WclApiForm({ current, onSaved }: { current: WclConfig | null; onSaved: () => void }) {
+  const t = useMessages(wclApiMsg);
   const user = current?.user ?? null;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   async function login() {
     setBusy(true);
-    setMsg({ ok: true, text: 'Continue no navegador: autorize o Wipe Cause no Warcraft Logs e volte para cá.' });
+    setMsg({ ok: true, text: t.continueInBrowser });
     try {
       const u = await wclLogin();
-      setMsg({ ok: true, text: `Conectado como ${u.name}.` });
+      setMsg({ ok: true, text: t.connectedAs(u.name) });
       onSaved();
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -42,7 +45,7 @@ export function WclApiForm({ current, onSaved }: { current: WclConfig | null; on
           {user ? (
             <>
               <p className="small">
-                Conectado como <strong>{user.name}</strong>
+                {t.connectedLabel} <strong>{user.name}</strong>
                 {user.guilds.length > 0 && (
                   <span className="muted">
                     {' '}
@@ -53,18 +56,16 @@ export function WclApiForm({ current, onSaved }: { current: WclConfig | null; on
               <AutoLiveSwitch />
               <div className="set-actions">
                 <button className="btn ghost sm" onClick={logout}>
-                  <LogOut size={14} strokeWidth={1.5} aria-hidden /> Sair
+                  <LogOut size={14} strokeWidth={1.5} aria-hidden /> {t.signOut}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <p className="small">
-                Entre com a sua conta: o app passa a ver os reports das suas guildas (inclusive os não listados), sem precisar do log no PC.
-              </p>
+              <p className="small">{t.signInText}</p>
               <div className="set-actions">
                 <button className="btn primary" onClick={login} disabled={busy}>
-                  <LogIn size={14} strokeWidth={1.5} aria-hidden /> {busy ? 'Esperando o navegador…' : 'Entrar com o Warcraft Logs'}
+                  <LogIn size={14} strokeWidth={1.5} aria-hidden /> {busy ? t.waiting : t.signIn}
                 </button>
               </div>
             </>
@@ -74,7 +75,7 @@ export function WclApiForm({ current, onSaved }: { current: WclConfig | null; on
       )}
       {current?.loginAvailable ? (
         <details className="wcl-advanced">
-          <summary className="small">Avançado: usar um client próprio da API</summary>
+          <summary className="small">{t.advanced}</summary>
           <ClientForm current={current} onSaved={onSaved} />
         </details>
       ) : (
@@ -86,6 +87,7 @@ export function WclApiForm({ current, onSaved }: { current: WclConfig | null; on
 
 /** Ligar o ao vivo sozinho quando a guilda começar a subir log ao vivo. */
 function AutoLiveSwitch() {
+  const t = useMessages(wclApiMsg);
   const [on, setOn] = useState(autoLiveEnabled);
   return (
     <label className="auto-live small">
@@ -100,13 +102,14 @@ function AutoLiveSwitch() {
         />
         <span aria-hidden />
       </span>
-      Ligar o ao vivo sozinho quando a guilda começar a raid (log ao vivo no Warcraft Logs)
+      {t.autoLive}
     </label>
   );
 }
 
 /** Client da API v2 do Warcraft Logs (grátis): consultas sem login, só com reports públicos. */
 function ClientForm({ current, onSaved }: { current: WclConfig | null; onSaved: () => void }) {
+  const t = useMessages(wclApiMsg);
   const clientId = current?.clientId ?? null;
   const [id, setId] = useState(clientId ?? '');
   const [secret, setSecret] = useState('');
@@ -119,7 +122,7 @@ function ClientForm({ current, onSaved }: { current: WclConfig | null; onSaved: 
     try {
       await wclSetConfig(id, secret);
       setSecret('');
-      setMsg({ ok: true, text: 'Conectado ao Warcraft Logs.' });
+      setMsg({ ok: true, text: t.connected });
       onSaved();
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -132,16 +135,14 @@ function ClientForm({ current, onSaved }: { current: WclConfig | null; onSaved: 
     <>
       <ol className="small set-steps">
         <li>
-          Entre em{' '}
-          <button type="button" className="link" onClick={() => openExternal(CLIENTS_URL)}>
-            warcraftlogs.com/api/clients <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
-          </button>{' '}
-          e clique em <em>Create Client</em>.
+          {t.step1(
+            <button type="button" className="link" onClick={() => openExternal(CLIENTS_URL)}>
+              warcraftlogs.com/api/clients <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
+            </button>,
+          )}
         </li>
-        <li>
-          Qualquer nome; em <em>Redirect URL</em> use <code>http://localhost</code>. Deixe <em>Public Client</em> desmarcado.
-        </li>
-        <li>Copie o client ID e o client secret para cá.</li>
+        <li>{t.step2()}</li>
+        <li>{t.step3}</li>
       </ol>
       <div className="field-row">
         <label className="field">
@@ -156,7 +157,7 @@ function ClientForm({ current, onSaved }: { current: WclConfig | null; onSaved: 
             value={secret}
             spellCheck={false}
             autoComplete="off"
-            placeholder={clientId ? '•••••••• (cole de novo para trocar)' : ''}
+            placeholder={clientId ? t.secretSaved : ''}
             onChange={(e) => setSecret(e.target.value)}
           />
         </label>
@@ -164,13 +165,10 @@ function ClientForm({ current, onSaved }: { current: WclConfig | null; onSaved: 
       {msg && <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>{msg.text}</p>}
       <div className="set-actions">
         <button className="btn primary" onClick={save} disabled={busy || !id.trim() || !secret.trim()}>
-          {busy ? 'Conferindo…' : 'Salvar e conectar'}
+          {busy ? t.checking : t.saveConnect}
         </button>
       </div>
-      <p className="muted small">
-        Sem login, a API só mostra reports públicos. O secret fica no cofre de credenciais do Windows e as consultas só enviam boss, spec e código de
-        report: nada do seu log sai do PC.
-      </p>
+      <p className="muted small">{t.privacy}</p>
     </>
   );
 }
