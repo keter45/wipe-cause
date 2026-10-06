@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 import type { Pull } from '../../types';
 import { classColor, shortName } from '../../lib/format';
 import { scoreTone } from '../../lib/score';
+import { getLocale, useMessages } from '../../i18n';
+import { shareMsg } from './share.i18n';
 
 export type CardDetail = 'summary' | 'full';
 
@@ -15,14 +17,14 @@ export function Brand() {
   return <span className="share-brand">Wipe Cause</span>;
 }
 
-/** "9/28/2026 22:48:18.335-3" (formato do log) -> "28/09" */
-export const dateOf = (p: Pull) =>
-  (p.startLocal.split(' ')[0] ?? '')
+/** "9/28/2026 22:48:18.335-3" (formato do log) -> "28/09" (em inglês, "09/28") */
+export const dateOf = (p: Pull) => {
+  const md = (p.startLocal.split(' ')[0] ?? '')
     .split('/')
     .slice(0, 2)
-    .reverse()
-    .map((x) => x.padStart(2, '0'))
-    .join('/');
+    .map((x) => x.padStart(2, '0'));
+  return (getLocale() === 'en' ? md : md.reverse()).join('/');
+};
 export const timeOf = (p: Pull) => p.startLocal.split(' ')[1]?.slice(0, 5) ?? '';
 
 /** "2h13" / "47min" */
@@ -99,4 +101,7 @@ export function ScoreChips({ list }: { list: { guid: string; name: string; class
 }
 
 /** "+3 mais" no fim de uma lista cortada do resumo. */
-export const More = ({ n }: { n: number }) => (n > 0 ? <li className="share-more">+{n} no relatório completo</li> : null);
+export function More({ n }: { n: number }) {
+  const t = useMessages(shareMsg);
+  return n > 0 ? <li className="share-more">{t.more(n)}</li> : null;
+}

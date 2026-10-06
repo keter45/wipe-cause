@@ -6,25 +6,10 @@ import { Popover } from '../Popover';
 import type { CardDetail } from './common';
 import { PlayerClassesContext, usePlayerClasses } from '../../lib/players';
 import { useSetup } from '../../lib/setup';
+import { useMessages } from '../../i18n';
+import { shareMsg } from './share.i18n';
 
 type Action = 'copy' | 'png' | 'html' | 'pdf' | 'discord' | 'discordText';
-
-const LABEL: Record<Action, string> = {
-  copy: 'Copiar imagem',
-  png: 'Salvar imagem (PNG)',
-  html: 'Salvar página (HTML)',
-  pdf: 'Salvar PDF (com links)',
-  discord: 'Imagem no Discord',
-  discordText: 'Mensagem no Discord',
-};
-const DONE: Record<Action, string> = {
-  copy: 'Imagem copiada: cole no Discord ou WhatsApp',
-  png: 'Imagem salva',
-  html: 'Página salva',
-  pdf: 'Na janela que abriu, escolha “Salvar como PDF”',
-  discord: 'Imagem enviada ao Discord',
-  discordText: 'Resumo enviado ao Discord',
-};
 
 /**
  * "Compartilhar": gera o cartão (`card(detail)`) como imagem ou página, para quem não tem o app,
@@ -34,6 +19,7 @@ const DONE: Record<Action, string> = {
  * Configurações.
  */
 export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card: (detail: CardDetail) => ReactElement; name: string; pdf?: boolean; discord?: () => unknown }) {
+  const t = useMessages(shareMsg);
   const [detail, setDetail] = useState<CardDetail>('summary');
   const classes = usePlayerClasses();
   const card = () => <PlayerClassesContext.Provider value={classes}>{makeCard(detail)}</PlayerClassesContext.Provider>;
@@ -42,8 +28,8 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
   const hasDiscord = !!status?.discord?.webhook;
   const [busy, setBusy] = useState<Action | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const file = (fileSlug(name) || 'wipe-cause') + (detail === 'full' ? '-completo' : '');
-  const title = detail === 'full' ? `${name} (completo)` : name;
+  const file = (fileSlug(name) || 'wipe-cause') + (detail === 'full' ? t.fullSuffix : '');
+  const title = detail === 'full' ? t.fullTitle(name) : name;
 
   async function run(a: Action) {
     setBusy(a);
@@ -61,7 +47,7 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
         else if (a === 'png' && !(await savePng(png, `${file}.png`))) return;
         else if (a === 'discord') await sendPngToDiscord(png, `${file}.png`, title);
       }
-      setMsg({ ok: true, text: DONE[a] });
+      setMsg({ ok: true, text: t.done[a] });
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
     } finally {
@@ -86,20 +72,20 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
         setOpen(false);
         setMsg(null);
       }}
-      label="Compartilhar"
+      label={t.share}
       trigger={
         <button className={`btn sm ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open}>
-          <Share2 size={14} strokeWidth={1.5} aria-hidden /> Compartilhar
+          <Share2 size={14} strokeWidth={1.5} aria-hidden /> {t.share}
         </button>
       }
     >
-      <h4>Compartilhar</h4>
-      <p className="muted small">Um cartão para quem não tem o app.</p>
-      <div className="segmented sm share-detail" role="radiogroup" aria-label="Versão do cartão">
+      <h4>{t.share}</h4>
+      <p className="muted small">{t.menuHint}</p>
+      <div className="segmented sm share-detail" role="radiogroup" aria-label={t.versionAria}>
         {(
           [
-            ['summary', 'Resumo', 'O principal, para uma olhada no Discord'],
-            ['full', 'Completo', 'Tudo aberto: tabelas, cada morte, cada jogador'],
+            ['summary', t.summary, t.summaryHint],
+            ['full', t.full, t.fullHint],
           ] as const
         ).map(([k, label, hint]) => (
           <button key={k} role="radio" aria-checked={detail === k} className={detail === k ? 'active' : ''} title={hint} onClick={() => setDetail(k)}>
@@ -112,24 +98,24 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
           const Icon = icons[a];
           return (
             <button key={a} className="btn ghost sm" onClick={() => run(a)} disabled={busy != null}>
-              <Icon size={14} strokeWidth={1.5} aria-hidden /> {busy === a ? 'Gerando…' : LABEL[a]}
+              <Icon size={14} strokeWidth={1.5} aria-hidden /> {busy === a ? t.generating : t.label[a]}
             </button>
           );
         })}
       </div>
       {inTauri && status && !hasDiscord && (
         <p className="muted small">
-          Discord:{' '}
-          <button
-            className="link"
-            onClick={() => {
-              setOpen(false);
-              openSettings('discord');
-            }}
-          >
-            configure o webhook do canal da raid
-          </button>{' '}
-          para enviar direto.
+          {t.discordSetup((text) => (
+            <button
+              className="link"
+              onClick={() => {
+                setOpen(false);
+                openSettings('discord');
+              }}
+            >
+              {text}
+            </button>
+          ))}
         </p>
       )}
       {msg && (

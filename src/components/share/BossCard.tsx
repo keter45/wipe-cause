@@ -8,6 +8,8 @@ import { SpellName } from '../SpellIcon';
 import { BossName } from '../Names';
 import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight } from '../../lib/phases';
 import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, type CardDetail } from './common';
+import { intlLocale, useMessages } from '../../i18n';
+import { shareMsg } from './share.i18n';
 
 const SUMMARY = { causes: 3, attention: 5, highlights: 3 };
 
@@ -20,6 +22,7 @@ const asScore = (x: PlayerNight) => ({ guid: x.guid, name: x.name, class: x.clas
  * destaques. Completo: cada pull numa tabela, todas as causas e o placar dos jogadores.
  */
 export function BossShareCard({ title, pulls, detail = 'summary' }: { title: string; pulls: Pull[]; detail?: CardDetail }) {
+  const t = useMessages(shareMsg);
   const full = detail === 'full';
   const s = summarizeNight(pulls);
   const causes = s.causes.filter((c) => c.triggers > 0);
@@ -32,9 +35,9 @@ export function BossShareCard({ title, pulls, detail = 'summary' }: { title: str
       tone={s.kills ? 'kill' : 'wipe'}
       wide={full}
       title={<BossName encounterId={pulls[0]?.encounterId} name={title} size={22} />}
-      sub={`${first ? `${dateOf(first)} · ` : ''}${s.pulls.length} pulls · ${s.wipes} wipes · ${s.kills} kill${s.kills === 1 ? '' : 's'}`}
+      sub={t.bossSub(first ? `${dateOf(first)} · ` : '', s.pulls.length, s.wipes, s.kills)}
       big={s.kills ? 'Kill' : s.best ? pct(s.best.hp) : '—'}
-      foot={`Nota média 0–100 · entre trys: média ${mmss(s.avgGapMs)}${full ? ' · relatório completo' : ''}`}
+      foot={t.bossFoot(mmss(s.avgGapMs)) + (full ? t.fullReport : '')}
     >
       <PullBars pulls={s.pulls} />
       <PhaseLine pulls={s.pulls} />
@@ -53,6 +56,7 @@ export function BossShareCard({ title, pulls, detail = 'summary' }: { title: str
 
 /** HP do boss em cada pull: a barra é quanto do boss foi; o número de cima é onde ele ficou. */
 export function PullBars({ pulls }: { pulls: Pull[] }) {
+  const t = useMessages(shareMsg);
   const W = 640;
   const H = 70;
   const TOP = 16;
@@ -62,7 +66,7 @@ export function PullBars({ pulls }: { pulls: Pull[] }) {
   const labelN = band >= 14;
   return (
     <figure className="share-figure">
-      <svg width={W} height={TOP + H + BOTTOM} viewBox={`0 0 ${W} ${TOP + H + BOTTOM}`} className="share-bars" role="img" aria-label="HP do boss por pull">
+      <svg width={W} height={TOP + H + BOTTOM} viewBox={`0 0 ${W} ${TOP + H + BOTTOM}`} className="share-bars" role="img" aria-label={t.barsAria}>
         {pulls.map((p, i) => {
           const hp = p.success ? 0 : (lowestBossHp(p) ?? 100);
           const h = p.success ? H : Math.max(2, ((100 - hp) / 100) * H);
@@ -86,15 +90,16 @@ export function PullBars({ pulls }: { pulls: Pull[] }) {
           );
         })}
       </svg>
-      <figcaption className="share-muted small">Cada barra é um pull (número embaixo): a altura é quanto do boss foi{labelHp ? '; em cima, o HP em que ele ficou' : ''}.</figcaption>
+      <figcaption className="share-muted small">{t.barsCaption(labelHp)}</figcaption>
     </figure>
   );
 }
 
-export function CausesSection({ causes, wipes, pulls, full, title = 'Maiores causas' }: { causes: Cause[]; wipes: number; pulls: Pull[]; full: boolean; title?: string }) {
+export function CausesSection({ causes, wipes, pulls, full, title }: { causes: Cause[]; wipes: number; pulls: Pull[]; full: boolean; title?: string }) {
+  const t = useMessages(shareMsg);
   const shown = full ? causes : causes.slice(0, SUMMARY.causes);
   return (
-    <Section title={title}>
+    <Section title={title ?? t.topCauses}>
       {shown.length ? (
         <ul>
           {shown.map((c) => (
@@ -102,28 +107,29 @@ export function CausesSection({ causes, wipes, pulls, full, title = 'Maiores cau
               <strong>
                 <SpellName spellId={mechanicSpellId(pulls, c.key)} name={c.name} size={16} />
               </strong>{' '}
-              — gatilho em {c.triggers} de {wipes} wipes
-              {full && c.deaths > 0 && <span className="share-muted"> · {c.deaths} morte{c.deaths > 1 ? 's' : ''}</span>}
+              — {t.triggerIn(c.triggers, wipes)}
+              {full && c.deaths > 0 && <span className="share-muted"> · {t.deaths(c.deaths)}</span>}
             </li>
           ))}
           {!full && <More n={causes.length - shown.length} />}
         </ul>
       ) : (
-        <p className="share-muted">Sem gatilhos apontados.</p>
+        <p className="share-muted">{t.noTriggers}</p>
       )}
     </Section>
   );
 }
 
 export function PeopleSection({ attention, players, full }: { attention: PlayerNight[]; players: PlayerNight[]; full: boolean }) {
+  const t = useMessages(shareMsg);
   const highlights = [...players].reverse().filter((x) => x.avgScore >= ATTENTION_SCORE).slice(0, SUMMARY.highlights);
   return (
     <div>
-      <Section title="Abaixo de 80" aside={!full && attention.length > SUMMARY.attention ? `+${attention.length - SUMMARY.attention}` : undefined}>
-        {attention.length ? <ScoreChips list={(full ? attention : attention.slice(0, SUMMARY.attention)).map(asScore)} /> : <p className="share-muted">Ninguém: todo mundo com nota média 80 ou mais.</p>}
+      <Section title={t.below80} aside={!full && attention.length > SUMMARY.attention ? `+${attention.length - SUMMARY.attention}` : undefined}>
+        {attention.length ? <ScoreChips list={(full ? attention : attention.slice(0, SUMMARY.attention)).map(asScore)} /> : <p className="share-muted">{t.nobodyBelow}</p>}
       </Section>
       {highlights.length > 0 && (
-        <Section title="Destaques">
+        <Section title={t.highlights}>
           <ScoreChips list={highlights.map(asScore)} />
         </Section>
       )}
@@ -131,10 +137,11 @@ export function PeopleSection({ attention, players, full }: { attention: PlayerN
   );
 }
 
-const oneDecimal = (n: number) => n.toFixed(1).replace('.', ',').replace(/,0$/, '');
+const oneDecimal = (n: number) => n.toLocaleString(intlLocale(), { maximumFractionDigits: 1 });
 
 /** Resumo: uma linha por fase cronometrada (média e melhor da noite contra o alvo). */
 function PhaseLine({ pulls }: { pulls: Pull[] }) {
+  const t = useMessages(shareMsg);
   const phases = phasesOfNight(pulls);
   if (!phases.length) return null;
   return (
@@ -145,10 +152,10 @@ function PhaseLine({ pulls }: { pulls: Pull[] }) {
         return (
           <p key={n.key} className="share-phase">
             <SpellName spellId={n.spellId} name={n.name} size={16} />{' '}
-            {n.avg != null ? `média ${oneDecimal(n.avg)}s` : 'sem tempo limpo'}
-            {best.length > 0 && ` · melhor ${Math.min(...best)}s`}
-            {n.targetMs != null && <span className="share-muted"> · bom até {Math.round(n.targetMs / 1000)}s</span>}
-            {failed > 0 && <span className="share-bad"> · {failed} com o raid morrendo na fase</span>}
+            {n.avg != null ? t.phaseAvg(oneDecimal(n.avg)) : t.phaseNoClean}
+            {best.length > 0 && t.phaseBest(Math.min(...best))}
+            {n.targetMs != null && <span className="share-muted">{t.phaseGood(Math.round(n.targetMs / 1000))}</span>}
+            {failed > 0 && <span className="share-bad">{t.phaseFailed(failed)}</span>}
           </p>
         );
       })}
@@ -158,17 +165,18 @@ function PhaseLine({ pulls }: { pulls: Pull[] }) {
 
 /** Completo: cada vez da fase, pull a pull. */
 function PhaseTables({ pulls }: { pulls: Pull[] }) {
+  const t = useMessages(shareMsg);
   return (
     <>
       {phasesOfNight(pulls).map((n) => (
-        <Section key={n.key} title={`${n.name}: tempo de cada vez`}>
+        <Section key={n.key} title={t.phaseTable(n.name)}>
           <table className="share-table">
             <thead>
               <tr>
-                <th>Pull</th>
+                <th>{t.pull}</th>
                 {Array.from({ length: n.slots }, (_, i) => (
                   <th key={i} className="num">
-                    {i + 1}ª
+                    {t.ordinal(i + 1)}
                   </th>
                 ))}
               </tr>
@@ -200,16 +208,17 @@ function PhaseTables({ pulls }: { pulls: Pull[] }) {
 }
 
 function PullTable({ pulls }: { pulls: Pull[] }) {
+  const t = useMessages(shareMsg);
   return (
-    <Section title="Pull a pull">
+    <Section title={t.pullByPull}>
       <table className="share-table">
         <thead>
           <tr>
-            <th>Pull</th>
+            <th>{t.pull}</th>
             <th className="num">Boss</th>
-            <th className="num">Duração</th>
-            <th>Gatilho</th>
-            <th className="num">Mortes</th>
+            <th className="num">{t.duration}</th>
+            <th>{t.trigger}</th>
+            <th className="num">{t.deathsCol}</th>
           </tr>
         </thead>
         <tbody>
@@ -229,19 +238,20 @@ function PullTable({ pulls }: { pulls: Pull[] }) {
 }
 
 export function Scoreboard({ players }: { players: PlayerNight[] }) {
+  const t = useMessages(shareMsg);
   return (
-    <Section title="Jogadores">
+    <Section title={t.players}>
       <table className="share-table">
         <thead>
           <tr>
-            <th>Jogador</th>
-            <th className="num">Nota média</th>
+            <th>{t.player}</th>
+            <th className="num">{t.avgScore}</th>
             <th className="num">Pulls</th>
-            <th className="num">Mortes</th>
-            <th className="num">Decisivas</th>
-            <th className="num">Erros de mecânica</th>
-            <th className="num">Interrupts</th>
-            <th className="num">DPS / HPS médio</th>
+            <th className="num">{t.deathsCol}</th>
+            <th className="num">{t.decisive}</th>
+            <th className="num">{t.mechErrors}</th>
+            <th className="num">{t.interrupts}</th>
+            <th className="num">{t.avgOutput}</th>
           </tr>
         </thead>
         <tbody>

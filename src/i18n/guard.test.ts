@@ -101,15 +101,11 @@ export const PENDING = new Set<string>([
 
   'components/settings/FirstSteps.tsx',
 
-  'components/share/ShareMenu.tsx',
-  'components/share/BossCard.tsx',
-  'components/share/SoloCard.tsx',
   'App.tsx',
   'components/RotationPanel.tsx',
   'components/WclTops.tsx',
   'components/settings/AiForm.tsx',
   'components/settings/WclApiForm.tsx',
-  'components/share/PullCard.tsx',
   'components/AssignmentsPanel.tsx',
 
   'components/PlayersTable.tsx',
@@ -122,7 +118,6 @@ export const PENDING = new Set<string>([
   'components/CutoffStepper.tsx',
   'components/EnemySpellsTable.tsx',
   'components/PullMarks.tsx',
-  'components/share/NightCard.tsx',
 
   'components/WclOpen.tsx',
   'components/settings/FolderForm.tsx',
