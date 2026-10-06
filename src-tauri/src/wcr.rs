@@ -8,6 +8,7 @@ use crate::settings;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
+use wipe_core::i18n::pick;
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -127,13 +128,13 @@ pub fn wcr_videos(app: AppHandle) -> WcrScan {
             dir: Some(dir.display().to_string()),
             source: source.into(),
             videos: Vec::new(),
-            warning: Some("A pasta não existe ou não está acessível.".into()),
+            warning: Some(pick("A pasta não existe ou não está acessível.", "The folder doesn't exist or isn't accessible.")),
         };
     }
     // libera a pasta para o <video> da UI (protocolo asset)
     let _ = app.asset_protocol_scope().allow_directory(&dir, true);
     let videos = scan_dir(&dir);
-    let warning = videos.is_empty().then(|| "Nenhum vídeo do Warcraft Recorder (.mp4 + .json) nesta pasta.".to_string());
+    let warning = videos.is_empty().then(|| pick("Nenhum vídeo do Warcraft Recorder (.mp4 + .json) nesta pasta.", "No Warcraft Recorder video (.mp4 + .json) in this folder."));
     WcrScan { dir: Some(dir.display().to_string()), source: source.into(), videos, warning }
 }
 

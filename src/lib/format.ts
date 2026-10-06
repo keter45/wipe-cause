@@ -1,5 +1,7 @@
 import type { Pull } from '../types';
 import { raidOnly } from './content';
+import { intlLocale, messagesOf } from '../i18n';
+import { formatMsg } from './format.i18n';
 
 export function mmss(ms: number): string {
   const neg = ms < 0;
@@ -12,9 +14,21 @@ export function relSeconds(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-const compact = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 });
+const compact = new Map<string, Intl.NumberFormat>();
+/** 252,5 mil (pt) / 252.5K (en) */
 export function num(n: number): string {
-  return compact.format(n);
+  const l = intlLocale();
+  let f = compact.get(l);
+  if (!f) compact.set(l, (f = new Intl.NumberFormat(l, { notation: 'compact', maximumFractionDigits: 1 })));
+  return f.format(n);
+}
+
+/** Origem de dano para exibir: o núcleo grava marcadores para o ambiente e para dano sem origem (análises antigas, o texto em português). */
+export function damageSource(source: string): string {
+  const t = messagesOf(formatMsg);
+  if (source === '@environment' || source === 'Ambiente') return t.environment; // i18n-ignore: valor de análises antigas
+  if (source === '@none' || source === '(sem origem)') return t.noSource; // i18n-ignore: valor de análises antigas
+  return source;
 }
 
 export function pct(n: number | null | undefined, digits = 1): string {
@@ -59,7 +73,7 @@ export function mainEncounterId(all: Pull[]): number | null {
 
 /** "24/09 · The Twin Fangs Mythic": data do 1º pull + boss com mais pulls. */
 export function logTitle(all: Pull[]): string {
-  if (!all.length) return 'Log sem pulls';
+  if (!all.length) return messagesOf(formatMsg).noPulls;
   const [date] = all[0].startLocal.split(' ');
   const [m, d] = date.split('/');
   const raid = raidOnly(all);

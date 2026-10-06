@@ -12,12 +12,12 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/druid_balance.simc
 
 key_points:
-  - "Eclipse é um cooldown de dano: não fique parado com 2 cargas, entre com Astral Power para pelo menos 2 Starsurges e junte com Force of Nature (Keeper of the Grove) ou Fury of Elune (Elune's Chosen)."
-  - "Moonfire e Sunfire sempre no alvo (renove no pandemic), mas fora das janelas de Eclipse: DoT dentro do Eclipse é GCD desperdiçado."
-  - "Sempre castando: Starsurge e Starfall são instantâneos para o movimento; plante o pé para Wrath/Starfire sempre que der."
-  - "Não estoure Astral Power e gaste os procs: Touch the Cosmos, Starweaver's Weft (Starsurge) e Starweaver's Warp (Starfall)."
-  - "Incarnation logo depois do Force of Nature (Keeper) ou do Fury of Elune (Elune's Chosen)."
-  - "Em AoE: Moonfire espalhado, Sunfire com tudo junto, Starfall com 2+ alvos; Lunar Eclipse/Starfire a partir de 4 alvos (Keeper)."
+  - { pt: "Eclipse é um cooldown de dano: não fique parado com 2 cargas, entre com Astral Power para pelo menos 2 Starsurges e junte com Force of Nature (Keeper of the Grove) ou Fury of Elune (Elune's Chosen).", en: "Eclipse is a damage cooldown: don't sit on 2 charges, enter with Astral Power for at least 2 Starsurges and pair it with Force of Nature (Keeper of the Grove) or Fury of Elune (Elune's Chosen)." }
+  - { pt: "Moonfire e Sunfire sempre no alvo (renove no pandemic), mas fora das janelas de Eclipse: DoT dentro do Eclipse é GCD desperdiçado.", en: "Moonfire and Sunfire always on the target (refresh in pandemic), but outside Eclipse windows: a DoT inside Eclipse is a wasted GCD." }
+  - { pt: "Sempre castando: Starsurge e Starfall são instantâneos para o movimento; plante o pé para Wrath/Starfire sempre que der.", en: "Always casting: Starsurge and Starfall are instant for movement; plant your feet for Wrath/Starfire whenever you can." }
+  - { pt: "Não estoure Astral Power e gaste os procs: Touch the Cosmos, Starweaver's Weft (Starsurge) e Starweaver's Warp (Starfall).", en: "Don't cap Astral Power and spend the procs: Touch the Cosmos, Starweaver's Weft (Starsurge) and Starweaver's Warp (Starfall)." }
+  - { pt: "Incarnation logo depois do Force of Nature (Keeper) ou do Fury of Elune (Elune's Chosen).", en: "Incarnation right after Force of Nature (Keeper) or Fury of Elune (Elune's Chosen)." }
+  - { pt: "Em AoE: Moonfire espalhado, Sunfire com tudo junto, Starfall com 2+ alvos; Lunar Eclipse/Starfire a partir de 4 alvos (Keeper).", en: "In AoE: Moonfire spread, Sunfire with everything stacked, Starfall on 2+ targets; Lunar Eclipse/Starfire from 4 targets (Keeper)." }
 
 hero_trees:
   - key: keeper_of_the_grove
@@ -51,51 +51,51 @@ buffs:
 priority:
   keeper_of_the_grove:
     st:
-      - { spell: eclipse, note: "se estiver com 2 cargas" }
-      - { spell: sunfire, note: "se for acabar antes do fim da próxima janela de Incarnation" }
-      - { spell: fury_of_elune, note: "antes do Force of Nature, se estiver pronto" }
-      - { spell: force_of_nature, note: "com Astral Power para 3 Starsurges e Incarnation ou Eclipse prontos" }
-      - { spell: incarnation, note: "no GCD seguinte ao Force of Nature" }
-      - { spell: eclipse, note: "no GCD seguinte ao Force of Nature" }
-      - { spell: moonfire, note: "fora do Eclipse: renovar no pandemic" }
-      - { spell: sunfire, note: "fora do Eclipse: renovar no pandemic" }
-      - { spell: starfall, note: "com Touch the Cosmos ou Starweaver's Warp" }
-      - { spell: starsurge, note: "para não estourar Astral Power, ou com Touch the Cosmos / Starweaver's Weft" }
-      - { spell: wild_mushroom, note: "gera Astral Power; bom para mover" }
-      - { spell: wrath, note: "gera Astral Power (preenche)" }
+      - { spell: eclipse, note: { pt: "se estiver com 2 cargas", en: "if at 2 charges" } }
+      - { spell: sunfire, note: { pt: "se for acabar antes do fim da próxima janela de Incarnation", en: "if it would expire before the end of the next Incarnation window" } }
+      - { spell: fury_of_elune, note: { pt: "antes do Force of Nature, se estiver pronto", en: "before Force of Nature, if it's ready" } }
+      - { spell: force_of_nature, note: { pt: "com Astral Power para 3 Starsurges e Incarnation ou Eclipse prontos", en: "with Astral Power for 3 Starsurges and Incarnation or Eclipse ready" } }
+      - { spell: incarnation, note: { pt: "no GCD seguinte ao Force of Nature", en: "on the GCD right after Force of Nature" } }
+      - { spell: eclipse, note: { pt: "no GCD seguinte ao Force of Nature", en: "on the GCD right after Force of Nature" } }
+      - { spell: moonfire, note: { pt: "fora do Eclipse: renovar no pandemic", en: "outside Eclipse: refresh in pandemic" } }
+      - { spell: sunfire, note: { pt: "fora do Eclipse: renovar no pandemic", en: "outside Eclipse: refresh in pandemic" } }
+      - { spell: starfall, note: { pt: "com Touch the Cosmos ou Starweaver's Warp", en: "with Touch the Cosmos or Starweaver's Warp" } }
+      - { spell: starsurge, note: { pt: "para não estourar Astral Power, ou com Touch the Cosmos / Starweaver's Weft", en: "to avoid capping Astral Power, or with Touch the Cosmos / Starweaver's Weft" } }
+      - { spell: wild_mushroom, note: { pt: "gera Astral Power; bom para mover", en: "generates Astral Power; good for moving" } }
+      - { spell: wrath, note: { pt: "gera Astral Power (preenche)", en: "generates Astral Power (filler)" } }
     aoe:
-      - { spell: moonfire, note: "espalhar enquanto juntam" }
-      - { spell: sunfire, note: "com todos juntos" }
-      - { spell: force_of_nature, note: "fora do Eclipse, antes de Eclipse ou Incarnation" }
-      - { spell: incarnation, note: "logo depois do Force of Nature" }
-      - { spell: eclipse, note: "Lunar com 4+ alvos, Solar até 3, com Astral Power para 2 stacks de Ascendant Eclipses" }
-      - { spell: starsurge, note: "para gastar Starweaver's Weft" }
-      - { spell: starfall, note: "para gastar Starweaver's Warp ou não estourar Astral Power" }
-      - { spell: starfire, note: "no Lunar Eclipse" }
-      - { spell: wrath, note: "no Solar Eclipse e fora do Eclipse até 4 alvos" }
+      - { spell: moonfire, note: { pt: "espalhar enquanto juntam", en: "spread while they gather" } }
+      - { spell: sunfire, note: { pt: "com todos juntos", en: "with everything stacked" } }
+      - { spell: force_of_nature, note: { pt: "fora do Eclipse, antes de Eclipse ou Incarnation", en: "outside Eclipse, before Eclipse or Incarnation" } }
+      - { spell: incarnation, note: { pt: "logo depois do Force of Nature", en: "right after Force of Nature" } }
+      - { spell: eclipse, note: { pt: "Lunar com 4+ alvos, Solar até 3, com Astral Power para 2 stacks de Ascendant Eclipses", en: "Lunar on 4+ targets, Solar up to 3, with Astral Power for 2 Ascendant Eclipses stacks" } }
+      - { spell: starsurge, note: { pt: "para gastar Starweaver's Weft", en: "to spend Starweaver's Weft" } }
+      - { spell: starfall, note: { pt: "para gastar Starweaver's Warp ou não estourar Astral Power", en: "to spend Starweaver's Warp or avoid capping Astral Power" } }
+      - { spell: starfire, note: { pt: "no Lunar Eclipse", en: "in Lunar Eclipse" } }
+      - { spell: wrath, note: { pt: "no Solar Eclipse e fora do Eclipse até 4 alvos", en: "in Solar Eclipse and outside Eclipse up to 4 targets" } }
   elunes_chosen:
     st:
-      - { spell: eclipse, note: "Lunar, se estiver com 2 cargas" }
-      - { spell: moonfire, note: "se for acabar antes do fim da próxima janela de Incarnation" }
-      - { spell: sunfire, note: "se for acabar antes do fim da próxima janela de Incarnation" }
-      - { spell: fury_of_elune, note: "com Astral Power para 2 Starsurges e Incarnation ou Lunar Eclipse prontos" }
-      - { spell: incarnation, note: "no GCD seguinte ao Fury of Elune" }
-      - { spell: eclipse, note: "Lunar, no GCD seguinte ao Fury of Elune" }
-      - { spell: moonfire, note: "fora do Eclipse: renovar no pandemic" }
-      - { spell: sunfire, note: "fora do Eclipse: renovar no pandemic" }
-      - { spell: starfall, note: "com Touch the Cosmos ou Starweaver's Warp" }
-      - { spell: starsurge, note: "para não estourar Astral Power, ou com os procs" }
-      - { spell: wild_mushroom, note: "gera Astral Power; bom para mover" }
-      - { spell: starfire, note: "gera Astral Power (preenche)" }
+      - { spell: eclipse, note: { pt: "Lunar, se estiver com 2 cargas", en: "Lunar, if at 2 charges" } }
+      - { spell: moonfire, note: { pt: "se for acabar antes do fim da próxima janela de Incarnation", en: "if it would expire before the end of the next Incarnation window" } }
+      - { spell: sunfire, note: { pt: "se for acabar antes do fim da próxima janela de Incarnation", en: "if it would expire before the end of the next Incarnation window" } }
+      - { spell: fury_of_elune, note: { pt: "com Astral Power para 2 Starsurges e Incarnation ou Lunar Eclipse prontos", en: "with Astral Power for 2 Starsurges and Incarnation or Lunar Eclipse ready" } }
+      - { spell: incarnation, note: { pt: "no GCD seguinte ao Fury of Elune", en: "on the GCD right after Fury of Elune" } }
+      - { spell: eclipse, note: { pt: "Lunar, no GCD seguinte ao Fury of Elune", en: "Lunar, on the GCD right after Fury of Elune" } }
+      - { spell: moonfire, note: { pt: "fora do Eclipse: renovar no pandemic", en: "outside Eclipse: refresh in pandemic" } }
+      - { spell: sunfire, note: { pt: "fora do Eclipse: renovar no pandemic", en: "outside Eclipse: refresh in pandemic" } }
+      - { spell: starfall, note: { pt: "com Touch the Cosmos ou Starweaver's Warp", en: "with Touch the Cosmos or Starweaver's Warp" } }
+      - { spell: starsurge, note: { pt: "para não estourar Astral Power, ou com os procs", en: "to avoid capping Astral Power, or with the procs" } }
+      - { spell: wild_mushroom, note: { pt: "gera Astral Power; bom para mover", en: "generates Astral Power; good for moving" } }
+      - { spell: starfire, note: { pt: "gera Astral Power (preenche)", en: "generates Astral Power (filler)" } }
     aoe:
-      - { spell: moonfire, note: "espalhar no máximo de alvos" }
-      - { spell: sunfire, note: "com todos juntos" }
-      - { spell: eclipse, note: "Lunar, se estiver com 2 cargas" }
-      - { spell: fury_of_elune, note: "no cooldown ou segurando um pouco para alinhar com Lunar Eclipse / Incarnation" }
-      - { spell: incarnation, note: "se o Lunar Eclipse não for chegar a 2 cargas durante a janela" }
-      - { spell: starsurge, note: "para gastar Starweaver's Weft" }
-      - { spell: starfall, note: "Starweaver's Warp, Touch the Cosmos, ou 2+ alvos para não estourar" }
-      - { spell: starfire, note: "gera Astral Power" }
+      - { spell: moonfire, note: { pt: "espalhar no máximo de alvos", en: "spread on as many targets as possible" } }
+      - { spell: sunfire, note: { pt: "com todos juntos", en: "with everything stacked" } }
+      - { spell: eclipse, note: { pt: "Lunar, se estiver com 2 cargas", en: "Lunar, if at 2 charges" } }
+      - { spell: fury_of_elune, note: { pt: "no cooldown ou segurando um pouco para alinhar com Lunar Eclipse / Incarnation", en: "on cooldown or held a bit to line up with Lunar Eclipse / Incarnation" } }
+      - { spell: incarnation, note: { pt: "se o Lunar Eclipse não for chegar a 2 cargas durante a janela", en: "if Lunar Eclipse won't reach 2 charges during the window" } }
+      - { spell: starsurge, note: { pt: "para gastar Starweaver's Weft", en: "to spend Starweaver's Weft" } }
+      - { spell: starfall, note: { pt: "Starweaver's Warp, Touch the Cosmos, ou 2+ alvos para não estourar", en: "Starweaver's Warp, Touch the Cosmos, or 2+ targets to avoid capping" } }
+      - { spell: starfire, note: { pt: "gera Astral Power", en: "generates Astral Power" } }
 
 # Abertura: DoTs e os cooldowns empilhados nos primeiros segundos (o Incarnation já entra em
 # Eclipse; a ordem fina varia por luta, o guia manda olhar logs da luta)
@@ -111,54 +111,54 @@ checks:
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem castar
-    tip: "Sempre castando: Starsurge/Starfall instantâneos no movimento; Wild Charge ajuda. Plante o pé para Wrath/Starfire quando der."
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre castando: Starsurge/Starfall instantâneos no movimento; Wild Charge ajuda. Plante o pé para Wrath/Starfire quando der.", en: "Always casting: Starsurge/Starfall instant while moving; Wild Charge helps. Plant your feet for Wrath/Starfire when you can." }
   - kind: resource_waste
     id: astral_power
     power_type: 8
     resource: Astral Power
     importance: high
-    title: Astral Power desperdiçado
-    tip: "Gaste com Starsurge (Starfall em 2+ alvos) antes do máximo, guardando o suficiente para entrar no Eclipse."
+    title: { pt: "Astral Power desperdiçado", en: "Astral Power wasted" }
+    tip: { pt: "Gaste com Starsurge (Starfall em 2+ alvos) antes do máximo, guardando o suficiente para entrar no Eclipse.", en: "Spend with Starsurge (Starfall on 2+ targets) before the cap, keeping enough to enter Eclipse." }
   - kind: dot_uptime
     id: moonfire
     debuff: moonfire
     min_uptime: 0.9
     importance: medium
-    title: Moonfire fora do alvo
-    tip: "Moonfire sempre no alvo: renove no pandemic, de preferência fora das janelas de Eclipse."
+    title: { pt: "Moonfire fora do alvo", en: "Moonfire off the target" }
+    tip: { pt: "Moonfire sempre no alvo: renove no pandemic, de preferência fora das janelas de Eclipse.", en: "Moonfire always on the target: refresh in pandemic, preferably outside Eclipse windows." }
   - kind: dot_uptime
     id: sunfire
     debuff: sunfire
     min_uptime: 0.9
     importance: medium
-    title: Sunfire fora do alvo
-    tip: "Sunfire sempre no alvo: renove no pandemic, de preferência fora das janelas de Eclipse."
+    title: { pt: "Sunfire fora do alvo", en: "Sunfire off the target" }
+    tip: { pt: "Sunfire sempre no alvo: renove no pandemic, de preferência fora das janelas de Eclipse.", en: "Sunfire always on the target: refresh in pandemic, preferably outside Eclipse windows." }
   - kind: proc
     id: touch_the_cosmos
     buff: touch_the_cosmos
     spenders: [starsurge, starfall]
     importance: medium
-    title: Touch the Cosmos perdido
-    tip: "Touch the Cosmos deixa o próximo Starsurge/Starfall de graça: use antes de acabar."
+    title: { pt: "Touch the Cosmos perdido", en: "Touch the Cosmos lost" }
+    tip: { pt: "Touch the Cosmos deixa o próximo Starsurge/Starfall de graça: use antes de acabar.", en: "Touch the Cosmos makes the next Starsurge/Starfall free: use it before it expires." }
   - kind: proc
     id: starweavers_weft
     buff: starweavers_weft
     spenders: [starsurge]
     importance: medium
-    title: Starweaver's Weft perdido
-    tip: "Starweaver's Weft deixa o próximo Starsurge de graça: use antes de acabar."
+    title: { pt: "Starweaver's Weft perdido", en: "Starweaver's Weft lost" }
+    tip: { pt: "Starweaver's Weft deixa o próximo Starsurge de graça: use antes de acabar.", en: "Starweaver's Weft makes the next Starsurge free: use it before it expires." }
   - kind: proc
     id: starweavers_warp
     buff: starweavers_warp
     spenders: [starfall]
     importance: medium
-    title: Starweaver's Warp perdido
-    tip: "Starweaver's Warp deixa o próximo Starfall de graça: use antes de acabar."
+    title: { pt: "Starweaver's Warp perdido", en: "Starweaver's Warp lost" }
+    tip: { pt: "Starweaver's Warp deixa o próximo Starfall de graça: use antes de acabar.", en: "Starweaver's Warp makes the next Starfall free: use it before it expires." }
   - kind: cooldown
     id: cooldowns
     spells: [eclipse, incarnation, force_of_nature, fury_of_elune]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Eclipse não pode ficar com 2 cargas; Force of Nature / Fury of Elune e Incarnation juntos, no cooldown."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Eclipse não pode ficar com 2 cargas; Force of Nature / Fury of Elune e Incarnation juntos, no cooldown.", en: "Eclipse can't sit at 2 charges; Force of Nature / Fury of Elune and Incarnation together, on cooldown." }

@@ -14,6 +14,8 @@ import { pct } from './format';
 import { BossShareCard } from '../components/share/BossCard';
 import { NightShareCard } from '../components/share/NightCard';
 import { PullShareCard } from '../components/share/PullCard';
+import { messagesOf } from '../i18n';
+import { discordMsg } from './discord.i18n';
 
 /** Sem pull novo por isso, a raid acabou: vai o resumo da noite. */
 const NIGHT_IDLE_MS = 30 * 60_000;
@@ -29,7 +31,7 @@ export async function postPullImage(p: Pull, all: Pull[]) {
     const key = bossKey(p);
     await send(<BossShareCard title={key} pulls={all.filter((x) => bossKey(x) === key)} />, all, `Kill · ${key}`);
   } else {
-    await send(<PullShareCard pull={p} />, all, `Wipe ${p.pullNumber} · ${bossKey(p)} · boss em ${pct(lowestBossHp(p))}`);
+    await send(<PullShareCard pull={p} />, all, messagesOf(discordMsg).wipeTitle(p.pullNumber, bossKey(p), pct(lowestBossHp(p))));
   }
 }
 
@@ -37,7 +39,7 @@ export async function postNightImage(all: Pull[]) {
   const raid = raidOnly(all);
   if (!raid.length) return;
   const day = raid[0].startLocal.split(' ')[0]?.split('/').slice(0, 2).reverse().join('/') ?? '';
-  await send(<NightShareCard pulls={all} />, all, `Resumo da noite · ${day}`);
+  await send(<NightShareCard pulls={all} />, all, messagesOf(discordMsg).nightTitle(day));
 }
 
 /**

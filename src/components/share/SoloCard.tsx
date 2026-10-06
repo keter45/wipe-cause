@@ -7,11 +7,15 @@ import { SpellIcon, SpellName } from '../SpellIcon';
 import { BossName, PlayerName } from '../Names';
 import { CooldownCompare } from '../perf/CooldownCompare';
 import { Card, Section, type CardDetail } from './common';
+import { messagesOf, useMessages } from '../../i18n';
+import { shareMsg } from './share.i18n';
 
 const SUMMARY_LOSSES = 3;
 
-const costLabel = (l: Loss, unit: string) =>
-  l.lost != null ? `~${num(l.lost)} de ${unit === 'HPS' ? 'cura' : 'dano'}` : l.weightSec >= 25 ? 'custo alto' : l.weightSec >= 8 ? 'custo médio' : 'custo baixo';
+const costLabel = (l: Loss, unit: string) => {
+  const t = messagesOf(shareMsg);
+  return l.lost != null ? t.cost(num(l.lost), unit === 'HPS') : l.weightSec >= 25 ? t.costHigh : l.weightSec >= 8 ? t.costMid : t.costLow;
+};
 
 /**
  * Modo solo: o pull de um jogador, para mandar a ele (ou guardar). Resumo: os números contra a
@@ -31,6 +35,7 @@ export function SoloShareCard({
   cds: Map<number, CooldownInfo>;
   detail?: CardDetail;
 }) {
+  const t = useMessages(shareMsg);
   const full = detail === 'full';
   const unit = isHealer(me.player) ? 'HPS' : 'DPS';
   const out = outputPerSec(me);
@@ -56,35 +61,35 @@ export function SoloShareCard({
       sub={
         <>
           <BossName encounterId={p.encounterId} name={`${p.encounterName} ${p.difficultyName}`} size={16} /> · pull {p.pullNumber} ({p.success ? 'kill' : 'wipe'},{' '}
-          {mmss(p.durationMs)}){ref_ ? ` · comparado com ${refLabel}` : ''}
+          {mmss(p.durationMs)}){ref_ ? t.comparedWith(refLabel) : ''}
         </>
       }
       big={diff != null ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : undefined}
       bigTone={diff != null && diff < -3 ? 'warn' : ''}
-      foot={`${unit} por segundo vivo${full ? ' · relatório completo' : ''}`}
+      foot={t.perAliveSecond(unit) + (full ? t.fullReport : '')}
     >
       <div className="share-stats">
         <div>
-          <span className="share-muted small">{unit === 'HPS' ? 'Cura' : 'Dano'} por segundo vivo</span>
+          <span className="share-muted small">{t.outputLabel(unit === 'HPS')}</span>
           <strong>{num(out)}</strong>
-          {ref_ && <span className="share-muted small">referência {num(refOut)}</span>}
+          {ref_ && <span className="share-muted small">{t.reference(num(refOut))}</span>}
         </div>
         <div>
-          <span className="share-muted small">Rotação</span>
+          <span className="share-muted small">{t.rotation}</span>
           <strong>{r ? <span className={`score-pill ${scoreTone(r.score)}`}>{r.score}</span> : '—'}</strong>
-          {r && <span className="share-muted small">{mmss(r.downtimeMs)} parado</span>}
+          {r && <span className="share-muted small">{t.idle(mmss(r.downtimeMs))}</span>}
         </div>
         <div>
-          <span className="share-muted small">Sobrevivência</span>
-          <strong className={deaths.length ? 'share-bad' : ''}>{deaths.length ? `morreu ${mmss(deaths[0].death.t)}` : 'vivo até o fim'}</strong>
+          <span className="share-muted small">{t.survival}</span>
+          <strong className={deaths.length ? 'share-bad' : ''}>{deaths.length ? t.diedAt(mmss(deaths[0].death.t)) : t.aliveToEnd}</strong>
         </div>
         <div>
-          <span className="share-muted small">Erros de mecânica</span>
+          <span className="share-muted small">{t.mechErrors}</span>
           <strong>{mechs.reduce((n, m) => n + m.player.count, 0)}</strong>
         </div>
       </div>
 
-      <Section title="Para o próximo pull" aside="os erros ordenados pelo que custaram">
+      <Section title={t.nextPull} aside={t.nextPullAside}>
         {shown.length ? (
           <ol className="share-losses">
             {shown.map((l) => (
@@ -93,10 +98,10 @@ export function SoloShareCard({
                 {l.tip && <div className="share-muted small">{l.tip}</div>}
               </li>
             ))}
-            {!full && ls.length > shown.length && <li className="share-more">+{ls.length - shown.length} no relatório completo</li>}
+            {!full && ls.length > shown.length && <li className="share-more">{t.more(ls.length - shown.length)}</li>}
           </ol>
         ) : (
-          <p className="share-muted">Nada de grave: sem morte cedo, sem erro de mecânica e a rotação sem falhas claras.</p>
+          <p className="share-muted">{t.nothingSerious}</p>
         )}
       </Section>
 
@@ -106,13 +111,14 @@ export function SoloShareCard({
 }
 
 function SoloDetails({ me, ref_, refLabel, unit, cds, sameSpec }: { me: Sample; ref_: Sample; refLabel: string; unit: string; cds: Map<number, CooldownInfo>; sameSpec: boolean }) {
+  const t = useMessages(shareMsg);
   const windows = advantageWindows(me, ref_);
   const relevant = relevantSpells(me.player, ref_.player);
   const taken = takenMoreThan(me, ref_);
   return (
     <>
       {windows.length > 0 && (
-        <Section title="Onde a referência abriu vantagem">
+        <Section title={t.refAdvantage}>
           <ul>
             {windows.map((w) => {
               const sec = (w.endMs - w.startMs) / 1000;
@@ -123,16 +129,16 @@ function SoloDetails({ me, ref_, refLabel, unit, cds, sameSpec }: { me: Sample; 
                     {mmss(w.startMs)}–{mmss(w.endMs)}
                   </strong>{' '}
                   <span className="share-muted">
-                    referência {num(w.ref / sec)} × você {num(w.mine / sec)} {unit}
+                    {t.refVsYou(num(w.ref / sec), num(w.mine / sec), unit)}
                   </span>
-                  {w.deadAt != null && <span className="share-bad"> · você morreu em {mmss(w.deadAt)}</span>}
+                  {w.deadAt != null && <span className="share-bad">{t.youDiedAt(mmss(w.deadAt))}</span>}
                   {diff.length > 0 && (
                     <div className="small">
-                      A referência usou mais:{' '}
+                      {t.refUsedMore}{' '}
                       {diff.map((d, i) => (
                         <span key={d.name}>
                           {i > 0 && ', '}
-                          <SpellName spellId={d.spellId} name={d.name} size={14} /> {d.ref}× (você {d.mine}×)
+                          <SpellName spellId={d.spellId} name={d.name} size={14} /> {d.ref}×{t.youCast(d.mine)}
                         </span>
                       ))}
                     </div>
@@ -145,25 +151,25 @@ function SoloDetails({ me, ref_, refLabel, unit, cds, sameSpec }: { me: Sample; 
       )}
       {sameSpec && <CooldownCompare me={me} ref_={ref_} cds={cds} refName={refLabel} expanded />}
       {taken.length > 0 && (
-        <Section title={`Dano que você tomou bem mais que ${refLabel}`} aside="por minuto vivo">
+        <Section title={t.takenMore(refLabel)} aside={t.perAliveMinute}>
           <table className="share-table">
             <thead>
               <tr>
-                <th>Habilidade</th>
-                <th className="num">Você</th>
-                <th className="num">Referência</th>
-                <th className="num">% do seu dano tomado</th>
+                <th>{t.ability}</th>
+                <th className="num">{t.you}</th>
+                <th className="num">{t.referenceCol}</th>
+                <th className="num">{t.shareOfTaken}</th>
               </tr>
             </thead>
             <tbody>
-              {taken.slice(0, 8).map((t) => (
-                <tr key={t.name}>
+              {taken.slice(0, 8).map((row) => (
+                <tr key={row.name}>
                   <td>
-                    <SpellName spellId={t.spellId} name={t.name} size={14} />
+                    <SpellName spellId={row.spellId} name={row.name} size={14} />
                   </td>
-                  <td className="num">{num(t.minePerMin)}</td>
-                  <td className="num">{num(t.refPerMin)}</td>
-                  <td className="num">{(t.share * 100).toFixed(0)}%</td>
+                  <td className="num">{num(row.minePerMin)}</td>
+                  <td className="num">{num(row.refPerMin)}</td>
+                  <td className="num">{(row.share * 100).toFixed(0)}%</td>
                 </tr>
               ))}
             </tbody>

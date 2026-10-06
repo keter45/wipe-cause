@@ -1,7 +1,7 @@
 // Prepara os arquivos de uma release com atualização automática.
 //
 //   npm run release:build            # tauri build assinado (chave em ~/.tauri/wipe-cause.key)
-//   node scripts/release.mjs [notas.md]
+//   node scripts/release.mjs notas.md   # seções "## Português" e "## English"
 //
 // Gera em target/release/upload/:
 //   WipeCause_<versão>_x64-setup.exe   instalador (nome sem espaço: vira a URL do asset)
@@ -27,8 +27,14 @@ fs.mkdirSync(out, { recursive: true });
 const asset = `WipeCause_${version}_x64-setup.exe`;
 fs.copyFileSync(path.join(nsis, exe), path.join(out, asset));
 
+// notas nas duas línguas: uma seção "## Português" e uma "## English" (o app mostra a do idioma
+// escolhido; o GitHub, as duas)
 const notesFile = process.argv[2];
-const notes = notesFile ? fs.readFileSync(notesFile, 'utf8').trim() : `Wipe Cause ${version}`;
+if (!notesFile) throw new Error('falta o arquivo de notas (com as seções "## Português" e "## English")');
+const notes = fs.readFileSync(notesFile, 'utf8').trim();
+for (const h of ['## Português', '## English']) {
+  if (!notes.split(/\r?\n/).some((l) => l.trim() === h)) throw new Error(`as notas precisam da seção "${h}": o app é sempre nas duas línguas`);
+}
 const latest = {
   version,
   notes,
@@ -47,5 +53,5 @@ console.log(`  ${asset}`);
 console.log('  latest.json');
 console.log('\npublicar:');
 console.log(
-  `  gh release create v${version} "${path.relative(root, path.join(out, asset))}" "${path.relative(root, path.join(out, 'latest.json'))}" --title "v${version}"${notesFile ? ` --notes-file "${notesFile}"` : ''}`,
+  `  gh release create v${version} "${path.relative(root, path.join(out, asset))}" "${path.relative(root, path.join(out, 'latest.json'))}" --title "v${version}" --notes-file "${notesFile}"`,
 );

@@ -14,6 +14,7 @@ import {
   rememberFile,
   sameLog,
   sourceName,
+  setBackendLocale,
   type HistoryEntry,
 } from './lib/api';
 import { BossSummary, NightOverview } from './components/NightSummary';
@@ -40,6 +41,8 @@ import { matchVideos } from './lib/wcr';
 import { raidOnly } from './lib/content';
 import { PlayerClassesContext, playerClasses } from './lib/players';
 import { SettingsView } from './components/settings/SettingsView';
+import { messagesOf, useLocale, useMessages } from './i18n';
+import { appMsg } from './App.i18n';
 import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
 
 /** O que ocupa a área principal: a análise aberta, a lista de logs, a evolução ou as configurações. */
@@ -48,7 +51,7 @@ type Page = 'analysis' | 'browse' | 'trends' | 'settings';
 type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string } | { kind: 'error'; message: string };
 
 /** Analisar e escolher arquivos/pastas só funciona no app (o navegador é só para desenvolver a UI). */
-const NEEDS_APP = 'No navegador não dá para ler os logs: abra o app (npm run tauri dev) ou carregue um relatório JSON pela barra lateral.';
+const needsApp = () => messagesOf(appMsg).needsApp;
 
 const SIDEBAR_KEY = 'wipe-cause:sidebar-open';
 function savedSidebarOpen(): boolean {
@@ -76,6 +79,12 @@ function markOnboarded() {
 }
 
 export default function App() {
+  // trocar o idioma remonta as telas (textos montados em memória saem de novo), sem perder o log aberto
+  const locale = useLocale();
+  useEffect(() => {
+    void setBackendLocale(locale);
+    document.documentElement.lang = locale === 'en' ? 'en' : 'pt-BR';
+  }, [locale]);
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   // NIGHT = visão geral; chave de boss = resumo do boss; null = pull selecionado
@@ -123,7 +132,7 @@ export default function App() {
   const trackNight = useNightRecap(live.status.active);
   // dev no navegador: ?demoLive=1 mostra o botão e o aviso do modo ao vivo (só visual)
   useEffect(() => {
-    if (demoLive && report && !liveToast) setLiveToast({ pull: report.pulls[report.pulls.length - 1], discord: 'enviado ao Discord' });
+    if (demoLive && report && !liveToast) setLiveToast({ pull: report.pulls[report.pulls.length - 1], discord: messagesOf(appMsg).sentToDiscord });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [report]);
 
@@ -159,14 +168,14 @@ export default function App() {
       if (p.success ? !cfg.onKill : !cfg.onWipe) continue;
       try {
         await postPullImage(p, all);
-        setLiveToast((t) => (t && t.pull.startMs === p.startMs ? { ...t, discord: 'enviado ao Discord' } : t));
+        setLiveToast((t) => (t && t.pull.startMs === p.startMs ? { ...t, discord: messagesOf(appMsg).sentToDiscord } : t));
       } catch (e) {
         setLiveToast((t) => (t && t.pull.startMs === p.startMs ? { ...t, discord: `Discord: ${e}` } : t));
       }
     }
   }
   // dev no navegador: ?demoUpdate=1 mostra o aviso de versão nova (só visual)
-  const updateState: UpdateState = demoUpdate ? { kind: 'available', version: '0.4.0', notes: '- Exemplo de novidade\n- Outra novidade' } : updater.state;
+  const updateState: UpdateState = demoUpdate ? { kind: 'available', version: '0.4.0', notes: messagesOf(appMsg).demoNotes } : updater.state;
 
   const refreshHistory = () => historyList().then(setHistory).catch(() => {});
   // primeira vez no app (sem nenhuma análise): abre nas Configurações, com o passo a passo
@@ -218,7 +227,7 @@ export default function App() {
 
   async function load(path: string, keepView = false, cutoff = deathCutoff) {
     if (!inTauri) {
-      setStatus({ kind: 'error', message: NEEDS_APP });
+      setStatus({ kind: 'error', message: needsApp() });
       return;
     }
     setStatus({ kind: 'loading', progress: 0, path });
@@ -257,7 +266,7 @@ export default function App() {
 
   async function openFile() {
     if (!inTauri) {
-      setStatus({ kind: 'error', message: NEEDS_APP });
+      setStatus({ kind: 'error', message: needsApp() });
       return;
     }
     const path = await pickLogFile();
@@ -328,7 +337,7 @@ export default function App() {
   return (
     <SetupContext.Provider value={{ status: setup.status, reload: setup.reload, openSettings }}>
     <PlayerClassesContext.Provider value={classes}>
-    <div className="app">
+    <div className="app" key={locale}>
       <Header
         report={report}
         busy={status.kind === 'loading'}
@@ -440,7 +449,7 @@ export default function App() {
               onRulesChanged={rulesChanged}
             />
           ) : (
-            <p className="muted">Nenhum pull no log.</p>
+            <p className="muted">{messagesOf(appMsg).noPulls}</p>
           )}
           {liveToast && (
             <LiveToast
@@ -473,23 +482,18 @@ const demoSettings = import.meta.env.DEV && new URLSearchParams(window.location.
 function Intro() {
   const { status, openSettings } = useSetup();
   const optional = optionalDone(status);
+  const t = useMessages(appMsg);
   return (
     <div className="intro">
       <Crosshair size={32} strokeWidth={1.5} className="empty-mark" aria-hidden />
       <div>
-        <h1>Por que deu wipe?</h1>
-        <p className="muted">
-          Escolha o log da raid e veja o gatilho de cada wipe, as mortes e quem errou o quê. No jogo, use <code>/combatlog</code> antes do pull,
-          com <em>Advanced Combat Logging</em> ligado (Opções → Rede).
-        </p>
+        <h1>{t.title}</h1>
+        <p className="muted">{t.intro()}</p>
         {status && optional.done < optional.total && (
           <button className="intro-setup" onClick={() => openSettings()}>
             <Settings size={14} strokeWidth={1.5} aria-hidden />
             <span>
-              <span className="tabular">
-                {optional.done} de {optional.total}
-              </span>{' '}
-              integrações ligadas: Warcraft Logs, vídeos, Discord e IA
+              <span className="tabular">{t.outOf(optional.done, optional.total)}</span> {t.integrations}
             </span>
             <ChevronRight size={14} strokeWidth={1.5} aria-hidden />
           </button>
@@ -500,14 +504,13 @@ function Intro() {
 }
 
 function Empty({ hasHistory }: { hasHistory: boolean }) {
+  const t = useMessages(appMsg);
   return (
     <div className="empty">
       <Crosshair size={40} strokeWidth={1.5} className="empty-mark" aria-hidden />
-      <h1>Por que deu wipe?</h1>
-      <p className="muted small">
-        Modo navegador: gere o relatório com <code>wipe-cli analyze log.txt --json</code> e abra o JSON pela barra lateral.
-      </p>
-      {hasHistory && <p className="muted small">Ou abra uma análise salva na barra lateral.</p>}
+      <h1>{t.title}</h1>
+      <p className="muted small">{t.browserMode()}</p>
+      {hasHistory && <p className="muted small">{t.orHistory}</p>}
     </div>
   );
 }

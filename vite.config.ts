@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
@@ -42,6 +43,8 @@ function devVideos(): Plugin {
 export default defineConfig({
   plugins: [react(), devVideos()],
   clearScreen: false,
+  // testes em português, como os textos esperados nos asserts (o inglês tem os próprios testes)
+  test: { setupFiles: ['src/i18n/test-setup.ts'] },
   server: {
     port: 1420,
     strictPort: true,

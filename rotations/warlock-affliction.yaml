@@ -12,12 +12,12 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/warlock_affliction.simc
 
 key_points:
-  - "Não estoure Soul Shards (máximo 5): gaste com Unstable Affliction (Seed of Corruption em AoE); só junte antes de uma janela de dano."
-  - "Agony e Corruption (Wither no Hellcaller) sempre no alvo; Haunt no cooldown."
-  - "Summon Darkglare antes de encadear os Unstable Affliction: o bônus dele cobre todos."
-  - "Dark Harvest no cooldown sem estourar Soul Shards (no Soul Harvester ele gera 3)."
-  - "Hellcaller: Malevolence a cada minuto, junto do Darkglare a cada dois."
-  - "Reaja aos procs: Nightfall (Shadow Bolt instantâneo / Malefic Grasp) e Shard Instability (Unstable Affliction / Seed de graça)."
+  - { pt: "Não estoure Soul Shards (máximo 5): gaste com Unstable Affliction (Seed of Corruption em AoE); só junte antes de uma janela de dano.", en: "Don't cap Soul Shards (max 5): spend with Unstable Affliction (Seed of Corruption in AoE); only pool before a damage window." }
+  - { pt: "Agony e Corruption (Wither no Hellcaller) sempre no alvo; Haunt no cooldown.", en: "Agony and Corruption (Wither for Hellcaller) always on the target; Haunt on cooldown." }
+  - { pt: "Summon Darkglare antes de encadear os Unstable Affliction: o bônus dele cobre todos.", en: "Summon Darkglare before chaining Unstable Afflictions: its bonus covers all of them." }
+  - { pt: "Dark Harvest no cooldown sem estourar Soul Shards (no Soul Harvester ele gera 3).", en: "Dark Harvest on cooldown without capping Soul Shards (for Soul Harvester it generates 3)." }
+  - { pt: "Hellcaller: Malevolence a cada minuto, junto do Darkglare a cada dois.", en: "Hellcaller: Malevolence every minute, together with Darkglare every two." }
+  - { pt: "Reaja aos procs: Nightfall (Shadow Bolt instantâneo / Malefic Grasp) e Shard Instability (Unstable Affliction / Seed de graça).", en: "React to procs: Nightfall (instant Shadow Bolt / Malefic Grasp) and Shard Instability (free Unstable Affliction / Seed)." }
 
 hero_trees:
   - key: hellcaller
@@ -56,17 +56,17 @@ priority:
       - { spell: dark_harvest }
       - { spell: summon_darkglare }
       - { spell: malevolence }
-      - { spell: unstable_affliction, note: "o máximo possível" }
-      - { spell: malefic_grasp, note: "preenche (Shadow Bolt sem o talento)" }
+      - { spell: unstable_affliction, note: { pt: "o máximo possível", en: "as much as possible" } }
+      - { spell: malefic_grasp, note: { pt: "preenche (Shadow Bolt sem o talento)", en: "filler (Shadow Bolt without the talent)" } }
     aoe:
       - { spell: seed_of_corruption }
-      - { spell: haunt, note: "no alvo prioritário" }
-      - { spell: agony, note: "em alguns alvos" }
+      - { spell: haunt, note: { pt: "no alvo prioritário", en: "on the priority target" } }
+      - { spell: agony, note: { pt: "em alguns alvos", en: "on a few targets" } }
       - { spell: summon_darkglare }
       - { spell: malevolence }
       - { spell: dark_harvest }
-      - { spell: seed_of_corruption, note: "o máximo possível" }
-      - { spell: shadow_bolt, note: "ou Drain Soul" }
+      - { spell: seed_of_corruption, note: { pt: "o máximo possível", en: "as much as possible" } }
+      - { spell: shadow_bolt, note: { pt: "ou Drain Soul", en: "or Drain Soul" } }
   soul_harvester:
     st:
       - { spell: haunt }
@@ -74,16 +74,16 @@ priority:
       - { spell: corruption }
       - { spell: summon_darkglare }
       - { spell: unstable_affliction }
-      - { spell: dark_harvest, note: "sem estourar Soul Shards (gera 3)" }
+      - { spell: dark_harvest, note: { pt: "sem estourar Soul Shards (gera 3)", en: "without capping Soul Shards (generates 3)" } }
       - { spell: unstable_affliction }
-      - { spell: malefic_grasp, note: "preenche (Shadow Bolt sem o talento)" }
+      - { spell: malefic_grasp, note: { pt: "preenche (Shadow Bolt sem o talento)", en: "filler (Shadow Bolt without the talent)" } }
     aoe:
       - { spell: seed_of_corruption }
-      - { spell: haunt, note: "no alvo prioritário" }
-      - { spell: agony, note: "em alguns alvos" }
+      - { spell: haunt, note: { pt: "no alvo prioritário", en: "on the priority target" } }
+      - { spell: agony, note: { pt: "em alguns alvos", en: "on a few targets" } }
       - { spell: summon_darkglare }
       - { spell: dark_harvest }
-      - { spell: seed_of_corruption, note: "o máximo possível" }
+      - { spell: seed_of_corruption, note: { pt: "o máximo possível", en: "as much as possible" } }
       - { spell: malefic_grasp }
 
 # Abertura: Haunt pré-cast, DoTs e os cooldowns antes de encadear os Unstable Affliction
@@ -99,54 +99,54 @@ checks:
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem castar
-    tip: "Sempre castando: no movimento, Agony e Corruption instantâneos; Shadow Bolt com Nightfall."
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre castando: no movimento, Agony e Corruption instantâneos; Shadow Bolt com Nightfall.", en: "Always casting: while moving, instant Agony and Corruption; Shadow Bolt with Nightfall." }
   - kind: resource_waste
     id: soul_shards
     power_type: 7
     resource: Soul Shards
     importance: high
-    title: Soul Shard desperdiçado
-    tip: "Gaste com Unstable Affliction antes de chegar a 5 Soul Shards."
+    title: { pt: "Soul Shard desperdiçado", en: "Soul Shard wasted" }
+    tip: { pt: "Gaste com Unstable Affliction antes de chegar a 5 Soul Shards.", en: "Spend with Unstable Affliction before reaching 5 Soul Shards." }
   - kind: dot_uptime
     id: agony
     debuff: agony
     min_uptime: 0.95
     importance: medium
-    title: Agony fora do alvo
-    tip: "Agony sempre no alvo: renove no pandemic."
+    title: { pt: "Agony fora do alvo", en: "Agony off the target" }
+    tip: { pt: "Agony sempre no alvo: renove no pandemic.", en: "Agony always on the target: refresh in pandemic." }
   - kind: dot_uptime
     id: corruption
     debuff: corruption
     min_uptime: 0.9
     importance: medium
-    title: Corruption fora do alvo
-    tip: "Corruption sempre no alvo: renove no pandemic."
+    title: { pt: "Corruption fora do alvo", en: "Corruption off the target" }
+    tip: { pt: "Corruption sempre no alvo: renove no pandemic.", en: "Corruption always on the target: refresh in pandemic." }
   - kind: dot_uptime
     id: wither
     debuff: wither
     min_uptime: 0.9
     importance: medium
-    title: Wither fora do alvo
-    tip: "Wither sempre no alvo: renove no pandemic."
+    title: { pt: "Wither fora do alvo", en: "Wither off the target" }
+    tip: { pt: "Wither sempre no alvo: renove no pandemic.", en: "Wither always on the target: refresh in pandemic." }
   - kind: proc
     id: nightfall
     buff: nightfall
     spenders: [shadow_bolt, malefic_grasp]
     importance: low
-    title: Nightfall perdido
-    tip: "Nightfall deixa o próximo Shadow Bolt instantâneo (ou fortalece o Malefic Grasp): use antes de acabar."
+    title: { pt: "Nightfall perdido", en: "Nightfall lost" }
+    tip: { pt: "Nightfall deixa o próximo Shadow Bolt instantâneo (ou fortalece o Malefic Grasp): use antes de acabar.", en: "Nightfall makes the next Shadow Bolt instant (or empowers Malefic Grasp): use it before it expires." }
   - kind: proc
     id: shard_instability
     buff: shard_instability
     spenders: [unstable_affliction, seed_of_corruption]
     importance: medium
-    title: Shard Instability perdido
-    tip: "Shard Instability deixa o próximo Unstable Affliction / Seed de graça: use antes de acabar."
+    title: { pt: "Shard Instability perdido", en: "Shard Instability lost" }
+    tip: { pt: "Shard Instability deixa o próximo Unstable Affliction / Seed de graça: use antes de acabar.", en: "Shard Instability makes the next Unstable Affliction / Seed free: use it before it expires." }
   - kind: cooldown
     id: cooldowns
     spells: [summon_darkglare, dark_harvest, malevolence, haunt]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Summon Darkglare, Dark Harvest e Haunt no cooldown; Malevolence a cada minuto."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Summon Darkglare, Dark Harvest e Haunt no cooldown; Malevolence a cada minuto.", en: "Summon Darkglare, Dark Harvest and Haunt on cooldown; Malevolence every minute." }

@@ -19,6 +19,8 @@ import { OutputChart } from './SoloCharts';
 import { CooldownCompare } from './perf/CooldownCompare';
 import { ShareMenu } from './share/ShareMenu';
 import { SoloShareCard } from './share/SoloCard';
+import { messagesOf, tr as trLoc, useMessages } from '../i18n';
+import { soloPullMsg } from './SoloPullView.i18n';
 import { inTauri } from '../lib/api';
 import { useSetup } from '../lib/setup';
 
@@ -28,7 +30,7 @@ export function SoloPullView({ pull, nightPulls }: { pull: Pull; nightPulls: Pul
   const me = meIn(pull, chosen);
   if (!me) return <WhoAreYou pull={pull} />;
   return (
-    <ErrorBoundary label="na sua análise" resetKey={`${pull.id}:${me.guid}`}>
+    <ErrorBoundary label={messagesOf(soloPullMsg).errorScope} resetKey={`${pull.id}:${me.guid}`}>
       {/* a escolha da referência vale para os pulls do mesmo boss; trocou de boss, volta ao padrão */}
       <SoloPull key={`${me.guid}:${pull.encounterId}:${pull.difficultyId}`} me={{ pull, player: me }} nightPulls={nightPulls} />
     </ErrorBoundary>
@@ -36,22 +38,23 @@ export function SoloPullView({ pull, nightPulls }: { pull: Pull; nightPulls: Pul
 }
 
 function CharacterPicker({ pull, current }: { pull: Pull; current: PlayerStats | null }) {
+  const t = useMessages(soloPullMsg);
   const players = [...pull.players].sort((a, b) => a.name.localeCompare(b.name));
   return (
     <select
       className="select"
-      aria-label="Seu personagem"
+      aria-label={t.yourCharacter}
       value={current?.guid ?? ''}
       onChange={(e) => {
         const p = players.find((x) => x.guid === e.target.value);
         setSoloCharacter(p ? p.name : null);
       }}
     >
-      {!current && <option value="">Escolha…</option>}
+      {!current && <option value="">{t.choose}</option>}
       {players.map((p) => (
         <option key={p.guid} value={p.guid}>
           {shortName(p.name)} — {specLabel(p.specId)}
-          {p.guid === pull.ownerGuid ? ' (gravou o log)' : ''}
+          {p.guid === pull.ownerGuid ? t.recordedLog : ''}
         </option>
       ))}
     </select>
@@ -59,12 +62,13 @@ function CharacterPicker({ pull, current }: { pull: Pull; current: PlayerStats |
 }
 
 function WhoAreYou({ pull }: { pull: Pull }) {
+  const t = useMessages(soloPullMsg);
   return (
     <div className="panel solo-who">
       <Target size={20} strokeWidth={1.5} className="muted" aria-hidden />
       <div>
-        <h3>Quem é você neste pull?</h3>
-        <p className="muted small">Este pull não diz quem gravou o log (análise do Warcraft Logs). Escolha o seu personagem: o app lembra da escolha.</p>
+        <h3>{t.whoTitle}</h3>
+        <p className="muted small">{t.whoText}</p>
       </div>
       <CharacterPicker pull={pull} current={null} />
     </div>
@@ -81,20 +85,15 @@ interface RefOption {
   sample?: Sample;
 }
 
-const GROUPS: [RefGroup, string][] = [
-  ['top', 'Top do Warcraft Logs'],
-  ['spec', 'Sua spec na raid'],
-  ['self', 'Você em outros pulls'],
-  ['other', 'Outras specs neste pull'],
-];
+const GROUPS: RefGroup[] = ['top', 'spec', 'self', 'other'];
 
 const sampleKey = (s: Sample) => `s:${s.pull.id}:${s.player.guid}`;
 const topId = (t: TopRanking) => `${t.code}:${t.fightId}`;
-const pullLabel = (p: Pull) => `pull ${p.pullNumber} (${p.success ? 'kill' : 'wipe'})`;
+const pullLabel = (p: Pull) => messagesOf(soloPullMsg).pullLabel(p.pullNumber, p.success);
 
 /** "Fulano", "Fulano · pull 6 (kill)", "Você no pull 6 (kill)" */
 function sampleLabel(me: Sample, s: Sample): string {
-  if (s.player.guid === me.player.guid) return `Você no ${pullLabel(s.pull)}`;
+  if (s.player.guid === me.player.guid) return messagesOf(soloPullMsg).youIn(pullLabel(s.pull));
   return s.pull.id === me.pull.id ? shortName(s.player.name) : `${shortName(s.player.name)} · ${pullLabel(s.pull)}`;
 }
 
@@ -109,8 +108,8 @@ function refOptions(me: Sample, list: Sample[], tops: TopRanking[] | null, wclRe
     tops.forEach((t, i) =>
       out.push({ key: `top:${i}`, group: 'top', label: `#${i + 1} ${t.name} — ${num(t.amount)} ${unit}${t.itemLevel ? ` · ilvl ${t.itemLevel.toFixed(0)}` : ''}` }),
     );
-  else if (tops == null) out.push({ key: 'top:0', group: 'top', label: wclReady ? 'Top #1 (buscando…)' : 'Top da spec (conectar o Warcraft Logs)' });
-  const tag = (s: Sample) => `${num(outputPerSec(s))} ${unit}${fairReference(me, s) ? '' : ' · viveu pouco'}`;
+  else if (tops == null) out.push({ key: 'top:0', group: 'top', label: wclReady ? messagesOf(soloPullMsg).topSearching : messagesOf(soloPullMsg).topConnect });
+  const tag = (s: Sample) => `${num(outputPerSec(s))} ${unit}${fairReference(me, s) ? '' : messagesOf(soloPullMsg).diedEarly}`;
   for (const s of list) {
     const self = s.player.guid === me.player.guid;
     out.push({ key: sampleKey(s), group: self ? 'self' : 'spec', label: `${sampleLabel(me, s)} — ${tag(s)}`, sample: s });
@@ -124,6 +123,7 @@ function refOptions(me: Sample, list: Sample[], tops: TopRanking[] | null, wclRe
 }
 
 function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
+  const t = useMessages(soloPullMsg);
   const seek = useSeek();
   const healer = isHealer(me.player);
   const unit = healer ? 'HPS' : 'DPS';
@@ -162,7 +162,7 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
     };
   }, [wantTop, loaded, me, tops]);
   const ref: Sample | null = key?.startsWith('top:') ? top : (opt?.sample ?? null);
-  const refLabel = !ref ? 'Referência' : wantTop ? `${wantTop.name} (top #${Number(key!.slice(4)) + 1})` : sampleLabel(me, ref);
+  const refLabel = !ref ? t.reference : wantTop ? t.topRef(wantTop.name, Number(key!.slice(4)) + 1) : sampleLabel(me, ref);
   const sameSpec = ref != null && ref.player.specId === me.player.specId;
   const refOut = ref ? outputPerSec(ref) : 0;
   const diff = refOut > 0 ? ((out - refOut) / refOut) * 100 : null;
@@ -177,7 +177,7 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
     <div className="solo">
       <div className="solo-head">
         <span className="solo-you">
-          <span className="muted small">Você</span>
+          <span className="muted small">{t.you}</span>
           <PlayerName name={me.player.name} cls={me.player.class} />
           <span className="muted small">{specLabel(me.player.specId)}</span>
         </span>
@@ -190,26 +190,26 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
 
       <div className="death-stats perf-stats">
         <div className="stat">
-          <span className="stat-label">{healer ? 'Cura' : 'Dano'} por segundo vivo</span>
+          <span className="stat-label">{t.perSecondAlive(healer)}</span>
           <strong className={diff != null && diff <= -15 ? 'bad' : diff != null && diff < -3 ? 'warn' : ''}>
             {num(out)} {diff != null && <span className="small">({diff >= 0 ? '+' : ''}{diff.toFixed(0)}%)</span>}
           </strong>
-          <span className="muted small">{ref ? `${refLabel}: ${num(refOut)}` : 'sem referência ainda'}</span>
+          <span className="muted small">{ref ? `${refLabel}: ${num(refOut)}` : t.noReference}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Rotação</span>
-          <strong>{r ? <span className={`score-pill ${scoreTone(r.score)}`}>{r.score}</span> : <span className="muted">em construção</span>}</strong>
-          <span className="muted small">{r ? `${mmss(r.downtimeMs)} parado` : specLabel(me.player.specId)}</span>
+          <span className="stat-label">{t.rotation}</span>
+          <strong>{r ? <span className={`score-pill ${scoreTone(r.score)}`}>{r.score}</span> : <span className="muted">{t.underConstruction}</span>}</strong>
+          <span className="muted small">{r ? t.idle(mmss(r.downtimeMs)) : specLabel(me.player.specId)}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Sobrevivência</span>
-          <strong className={deaths.length ? 'bad' : ''}>{deaths.length ? `morreu ${mmss(deaths[0].death.t)}` : 'vivo até o fim'}</strong>
-          <span className="muted small">{me.pull.success ? 'kill' : 'wipe'} em {mmss(me.pull.durationMs)}</span>
+          <span className="stat-label">{t.survival}</span>
+          <strong className={deaths.length ? 'bad' : ''}>{deaths.length ? t.diedAt(mmss(deaths[0].death.t)) : t.aliveToEnd}</strong>
+          <span className="muted small">{t.resultIn(me.pull.success, mmss(me.pull.durationMs))}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Erros de mecânica</span>
+          <span className="stat-label">{t.mechErrors}</span>
           <strong className={mechCount ? 'warn' : ''}>{mechCount}</strong>
-          <span className="muted small">{me.pull.rulesFile ? 'só os seus' : 'boss sem regras cadastradas'}</span>
+          <span className="muted small">{me.pull.rulesFile ? t.onlyYours : t.noRules}</span>
         </div>
       </div>
 
@@ -217,13 +217,14 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
 
       <section className="perf-section">
         <h4>
-          <TrendingDown size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> Onde a referência abriu vantagem
+          <TrendingDown size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.advantage}
         </h4>
         <label className="perf-field solo-ref">
-          <span className="muted small">Comparar com</span>
+          <span className="muted small">{t.compareWith}</span>
           <select className="select" value={key ?? ''} onChange={(e) => setChoice(e.target.value)}>
             {key == null && <option value="">—</option>}
-            {GROUPS.map(([g, label]) => {
+            {GROUPS.map((g) => {
+              const label = t.groups[g];
               const os = options.filter((o) => o.group === g);
               return (
                 os.length > 0 && (
@@ -240,9 +241,9 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
           </select>
         </label>
         {(wclReady || key?.startsWith('top:')) && <WclTopsButton me={me} onTops={setTops} />}
-        {wantTop && !top && <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? `Baixando o fight de ${wantTop.name}…`}</p>}
-        {key == null && <p className="muted small">Ninguém mais jogou de {specLabel(me.player.specId)} neste boss na noite: escolha alguém de outra spec ou conecte o Warcraft Logs.</p>}
-        {ref && !sameSpec && <p className="muted small">Outra spec: dá para comparar o dano ao longo do pull e o dano tomado, mas não os casts e os cooldowns.</p>}
+        {wantTop && !top && <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? t.downloading(wantTop.name)}</p>}
+        {key == null && <p className="muted small">{t.nobodyElse(specLabel(me.player.specId))}</p>}
+        {ref && !sameSpec && <p className="muted small">{t.otherSpec}</p>}
         {ref && <Advantage me={me} ref_={ref} refLabel={refLabel} unit={unit} casts={sameSpec} />}
       </section>
 
@@ -254,7 +255,7 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
         <RotationPanel rotation={r} />
       ) : (
         <p className="rot-wip small">
-          <span className="chip">Em construção</span> A leitura da rotação de {specLabel(me.player.specId)} ainda está sendo preparada.
+          <span className="chip">{t.wipChip}</span> {t.wipText(specLabel(me.player.specId))}
         </p>
       )}
     </div>
@@ -276,19 +277,20 @@ function At({ t, seek }: { t: number; seek: ((t: number) => void) | null }) {
 const LOSS_ICON: Partial<Record<Loss['kind'], typeof Skull>> = { death: Skull, mechanic: ShieldAlert, avoidable: ShieldAlert };
 
 function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; seek: ((t: number) => void) | null }) {
+  const t = useMessages(soloPullMsg);
   const [all, setAll] = useState(false);
   if (ls.length === 0)
     return (
       <section className="perf-section">
-        <h4>Para o próximo pull</h4>
-        <p className="muted">Nada de grave apareceu neste pull: sem morte cedo, sem erro de mecânica seu e a rotação sem falhas claras.</p>
+        <h4>{t.nextPull}</h4>
+        <p className="muted">{t.nothingSerious}</p>
       </section>
     );
   const shown = all ? ls : ls.slice(0, 3);
   return (
     <section className="perf-section">
       <h4>
-        Para o próximo pull <span className="muted small">os erros ordenados pelo que custaram</span>
+        {t.nextPull} <span className="muted small">{t.byCost}</span>
       </h4>
       <ol className="solo-losses">
         {shown.map((l, i) => {
@@ -300,7 +302,7 @@ function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; se
                 <div className="solo-loss-title">
                   {l.spellId != null ? <SpellIcon spellId={l.spellId} size={18} /> : Icon && <Icon size={16} strokeWidth={1.5} aria-hidden />}
                   <strong>{l.title}</strong>
-                  <span className="muted small">{l.lost != null ? `~${num(l.lost)} de ${unit === 'HPS' ? 'cura' : 'dano'} (${Math.round(l.weightSec)}s do seu ${unit})` : costLabel(l)}</span>
+                  <span className="muted small">{l.lost != null ? t.lost(num(l.lost), unit === 'HPS', Math.round(l.weightSec), unit) : costLabel(l)}</span>
                 </div>
                 {l.detail && <p className="small">{l.detail}</p>}
                 {l.tip && <p className="muted small">{l.tip}</p>}
@@ -321,7 +323,7 @@ function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; se
       {ls.length > 3 && (
         <button className="link small more-toggle" onClick={() => setAll(!all)} aria-expanded={all}>
           <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${all ? 'open' : ''}`} aria-hidden />
-          {all ? 'Só os 3 principais' : `Mostrar os outros ${ls.length - 3}`}
+          {all ? t.showTop3 : t.showOthers(ls.length - 3)}
         </button>
       )}
     </section>
@@ -329,7 +331,10 @@ function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; se
 }
 
 /** Sem estimativa de dano: o peso vira "alto / médio / baixo". */
-const costLabel = (l: Loss) => (l.weightSec >= 25 ? 'custo alto' : l.weightSec >= 8 ? 'custo médio' : 'custo baixo');
+const costLabel = (l: Loss) => {
+  const t = messagesOf(soloPullMsg);
+  return l.weightSec >= 25 ? t.costHigh : l.weightSec >= 8 ? t.costMid : t.costLow;
+};
 
 // ---- vantagem da referência
 
@@ -338,14 +343,15 @@ function Advantage({ me, ref_, refLabel, unit, casts }: { me: Sample; ref_: Samp
   const [mine, ref] = [timelineOf(me.player), timelineOf(ref_.player)];
   const windows = useMemo(() => advantageWindows(me, ref_), [me, ref_]);
   const relevant = useMemo(() => relevantSpells(me.player, ref_.player), [me, ref_]);
-  if (!mine.length) return <p className="muted small">Esta análise é de uma versão antiga do app: analise o log de novo para ver o dano ao longo do pull.</p>;
-  if (!ref.length) return <p className="muted small">A referência não tem o dano ao longo do pull (fight antigo no cache ou sem dados no Warcraft Logs).</p>;
+  const t = messagesOf(soloPullMsg);
+  if (!mine.length) return <p className="muted small">{t.oldAnalysis}</p>;
+  if (!ref.length) return <p className="muted small">{t.refNoTimeline}</p>;
   return (
     <>
       <OutputChart mine={mine} ref={ref} windows={windows} unit={unit} refLabel={refLabel} />
-      <p className="muted small">Alinhado pelo tempo desde o pull: em lutas com fases, os trechos depois da primeira troca de fase podem não bater.</p>
+      <p className="muted small">{t.alignedHint}</p>
       {windows.length === 0 ? (
-        <p className="muted small">A referência não passou de você em nenhum trecho.</p>
+        <p className="muted small">{t.neverAhead}</p>
       ) : (
         <div className="solo-windows">
           {windows.map((w, i) => (
@@ -362,6 +368,7 @@ const ICON_GAP_PCT = 4.5;
 
 function WindowCard({ n, w, unit, relevant, casts }: { n: number; w: AdvantageWindow; unit: string; relevant: Set<string>; casts: boolean }) {
   const seek = useSeek();
+  const t = useMessages(soloPullMsg);
   const diff = casts ? castDiff(w, relevant) : [];
   const sec = (w.endMs - w.startMs) / 1000;
   return (
@@ -371,30 +378,26 @@ function WindowCard({ n, w, unit, relevant, casts }: { n: number; w: AdvantageWi
         <strong>
           {mmss(w.startMs)}–{mmss(w.endMs)}
         </strong>
-        <span className="muted small">
-          referência {num(w.ref / sec)} × você {num(w.mine / sec)} {unit}
-        </span>
+        <span className="muted small">{t.windowLine(num(w.ref / sec), num(w.mine / sec), unit)}</span>
         <At t={w.startMs} seek={seek} />
       </div>
-      {w.deadAt != null && <p className="small bad">Você morreu em {mmss(w.deadAt)}.</p>}
+      {w.deadAt != null && <p className="small bad">{t.youDied(mmss(w.deadAt))}</p>}
       {diff.length > 0 && (
         <p className="small">
-          A referência usou mais:{' '}
+          {t.refUsedMore}{' '}
           {diff.map((d, i) => (
             <span key={d.name} className="solo-diff">
               {i > 0 && ', '}
               <SpellName spellId={d.spellId} name={d.name} size={14} />{' '}
-              <span className="muted">
-                {d.ref}× (você {d.mine}×)
-              </span>
+              <span className="muted">{t.timesVsYou(d.ref, d.mine)}</span>
             </span>
           ))}
         </p>
       )}
       {casts && (
         <>
-          <Lane label="Você" casts={w.myCasts} />
-          <Lane label="Referência" casts={w.refCasts} />
+          <Lane label={t.you} casts={w.myCasts} />
+          <Lane label={t.reference} casts={w.refCasts} />
         </>
       )}
     </div>
@@ -422,7 +425,7 @@ function Lane({ label, casts }: { label: string; casts: AdvantageWindow['myCasts
           ))}
         </ol>
       ) : (
-        <span className="small warn">nenhum cast no trecho</span>
+        <span className="small warn">{messagesOf(soloPullMsg).noCasts}</span>
       )}
     </div>
   );
@@ -431,31 +434,32 @@ function Lane({ label, casts }: { label: string; casts: AdvantageWindow['myCasts
 // ---- mecânicas
 
 function Mechanics({ me, ref_, refLabel, seek }: { me: Sample; ref_: Sample | null; refLabel: string; seek: ((t: number) => void) | null }) {
+  const t = useMessages(soloPullMsg);
   const fails = myMechanicFailures(me);
   const deaths = myDeaths(me);
   const taken = ref_ ? takenMoreThan(me, ref_) : [];
   return (
     <section className="perf-section">
       <h4>
-        <ShieldAlert size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> Mecânicas
+        <ShieldAlert size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.mechanics}
       </h4>
       {fails.length === 0 && deaths.length === 0 && taken.length === 0 && (
-        <p className="muted small">{me.pull.rulesFile ? 'Nenhum erro seu nas mecânicas cadastradas, e você não morreu.' : 'Este boss ainda não tem regras de mecânica cadastradas.'}</p>
+        <p className="muted small">{me.pull.rulesFile ? t.noMistakes : t.bossNoRules}</p>
       )}
       {deaths.map(({ death: d }) => (
         <div key={d.t} className="solo-mech">
           <Skull size={16} strokeWidth={1.5} className="bad" aria-hidden />
           <div>
-            <strong>Morte em {mmss(d.t)}</strong>
+            <strong>{t.deathAt(mmss(d.t))}</strong>
             <span className="muted small">
               {' '}
-              {d.killingBlow ? `${d.killingBlow.spellName} (${d.killingBlow.source})` : 'golpe final desconhecido'}
-              {d.causedBy ? ` · depois de ${d.causedBy.name}` : ''}
+              {d.killingBlow ? `${d.killingBlow.spellName} (${d.killingBlow.source})` : t.unknownKillingBlow}
+              {d.causedBy ? t.after(d.causedBy.name) : ''}
             </span>
             <p className="muted small">
-              {d.defensivesAvailable.length ? `Disponível na hora: ${d.defensivesAvailable.map((x) => x.name).join(', ')}. ` : 'Sem defensivo disponível. '}
-              {!d.usedHealthPotion && 'Sem poção de vida. '}
-              {d.healthstoneKnown && !d.usedHealthstone && 'Sem Healthstone.'}
+              {d.defensivesAvailable.length ? t.availableThen(d.defensivesAvailable.map((x) => x.name).join(', ')) : t.noDefensive}
+              {!d.usedHealthPotion && t.noPotion}
+              {d.healthstoneKnown && !d.usedHealthstone && t.noHealthstone}
             </p>
           </div>
           <At t={d.t} seek={seek} />
@@ -465,40 +469,40 @@ function Mechanics({ me, ref_, refLabel, seek }: { me: Sample; ref_: Sample | nu
         <div key={m.key} className="solo-mech">
           {m.spellId != null ? <SpellIcon spellId={m.spellId} size={18} /> : <ShieldAlert size={16} strokeWidth={1.5} aria-hidden />}
           <div>
-            <strong>{m.name}</strong> <span className="muted small">{p.message || `${p.count} erro${p.count > 1 ? 's' : ''}`}</span>
-            {m.tip && <p className="muted small">{m.tip}</p>}
+            <strong>{m.name}</strong> <span className="muted small">{trLoc(p.message) || t.errors(p.count)}</span>
+            {trLoc(m.tip) && <p className="muted small">{trLoc(m.tip)}</p>}
           </div>
           {(times[0] ?? p.firstT) != null && <At t={(times[0] ?? p.firstT)!} seek={seek} />}
         </div>
       ))}
       {taken.length > 0 && (
         <>
-          <h5 className="muted small">Dano que você tomou bem mais que {refLabel} (por minuto vivo)</h5>
+          <h5 className="muted small">{t.takenMore(refLabel)}</h5>
           <div className="table-scroll">
             <table className="perf-table">
               <thead>
                 <tr>
-                  <th>Habilidade</th>
-                  <th className="num">Você</th>
-                  <th className="num">Ref.</th>
-                  <th className="num">% do seu dano tomado</th>
+                  <th>{t.ability}</th>
+                  <th className="num">{t.you}</th>
+                  <th className="num">{t.refShort}</th>
+                  <th className="num">{t.shareOfTaken}</th>
                 </tr>
               </thead>
               <tbody>
-                {taken.slice(0, 6).map((t) => (
-                  <tr key={t.name}>
+                {taken.slice(0, 6).map((row) => (
+                  <tr key={row.name}>
                     <td>
-                      <SpellName spellId={t.spellId} name={t.name} size={16} />
+                      <SpellName spellId={row.spellId} name={row.name} size={16} />
                     </td>
-                    <td className="num">{num(t.minePerMin)}</td>
-                    <td className="num muted">{num(t.refPerMin)}</td>
-                    <td className="num">{(t.share * 100).toFixed(0)}%</td>
+                    <td className="num">{num(row.minePerMin)}</td>
+                    <td className="num muted">{num(row.refPerMin)}</td>
+                    <td className="num">{(row.share * 100).toFixed(0)}%</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="muted small">Muito acima da referência costuma ser dano evitável: veja no vídeo de onde veio.</p>
+          <p className="muted small">{t.avoidableHint}</p>
         </>
       )}
     </section>

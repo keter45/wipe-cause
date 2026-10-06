@@ -19,6 +19,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::OnceLock;
+use crate::i18n::Text;
+use crate::tx;
 
 include!(concat!(env!("OUT_DIR"), "/rotations.rs"));
 
@@ -83,7 +85,7 @@ pub struct BuffDef {
 pub struct PrioItem {
     pub spell: String,
     #[serde(default)]
-    pub note: Option<String>,
+    pub note: Option<Text>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -125,8 +127,8 @@ pub enum Check {
         #[serde(default)]
         channel: Option<Channel>,
         importance: String,
-        title: String,
-        tip: String,
+        title: Text,
+        tip: Text,
     },
     RequiresBuff {
         id: String,
@@ -138,24 +140,24 @@ pub enum Check {
         #[serde(default)]
         applied_by: Vec<String>,
         importance: String,
-        title: String,
-        tip: String,
+        title: Text,
+        tip: Text,
     },
     Downtime {
         id: String,
         gcd_ms: i64,
         min_gap_ms: i64,
         importance: String,
-        title: String,
-        tip: String,
+        title: Text,
+        tip: Text,
     },
     Cooldown {
         id: String,
         spells: Vec<String>,
         min_usage: f32,
         importance: String,
-        title: String,
-        tip: String,
+        title: Text,
+        tip: Text,
     },
     ResourceWaste {
         id: String,
@@ -166,16 +168,16 @@ pub enum Check {
         #[serde(default)]
         from: Vec<String>,
         importance: String,
-        title: String,
-        tip: String,
+        title: Text,
+        tip: Text,
     },
     DotUptime {
         id: String,
         debuff: String,
         min_uptime: f32,
         importance: String,
-        title: String,
-        tip: String,
+        title: Text,
+        tip: Text,
     },
     AoeSwap {
         id: String,
@@ -186,8 +188,8 @@ pub enum Check {
         #[serde(default)]
         unless_buff: Option<String>,
         importance: String,
-        title: String,
-        tip: String,
+        title: Text,
+        tip: Text,
     },
     AfterCast {
         id: String,
@@ -202,8 +204,8 @@ pub enum Check {
         #[serde(default)]
         only_with: Vec<String>,
         importance: String,
-        title: String,
-        tip: String,
+        title: Text,
+        tip: Text,
     },
 }
 
@@ -213,7 +215,7 @@ pub struct RotationSpec {
     pub name: String,
     pub patch: String,
     pub sources: Vec<Source>,
-    pub key_points: Vec<String>,
+    pub key_points: Vec<Text>,
     pub hero_trees: Vec<HeroTree>,
     pub abilities: BTreeMap<String, Ability>,
     pub buffs: BTreeMap<String, BuffDef>,
@@ -266,7 +268,7 @@ impl RotationSpec {
                     for s in spells {
                         ability(s)?;
                         if self.abilities[s].cooldown_ms.is_none() {
-                            return Err(format!("{s} sem cooldown_ms"));
+                            return Err(crate::i18n::pick(format!("{s} sem cooldown_ms"), format!("{s} without cooldown_ms")));
                         }
                     }
                 }
@@ -351,7 +353,7 @@ pub struct SpellRef {
 pub struct PrioView {
     pub spell_id: u32,
     pub name: String,
-    pub note: Option<String>,
+    pub note: Option<Text>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -360,8 +362,8 @@ pub struct RotationFinding {
     pub id: String,
     /// tipo da checagem (proc, downtime, dot_uptime, cooldown...): o modo solo estima o dano perdido por ele
     pub kind: &'static str,
-    pub title: String,
-    pub tip: String,
+    pub title: Text,
+    pub tip: Text,
     /// "high" | "medium" | "low"
     pub importance: String,
     /// quantas vezes errou (ou spells abaixo do esperado, no de cooldown)
@@ -370,7 +372,7 @@ pub struct RotationFinding {
     pub rate: f32,
     /// quando (ms desde o início do pull), para pular na linha do tempo / vídeo
     pub times: Vec<i64>,
-    pub detail: String,
+    pub detail: Text,
     /// spell para o ícone
     pub spell_id: Option<u32>,
 }
@@ -410,7 +412,7 @@ pub struct RotationResult {
     pub downtime_ms: i64,
     pub active_ms: i64,
     pub cooldowns: Vec<CooldownUse>,
-    pub key_points: Vec<String>,
+    pub key_points: Vec<Text>,
     pub priority_st: Vec<PrioView>,
     pub priority_aoe: Vec<PrioView>,
     pub sources: Vec<SpellSource>,
@@ -784,7 +786,10 @@ impl RotationTracker {
                         count: n,
                         rate: 1.0 - n.min(total) as f32 / total as f32,
                         times: waste,
-                        detail: format!("{n} de {total} {} sem gastar", spec.buffs[buff].name),
+                        detail: {
+                            let b = &spec.buffs[buff].name;
+                            tx!("{n} de {total} {b} sem gastar", "{n} of {total} {b} not spent")
+                        },
                         spell_id: Some(spec.buffs[buff].id),
                     });
                 }
@@ -808,7 +813,11 @@ impl RotationTracker {
                         count: n,
                         rate: 1.0 - n as f32 / total as f32,
                         times: miss,
-                        detail: format!("{n} de {total} casts{} sem {}", if *min_targets > 1 { " em AoE" } else { "" }, spec.buffs[buff].name),
+                        detail: {
+                            let b = &spec.buffs[buff].name;
+                            let (aoe_pt, aoe_en) = if *min_targets > 1 { (" em AoE", " in AoE") } else { ("", "") }; // i18n-ignore: par pt/en
+                            tx!("{n} de {total} casts{aoe_pt} sem {b}", "{n} of {total} casts{aoe_en} without {b}")
+                        },
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
@@ -824,7 +833,10 @@ impl RotationTracker {
                         count: self.gaps.len() as u32,
                         rate: 1.0 - (downtime_ms as f32 / active_ms as f32).min(1.0),
                         times: long.iter().take(10).map(|(a, _)| *a).collect(),
-                        detail: format!("{:.1} s parado ({:.0}% do tempo vivo)", downtime_ms as f32 / 1000.0, downtime_ms as f32 / active_ms as f32 * 100.0),
+                        detail: {
+                            let (secs, pct) = (downtime_ms as f32 / 1000.0, downtime_ms as f32 / active_ms as f32 * 100.0);
+                            Text::new(format!("{secs:.1} s parado ({pct:.0}% do tempo vivo)").replace('.', ","), format!("{secs:.1} s idle ({pct:.0}% of time alive)"))
+                        },
                         spell_id: None,
                     });
                 }
@@ -853,11 +865,11 @@ impl RotationTracker {
                         count: moments.len() as u32,
                         rate: 1.0 - waste as f32 / total as f32,
                         times: worst.iter().take(10).map(|(t, _)| *t).collect(),
-                        detail: format!(
-                            "{waste} de {total} {resource} desperdiçado ({:.0}%){}",
-                            waste as f32 / total as f32 * 100.0,
-                            if from.is_empty() { "" } else { ", só nos geradores castados" }
-                        ),
+                        detail: {
+                            let pct = waste as f32 / total as f32 * 100.0;
+                            let (only_pt, only_en) = if from.is_empty() { ("", "") } else { (", só nos geradores castados", ", only from cast generators") }; // i18n-ignore: par pt/en
+                            tx!("{waste} de {total} {resource} desperdiçado ({pct:.0}%){only_pt}", "{waste} of {total} {resource} wasted ({pct:.0}%){only_en}")
+                        },
                         spell_id: None,
                     });
                 }
@@ -901,7 +913,10 @@ impl RotationTracker {
                         count: if rate < *min_uptime { drops.len() as u32 } else { 0 },
                         rate,
                         times: drops.into_iter().take(10).collect(),
-                        detail: format!("{} no alvo {:.0}% do tempo (meta {:.0}%)", spec.buffs[debuff].name, rate * 100.0, min_uptime * 100.0),
+                        detail: {
+                            let (b, up, goal) = (&spec.buffs[debuff].name, rate * 100.0, min_uptime * 100.0);
+                            tx!("{b} no alvo {up:.0}% do tempo (meta {goal:.0}%)", "{b} on target {up:.0}% of the time (goal {goal:.0}%)")
+                        },
                         spell_id: Some(spec.buffs[debuff].id),
                     });
                 }
@@ -922,7 +937,10 @@ impl RotationTracker {
                         count: n,
                         rate: 1.0 - n as f32 / total as f32,
                         times: miss,
-                        detail: format!("{n} {} em AoE no lugar de {}", names(casts), names(instead)),
+                        detail: {
+                            let (a, b) = (names(casts), names(instead));
+                            tx!("{n} {a} em AoE no lugar de {b}", "{n} {a} in AoE instead of {b}")
+                        },
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
@@ -955,7 +973,14 @@ impl RotationTracker {
                         count: n,
                         rate: 1.0 - n as f32 / mine.len() as f32,
                         times: miss,
-                        detail: format!("{n} de {} {} sem {} nos {}s {}", mine.len(), names(casts), names(after), *within_ms as f32 / 1000.0, if *followed_by { "seguintes" } else { "antes" }),
+                        detail: {
+                            let (total, a, b, secs) = (mine.len(), names(casts), names(after), *within_ms as f32 / 1000.0);
+                            if *followed_by {
+                                tx!("{n} de {total} {a} sem {b} nos {secs}s seguintes", "{n} of {total} {a} without {b} in the next {secs}s")
+                            } else {
+                                tx!("{n} de {total} {a} sem {b} nos {secs}s antes", "{n} of {total} {a} without {b} in the {secs}s before")
+                            }
+                        },
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
@@ -990,7 +1015,12 @@ impl RotationTracker {
                         count: low.len() as u32,
                         rate: rates.iter().sum::<f32>() / rates.len().max(1) as f32,
                         times: Vec::new(),
-                        detail: if low.is_empty() { "todos no cooldown".into() } else { format!("abaixo do esperado: {}", low.join(", ")) },
+                        detail: if low.is_empty() {
+                            Text::new("todos no cooldown", "all on cooldown")
+                        } else {
+                            let l = low.join(", ");
+                            tx!("abaixo do esperado: {l}", "below expected: {l}")
+                        },
                         spell_id: None,
                     });
                 }

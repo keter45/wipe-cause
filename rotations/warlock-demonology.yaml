@@ -12,13 +12,13 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/warlock_demonology.simc
 
 key_points:
-  - "Gerar e gastar: Shadow Bolt (ou Demonbolt com Demonic Core) gera Soul Shards; Call Dreadstalkers e Hand of Gul'dan gastam. Nunca fique parado em 5 Soul Shards."
-  - "Demonbolt só com Demonic Core (fica instantâneo); sem Demonic Core, Shadow Bolt."
-  - "Guarde umas 2 cargas de Demonic Core para a janela do Demonic Tyrant, mas não deixe passar de 4 nem expirar."
-  - "Demonic Tyrant com os Dreadstalkers já fora: ele estende os Dreadstalkers e ganha dano por cada demônio ativo."
-  - "Durante o Dominion of Argus (depois do Tyrant), Hand of Gul'dan vem primeiro: a cada 2 sai um demônio extra."
-  - "Diabolist: gaste Infernal Bolt e Ruination quando aparecerem."
-  - "Em AoE: Implosion com 6 Wild Imps e Summon Doomguard (até 5 alvos)."
+  - { pt: "Gerar e gastar: Shadow Bolt (ou Demonbolt com Demonic Core) gera Soul Shards; Call Dreadstalkers e Hand of Gul'dan gastam. Nunca fique parado em 5 Soul Shards.", en: "Build and spend: Shadow Bolt (or Demonbolt with Demonic Core) builds Soul Shards; Call Dreadstalkers and Hand of Gul'dan spend them. Never sit at 5 Soul Shards." }
+  - { pt: "Demonbolt só com Demonic Core (fica instantâneo); sem Demonic Core, Shadow Bolt.", en: "Demonbolt only with Demonic Core (it becomes instant); without Demonic Core, Shadow Bolt." }
+  - { pt: "Guarde umas 2 cargas de Demonic Core para a janela do Demonic Tyrant, mas não deixe passar de 4 nem expirar.", en: "Keep about 2 Demonic Core charges for the Demonic Tyrant window, but don't go above 4 or let them expire." }
+  - { pt: "Demonic Tyrant com os Dreadstalkers já fora: ele estende os Dreadstalkers e ganha dano por cada demônio ativo.", en: "Demonic Tyrant with the Dreadstalkers already out: it extends the Dreadstalkers and gains damage for each active demon." }
+  - { pt: "Durante o Dominion of Argus (depois do Tyrant), Hand of Gul'dan vem primeiro: a cada 2 sai um demônio extra.", en: "During Dominion of Argus (after Tyrant), Hand of Gul'dan comes first: every 2 casts an extra demon comes out." }
+  - { pt: "Diabolist: gaste Infernal Bolt e Ruination quando aparecerem.", en: "Diabolist: spend Infernal Bolt and Ruination when they appear." }
+  - { pt: "Em AoE: Implosion com 6 Wild Imps e Summon Doomguard (até 5 alvos).", en: "In AoE: Implosion at 6 Wild Imps and Summon Doomguard (up to 5 targets)." }
 
 hero_trees:
   - key: diabolist
@@ -51,46 +51,46 @@ buffs:
 priority:
   diabolist:
     st:
-      - { spell: power_siphon, note: "com 1 Demonic Core ou menos" }
-      - { spell: hand_of_guldan, note: "durante o Dominion of Argus" }
-      - { spell: grimoire, note: "no cooldown" }
-      - { spell: call_dreadstalkers, note: "alinhado com o Tyrant (Reign of Tyranny): não segure mais que alguns segundos" }
-      - { spell: summon_demonic_tyrant, note: "com os Dreadstalkers fora e 5 Soul Shards" }
-      - { spell: summon_doomguard, note: "no cooldown" }
-      - { spell: ruination, note: "quando aparecer" }
-      - { spell: hand_of_guldan, note: "com 3+ Soul Shards (ou 5)" }
-      - { spell: infernal_bolt, note: "com menos de 3 Soul Shards" }
-      - { spell: demonbolt, note: "com Demonic Core e menos de 4 Soul Shards" }
-      - { spell: shadow_bolt, note: "gera Soul Shard (preenche)" }
+      - { spell: power_siphon, note: { pt: "com 1 Demonic Core ou menos", en: "with 1 Demonic Core or fewer" } }
+      - { spell: hand_of_guldan, note: { pt: "durante o Dominion of Argus", en: "during Dominion of Argus" } }
+      - { spell: grimoire, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: call_dreadstalkers, note: { pt: "alinhado com o Tyrant (Reign of Tyranny): não segure mais que alguns segundos", en: "lined up with Tyrant (Reign of Tyranny): don't hold it more than a few seconds" } }
+      - { spell: summon_demonic_tyrant, note: { pt: "com os Dreadstalkers fora e 5 Soul Shards", en: "with the Dreadstalkers out and 5 Soul Shards" } }
+      - { spell: summon_doomguard, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: ruination, note: { pt: "quando aparecer", en: "when it procs" } }
+      - { spell: hand_of_guldan, note: { pt: "com 3+ Soul Shards (ou 5)", en: "with 3+ Soul Shards (or 5)" } }
+      - { spell: infernal_bolt, note: { pt: "com menos de 3 Soul Shards", en: "with fewer than 3 Soul Shards" } }
+      - { spell: demonbolt, note: { pt: "com Demonic Core e menos de 4 Soul Shards", en: "with Demonic Core and fewer than 4 Soul Shards" } }
+      - { spell: shadow_bolt, note: { pt: "gera Soul Shard (preenche)", en: "builds Soul Shard (filler)" } }
     aoe:
-      - { spell: implosion, note: "com 6 Wild Imps" }
-      - { spell: summon_doomguard, note: "até 5 alvos" }
+      - { spell: implosion, note: { pt: "com 6 Wild Imps", en: "at 6 Wild Imps" } }
+      - { spell: summon_doomguard, note: { pt: "até 5 alvos", en: "up to 5 targets" } }
       - { spell: call_dreadstalkers }
-      - { spell: ruination, note: "quando aparecer" }
+      - { spell: ruination, note: { pt: "quando aparecer", en: "when it procs" } }
       - { spell: hand_of_guldan }
       - { spell: grimoire }
       - { spell: summon_demonic_tyrant }
-      - { spell: demonbolt, note: "com Demonic Core, espalhando o Doom" }
-      - { spell: shadow_bolt, note: "ou Infernal Bolt" }
+      - { spell: demonbolt, note: { pt: "com Demonic Core, espalhando o Doom", en: "with Demonic Core, spreading Doom" } }
+      - { spell: shadow_bolt, note: { pt: "ou Infernal Bolt", en: "or Infernal Bolt" } }
   soul_harvester:
     st:
-      - { spell: power_siphon, note: "com 1 Demonic Core ou menos" }
-      - { spell: hand_of_guldan, note: "durante o Dominion of Argus" }
-      - { spell: grimoire, note: "no cooldown" }
-      - { spell: summon_doomguard, note: "no cooldown" }
-      - { spell: call_dreadstalkers, note: "no cooldown" }
-      - { spell: summon_demonic_tyrant, note: "com os Dreadstalkers fora" }
+      - { spell: power_siphon, note: { pt: "com 1 Demonic Core ou menos", en: "with 1 Demonic Core or fewer" } }
+      - { spell: hand_of_guldan, note: { pt: "durante o Dominion of Argus", en: "during Dominion of Argus" } }
+      - { spell: grimoire, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: summon_doomguard, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: call_dreadstalkers, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: summon_demonic_tyrant, note: { pt: "com os Dreadstalkers fora", en: "with the Dreadstalkers out" } }
       - { spell: hand_of_guldan }
-      - { spell: demonbolt, note: "com Demonic Core e menos de 4 Soul Shards" }
-      - { spell: shadow_bolt, note: "gera Soul Shard (preenche)" }
+      - { spell: demonbolt, note: { pt: "com Demonic Core e menos de 4 Soul Shards", en: "with Demonic Core and fewer than 4 Soul Shards" } }
+      - { spell: shadow_bolt, note: { pt: "gera Soul Shard (preenche)", en: "builds Soul Shard (filler)" } }
     aoe:
-      - { spell: implosion, note: "com 6 Wild Imps" }
-      - { spell: summon_doomguard, note: "até 5 alvos" }
+      - { spell: implosion, note: { pt: "com 6 Wild Imps", en: "at 6 Wild Imps" } }
+      - { spell: summon_doomguard, note: { pt: "até 5 alvos", en: "up to 5 targets" } }
       - { spell: call_dreadstalkers }
       - { spell: hand_of_guldan }
       - { spell: grimoire }
       - { spell: summon_demonic_tyrant }
-      - { spell: demonbolt, note: "com Demonic Core, espalhando o Doom" }
+      - { spell: demonbolt, note: { pt: "com Demonic Core, espalhando o Doom", en: "with Demonic Core, spreading Doom" } }
       - { spell: shadow_bolt }
 
 # Abertura: pré-cast (Demonbolt / Power Siphon) e depois Grimoire, Dreadstalkers e o Tyrant logo de
@@ -107,56 +107,56 @@ checks:
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem castar
-    tip: "Sempre castando: no movimento, Demonbolt com Demonic Core, Implosion e os instantâneos; Burning Rush e Demonic Circle ajudam."
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre castando: no movimento, Demonbolt com Demonic Core, Implosion e os instantâneos; Burning Rush e Demonic Circle ajudam.", en: "Always casting: while moving, Demonbolt with Demonic Core, Implosion and the instants; Burning Rush and Demonic Circle help." }
   - kind: resource_waste
     id: soul_shards
     power_type: 7
     resource: Soul Shards
     importance: high
-    title: Soul Shard desperdiçado
-    tip: "Gaste antes de gerar com 5 (ou 4 antes do Demonbolt): Call Dreadstalkers e Hand of Gul'dan."
+    title: { pt: "Soul Shard desperdiçado", en: "Soul Shard wasted" }
+    tip: { pt: "Gaste antes de gerar com 5 (ou 4 antes do Demonbolt): Call Dreadstalkers e Hand of Gul'dan.", en: "Spend before building at 5 (or 4 before Demonbolt): Call Dreadstalkers and Hand of Gul'dan." }
   - kind: proc
     id: demonic_core
     buff: demonic_core
     spenders: [demonbolt]
     importance: medium
-    title: Demonic Core perdido
-    tip: "Demonic Core expira em 20s: guarde umas 2 cargas para o Tyrant, mas gaste com Demonbolt antes de acabar."
+    title: { pt: "Demonic Core perdido", en: "Demonic Core lost" }
+    tip: { pt: "Demonic Core expira em 20s: guarde umas 2 cargas para o Tyrant, mas gaste com Demonbolt antes de acabar.", en: "Demonic Core expires in 20s: keep about 2 charges for Tyrant, but spend with Demonbolt before it expires." }
   - kind: requires_buff
     id: demonbolt_without_core
     casts: [demonbolt]
     buff: demonic_core
     min_targets: 0
     importance: medium
-    title: Demonbolt sem Demonic Core
-    tip: "Sem Demonic Core o Demonbolt é um cast longo: use Shadow Bolt."
+    title: { pt: "Demonbolt sem Demonic Core", en: "Demonbolt without Demonic Core" }
+    tip: { pt: "Sem Demonic Core o Demonbolt é um cast longo: use Shadow Bolt.", en: "Without Demonic Core, Demonbolt is a long cast: use Shadow Bolt." }
   - kind: proc
     id: ruination
     buff: ruination
     spenders: [ruination]
     importance: medium
-    title: Ruination perdido
-    tip: "Ruination substitui o próximo Hand of Gul'dan: não deixe acabar."
+    title: { pt: "Ruination perdido", en: "Ruination lost" }
+    tip: { pt: "Ruination substitui o próximo Hand of Gul'dan: não deixe acabar.", en: "Ruination replaces the next Hand of Gul'dan: don't let it expire." }
   - kind: proc
     id: infernal_bolt
     buff: infernal_bolt
     spenders: [infernal_bolt]
     importance: medium
-    title: Infernal Bolt perdido
-    tip: "Infernal Bolt substitui o próximo Shadow Bolt e gera 3 Soul Shards: use com menos de 3."
+    title: { pt: "Infernal Bolt perdido", en: "Infernal Bolt lost" }
+    tip: { pt: "Infernal Bolt substitui o próximo Shadow Bolt e gera 3 Soul Shards: use com menos de 3.", en: "Infernal Bolt replaces the next Shadow Bolt and builds 3 Soul Shards: use it at fewer than 3." }
   - kind: after_cast
     id: tyrant_dreadstalkers
     casts: [summon_demonic_tyrant]
     after: [call_dreadstalkers]
     within_ms: 12000
     importance: medium
-    title: Tyrant sem Dreadstalkers
-    tip: "Chame os Dreadstalkers antes do Tyrant: ele os estende e bate mais por cada demônio ativo."
+    title: { pt: "Tyrant sem Dreadstalkers", en: "Tyrant without Dreadstalkers" }
+    tip: { pt: "Chame os Dreadstalkers antes do Tyrant: ele os estende e bate mais por cada demônio ativo.", en: "Summon the Dreadstalkers before Tyrant: it extends them and hits harder for each active demon." }
   - kind: cooldown
     id: cooldowns
     spells: [summon_demonic_tyrant, call_dreadstalkers, grimoire, summon_doomguard, power_siphon]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Tyrant e Grimoire no cooldown; Dreadstalkers só segura alguns segundos para alinhar com o Tyrant."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Tyrant e Grimoire no cooldown; Dreadstalkers só segura alguns segundos para alinhar com o Tyrant.", en: "Tyrant and Grimoire on cooldown; Dreadstalkers only held a few seconds to line up with Tyrant." }

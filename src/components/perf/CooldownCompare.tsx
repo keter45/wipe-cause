@@ -3,6 +3,8 @@ import { ChevronDown } from 'lucide-react';
 import { mmss } from '../../lib/format';
 import { CD_LATE_MS, COOLDOWN_MIN_GAP_MS, compareCooldowns, type CooldownInfo, type CooldownRow, type Sample } from '../../lib/performance';
 import { SpellName } from '../SpellIcon';
+import { messagesOf } from '../../i18n';
+import { perfViewMsg } from './perf.i18n';
 
 export const signedSec = (ms: number) => {
   const s = Math.round(Math.abs(ms) / 1000);
@@ -19,7 +21,7 @@ export function CooldownCompare({
   me,
   ref_,
   cds,
-  refName = 'referência',
+  refName = messagesOf(perfViewMsg).referenceLower,
   expanded = false,
   coreOnly = false,
 }: {
@@ -39,14 +41,15 @@ export function CooldownCompare({
   const core = rows.filter((r) => r.core);
   const shown = showAll || core.length === 0 ? rows : core;
   const toggle = !expanded && !coreOnly && core.length > 0 && core.length < rows.length;
+  const t = messagesOf(perfViewMsg);
   return (
     <section className="perf-section">
       <h4>
-        Cooldowns <span className="muted small">de 0:00 a {mmss(windowMs)} (os dois vivos)</span>
+        {t.cooldowns} <span className="muted small">{t.cdWindow(mmss(windowMs))}</span>
       </h4>
       <div className="cd-legend small">
-        <span className="cd-dot mine" /> você <span className="cd-dot ref" /> {refName}
-        <span className="muted"> · à direita, os usos (você × referência, /cabem no tempo) e o seu 1º uso em relação à referência</span>
+        <span className="cd-dot mine" /> {t.you} <span className="cd-dot ref" /> {refName}
+        <span className="muted">{t.cdLegendHint}</span>
       </div>
       <div className="cd-rows">
         {shown.map((r) => (
@@ -56,7 +59,7 @@ export function CooldownCompare({
       {toggle && (
         <button className="link small more-toggle" onClick={() => setShowAll(!showAll)} aria-expanded={showAll}>
           <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${showAll ? 'open' : ''}`} aria-hidden />
-          {showAll ? 'Só os principais' : `Mostrar ${rows.length - core.length} de uso ocasional`}
+          {showAll ? t.onlyMain : t.showOccasional(rows.length - core.length)}
         </button>
       )}
     </section>
@@ -69,14 +72,15 @@ function CooldownLine({ r, windowMs, refName }: { r: CooldownRow; windowMs: numb
   const short = r.gapMs != null && r.gapMs < COOLDOWN_MIN_GAP_MS;
   const fewer = r.core && r.ref.length - r.mine.length >= (short ? 2 : 1);
   const late = r.core && !short && r.firstDelta != null && Math.abs(r.firstDelta) > CD_LATE_MS;
-  const title = [r.possible ? `cabem ~${r.possible} usos no tempo` : null, r.gapMs ? `recarga ~${Math.round(r.gapMs / 1000)}s` : null].filter(Boolean).join(' · ');
+  const t = messagesOf(perfViewMsg);
+  const title = [r.possible ? t.cdFitTitle(r.possible) : null, r.gapMs ? t.cdRecharge(Math.round(r.gapMs / 1000)) : null].filter(Boolean).join(' · ');
   return (
     <div className="cd-row">
       <SpellName spellId={r.spellId} name={r.name} size={16} />
-      <div className="cd-track" role="img" aria-label={`Você: ${r.mine.map(mmss).join(', ') || 'não usou'}. ${refName}: ${r.ref.map(mmss).join(', ') || 'não usou'}.`}>
+      <div className="cd-track" role="img" aria-label={t.ariaUses(r.mine.map(mmss).join(', ') || t.notUsed, refName, r.ref.map(mmss).join(', ') || t.notUsed)}>
         <div className="cd-lane">
           {r.mine.map((t, i) => (
-            <span key={i} className="cd-mark mine" style={{ left: at(t) }} title={`Você: ${mmss(t)}`} />
+            <span key={i} className="cd-mark mine" style={{ left: at(t) }} title={`${messagesOf(perfViewMsg).you}: ${mmss(t)}`} />
           ))}
         </div>
         <div className="cd-lane">
@@ -89,8 +93,8 @@ function CooldownLine({ r, windowMs, refName }: { r: CooldownRow; windowMs: numb
         {r.mine.length} × {r.ref.length}
         {r.possible ? <span className="muted"> /{r.possible}</span> : null}
       </span>
-      <span className={`cd-delta num small ${late ? 'warn' : 'muted'}`} title={`1º uso: você em relação a ${refName}`}>
-        {r.firstDelta != null ? `1º ${signedSec(r.firstDelta)}` : ''}
+      <span className={`cd-delta num small ${late ? 'warn' : 'muted'}`} title={t.firstUseTitle(refName)}>
+        {r.firstDelta != null ? t.firstUse(signedSec(r.firstDelta)) : ''}
       </span>
     </div>
   );

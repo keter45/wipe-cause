@@ -15,6 +15,8 @@ import { BossShareCard } from './share/BossCard';
 import { NightShareCard } from './share/NightCard';
 import { withErrorBoundary } from './ErrorBoundary';
 import { bossPayload } from '../lib/discord';
+import { messagesOf, useMessages } from '../i18n';
+import { nightMsg } from './NightSummary.i18n';
 
 interface Props {
   pulls: Pull[];
@@ -26,6 +28,7 @@ function endClock(s: Summary): string {
 }
 
 function duration(ms: number): string {
+  // "2h 13min" serve para as duas línguas
   const min = Math.round(ms / 60_000);
   return min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}min` : `${min}min`;
 }
@@ -42,39 +45,29 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
   const s = useMemo(() => summarizeNight(pulls), [pulls]);
   const bosses = useMemo(() => groupByBoss(pulls).map((g) => ({ ...g, s: summarizeNight(g.pulls) })), [pulls]);
   const spellIds = useMechanicSpellIds(pulls);
+  const t = useMessages(nightMsg);
 
-  if (!pulls.length)
-    return (
-      <p className="muted pad">
-        {dungeonBosses ? `Este log só tem masmorras (${dungeonBosses} chefe${dungeonBosses > 1 ? 's' : ''} de M+): veja na lista, em “Masmorras (M+)”.` : 'Nenhum pull no log.'}
-      </p>
-    );
+  if (!pulls.length) return <p className="muted pad">{dungeonBosses ? t.onlyDungeons(dungeonBosses) : t.noPulls}</p>;
 
   return (
     <div className="night">
       <header className="night-head">
-        <h2>Resumo da noite</h2>
+        <h2>{t.nightTitle}</h2>
         <span className="head-actions">
-          <span className="muted small">
-            {bosses.length} boss{bosses.length > 1 ? 'es' : ''} · {s.pulls.length} pulls · {s.kills} kill{s.kills === 1 ? '' : 's'}
-          </span>
-          <ShareMenu card={(detail) => <NightShareCard pulls={allPulls} detail={detail} />} name={`Resumo da noite - ${clock(s.pulls[0])}`} />
+          <span className="muted small">{t.nightCounts(bosses.length, s.pulls.length, s.kills)}</span>
+          <ShareMenu card={(detail) => <NightShareCard pulls={allPulls} detail={detail} />} name={t.shareNight(clock(s.pulls[0]))} />
         </span>
       </header>
 
       <div className="tiles">
-        <Tile label="Tempo de raid" value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
-        <Tile label="Em combate" value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
-        <Tile label="Downtime" value={duration(s.downtimeMs)} sub={`${s.gaps.filter((g) => g.isBreak).length} pausa(s) de 10min+`} />
-        <Tile label="Entre trys (média)" value={mmss(s.avgGapMs)} sub={`mediana ${mmss(s.medianGapMs)}`} />
-        <Tile
-          label="Maior intervalo"
-          value={s.longestGap ? mmss(s.longestGap.ms) : '—'}
-          sub={s.longestGap ? `após ${pullName(s.longestGap.after, true)}${s.longestGap.isBreak ? ' (pausa)' : ''}` : undefined}
-        />
+        <Tile label={t.raidTime} value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
+        <Tile label={t.inCombat} value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
+        <Tile label={t.downtime} value={duration(s.downtimeMs)} sub={t.breaks(s.gaps.filter((g) => g.isBreak).length)} />
+        <Tile label={t.avgGap} value={mmss(s.avgGapMs)} sub={t.median(mmss(s.medianGapMs))} />
+        <Tile label={t.longestGap} value={s.longestGap ? mmss(s.longestGap.ms) : '—'} sub={s.longestGap ? t.after(pullName(s.longestGap.after, true), s.longestGap.isBreak) : undefined} />
       </div>
 
-      <section className="boss-cards" aria-label="Bosses da noite">
+      <section className="boss-cards" aria-label={t.bossesAria}>
         {bosses.map(({ key, s: b }) => {
           const top = b.causes.find((c) => c.triggers > 0);
           return (
@@ -82,19 +75,17 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
               <span className="boss-card-title">
                 <BossName encounterId={b.pulls[0]?.encounterId} name={key} size={22} />
               </span>
-              <span className="boss-card-result">{b.kills ? 'Kill' : b.best ? `melhor ${pct(b.best.hp)}` : '—'}</span>
-              <span className="muted small">
-                {b.pulls.length} pulls · {b.wipes} wipes · {duration(b.combatMs)} em combate · {clock(b.pulls[0])} → {endClock(b)}
-              </span>
+              <span className="boss-card-result">{b.kills ? 'Kill' : b.best ? t.best(pct(b.best.hp)) : '—'}</span>
+              <span className="muted small">{t.bossCardLine(b.pulls.length, b.wipes, duration(b.combatMs), clock(b.pulls[0]), endClock(b))}</span>
               {top ? (
                 <span className="small boss-card-cause">
-                  Maior causa: <SpellName spellId={spellIds.get(top.key)} name={top.name} /> ({top.triggers}/{b.wipes} wipes)
+                  {t.topCause} <SpellName spellId={spellIds.get(top.key)} name={top.name} /> ({top.triggers}/{b.wipes} wipes)
                 </span>
               ) : (
-                <span className="muted small">Sem gatilho apontado</span>
+                <span className="muted small">{t.noTrigger}</span>
               )}
               <span className="boss-card-open small">
-                Ver resumo do boss <ChevronRight size={14} strokeWidth={1.5} aria-hidden />
+                {t.openBoss} <ChevronRight size={14} strokeWidth={1.5} aria-hidden />
               </span>
             </button>
           );
@@ -102,14 +93,12 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
       </section>
 
       {dungeonBosses > 0 && (
-        <p className="muted small">
-          Também neste log: {dungeonBosses} chefe{dungeonBosses > 1 ? 's' : ''} de masmorra (M+), fora do resumo — estão na lista, em “Masmorras (M+)”.
-        </p>
+        <p className="muted small">{t.alsoDungeons(dungeonBosses)}</p>
       )}
 
       <section className="panel">
-        <h3>Linha do tempo da noite</h3>
-        <p className="muted small">Blocos = pulls; espaços = downtime. Intervalos de 10min ou mais contam como pausa.</p>
+        <h3>{t.nightTimeline}</h3>
+        <p className="muted small">{t.timelineHint}</p>
         <Timeline s={s} onSelect={onSelectPull} />
         <GapList s={s} />
       </section>
@@ -130,8 +119,9 @@ function useMechanicSpellIds(pulls: Pull[]) {
 function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: string }) {
   const s = useMemo(() => summarizeNight(pulls), [pulls]);
   const mechanicSpellIds = useMechanicSpellIds(pulls);
+  const t = useMessages(nightMsg);
 
-  if (!pulls.length) return <p className="muted pad">Nenhum pull de {title} nesta análise.</p>;
+  if (!pulls.length) return <p className="muted pad">{t.noBossPulls(title)}</p>;
   const topCause = s.causes.find((c) => c.triggers > 0) ?? s.causes[0];
 
   return (
@@ -141,48 +131,40 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
           <BossName encounterId={pulls[0]?.encounterId} name={title} size={26} />
         </h2>
         <span className="head-actions">
-          <ShareMenu discord={() => bossPayload(title, s)} card={(detail) => <BossShareCard title={title} pulls={pulls} detail={detail} />} name={`Resumo - ${title}`} />
+          <ShareMenu discord={() => bossPayload(title, s)} card={(detail) => <BossShareCard title={title} pulls={pulls} detail={detail} />} name={t.shareBoss(title)} />
         </span>
       </header>
 
       <div className="tiles">
-        <Tile label="Pulls" value={String(s.pulls.length)} sub={`${s.wipes} wipes · ${s.kills} kills`} />
+        <Tile label={t.pulls} value={String(s.pulls.length)} sub={t.wipesKills(s.wipes, s.kills)} />
         <Tile
-          label="Melhor pull"
+          label={t.bestPull}
           value={s.kills ? 'Kill' : s.best ? pct(s.best.hp) : '—'}
-          sub={s.best ? `pull ${s.best.pull.pullNumber} · ${clock(s.best.pull)}` : undefined}
+          sub={s.best ? t.pullAt(s.best.pull.pullNumber, clock(s.best.pull)) : undefined}
           onClick={s.best ? () => onSelectPull(s.best!.pull.id) : undefined}
         />
-        <Tile label="Tempo no boss" value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
-        <Tile label="Em combate" value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
-        <Tile label="Entre trys (média)" value={mmss(s.avgGapMs)} sub={`mediana ${mmss(s.medianGapMs)}`} />
-        <Tile
-          label="Maior intervalo"
-          value={s.longestGap ? mmss(s.longestGap.ms) : '—'}
-          sub={s.longestGap ? `após o pull ${s.longestGap.after.pullNumber}${s.longestGap.isBreak ? ' (pausa)' : ''}` : undefined}
-        />
+        <Tile label={t.bossTime} value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
+        <Tile label={t.inCombat} value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
+        <Tile label={t.avgGap} value={mmss(s.avgGapMs)} sub={t.median(mmss(s.medianGapMs))} />
+        <Tile label={t.longestGap} value={s.longestGap ? mmss(s.longestGap.ms) : '—'} sub={s.longestGap ? t.afterPull(s.longestGap.after.pullNumber, s.longestGap.isBreak) : undefined} />
       </div>
 
       {topCause && (
         <section className="panel hero-cause">
-          <span className="muted small">Maior causa dos wipes</span>
+          <span className="muted small">{t.topCauseTitle}</span>
           <div className="hero-figure">
             <SpellName spellId={mechanicSpellIds.get(topCause.key)} name={topCause.name} size={30} />
           </div>
           <p className="muted">
-            {topCause.triggers > 0 && (
-              <>
-                gatilho em <strong>{topCause.triggers}</strong> de {s.wipes} wipes ({Math.round((topCause.triggers / Math.max(1, s.wipes)) * 100)}%) ·{' '}
-              </>
-            )}
-            <strong>{topCause.deaths}</strong> mortes ligadas · {topCause.failures} falhas
+            {topCause.triggers > 0 && t.triggerIn(topCause.triggers, s.wipes, Math.round((topCause.triggers / Math.max(1, s.wipes)) * 100))}
+            {t.linked(topCause.deaths, topCause.failures)}
           </p>
         </section>
       )}
 
       <section className="panel">
-        <h3>Progresso por pull</h3>
-        <p className="muted small">HP do boss no fim de cada pull (menor = mais perto do kill). Clique numa barra para abrir o pull.</p>
+        <h3>{t.progress}</h3>
+        <p className="muted small">{t.progressHint}</p>
         <ProgressChart pulls={s.pulls} onSelect={onSelectPull} bestId={s.best?.pull.id} />
       </section>
 
@@ -190,24 +172,24 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
 
       <div className="two-col">
         <section className="panel">
-          <h3>Causas dos wipes</h3>
+          <h3>{t.causes}</h3>
           <CausesTable s={s} spellIds={mechanicSpellIds} />
         </section>
         <section className="panel">
-          <h3>Linha do tempo</h3>
-          <p className="muted small">Blocos = pulls; espaços = downtime. Intervalos de 10min ou mais contam como pausa.</p>
+          <h3>{t.timeline}</h3>
+          <p className="muted small">{t.timelineHint}</p>
           <Timeline s={s} onSelect={onSelectPull} />
           <GapList s={s} />
         </section>
       </div>
 
       <div className="two-col">
-        <Awards title="Vilões" tone="bad" players={s.players} awards={VILLAIN_AWARDS} overall={(p) => p.villainScore} overallLabel="Vilão neste boss" reasons={villainReasons} />
-        <Awards title="Mocinhos" tone="good" players={s.players} awards={HERO_AWARDS} overall={(p) => p.heroScore} overallLabel="Mocinho neste boss" reasons={heroReasons} />
+        <Awards title={t.villains} tone="bad" players={s.players} awards={villainAwards()} overall={(p) => p.villainScore} overallLabel={t.villainOverall} reasons={villainReasons} />
+        <Awards title={t.heroes} tone="good" players={s.players} awards={heroAwards()} overall={(p) => p.heroScore} overallLabel={t.heroOverall} reasons={heroReasons} />
       </div>
 
       <section className="panel">
-        <h3>Placar</h3>
+        <h3>{t.scoreboard}</h3>
         <Scoreboard players={s.players} />
       </section>
     </div>
@@ -246,7 +228,7 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
 
   return (
     <div className="chart" onMouseLeave={() => setTip(null)}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="HP do boss no fim de cada pull">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={messagesOf(nightMsg).progressAria}>
         {[0, 25, 50, 75, 100].map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} className="grid" />
@@ -298,18 +280,19 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
 }
 
 function pullTip(p: Pull, hp: number) {
+  const t = messagesOf(nightMsg);
   return (
     <>
-      <strong>{p.success ? 'Kill' : `${pct(hp)} de HP`}</strong>
+      <strong>{p.success ? 'Kill' : t.hp(pct(hp))}</strong>
       <span>
         {pullName(p, true)} · {clock(p)} · {mmss(p.durationMs)}
       </span>
       {p.trigger && (
         <span>
-          Gatilho: <SpellName spellId={mechanicSpellId(p, p.trigger.key)} name={p.trigger.name} size={14} />
+          {t.trigger} <SpellName spellId={mechanicSpellId(p, p.trigger.key)} name={p.trigger.name} size={14} />
         </span>
       )}
-      <span>{p.deaths.filter((d) => !d.ignored).length} mortes</span>
+      <span>{t.deaths(p.deaths.filter((d) => !d.ignored).length)}</span>
     </>
   );
 }
@@ -337,7 +320,7 @@ function Timeline({ s, onSelect }: { s: Summary; onSelect: (id: number) => void 
 
   return (
     <div className="chart" onMouseLeave={() => setTip(null)}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Linha do tempo: pulls e intervalos">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={messagesOf(nightMsg).timelineAria}>
         <line x1={0} x2={W} y1={H / 2} y2={H / 2} className="grid" />
         {s.gaps
           .filter((g) => g.isBreak)
@@ -346,7 +329,7 @@ function Timeline({ s, onSelect }: { s: Summary; onSelect: (id: number) => void 
             const x2 = x(g.before.startMs);
             return (
               <text key={g.after.id} x={(x1 + x2) / 2} y={H / 2 - 8} className="axis" textAnchor="middle">
-                pausa {Math.round(g.ms / 60_000)}min
+                {messagesOf(nightMsg).pauseMin(Math.round(g.ms / 60_000))}
               </text>
             );
           })}
@@ -382,12 +365,13 @@ function Timeline({ s, onSelect }: { s: Summary; onSelect: (id: number) => void 
 
 /** "pull 12" dentro de um boss; "The Twin Fangs 12" quando a tela mistura bosses. */
 function pullName(p: Pull, withBoss: boolean): string {
-  return withBoss ? `${p.encounterName} ${p.pullNumber}` : `pull ${p.pullNumber}`;
+  return withBoss ? `${p.encounterName} ${p.pullNumber}` : messagesOf(nightMsg).pull(p.pullNumber);
 }
 
 function gapLabel(g: Gap): string {
-  if (bossKey(g.after) !== bossKey(g.before)) return `troca de boss: ${pullName(g.after, true)} → ${pullName(g.before, true)}`;
-  return `entre o pull ${g.after.pullNumber} e o ${g.before.pullNumber}`;
+  const t = messagesOf(nightMsg);
+  if (bossKey(g.after) !== bossKey(g.before)) return t.bossSwap(pullName(g.after, true), pullName(g.before, true));
+  return t.between(g.after.pullNumber, g.before.pullNumber);
 }
 
 function GapList({ s }: { s: Summary }) {
@@ -401,7 +385,7 @@ function GapList({ s }: { s: Summary }) {
             {clock(g.after)} → {clock(g.before)}
           </span>{' '}
           <strong>{mmss(g.ms)}</strong> {gapLabel(g)}
-          {g.isBreak && <span className="chip">pausa</span>}
+          {g.isBreak && <span className="chip">{messagesOf(nightMsg).pause}</span>}
         </li>
       ))}
     </ul>
@@ -410,16 +394,17 @@ function GapList({ s }: { s: Summary }) {
 
 function CausesTable({ s, spellIds }: { s: Summary; spellIds: Map<string, number> }) {
   const rows = s.causes.filter((c) => c.triggers || c.deaths).slice(0, 8);
-  if (!rows.length) return <p className="muted small">Sem regras de boss para apontar causas.</p>;
+  const t = messagesOf(nightMsg);
+  if (!rows.length) return <p className="muted small">{t.noRules}</p>;
   const max = Math.max(...rows.map((c) => c.triggers), 1);
   return (
     <table className="causes">
       <thead>
         <tr>
-          <th>Mecânica</th>
-          <th>Gatilho do wipe</th>
-          <th className="num">Mortes</th>
-          <th className="num">Falhas</th>
+          <th>{t.mechanic}</th>
+          <th>{t.wipeTrigger}</th>
+          <th className="num">{t.deathsCol}</th>
+          <th className="num">{t.failuresCol}</th>
         </tr>
       </thead>
       <tbody>
@@ -453,37 +438,43 @@ interface Award {
   format: (p: PlayerNight) => string;
 }
 
-const VILLAIN_AWARDS: Award[] = [
-  { icon: Skull, label: 'Mais mortes decisivas', score: (p) => p.decisiveDeaths, format: (p) => `${p.decisiveDeaths} em ${p.pulls} pulls` },
-  { icon: TriangleAlert, label: 'Mais erros de mecânica', score: (p) => p.mechanicErrorsWeighted, format: (p) => `${p.mechanicErrors} erros` },
-  { icon: ShieldOff, label: 'Morreu com defensivo sobrando', score: (p) => p.deathsNoDefensive, format: (p) => `${p.deathsNoDefensive}×` },
-  { icon: EyeOff, label: 'Tinha interrupt e não cortou', score: (p) => p.idleInterruptPulls, format: (p) => `${p.idleInterruptPulls} pulls` },
-];
+function villainAwards(): Award[] {
+  const a = messagesOf(nightMsg).awards;
+  return [
+    { icon: Skull, label: a.decisive, score: (p) => p.decisiveDeaths, format: (p) => a.decisiveFmt(p.decisiveDeaths, p.pulls) },
+    { icon: TriangleAlert, label: a.mechanics, score: (p) => p.mechanicErrorsWeighted, format: (p) => a.mechanicsFmt(p.mechanicErrors) },
+    { icon: ShieldOff, label: a.noDefensive, score: (p) => p.deathsNoDefensive, format: (p) => `${p.deathsNoDefensive}×` },
+    { icon: EyeOff, label: a.idle, score: (p) => p.idleInterruptPulls, format: (p) => a.idleFmt(p.idleInterruptPulls) },
+  ];
+}
 
-const HERO_AWARDS: Award[] = [
-  { icon: Hand, label: 'Mais interrupts', score: (p) => p.interrupts, format: (p) => `${p.interrupts} cortes` },
-  { icon: Handshake, label: 'Mais ajuda em mecânicas', score: (p) => p.assists, format: (p) => `${p.assists} ajudas` },
-  { icon: AwardIcon, label: 'Melhor nota média', score: (p) => (p.pulls >= 3 ? p.avgScore : 0), format: (p) => `${Math.round(p.avgScore)} em ${p.pulls} pulls` },
-  { icon: ShieldCheck, label: 'Pulls limpos', score: (p) => p.cleanPulls, format: (p) => `${p.cleanPulls} de ${p.pulls}` },
-  { icon: Swords, label: 'Maior DPS médio', score: (p) => (p.role === 'dps' ? p.avgDps : 0), format: (p) => num(p.avgDps) },
-  { icon: HeartPulse, label: 'Maior HPS médio', score: (p) => (p.role === 'healer' ? p.avgHps : 0), format: (p) => num(p.avgHps) },
-];
+function heroAwards(): Award[] {
+  const a = messagesOf(nightMsg).awards;
+  return [
+    { icon: Hand, label: a.interrupts, score: (p) => p.interrupts, format: (p) => a.interruptsFmt(p.interrupts) },
+    { icon: Handshake, label: a.assists, score: (p) => p.assists, format: (p) => a.assistsFmt(p.assists) },
+    { icon: AwardIcon, label: a.score, score: (p) => (p.pulls >= 3 ? p.avgScore : 0), format: (p) => a.scoreFmt(Math.round(p.avgScore), p.pulls) },
+    { icon: ShieldCheck, label: a.clean, score: (p) => p.cleanPulls, format: (p) => a.cleanFmt(p.cleanPulls, p.pulls) },
+    { icon: Swords, label: a.dps, score: (p) => (p.role === 'dps' ? p.avgDps : 0), format: (p) => num(p.avgDps) },
+    { icon: HeartPulse, label: a.hps, score: (p) => (p.role === 'healer' ? p.avgHps : 0), format: (p) => num(p.avgHps) },
+  ];
+}
 
 function villainReasons(p: PlayerNight): string {
+  const r = messagesOf(nightMsg).villainReasons;
   return [
-    p.decisiveDeaths && `${p.decisiveDeaths} mortes decisivas`,
-    p.mechanicErrors && `${p.mechanicErrors} erros de mecânica`,
-    p.deathsNoDefensive && `${p.deathsNoDefensive} mortes com defensivo sobrando`,
-    p.idleInterruptPulls && `${p.idleInterruptPulls} pulls sem cortar`,
+    p.decisiveDeaths && r.decisive(p.decisiveDeaths),
+    p.mechanicErrors && r.mechanics(p.mechanicErrors),
+    p.deathsNoDefensive && r.noDefensive(p.deathsNoDefensive),
+    p.idleInterruptPulls && r.idle(p.idleInterruptPulls),
   ]
     .filter(Boolean)
     .join(' · ');
 }
 
 function heroReasons(p: PlayerNight): string {
-  return [`${p.cleanPulls}/${p.pulls} pulls limpos`, p.interrupts && `${p.interrupts} interrupts`, p.assists && `${p.assists} ajudas em mecânica`]
-    .filter(Boolean)
-    .join(' · ');
+  const r = messagesOf(nightMsg).heroReasons;
+  return [r.clean(p.cleanPulls, p.pulls), p.interrupts && r.interrupts(p.interrupts), p.assists && r.assists(p.assists)].filter(Boolean).join(' · ');
 }
 
 function Awards(props: {
@@ -516,7 +507,7 @@ function Awards(props: {
               </span>
               <span className="award-people">
                 {top.length === 0 ? (
-                  <span className="muted">ninguém</span>
+                  <span className="muted">{messagesOf(nightMsg).nobody}</span>
                 ) : (
                   top.map((p, i) => (
                     <span key={p.guid} className={i === 0 ? 'first' : 'muted'}>
@@ -534,19 +525,12 @@ function Awards(props: {
 }
 
 type SortKey = 'name' | 'avgScore' | 'deaths' | 'decisiveDeaths' | 'mechanicErrors' | 'deathsNoDefensive' | 'interrupts' | 'assists' | 'cleanPulls' | 'avgDps' | 'avgHps';
-const COLS: { key: SortKey; label: string; title?: string }[] = [
-  { key: 'name', label: 'Jogador' },
-  { key: 'avgScore', label: 'Nota', title: 'Nota média (0-100) nos pulls em que jogou' },
-  { key: 'deaths', label: 'Mortes' },
-  { key: 'decisiveDeaths', label: 'Decisivas', title: 'Mortes antes da cascata do wipe' },
-  { key: 'mechanicErrors', label: 'Erros mec.' },
-  { key: 'deathsNoDefensive', label: 'Sem def.', title: 'Mortes decisivas sem usar defensivo disponível' },
-  { key: 'interrupts', label: 'Interrupts' },
-  { key: 'assists', label: 'Ajudas', title: 'Soaks e outras ajudas em mecânicas (hits recebidos no lugar do raid)' },
-  { key: 'cleanPulls', label: 'Limpos', title: 'Pulls sem morte decisiva e sem erro de mecânica' },
-  { key: 'avgDps', label: 'DPS médio' },
-  { key: 'avgHps', label: 'HPS médio' },
-];
+const SORT_KEYS: SortKey[] = ['name', 'avgScore', 'deaths', 'decisiveDeaths', 'mechanicErrors', 'deathsNoDefensive', 'interrupts', 'assists', 'cleanPulls', 'avgDps', 'avgHps'];
+
+function columns(): { key: SortKey; label: string; title?: string }[] {
+  const c = messagesOf(nightMsg).cols as Record<string, string>;
+  return SORT_KEYS.map((key) => ({ key, label: c[key], title: c[`${key}Title`] }));
+}
 
 function Scoreboard({ players }: { players: PlayerNight[] }) {
   const [sort, setSort] = useState<SortKey>('decisiveDeaths');
@@ -557,7 +541,7 @@ function Scoreboard({ players }: { players: PlayerNight[] }) {
     <table className="players scoreboard">
       <thead>
         <tr>
-          {COLS.map((c) => (
+          {columns().map((c) => (
             <th key={c.key} className={c.key === 'name' ? '' : 'num'} title={c.title}>
               <button className={`sort ${sort === c.key ? 'active' : ''}`} onClick={() => setSort(c.key)}>
                 {c.label}
@@ -591,5 +575,5 @@ function Scoreboard({ players }: { players: PlayerNight[] }) {
   );
 }
 
-export const NightOverview = withErrorBoundary(NightOverviewInner, 'no resumo da noite');
-export const BossSummary = withErrorBoundary(BossSummaryInner, 'no resumo do boss');
+export const NightOverview = withErrorBoundary(NightOverviewInner, () => messagesOf(nightMsg).errorNight);
+export const BossSummary = withErrorBoundary(BossSummaryInner, () => messagesOf(nightMsg).errorBoss);

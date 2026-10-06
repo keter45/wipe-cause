@@ -1,10 +1,12 @@
 // Heurísticas genéricas de "por que deu wipe". Regras específicas de boss virão de encounters/*.yaml.
 
 import type { Death, Pull } from '../types';
-import { mmss, pct, shortName } from './format';
+import { mmss, pct, shortName, damageSource } from './format';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { spellIdByName } from './spells';
 import { getMarks } from './marks';
+import { messagesOf, tr } from '../i18n';
+import { verdictMsg } from './verdict.i18n';
 
 export type Severity = 'wipe' | 'major' | 'minor' | 'info';
 
@@ -62,6 +64,7 @@ export function lowestBossHpAtEnd(p: Pull): number | null {
 
 /** `assignments`: escala de interrupts (padrão: a salva para o boss). */
 export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p)): Verdict {
+  const t = messagesOf(verdictMsg);
   const findings: Finding[] = [];
   const deaths = [...p.deaths].sort((a, b) => a.t - b.t);
   // com "ignorar após N mortes" ligado, as decisivas são as N primeiras; senão, janela de cascata
@@ -76,12 +79,12 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
       severity: m.severity === 'minor' ? 'major' : m.severity,
       focus: m.focus,
       spellId: m.spellId,
-      title: m.summary || `${m.name}: ${blamed.length} jogador(es)`,
-      detail: m.summary
-        ? m.tip
+      title: tr(m.summary) || t.mechanicPlayers(m.name, blamed.length),
+      detail: tr(m.summary)
+        ? tr(m.tip)
         : blamed
             .slice(0, 4)
-            .map((x) => x.message || shortName(x.name))
+            .map((x) => tr(x.message) || shortName(x.name))
             .join(' · ') + (blamed.length > 4 ? ` · +${blamed.length - 4}` : ''),
     });
   }
@@ -92,7 +95,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
       severity: mk.severity,
       spellId: mk.spellId ?? null,
       title: `${shortName(mk.name)}: ${mk.what}`,
-      detail: `Marcado pelo raid${mk.t != null ? ` · ${mmss(mk.t)}` : ''}`,
+      detail: t.markedByRaid(mk.t != null ? mmss(mk.t) : null),
       player: mk.guid,
     });
   }
@@ -100,7 +103,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   // 1. Mortes decisivas agrupadas pelo golpe final
   const byKiller = new Map<string, Death[]>();
   for (const d of decisive) {
-    const key = d.killingBlowMechanic ?? d.killingBlow?.spellName ?? 'Desconhecido';
+    const key = d.killingBlowMechanic ?? d.killingBlow?.spellName ?? t.unknown;
     byKiller.set(key, [...(byKiller.get(key) ?? []), d]);
   }
   const ranked = [...byKiller.entries()].sort((a, b) => b[1].length - a[1].length);
@@ -109,7 +112,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
       findings.push({
         severity: 'wipe',
         spellId: spellIdByName(p, spell) ?? ds[0].killingBlow?.spellId ?? null,
-        title: `${ds.length} das primeiras mortes foram por ${spell}`,
+        title: t.firstDeathsBy(ds.length, spell),
         detail: ds.map((d) => `${shortName(d.name)} (${mmss(d.t)})`).join(', '),
       });
     }
@@ -120,8 +123,8 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
     findings.push({
       severity: 'wipe',
       spellId: d.killingBlow?.spellId ?? null,
-      title: `Tank ${shortName(d.name)} morreu aos ${mmss(d.t)}`,
-      detail: d.killingBlow ? `Golpe final: ${d.killingBlow.spellName} (${d.killingBlow.source})` : undefined,
+      title: t.tankDied(shortName(d.name), mmss(d.t)),
+      detail: d.killingBlow ? t.killingBlow(d.killingBlow.spellName, damageSource(d.killingBlow.source)) : undefined,
       player: d.guid,
     });
   }
@@ -135,17 +138,17 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
     if (d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0) {
       findings.push({
         severity: 'major',
-        title: `${who} morreu sem defensivo`,
-        detail: `Disponível: ${d.defensivesAvailable.map((a) => a.name).join(', ')}`,
+        title: t.noDefensive(who),
+        detail: t.available(d.defensivesAvailable.map((a) => a.name).join(', ')),
         player: d.guid,
       });
     }
     const missing = [
-      !d.usedHealthstone && d.healthstoneKnown ? 'healthstone' : null,
-      !d.usedHealthPotion ? 'poção de vida' : null,
-    ].filter(Boolean);
+      !d.usedHealthstone && d.healthstoneKnown ? t.healthstone : null,
+      !d.usedHealthPotion ? t.healthPotion : null,
+    ].filter((x): x is string => !!x);
     if (missing.length) {
-      findings.push({ severity: 'minor', title: `${who} não usou ${missing.join(' nem ')}`, player: d.guid });
+      findings.push({ severity: 'minor', title: t.didNotUse(who, missing), player: d.guid });
     }
   }
 
@@ -154,11 +157,11 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   for (const d of decisive.filter((d) => d.deathKind === 'slow')) {
     if (seenSlow.has(d.guid)) continue;
     seenSlow.add(d.guid);
-    const below = d.stats.belowHalfMs != null ? `${Math.round(d.stats.belowHalfMs / 1000)}s abaixo de 50%` : '';
-    const heal = d.stats.healingPctOfMax10s != null ? `cura recebida: ${Math.round(d.stats.healingPctOfMax10s)}% do HP em 10s` : '';
+    const below = d.stats.belowHalfMs != null ? t.belowHalf(Math.round(d.stats.belowHalfMs / 1000)) : '';
+    const heal = d.stats.healingPctOfMax10s != null ? t.healReceived(Math.round(d.stats.healingPctOfMax10s)) : '';
     findings.push({
       severity: d.stats.underhealed ? 'major' : 'minor',
-      title: `${shortName(d.name)} morreu devagar${d.stats.underhealed ? ' e quase sem cura' : ''}`,
+      title: t.slowDeath(shortName(d.name), d.stats.underhealed),
       detail: [below, heal].filter(Boolean).join(' · '),
       player: d.guid,
     });
@@ -178,12 +181,11 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
     findings.push({
       severity: 'major',
       spellId: passed[0].spellId,
-      title: `${passed.reduce((n, e) => n + e.casts, 0)} cast(s) interrompível(is) passaram: ${passed.map((e) => `${e.name} ${e.casts}×`).join(', ')}`,
-      detail: missed.size
-        ? `Passou na vez de: ${[...missed].map(([n, c]) => (c > 1 ? `${n} (${c})` : n)).join(', ')}`
-        : idle.length
-          ? `Não cortaram nada: ${idle.join(', ')}`
-          : undefined,
+      title: t.castsPassed(
+        passed.reduce((n, e) => n + e.casts, 0),
+        passed.map((e) => `${e.name} ${e.casts}×`).join(', '),
+      ),
+      detail: missed.size ? t.missedTurn([...missed].map(([n, c]) => (c > 1 ? `${n} (${c})` : n)).join(', ')) : idle.length ? t.idle(idle.join(', ')) : undefined,
     });
   }
 
@@ -191,23 +193,23 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   if (!p.success && deaths.length < 2 && bossHp != null && bossHp > 0) {
     findings.push({
       severity: 'info',
-      title: `Wipe com poucas mortes e boss em ${pct(bossHp)}`,
-      detail: 'Pode ser enrage (falta de dano) ou reset manual. Compare o DPS com os outros pulls.',
+      title: t.fewDeaths(pct(bossHp)),
+      detail: t.fewDeathsDetail,
     });
   }
 
   const first = deaths[0];
   let headline: string;
+  const boss = t.bossAt(bossHp != null ? pct(bossHp) : null);
   if (p.success) {
-    headline = `Kill em ${mmss(p.durationMs)}${deaths.length ? ` com ${deaths.length} morte(s)` : ''}`;
+    headline = t.kill(mmss(p.durationMs), deaths.length);
   } else if (p.trigger) {
-    const tr = p.trigger;
-    headline = `Wipe${bossHp != null ? ` com boss em ${pct(bossHp)}` : ''} — gatilho: ${tr.name} aos ${mmss(tr.t)} (${tr.deaths} morte${tr.deaths > 1 ? 's' : ''} ligada${tr.deaths > 1 ? 's' : ''})`;
+    const trig = p.trigger;
+    headline = t.wipeTrigger(boss, trig.name, mmss(trig.t), trig.deaths);
   } else if (first) {
-    const kb = first.killingBlow ? ` para ${first.killingBlow.spellName}` : '';
-    headline = `Wipe${bossHp != null ? ` com boss em ${pct(bossHp)}` : ''} — começou com ${shortName(first.name)} morrendo${kb} aos ${mmss(first.t)}`;
+    headline = t.wipeFirstDeath(boss, shortName(first.name), first.killingBlow?.spellName ?? null, mmss(first.t));
   } else {
-    headline = `Wipe${bossHp != null ? ` com boss em ${pct(bossHp)}` : ''} sem mortes`;
+    headline = t.wipeNoDeaths(boss);
   }
 
   const order: Record<Severity, number> = { wipe: 0, major: 1, minor: 2, info: 3 };

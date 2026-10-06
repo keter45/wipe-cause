@@ -36,7 +36,7 @@ mechanics:
   # e dispara 20 Venom Ruptures de uma vez. Também acontece se sobrar roxo no timer da
   # fase. No log só aparece como tick gigante de Venom Rupture (normal < 400k, explosão > 1M).
   - key: purple_detonation
-    name: "Virulent Mutation (detonação)"
+    name: "Virulent Mutation (detonation)"
     type: failure_event
     source_unit: virulent_mutation
     difficulty: [mythic]
@@ -45,35 +45,35 @@ mechanics:
       fail_ids: [1299838]         # Venom Rupture
       min_amount: 800000          # só a explosão; tick normal fica bem abaixo
       culprit_auras: [1310498, 1282419]  # Mutagenic Venom (roxo) / Volatile Venom (verde) consumidos na explosão
-    tip: "Nunca levar orb (verde ou roxo) para perto de um roxo; roxos só morrem no frontal."
-    message: "{count} detonação(ões) de orb roxo (Venom Rupture em massa)"
-    blame_message: "{player} carregava um orb que detonou junto com um roxo"
+    tip: { pt: "Nunca levar orb (verde ou roxo) para perto de um roxo; roxos só morrem no frontal.", en: "Never take an orb (green or purple) near a purple one; purples only die in the frontal." }
+    message: { pt: "{count} detonação(ões) de orb roxo (Venom Rupture em massa)", en: "{count} purple orb detonation(s) (mass Venom Rupture)" }
+    blame_message: { pt: "{player} carregava um orb que detonou junto com um roxo", en: "{player} was carrying an orb that detonated with a purple one" }
     notes: >
       Calibrado em 6 pulls Mythic de 28/09: 4 wipes vieram disso. Culpado = quem perdeu a
       aura de portador até 0,5s antes do 1º tick gigante. Se sobrar roxo até o timer
       (boss explode todos), não há portador e a lista fica vazia.
 
   - key: mutagenic_venom_splash
-    name: "Mutagenic Venom (perto do portador)"
+    name: "Mutagenic Venom (near the carrier)"
     type: avoidable_damage
     source_unit: virulent_mutation
     difficulty: [mythic]
     severity: minor
     detect: { damage_ids: [1310691], excludes_aura: 1310498 }
     tolerance: 1
-    tip: "Ficar a mais de 8 jardas de quem carrega o roxo."
-    message: "{player} tomou {count} ticks de Mutagenic Venom de outro portador"
+    tip: { pt: "Ficar a mais de 8 jardas de quem carrega o roxo.", en: "Stay more than 8 yards from whoever carries the purple." }
+    message: { pt: "{player} tomou {count} ticks de Mutagenic Venom de outro portador", en: "{player} took {count} ticks of Mutagenic Venom from another carrier" }
     notes: "O portador também toma o dano; excludes_aura tira ele da conta."
 
   - key: volatile_venom_splash
-    name: "Volatile Venom (perto do portador)"
+    name: "Volatile Venom (near the carrier)"
     type: avoidable_damage
     source_unit: coalesced_venom
     severity: minor
     detect: { damage_ids: [1282288], excludes_aura: 1282419 }
     tolerance: 2
-    tip: "Quem não carrega orb verde fica a mais de 5 jardas de quem carrega."
-    message: "{player} tomou {count} ticks de Volatile Venom de outro portador"
+    tip: { pt: "Quem não carrega orb verde fica a mais de 5 jardas de quem carrega.", en: "Whoever isn't carrying a green orb stays more than 5 yards from the carrier." }
+    message: { pt: "{player} tomou {count} ticks de Volatile Venom de outro portador", en: "{player} took {count} ticks of Volatile Venom from another carrier" }
 
   - key: venom_rupture
     name: "Venom Rupture"
@@ -81,18 +81,18 @@ mechanics:
     source_unit: zuljan
     severity: none
     detect: { damage_ids: [1299838], aura_id: 1299838 }
-    tip: "Cada orb quebrado no frontal dá 1 stack de DoT no raid; quebrar ~7 no 1º frontal de cada leva."
-    message: "Venom Rupture"
+    tip: { pt: "Cada orb quebrado no frontal dá 1 stack de DoT no raid; quebrar ~7 no 1º frontal de cada leva.", en: "Each orb broken in the frontal gives the raid 1 DoT stack; break ~7 in the 1st frontal of each wave." }
+    message: { pt: "Venom Rupture", en: "Venom Rupture" }
     notes: "Stacks normais: 2-12 por leva. No Mythic, 20+ de uma vez = detonação (regra acima)."
 
   - key: coalesced_venom_pulse
-    name: "Coalesced Venom (pulso)"
+    name: "Coalesced Venom (pulse)"
     type: unavoidable
     source_unit: coalesced_venom
     severity: none
     detect: { damage_ids: [1282408] }
-    tip: "Orb vivo pulsa no raid; quanto mais orb sobrando, mais dano."
-    message: "Coalesced Venom"
+    tip: { pt: "Orb vivo pulsa no raid; quanto mais orb sobrando, mais dano.", en: "A living orb pulses on the raid; the more orbs left, the more damage." }
+    message: { pt: "Coalesced Venom", en: "Coalesced Venom" }
 
   - key: fangs_of_the_coiled_altar
     name: "Fangs of the Coiled Altar"
@@ -100,8 +100,8 @@ mechanics:
     source_unit: zuljan
     severity: none
     detect: { damage_ids: [1282512], cast_id: 1282487 }
-    tip: "Dano no raid; o boss ganha Twinfang Toxin e o chão enche de poça."
-    message: "Fangs of the Coiled Altar"
+    tip: { pt: "Dano no raid; o boss ganha Twinfang Toxin e o chão enche de poça.", en: "Raid damage; the boss gains Twinfang Toxin and the floor fills with pools." }
+    message: { pt: "Fangs of the Coiled Altar", en: "Fangs of the Coiled Altar" }
 
   - key: noxious_ground
     name: "Noxious Ground"
@@ -110,8 +110,8 @@ mechanics:
     severity: minor
     detect: { damage_ids: [1283290] }
     tolerance: 1
-    tip: "Sair das poças que saem das bocas do altar."
-    message: "{player} tomou {count} ticks de Noxious Ground"
+    tip: { pt: "Sair das poças que saem das bocas do altar.", en: "Get out of the pools coming from the altar's mouths." }
+    message: { pt: "{player} tomou {count} ticks de Noxious Ground", en: "{player} took {count} ticks of Noxious Ground" }
 
   - key: toxic_deluge
     name: "Toxic Deluge"
@@ -119,8 +119,8 @@ mechanics:
     source_unit: zuljan
     severity: minor
     detect: { damage_ids: [1309279], cast_id: 1299960 }
-    tip: "Sair do círculo onde o orb vai cair."
-    message: "{player} foi atingido pela queda do orb ({count}x)"
+    tip: { pt: "Sair do círculo onde o orb vai cair.", en: "Get out of the circle where the orb will land." }
+    message: { pt: "{player} foi atingido pela queda do orb ({count}x)", en: "{player} was hit by the orb landing ({count}x)" }
 
   - key: twinfang_toxin
     name: "Twinfang Toxin"
@@ -129,8 +129,8 @@ mechanics:
     roles: [tank]
     severity: none
     detect: { damage_ids: [1300322], aura_id: 1282520 }
-    tip: "Auto do boss consome os stacks do Fangs: defensivo do tank logo depois do Fangs."
-    message: "Twinfang Toxin"
+    tip: { pt: "Auto do boss consome os stacks do Fangs: defensivo do tank logo depois do Fangs.", en: "The boss's melee consumes the Fangs stacks: tank defensive right after Fangs." }
+    message: { pt: "Twinfang Toxin", en: "Twinfang Toxin" }
 
   - key: sever
     name: "Sever"
@@ -139,8 +139,8 @@ mechanics:
     roles: [healer, dps]
     severity: major
     detect: { damage_ids: [1299684], aura_id: 1301690, cast_id: 1299684 }
-    tip: "Só o tank no frontal; ele é mirado nos orbs."
-    message: "{player} foi atingido pelo Sever ({count}x)"
+    tip: { pt: "Só o tank no frontal; ele é mirado nos orbs.", en: "Only the tank in the frontal; it is aimed at the orbs." }
+    message: { pt: "{player} foi atingido pelo Sever ({count}x)", en: "{player} was hit by Sever ({count}x)" }
     notes: "Pull 3 de 28/09: Sever matou 3 não-tanks de uma vez."
 
   - key: axegrinder
@@ -150,8 +150,8 @@ mechanics:
     severity: minor
     detect: { damage_ids: [1285017], cast_id: 1283832 }
     tolerance: 4
-    tip: "Desviar dos machados que giram pela sala (no Heroic+ eles não somem)."
-    message: "{player} tomou {count} hits de Axegrinder"
+    tip: { pt: "Desviar dos machados que giram pela sala (no Heroic+ eles não somem).", en: "Dodge the axes spinning around the room (on Heroic+ they don't disappear)." }
+    message: { pt: "{player} tomou {count} hits de Axegrinder", en: "{player} took {count} hits of Axegrinder" }
     notes: "Tick a cada 0,25s: 4 hits = ~1s encostado. Nos wipes de 28/09 vários players passaram de 10."
 
   - key: guillotine
@@ -164,22 +164,22 @@ mechanics:
       soak_aura_id: 1307425      # vulnerabilidade de quem soakou
       fail_ids: [1283606]        # Execution: menos de 5 no soak → raid inteiro
     min_soakers: 5
-    tip: "Pelo menos 5 no círculo do alvo (imunidades contam); depois sair para longe."
-    message: "{count} Guillotine sem 5 pessoas (Execution no raid)"
-    blame_message: "{player} foi atingido pela Execution"
+    tip: { pt: "Pelo menos 5 no círculo do alvo (imunidades contam); depois sair para longe.", en: "At least 5 in the target's circle (immunities count); then move far away." }
+    message: { pt: "{count} Guillotine sem 5 pessoas (Execution no raid)", en: "{count} Guillotine without 5 people (Execution on the raid)" }
+    blame_message: { pt: "{player} foi atingido pela Execution", en: "{player} was hit by Execution" }
     notes: >
       Pull 4 de 28/09: só 2 soakaram → Execution matou o raid. No Mythic, mesmo com 5 o hit
       dividido passa de 1M: sem defensivo, soaker morre (pull 6).
 
   - key: guillotine_double_soak
-    name: "Guillotine (soak duplo)"
+    name: "Guillotine (double soak)"
     type: avoidable_damage
     source_unit: zuljan
     difficulty: [heroic, mythic]
     severity: major
     detect: { damage_ids: [1283594], requires_aura: 1307425 }
-    tip: "Quem soakou uma Guillotine fica fora da próxima: grupos alternados."
-    message: "{player} soakou Guillotine ainda com a vulnerabilidade ({count}x)"
+    tip: { pt: "Quem soakou uma Guillotine fica fora da próxima: grupos alternados.", en: "Whoever soaked a Guillotine sits out the next one: alternate groups." }
+    message: { pt: "{player} soakou Guillotine ainda com a vulnerabilidade ({count}x)", en: "{player} soaked Guillotine with the vulnerability still up ({count}x)" }
 
   - key: widows_kiss
     name: "Widow's Kiss"
@@ -189,8 +189,8 @@ mechanics:
     overrides:
       mythic: { severity: major }
     detect: { damage_ids: [1283623] }
-    tip: "Depois do soak, correr para mais de 40 jardas do machado antes de ele explodir."
-    message: "{player} estava perto do machado no Widow's Kiss"
+    tip: { pt: "Depois do soak, correr para mais de 40 jardas do machado antes de ele explodir.", en: "After the soak, run more than 40 yards from the axe before it explodes." }
+    message: { pt: "{player} estava perto do machado no Widow's Kiss", en: "{player} was near the axe at Widow's Kiss" }
     notes: "No kill Heroic o raid inteiro tomou (dá para curar); no Mythic mata. Pull 6 de 28/09: matou 3. Widow's Touch (1283631) é o dano pequeno de quem está longe."
 
   - key: widows_touch
@@ -199,8 +199,8 @@ mechanics:
     source_unit: zuljan
     severity: none
     detect: { damage_ids: [1283631] }
-    tip: "Dano leve em quem saiu do raio do machado."
-    message: "Widow's Touch"
+    tip: { pt: "Dano leve em quem saiu do raio do machado.", en: "Light damage on whoever left the axe's radius." }
+    message: { pt: "Widow's Touch", en: "Widow's Touch" }
 
   - key: venomfang
     name: "Venomfang"
@@ -209,9 +209,9 @@ mechanics:
     severity: minor
     detect: { aura_id: 1306906, cast_id: 1282287 }
     max_delay: 4
-    tip: "DoT de veneno em alguns players: dispel rápido (poison)."
-    message: "Venomfang sem dispel a tempo"
-    blame_message: "{player} ficou com Venomfang sem dispel"
+    tip: { pt: "DoT de veneno em alguns players: dispel rápido (poison).", en: "Poison DoT on some players: dispel fast (poison)." }
+    message: { pt: "Venomfang sem dispel a tempo", en: "Venomfang not dispelled in time" }
+    blame_message: { pt: "{player} ficou com Venomfang sem dispel", en: "{player} kept Venomfang without a dispel" }
     notes: "Dano: 1306906 (125k a cada 2s por 14s). 4s = 2 ticks. Calibrar com o tempo real dos healers."
 
   # =====================================================================
@@ -223,8 +223,8 @@ mechanics:
     source_unit: malacrass
     severity: major
     detect: { cast_id: 1285643, aura_id: 1297445 }
-    tip: "Quebrar o absorb dos possuídos na hora (tank ajuda com burst); senão eles caem da plataforma."
-    message: "Dreadmarch"
+    tip: { pt: "Quebrar o absorb dos possuídos na hora (tank ajuda com burst); senão eles caem da plataforma.", en: "Break the possessed players' absorb right away (the tank helps with burst); otherwise they fall off the platform." }
+    message: { pt: "Dreadmarch", en: "Dreadmarch" }
     notes: "Falha vira morte por queda (regra global de ambiente). Sem ID de 'possuído caiu'."
 
   - key: unnerving_fixation
@@ -233,8 +233,8 @@ mechanics:
     source_unit: manifestation
     severity: major
     detect: { aura_id: 1285911 }
-    tip: "Olhar para o seu fantasma para ele parar; não mover fantasma. No Mythic, dois fantasmas se encostando matam os dois alvos."
-    message: "Manifestation of Dread"
+    tip: { pt: "Olhar para o seu fantasma para ele parar; não mover fantasma. No Mythic, dois fantasmas se encostando matam os dois alvos.", en: "Look at your ghost so it stops; don't move the ghost. On Mythic, two ghosts touching kill both targets." }
+    message: { pt: "Manifestation of Dread", en: "Manifestation of Dread" }
     notes: "Fantasma que alcança o alvo aplica Dreadmarch. Colisão de fantasmas no Mythic: ID ainda não visto em log."
     needs_id: true
 
@@ -245,8 +245,8 @@ mechanics:
     roles: [healer, dps]
     severity: major
     detect: { damage_ids: [1286620], aura_id: 1307959 }
-    tip: "Só o tank no frontal; ele é mirado nos fantasmas."
-    message: "{player} foi atingido pelo Soul Sever"
+    tip: { pt: "Só o tank no frontal; ele é mirado nos fantasmas.", en: "Only the tank in the frontal; it is aimed at the ghosts." }
+    message: { pt: "{player} foi atingido pelo Soul Sever", en: "{player} was hit by Soul Sever" }
 
   - key: soul_sever_dot
     name: "Soul Sever (DoT)"
@@ -254,8 +254,8 @@ mechanics:
     source_unit: malacrass
     severity: none
     detect: { damage_ids: [1312630] }
-    tip: "DoT de quem foi atingido pelo frontal."
-    message: "Soul Sever"
+    tip: { pt: "DoT de quem foi atingido pelo frontal.", en: "DoT on whoever was hit by the frontal." }
+    message: { pt: "Soul Sever", en: "Soul Sever" }
 
   - key: gravebound
     name: "Gravebound"
@@ -263,8 +263,8 @@ mechanics:
     source_unit: malacrass
     severity: major
     detect: { damage_ids: [1308330], aura_id: 1286837 }
-    tip: "Quem recebe Gravebound pega os próprios fragmentos antes do debuff acabar, senão morre."
-    message: "Gravebound"
+    tip: { pt: "Quem recebe Gravebound pega os próprios fragmentos antes do debuff acabar, senão morre.", en: "Whoever gets Gravebound picks up their own fragments before the debuff ends, or dies." }
+    message: { pt: "Gravebound", en: "Gravebound" }
 
   - key: eternal_nightfall
     name: "Eternal Nightfall"
@@ -273,8 +273,8 @@ mechanics:
     severity: wipe
     detect: { cast_id: 1286918 }
     accept: [interrupt]
-    tip: "Quebrar o escudo (Veil of Twilight) e cortar o cast; se passar, wipe."
-    message: "Eternal Nightfall completou {count}x"
+    tip: { pt: "Quebrar o escudo (Veil of Twilight) e cortar o cast; se passar, wipe.", en: "Break the shield (Veil of Twilight) and interrupt the cast; if it goes through, wipe." }
+    message: { pt: "Eternal Nightfall completou {count}x", en: "Eternal Nightfall went through {count}x" }
 
   - key: suffocating_darkness
     name: "Suffocating Darkness"
@@ -282,8 +282,8 @@ mechanics:
     source_unit: malacrass
     severity: minor
     detect: { aura_id: 1286947 }
-    tip: "Absorb de cura em stacks durante o escudo; desviar das poças escuras."
-    message: "Suffocating Darkness"
+    tip: { pt: "Absorb de cura em stacks durante o escudo; desviar das poças escuras.", en: "Healing absorb that stacks during the shield; dodge the dark pools." }
+    message: { pt: "Suffocating Darkness", en: "Suffocating Darkness" }
 
   - key: wail_of_terror
     name: "Wail of Terror"
@@ -293,8 +293,8 @@ mechanics:
     severity: major
     detect: { cast_id: 1286399 }
     accept: [interrupt, kill]
-    tip: "Escala de interrupt nos dois adds: corte assim que os Gloombombs aparecerem."
-    message: "{count} Wail of Terror passaram (fear no raid)"
+    tip: { pt: "Escala de interrupt nos dois adds: corte assim que os Gloombombs aparecerem.", en: "Interrupt rotation on both adds: kick as soon as the Gloombombs show up." }
+    message: { pt: "{count} Wail of Terror passaram (fear no raid)", en: "{count} Wail of Terror went through (raid fear)" }
     notes: "No Heroic 5 casts, 4 cortados, 0 SPELL_CAST_SUCCESS; 1308011 aparece 4x como 'sucesso' — confirmar qual ID é o fear."
 
   - key: retaliatory_malice
@@ -303,8 +303,8 @@ mechanics:
     source_unit: soulcoiler
     severity: none
     detect: { damage_ids: [1308323] }
-    tip: "Dano em players aleatórios enquanto o add está vivo."
-    message: "Retaliatory Malice"
+    tip: { pt: "Dano em players aleatórios enquanto o add está vivo.", en: "Damage on random players while the add is alive." }
+    message: { pt: "Retaliatory Malice", en: "Retaliatory Malice" }
 
   - key: gloombomb
     name: "Gloombomb"
@@ -312,8 +312,8 @@ mechanics:
     source_unit: malacrass
     severity: minor
     detect: { damage_ids: [1310883], excludes_aura: 1310881 }
-    tip: "Marcados levam a bomba até o add (Mythic: quebra o Spirit Shield); o resto fica a 15 jardas."
-    message: "{player} foi atingido pelo Gloombomb de outro ({count}x)"
+    tip: { pt: "Marcados levam a bomba até o add (Mythic: quebra o Spirit Shield); o resto fica a 15 jardas.", en: "Marked players take the bomb to the add (Mythic: it breaks the Spirit Shield); everyone else stays 15 yards away." }
+    message: { pt: "{player} foi atingido pelo Gloombomb de outro ({count}x)", en: "{player} was hit by someone else's Gloombomb ({count}x)" }
     notes: "Quem é atingido ganha Gravebound."
 
   - key: spirit_shield
@@ -323,8 +323,8 @@ mechanics:
     difficulty: [mythic]
     severity: wipe
     detect: { aura_id: 1309105 }
-    tip: "Cada Gloombomb no add tira um stack do escudo; add sem escudo quebrado = wipe."
-    message: "Spirit Shield"
+    tip: { pt: "Cada Gloombomb no add tira um stack do escudo; add sem escudo quebrado = wipe.", en: "Each Gloombomb on the add removes a shield stack; an add without its shield broken = wipe." }
+    message: { pt: "Spirit Shield", en: "Spirit Shield" }
     notes: "ID do guia; não visto em log (só Heroic). Regra de CC/escudo ainda não avaliada."
 
   - key: dreadful_presence
@@ -333,8 +333,8 @@ mechanics:
     source_unit: malacrass
     severity: none
     detect: { damage_ids: [1288635], aura_id: 1288624 }
-    tip: "Rot no raid a fase inteira."
-    message: "Dreadful Presence"
+    tip: { pt: "Rot no raid a fase inteira.", en: "Raid rot for the whole phase." }
+    message: { pt: "Dreadful Presence", en: "Dreadful Presence" }
 
   - key: dread_bolt
     name: "Dread Bolt"
@@ -343,8 +343,8 @@ mechanics:
     roles: [tank]
     severity: none
     detect: { damage_ids: [1307184] }
-    tip: "Bolt no alvo principal do Malacrass."
-    message: "Dread Bolt"
+    tip: { pt: "Bolt no alvo principal do Malacrass.", en: "Bolt on Malacrass's main target." }
+    message: { pt: "Dread Bolt", en: "Dread Bolt" }
 
   # =====================================================================
   # Intermissão
@@ -355,8 +355,8 @@ mechanics:
     source_unit: malacrass
     severity: minor
     detect: { cast_id: 1304032 }
-    tip: "Zul'jan toma o dobro de dano: bloodlust e tudo nele, nunca no Malacrass."
-    message: "Soulbinding"
+    tip: { pt: "Zul'jan toma o dobro de dano: bloodlust e tudo nele, nunca no Malacrass.", en: "Zul'jan takes double damage: bloodlust and everything on him, never on Malacrass." }
+    message: { pt: "Soulbinding", en: "Soulbinding" }
 
   - key: spirit_erasure
     name: "Fragment of Malacrass (Spirit Erasure)"
@@ -364,8 +364,8 @@ mechanics:
     source_unit: malacrass
     severity: none
     detect: { damage_ids: [1287722] }
-    tip: "Bloquear os fragmentos antes do boss, mas deixar o stack cair (cuidado a partir de 4)."
-    message: "Spirit Erasure"
+    tip: { pt: "Bloquear os fragmentos antes do boss, mas deixar o stack cair (cuidado a partir de 4).", en: "Block the fragments before the boss, but let the stack drop (careful from 4 on)." }
+    message: { pt: "Spirit Erasure", en: "Spirit Erasure" }
     notes: "Fragmento que chega no Zul'jan cura os bosses; ID da cura ainda não identificado."
 
   # =====================================================================
@@ -377,8 +377,8 @@ mechanics:
     source_unit: zuljan
     severity: none
     detect: { cast_id: 1298381, aura_id: 1298594 }
-    tip: "Absorb de cura no raid; boss passa a ter Corrupted Toxin."
-    message: "Defilement"
+    tip: { pt: "Absorb de cura no raid; boss passa a ter Corrupted Toxin.", en: "Raid healing absorb; the boss gains Corrupted Toxin." }
+    message: { pt: "Defilement", en: "Defilement" }
 
   - key: corrupted_toxin
     name: "Corrupted Toxin"
@@ -387,8 +387,8 @@ mechanics:
     roles: [tank]
     severity: minor
     detect: { aura_id: 1298795, damage_ids: [1298795] }
-    tip: "DoT acumulativo dos autos no tank: trocar de tank."
-    message: "{player} chegou a {stacks} stacks de Corrupted Toxin"
+    tip: { pt: "DoT acumulativo dos autos no tank: trocar de tank.", en: "Stacking DoT from melee hits on the tank: tank swap." }
+    message: { pt: "{player} chegou a {stacks} stacks de Corrupted Toxin", en: "{player} reached {stacks} stacks of Corrupted Toxin" }
     notes: "Sem warn_stacks: no kill Heroic chegou a 12. Calibrar com pulls de P3."
 
   - key: blighted_sever
@@ -398,8 +398,8 @@ mechanics:
     roles: [healer, dps]
     severity: major
     detect: { damage_ids: [1307292], aura_id: 1307403 }
-    tip: "Só o tank no frontal; ele quebra orbs e fantasmas juntos."
-    message: "{player} foi atingido pelo Blighted Sever"
+    tip: { pt: "Só o tank no frontal; ele quebra orbs e fantasmas juntos.", en: "Only the tank in the frontal; it breaks orbs and ghosts together." }
+    message: { pt: "{player} foi atingido pelo Blighted Sever", en: "{player} was hit by Blighted Sever" }
 
   - key: grim_guillotine
     name: "Grim Guillotine"
@@ -411,20 +411,20 @@ mechanics:
       soak_aura_id: 1307652
       fail_ids: [null]           # Grim Execution: ainda não visto em log
     min_soakers: 5
-    tip: "Mesmo esquema da Guillotine: 5+ no círculo, depois sair."
-    message: "{count} Grim Guillotine sem 5 pessoas"
-    blame_message: "{player} foi atingido pela Grim Execution"
+    tip: { pt: "Mesmo esquema da Guillotine: 5+ no círculo, depois sair.", en: "Same as Guillotine: 5+ in the circle, then move out." }
+    message: { pt: "{count} Grim Guillotine sem 5 pessoas", en: "{count} Grim Guillotine without 5 people" }
+    blame_message: { pt: "{player} foi atingido pela Grim Execution", en: "{player} was hit by Grim Execution" }
     needs_id: true
 
   - key: grim_guillotine_double_soak
-    name: "Grim Guillotine (soak duplo)"
+    name: "Grim Guillotine (double soak)"
     type: avoidable_damage
     source_unit: zuljan
     difficulty: [heroic, mythic]
     severity: major
     detect: { damage_ids: [1299296], requires_aura: 1307652 }
-    tip: "Quem soakou a anterior fica fora."
-    message: "{player} soakou Grim Guillotine ainda com a vulnerabilidade ({count}x)"
+    tip: { pt: "Quem soakou a anterior fica fora.", en: "Whoever soaked the previous one sits out." }
+    message: { pt: "{player} soakou Grim Guillotine ainda com a vulnerabilidade ({count}x)", en: "{player} soaked Grim Guillotine with the vulnerability still up ({count}x)" }
 
   - key: deaths_embrace
     name: "Death's Embrace"
@@ -434,8 +434,8 @@ mechanics:
     overrides:
       mythic: { severity: major }
     detect: { damage_ids: [1299396] }
-    tip: "Sair para mais de 40 jardas do machado depois do soak."
-    message: "{player} estava perto do machado no Death's Embrace"
+    tip: { pt: "Sair para mais de 40 jardas do machado depois do soak.", en: "Move more than 40 yards from the axe after the soak." }
+    message: { pt: "{player} estava perto do machado no Death's Embrace", en: "{player} was near the axe at Death's Embrace" }
 
   - key: soulbound
     name: "Soulbound"
@@ -445,7 +445,7 @@ mechanics:
       units: [zuljan, malacrass]
       enrage_aura_id: null
     max_hp_diff_pct: 10
-    tip: "Zul'jan morre antes dos roxos explodirem; depois há ~10s para matar o Malacrass."
-    message: "Soulbound: boss restante entrou em berserk"
+    tip: { pt: "Zul'jan morre antes dos roxos explodirem; depois há ~10s para matar o Malacrass.", en: "Zul'jan dies before the purples explode; then there are ~10s to kill Malacrass." }
+    message: { pt: "Soulbound: boss restante entrou em berserk", en: "Soulbound: the remaining boss went berserk" }
     notes: "1289798/1309987/1309995 são o vínculo aplicado no pull, não o berserk. ID do berserk ainda não visto."
     needs_id: true

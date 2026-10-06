@@ -18,33 +18,13 @@ import {
 } from '../lib/rules';
 import { mechanicSpellId } from '../lib/spells';
 import { SpellIcon } from './SpellIcon';
+import { messagesOf, useMessages } from '../i18n';
+import { tuningMsg } from './RuleTuning.i18n';
 
-export const KIND_LABEL: Record<string, string> = {
-  avoidable_damage: 'Dano evitável',
-  stack_limit: 'Limite de stacks',
-  soak: 'Soak',
-  tank_soak: 'Soak de tank',
-  interrupt: 'Interrupt',
-  tank_range: 'Alcance do tank',
-  positioning: 'Posicionamento',
-  enrage: 'Enrage',
-  failure_event: 'Falha do raid',
-  dispel: 'Dispel',
-  phase_duration: 'Tempo da fase',
-  hp_balance: 'HP dos bosses',
-  cc_required: 'CC',
-  spread: 'Espalhar',
-  add_kill: 'Matar adds',
-  unavoidable: 'Contexto',
-  info: 'Dica',
-};
+/** Nome do tipo de regra no idioma atual. */
+export const kindLabel = (kind: string) => messagesOf(tuningMsg).kinds[kind] ?? kind;
 
-const SEVERITIES: { value: MechanicSeverity; label: string }[] = [
-  { value: 'wipe', label: 'Causa de wipe' },
-  { value: 'major', label: 'Grave' },
-  { value: 'minor', label: 'Atenção' },
-  { value: 'none', label: 'Só contexto' },
-];
+const SEVERITIES: MechanicSeverity[] = ['wipe', 'major', 'minor', 'none'];
 
 const ROLES = [
   { value: 'tank', label: 'Tank' },
@@ -57,6 +37,7 @@ const ROLES = [
  * pode ser culpado e os textos. Salva só o que mudou e reanalisa o log.
  */
 export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: () => void; onClose: () => void }) {
+  const t = useMessages(tuningMsg);
   const [rules, setRules] = useState<BossRules | null>(null);
   const [draft, setDraft] = useState<Tuning | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -78,7 +59,7 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
   }, [pull.encounterId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saved = useMemo(() => JSON.stringify(rules?.tuning ?? null), [rules]);
-  if (!rules || !draft) return <p className="muted pad">{msg?.text ?? 'Lendo as regras…'}</p>;
+  if (!rules || !draft) return <p className="muted pad">{msg?.text ?? t.reading}</p>;
 
   // só as mecânicas que dá para ajustar (contexto puro não tem o que ajustar além de ligar)
   const mechs = rules.mechanics;
@@ -100,7 +81,7 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
     try {
       await rulesSaveTuning(clean);
       setRules((r) => r && { ...r, tuning: Object.keys(clean.mechanics).length || clean.custom.length ? clean : null });
-      setMsg({ ok: true, text: 'Ajustes salvos. Reanalisando o log…' });
+      setMsg({ ok: true, text: t.saved });
       onSaved();
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -115,7 +96,7 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
       await rulesResetTuning(rules!.encounterId);
       setRules((r) => r && { ...r, tuning: null });
       setDraft({ encounter_id: rules!.encounterId, name: rules!.name, mechanics: {}, custom: draft!.custom });
-      setMsg({ ok: true, text: 'Regras de volta ao padrão. Reanalisando o log…' });
+      setMsg({ ok: true, text: t.reset });
       onSaved();
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -128,23 +109,20 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
     <div className="rule-tuning">
       <header className="rule-tuning-head">
         <div>
-          <h3>Ajustar regras · {rules.name}</h3>
-          <p className="muted small">
-            Vale para todos os pulls deste boss, nas próximas análises. Marque com ★ o foco da progressão: essas mecânicas vêm primeiro no
-            veredito.
-          </p>
+          <h3>{t.title(rules.name)}</h3>
+          <p className="muted small">{t.intro}</p>
         </div>
         <div className="rule-tuning-actions">
           <button
             className="btn sm"
             disabled={!rules.tuning}
-            title={rules.tuning ? 'Salvar os ajustes num arquivo para mandar a outra pessoa' : 'Sem ajustes salvos para exportar'}
-            onClick={() => rules.tuning && saveJson(exportTuning(rules.tuning, rules.name), `ajustes-${fileSlug(rules.name)}.json`).catch((e) => setMsg({ ok: false, text: String(e) }))}
+            title={rules.tuning ? t.exportTitle : t.exportNone}
+            onClick={() => rules.tuning && saveJson(exportTuning(rules.tuning, rules.name), t.exportFile(fileSlug(rules.name))).catch((e) => setMsg({ ok: false, text: String(e) }))}
           >
-            <Download size={14} strokeWidth={1.5} aria-hidden /> Exportar
+            <Download size={14} strokeWidth={1.5} aria-hidden /> {t.export}
           </button>
-          <label className="btn sm" title="Carregar ajustes que alguém exportou (revise e salve)">
-            <Upload size={14} strokeWidth={1.5} aria-hidden /> Importar
+          <label className="btn sm" title={t.importTitle}>
+            <Upload size={14} strokeWidth={1.5} aria-hidden /> {t.import}
             <input
               type="file"
               accept=".json,application/json"
@@ -154,9 +132,9 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
                 e.target.value = '';
                 if (!file) return;
                 try {
-                  const t = parseTuningFile(await file.text(), rules.encounterId);
-                  setDraft(t);
-                  setMsg({ ok: true, text: 'Ajustes importados. Confira e clique em Salvar e reanalisar.' });
+                  const imported = parseTuningFile(await file.text(), rules.encounterId);
+                  setDraft(imported);
+                  setMsg({ ok: true, text: t.imported });
                 } catch (err) {
                   setMsg({ ok: false, text: err instanceof Error ? err.message : String(err) });
                 }
@@ -164,12 +142,12 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
             />
           </label>
           <button className="btn sm" onClick={onClose}>
-            Fechar
+            {t.close}
           </button>
         </div>
       </header>
 
-      {mechs.length === 0 && <p className="muted small">Este boss ainda não tem regras no app.</p>}
+      {mechs.length === 0 && <p className="muted small">{t.noRules}</p>}
 
       <div className="rule-rows" role="list">
         {mechs.map((m) => (
@@ -188,16 +166,16 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
 
       {draft.custom.length > 0 && (
         <section className="custom-rules">
-          <h4>Suas regras</h4>
-          <p className="muted small">Criadas na aba “Habilidades do boss”. Apagar aqui e salvar remove a regra.</p>
+          <h4>{t.yourRules}</h4>
+          <p className="muted small">{t.yourRulesHint}</p>
           <ul className="plain">
             {draft.custom.map((c) => (
               <li key={c.key} className="custom-rule">
                 <span>
-                  <strong>{c.name}</strong> <span className="muted small">· {KIND_LABEL[c.type] ?? c.type} · {c.severity}</span>
+                  <strong>{c.name}</strong> <span className="muted small">· {kindLabel(c.type)} · {t.severities[c.severity ?? 'minor'] ?? c.severity}</span>
                 </span>
                 <button className="link small" onClick={() => setDraft((d) => d && { ...d, custom: d.custom.filter((x) => x.key !== c.key) })}>
-                  apagar
+                  {t.delete}
                 </button>
               </li>
             ))}
@@ -209,13 +187,13 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
       <div className="dialog-actions">
         {(rules.tuning || tunedCount > 0) && (
           <button className="btn" onClick={resetAll} disabled={busy}>
-            <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> Restaurar o padrão
+            <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> {t.restore}
           </button>
         )}
         <span className="topbar-spacer" />
-        <span className="muted small">{tunedCount ? `${tunedCount} mecânica${tunedCount > 1 ? 's' : ''} ajustada${tunedCount > 1 ? 's' : ''}` : 'Regras padrão'}</span>
+        <span className="muted small">{tunedCount ? t.tuned(tunedCount) : t.defaults}</span>
         <button className="btn primary" onClick={save} disabled={busy || !dirty}>
-          {busy ? 'Salvando…' : 'Salvar e reanalisar'}
+          {busy ? t.saving : t.save}
         </button>
       </div>
     </div>
@@ -239,6 +217,7 @@ function RuleRow({
   onChange: (p: MechanicTuning) => void;
   onReset: () => void;
 }) {
+  const t = useMessages(tuningMsg);
   const enabled = ov?.enabled !== false;
   const focus = !!ov?.focus;
   const severity = (effective(m, ov, 'severity') ?? 'minor') as MechanicSeverity;
@@ -254,30 +233,30 @@ function RuleRow({
   return (
     <div className={`rule-row ${enabled ? '' : 'off'} ${tuned ? 'tuned' : ''}`} role="listitem">
       <div className="rule-line">
-        <label className="switch" title={enabled ? 'Desligar esta mecânica' : 'Ligar esta mecânica'}>
+        <label className="switch" title={enabled ? t.turnOff : t.turnOn}>
           <input type="checkbox" checked={enabled} onChange={(e) => onChange({ enabled: e.target.checked })} />
           <span aria-hidden />
         </label>
-        <button className={`icon-btn sm focus-star ${focus ? 'on' : ''}`} onClick={() => onChange({ focus: !focus })} aria-pressed={focus} title="Foco da progressão">
+        <button className={`icon-btn sm focus-star ${focus ? 'on' : ''}`} onClick={() => onChange({ focus: !focus })} aria-pressed={focus} title={t.focus}>
           <Star size={15} strokeWidth={1.75} fill={focus ? 'currentColor' : 'none'} aria-hidden />
         </button>
         <span className="rule-name">
           <SpellIcon spellId={spellId} size={18} /> {m.name}
-          <span className="muted small"> · {KIND_LABEL[m.type] ?? m.type}</span>
+          <span className="muted small"> · {kindLabel(m.type)}</span>
           {m.difficulty?.length ? <span className="muted small"> · {m.difficulty.join('/')}</span> : null}
         </span>
-        <select className="select sm" value={severity} disabled={!enabled} onChange={(e) => onChange({ severity: e.target.value as MechanicSeverity })} aria-label="Gravidade">
+        <select className="select sm" value={severity} disabled={!enabled} onChange={(e) => onChange({ severity: e.target.value as MechanicSeverity })} aria-label={t.severity}>
           {SEVERITIES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
+            <option key={s} value={s}>
+              {t.severities[s]}
             </option>
           ))}
         </select>
         {/* sempre no lugar (invisível sem ajuste) para a coluna de gravidade não pular */}
-        <button className={`icon-btn sm ${tuned ? '' : 'invisible'}`} onClick={onReset} title="Voltar ao padrão" tabIndex={tuned ? 0 : -1} aria-hidden={!tuned}>
+        <button className={`icon-btn sm ${tuned ? '' : 'invisible'}`} onClick={onReset} title={t.backToDefault} tabIndex={tuned ? 0 : -1} aria-hidden={!tuned}>
           <RotateCcw size={14} strokeWidth={1.5} aria-hidden />
         </button>
-        <button className="icon-btn sm" onClick={onToggleOpen} aria-expanded={open} title="Mais opções">
+        <button className="icon-btn sm" onClick={onToggleOpen} aria-expanded={open} title={t.more}>
           <ChevronDown size={15} strokeWidth={1.5} className={`chev-down ${open ? 'open' : ''}`} aria-hidden />
         </button>
       </div>
@@ -287,52 +266,52 @@ function RuleRow({
           <div className="rule-fields">
             {PER_HIT.has(m.type) && (
               <label className="field sm">
-                Hits tolerados por player
+                {t.tolerance}
                 <input className="text-input" type="number" min={0} value={effective(m, ov, 'tolerance') ?? 0} onChange={(e) => onChange({ tolerance: num(e.target.value) })} />
               </label>
             )}
             {m.type === 'stack_limit' && (
               <>
                 <label className="field sm">
-                  Avisar a partir de (stacks)
-                  <input className="text-input" type="number" min={0} value={effective(m, ov, 'warn_stacks') ?? ''} placeholder="sem aviso" onChange={(e) => onChange({ warn_stacks: num(e.target.value) })} />
+                  {t.warnStacks}
+                  <input className="text-input" type="number" min={0} value={effective(m, ov, 'warn_stacks') ?? ''} placeholder={t.noWarning} onChange={(e) => onChange({ warn_stacks: num(e.target.value) })} />
                 </label>
                 <label className="field sm">
-                  Stacks que matam
+                  {t.lethalStacks}
                   <input className="text-input" type="number" min={0} value={effective(m, ov, 'lethal_stacks') ?? ''} onChange={(e) => onChange({ lethal_stacks: num(e.target.value) })} />
                 </label>
               </>
             )}
             {m.type === 'dispel' && (
               <label className="field sm">
-                Tempo máximo até o dispel (s)
+                {t.maxDelay}
                 <input className="text-input" type="number" min={0} step={0.5} value={effective(m, ov, 'max_delay') ?? ''} onChange={(e) => onChange({ max_delay: num(e.target.value) })} />
               </label>
             )}
             {m.type === 'phase_duration' && (
               <>
                 <label className="field sm">
-                  Tempo bom (s)
+                  {t.targetS}
                   <input className="text-input" type="number" min={0} step={0.5} value={effective(m, ov, 'target_s') ?? ''} onChange={(e) => onChange({ target_s: num(e.target.value) })} />
                 </label>
                 <label className="field sm">
-                  Acima disto, lenta (s)
+                  {t.maxS}
                   <input className="text-input" type="number" min={0} step={0.5} value={effective(m, ov, 'max_s') ?? ''} onChange={(e) => onChange({ max_s: num(e.target.value) })} />
                 </label>
                 {m.overrides && Object.keys(m.overrides).length > 0 && !ov?.target_s && !ov?.max_s && (
                   <p className="muted small">
-                    O padrão muda por dificuldade (
-                    {Object.entries(m.overrides)
-                      .filter(([, o]) => o.target_s != null || o.max_s != null)
-                      .map(([d, o]) => `${d}: ${o.target_s ?? '—'}s / ${o.max_s ?? '—'}s`)
-                      .join(', ')}
-                    ); um ajuste aqui vale para todas.
+                    {t.perDifficulty(
+                      Object.entries(m.overrides)
+                        .filter(([, o]) => o.target_s != null || o.max_s != null)
+                        .map(([d, o]) => `${d}: ${o.target_s ?? '—'}s / ${o.max_s ?? '—'}s`)
+                        .join(', '),
+                    )}
                   </p>
                 )}
               </>
             )}
             <div className="field sm">
-              Quem pode ser culpado
+              {t.blame}
               <div className="chips">
                 {ROLES.map((r) => {
                   const on = roles.length === 0 || roles.includes(r.value);
@@ -346,14 +325,15 @@ function RuleRow({
             </div>
           </div>
           <label className="field">
-            Dica (o que o raid deve fazer)
+            {t.tip}
             <input className="text-input" value={effective(m, ov, 'tip') ?? ''} onChange={(e) => onChange({ tip: e.target.value })} />
           </label>
           <label className="field">
-            Mensagem no relatório <span className="muted small">— {'{player}'} {'{count}'} {'{stacks}'}</span>
+            {t.message} <span className="muted small">— {'{player}'} {'{count}'} {'{stacks}'}</span>
             <input className="text-input" value={effective(m, ov, 'message') ?? ''} onChange={(e) => onChange({ message: e.target.value })} />
           </label>
-          {typeof m.notes === 'string' && m.notes && <p className="muted small">Nota da regra: {m.notes}</p>}
+          <p className="muted small">{t.customTextNote}</p>
+          {typeof m.notes === 'string' && m.notes && <p className="muted small">{t.ruleNote(m.notes)}</p>}
         </div>
       )}
     </div>

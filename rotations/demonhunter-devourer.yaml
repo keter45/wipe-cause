@@ -19,12 +19,12 @@ sources:
 ignore_casts: [1223412, 1246169]
 
 key_points:
-  - "Entre na Void Metamorphosis e use o Void Ray assim que estiverem disponíveis: o dano vem das janelas de Meta."
-  - "Reap sempre que for coletar 4+ Soul Fragments (10 para o Eradicate), por causa do 4 peças."
-  - "Consume com Soulburst primeiro; Moment of Craving vai no próximo Reap / Cull."
-  - "Void-Scarred: use todos os golpes corpo a corpo (Voidblade, Hungering Slash, The Hunt) e passe pela Meta o mais rápido possível; Annihilator estende a Meta para soltar o máximo de Collapsing Star."
-  - "Leve procs e almas de um lado para o outro da Meta (smuggling): Hungering Slash vira Reaper's Toll dentro dela."
-  - "Soul Immolation no cooldown fora da Meta (ou com pouca Fury dentro dela)."
+  - { pt: "Entre na Void Metamorphosis e use o Void Ray assim que estiverem disponíveis: o dano vem das janelas de Meta.", en: "Enter Void Metamorphosis and use Void Ray as soon as they're available: the damage comes from the Meta windows." }
+  - { pt: "Reap sempre que for coletar 4+ Soul Fragments (10 para o Eradicate), por causa do 4 peças.", en: "Reap whenever it will collect 4+ Soul Fragments (10 for Eradicate), because of the 4-piece." }
+  - { pt: "Consume com Soulburst primeiro; Moment of Craving vai no próximo Reap / Cull.", en: "Consume with Soulburst first; Moment of Craving goes on the next Reap / Cull." }
+  - { pt: "Void-Scarred: use todos os golpes corpo a corpo (Voidblade, Hungering Slash, The Hunt) e passe pela Meta o mais rápido possível; Annihilator estende a Meta para soltar o máximo de Collapsing Star.", en: "Void-Scarred: use every melee strike (Voidblade, Hungering Slash, The Hunt) and get through Meta as fast as possible; Annihilator extends Meta to fire as many Collapsing Stars as possible." }
+  - { pt: "Leve procs e almas de um lado para o outro da Meta (smuggling): Hungering Slash vira Reaper's Toll dentro dela.", en: "Carry procs and souls from one side of Meta to the other (smuggling): Hungering Slash becomes Reaper's Toll inside it." }
+  - { pt: "Soul Immolation no cooldown fora da Meta (ou com pouca Fury dentro dela).", en: "Soul Immolation on cooldown outside Meta (or with little Fury inside it)." }
 
 hero_trees:
   - key: void_scarred
@@ -51,36 +51,36 @@ buffs:
 priority:
   void_scarred:
     st:
-      - { spell: consume, note: "fora da Meta: se for disparar o Soulburst" }
-      - { spell: reap, note: "com 4+ Soul Fragments" }
-      - { spell: soul_immolation, note: "se não houver uma ativa" }
-      - { spell: voidblade, note: "logo antes de entrar na Meta" }
-      - { spell: the_hunt, note: "no cooldown (Meta durante a viagem da Hunt)" }
-      - { spell: hungering_slash, note: "Hungering Slash / Reaper's Toll" }
-      - { spell: vengeful_retreat, note: "com Voidstep" }
+      - { spell: consume, note: { pt: "fora da Meta: se for disparar o Soulburst", en: "outside Meta: if it will trigger Soulburst" } }
+      - { spell: reap, note: { pt: "com 4+ Soul Fragments", en: "with 4+ Soul Fragments" } }
+      - { spell: soul_immolation, note: { pt: "se não houver uma ativa", en: "if none is active" } }
+      - { spell: voidblade, note: { pt: "logo antes de entrar na Meta", en: "right before entering Meta" } }
+      - { spell: the_hunt, note: { pt: "no cooldown (Meta durante a viagem da Hunt)", en: "on cooldown (Meta while The Hunt is travelling)" } }
+      - { spell: hungering_slash, note: { pt: "Hungering Slash / Reaper's Toll", en: "Hungering Slash / Reaper's Toll" } }
+      - { spell: vengeful_retreat, note: { pt: "com Voidstep", en: "with Voidstep" } }
       - { spell: void_ray }
-      - { spell: consume, note: "preenche (Devour na Meta)" }
+      - { spell: consume, note: { pt: "preenche (Devour na Meta)", en: "filler (Devour in Meta)" } }
     aoe:
-      - { spell: reap, note: "Eradicate com 10 Soul Fragments" }
+      - { spell: reap, note: { pt: "Eradicate com 10 Soul Fragments", en: "Eradicate with 10 Soul Fragments" } }
       - { spell: void_ray }
-      - { spell: consume, note: "Devour se for disparar o Soulburst" }
-      - { spell: hungering_slash, note: "Reaper's Toll" }
-      - { spell: voidblade, note: "Pierce the Veil" }
-      - { spell: the_hunt, note: "Predator's Wake" }
-      - { spell: soul_immolation, note: "com 20 de Fury ou menos, saindo da Meta" }
+      - { spell: consume, note: { pt: "Devour se for disparar o Soulburst", en: "Devour if it will trigger Soulburst" } }
+      - { spell: hungering_slash, note: { pt: "Reaper's Toll", en: "Reaper's Toll" } }
+      - { spell: voidblade, note: { pt: "Pierce the Veil", en: "Pierce the Veil" } }
+      - { spell: the_hunt, note: { pt: "Predator's Wake", en: "Predator's Wake" } }
+      - { spell: soul_immolation, note: { pt: "com 20 de Fury ou menos, saindo da Meta", en: "with 20 Fury or less, leaving Meta" } }
       - { spell: consume }
   annihilator:
     st:
-      - { spell: consume, note: "se for disparar o Soulburst" }
-      - { spell: reap, note: "com 4+ Soul Fragments" }
+      - { spell: consume, note: { pt: "se for disparar o Soulburst", en: "if it will trigger Soulburst" } }
+      - { spell: reap, note: { pt: "com 4+ Soul Fragments", en: "with 4+ Soul Fragments" } }
       - { spell: void_ray }
       - { spell: soul_immolation }
-      - { spell: collapsing_star, note: "na Meta, com 30 Soul Fragments" }
-      - { spell: consume, note: "preenche (Devour na Meta)" }
+      - { spell: collapsing_star, note: { pt: "na Meta, com 30 Soul Fragments", en: "in Meta, with 30 Soul Fragments" } }
+      - { spell: consume, note: { pt: "preenche (Devour na Meta)", en: "filler (Devour in Meta)" } }
     aoe:
-      - { spell: void_ray, note: "sem Eradicate" }
+      - { spell: void_ray, note: { pt: "sem Eradicate", en: "without Eradicate" } }
       - { spell: collapsing_star }
-      - { spell: reap, note: "só se der Voidfall ou almas para o Collapsing Star" }
+      - { spell: reap, note: { pt: "só se der Voidfall ou almas para o Collapsing Star", en: "only if it gives Voidfall or souls for Collapsing Star" } }
       - { spell: soul_immolation }
       - { spell: consume }
 
@@ -97,19 +97,19 @@ checks:
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem castar
-    tip: "Sempre castando: Reap e os golpes corpo a corpo são instantâneos para o movimento."
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre castando: Reap e os golpes corpo a corpo são instantâneos para o movimento.", en: "Always casting: Reap and the melee strikes are instant for movement." }
   - kind: proc
     id: soulburst
     buff: soulburst
     spenders: [consume]
     importance: medium
-    title: Soulburst perdido
-    tip: "Soulburst deixa o próximo Consume / Devour instantâneo e explodindo: use antes de acabar."
+    title: { pt: "Soulburst perdido", en: "Soulburst lost" }
+    tip: { pt: "Soulburst deixa o próximo Consume / Devour instantâneo e explodindo: use antes de acabar.", en: "Soulburst makes the next Consume / Devour instant and exploding: use it before it expires." }
   - kind: cooldown
     id: cooldowns
     spells: [the_hunt, soul_immolation, voidblade]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "The Hunt, Soul Immolation e Voidblade no cooldown."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "The Hunt, Soul Immolation e Voidblade no cooldown.", en: "The Hunt, Soul Immolation and Voidblade on cooldown." }

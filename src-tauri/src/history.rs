@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 use wipe_core::LogReport;
+use wipe_core::i18n::pick;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -74,7 +75,7 @@ pub fn entry_id(log_path: &str) -> String {
 /// "24/09 · The Twin Fangs Mythic +1": data do 1º pull + boss de raid com mais pulls (masmorras
 /// só entram no título se o log não tiver raid).
 pub fn title_of(report: &LogReport) -> String {
-    let Some(first) = report.pulls.first() else { return "Log sem pulls".into() };
+    let Some(first) = report.pulls.first() else { return pick("Log sem pulls", "Log without pulls") };
     let date = first.start_local.split(' ').next().unwrap_or("");
     let mut parts = date.split('/');
     let (m, d) = (parts.next().unwrap_or("?"), parts.next().unwrap_or("?"));
@@ -177,7 +178,7 @@ pub fn history_load(app: AppHandle, id: String) -> Result<serde_json::Value, Str
 
 fn load_in(dir: &Path, id: &str) -> Result<serde_json::Value, String> {
     let path = dir.join(format!("{id}.json.gz"));
-    let file = std::fs::File::open(&path).map_err(|_| "Análise não encontrada no histórico.".to_string())?;
+    let file = std::fs::File::open(&path).map_err(|_| pick("Análise não encontrada no histórico.", "Analysis not found in the history."))?;
     let mut json = String::new();
     GzDecoder::new(file).read_to_string(&mut json).map_err(|e| e.to_string())?;
     serde_json::from_str(&json).map_err(|e| e.to_string())

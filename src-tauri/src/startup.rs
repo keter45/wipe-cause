@@ -19,6 +19,7 @@ use std::process::Command;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use tauri_plugin_notification::NotificationExt;
+use wipe_core::i18n::pick;
 
 /// App aberto pelo vigia (ou pelo boot antigo): começa escondido na bandeja.
 pub const TRAY_ARG: &str = "--tray";
@@ -57,8 +58,11 @@ fn set_run_key(enabled: bool) -> Result<(), String> {
         Some(o) if o.status.success() => Ok(()),
         // desligar o que já não existe não é erro
         Some(_) if !enabled => Ok(()),
-        Some(o) => Err(format!("não foi possível configurar a inicialização com o Windows: {}", String::from_utf8_lossy(&o.stderr).trim())),
-        None => Err("não foi possível configurar a inicialização com o Windows".into()),
+        Some(o) => {
+            let err = String::from_utf8_lossy(&o.stderr).trim().to_string();
+            Err(pick(format!("não foi possível configurar a inicialização com o Windows: {err}"), format!("could not set up starting with Windows: {err}")))
+        }
+        None => Err(pick("não foi possível configurar a inicialização com o Windows", "could not set up starting with Windows")),
     }
 }
 
@@ -189,8 +193,8 @@ pub fn watch(app: AppHandle) {
                 let _ = app
                     .notification()
                     .builder()
-                    .title("Wipe Cause: ao vivo ligado")
-                    .body("O WoW abriu: cada pull vai ser analisado assim que terminar. O app fica na bandeja, perto do relógio.")
+                    .title(pick("Wipe Cause: ao vivo ligado", "Wipe Cause: live on"))
+                    .body(pick("O WoW abriu: cada pull vai ser analisado assim que terminar. O app fica na bandeja, perto do relógio.", "WoW opened: each pull will be analyzed as soon as it ends. The app stays in the tray, near the clock."))
                     .show();
             }
             was_running = running;

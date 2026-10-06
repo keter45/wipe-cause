@@ -1,15 +1,19 @@
 import { Minus, Plus, Skull } from 'lucide-react';
+import { useMessages } from '../i18n';
+import { cutoffMsg } from './CutoffStepper.i18n';
 
 /** "Analisar até N mortes": − [N] +. No topo o rótulo fica curto ("até 4 mortes") e some se a janela é estreita. */
 export function CutoffStepper({ value, disabled, title, onChange }: { value: number; disabled: boolean; title: string; onChange: (n: number) => void }) {
+  const t = useMessages(cutoffMsg);
   const set = (n: number) => onChange(Math.max(0, Math.min(40, n)));
   return (
-    <div className="stepper" role="group" aria-label="Ignorar eventos após N mortes" title={title}>
+    <div className="stepper" role="group" aria-label={t.aria} title={title}>
       <Skull size={16} strokeWidth={1.5} className="muted" aria-hidden />
       <span className="stepper-label">
-        <span className="stepper-long">Analisar </span>até
+        <span className="stepper-long">{t.analyze}</span>
+        {t.upTo}
       </span>
-      <button className="icon-btn sm" onClick={() => set(value - 1)} disabled={disabled || value <= 0} aria-label="Menos uma morte">
+      <button className="icon-btn sm" onClick={() => set(value - 1)} disabled={disabled || value <= 0} aria-label={t.less}>
         <Minus size={14} strokeWidth={2} aria-hidden />
       </button>
       <input
@@ -20,12 +24,12 @@ export function CutoffStepper({ value, disabled, title, onChange }: { value: num
         value={value}
         disabled={disabled}
         onChange={(e) => set(Number(e.target.value) || 0)}
-        aria-label="Número de mortes"
+        aria-label={t.count}
       />
-      <button className="icon-btn sm" onClick={() => set(value + 1)} disabled={disabled || value >= 40} aria-label="Mais uma morte">
+      <button className="icon-btn sm" onClick={() => set(value + 1)} disabled={disabled || value >= 40} aria-label={t.more}>
         <Plus size={14} strokeWidth={2} aria-hidden />
       </button>
-      <span className="stepper-label">{value === 0 ? 'mortes (desligado)' : value === 1 ? 'morte' : 'mortes'}</span>
+      <span className="stepper-label">{t.unit(value)}</span>
     </div>
   );
 }

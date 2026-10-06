@@ -8,6 +8,8 @@ import { CooldownCompare } from '../perf/CooldownCompare';
 import { Brand, type CardDetail } from './common';
 
 import { Stat, BurstCompare, burstKey, loadBurstPick, Rotation, Potions, SetupView } from '../perf/sections';
+import { messagesOf } from '../../i18n';
+import { perfViewMsg } from '../perf/perf.i18n';
 
 const SUMMARY_INSIGHTS = 5;
 
@@ -32,6 +34,7 @@ export function PerfShareCard({
   detail?: CardDetail;
 }) {
   const full = detail === 'full';
+  const t = messagesOf(perfViewMsg);
   const healer = isHealer(me.player);
   const [mo, ro] = [outputPerSec(me), outputPerSec(ref_)];
   const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
@@ -46,19 +49,18 @@ export function PerfShareCard({
             <PlayerName name={me.player.name} cls={me.player.class} /> · {specLabel(me.player.specId)}
           </div>
           <div className="share-sub">
-            <BossName encounterId={me.pull.encounterId} name={`${me.pull.encounterName} ${me.pull.difficultyName}`} size={16} /> · pull {me.pull.pullNumber} (
-            {me.pull.success ? 'kill' : 'wipe'}, {mmss(me.pull.durationMs)}) ·
-            comparado com {refName}
+            <BossName encounterId={me.pull.encounterId} name={`${me.pull.encounterName} ${me.pull.difficultyName}`} size={16} /> ·{' '}
+            {t.pullInfo(me.pull.pullNumber, me.pull.success, mmss(me.pull.durationMs))} · {t.comparedWith(refName)}
           </div>
         </div>
         <div className={`share-big ${diff < -3 ? 'warn' : ''}`}>{ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : ''}</div>
       </header>
 
       <div className="death-stats perf-stats">
-        <Stat label={`${healer ? 'Cura' : 'Dano'} por segundo vivo`} mine={num(mo)} ref={num(ro)} />
-        <Stat label="Tempo vivo" mine={mmss(me.player.aliveMs ?? 0)} ref={mmss(ref_.player.aliveMs ?? 0)} />
-        <Stat label="Casts por minuto" mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref_).toFixed(1)} />
-        <Stat label="Item level" mine={me.player.setup?.itemLevel.toFixed(1) ?? '—'} ref={ref_.player.setup?.itemLevel.toFixed(1) ?? '—'} />
+        <Stat label={t.perSecondAlive(healer)} mine={num(mo)} ref={num(ro)} />
+        <Stat label={t.timeAlive} mine={mmss(me.player.aliveMs ?? 0)} ref={mmss(ref_.player.aliveMs ?? 0)} />
+        <Stat label={t.cpm} mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref_).toFixed(1)} />
+        <Stat label={t.itemLevel} mine={me.player.setup?.itemLevel.toFixed(1) ?? '—'} ref={ref_.player.setup?.itemLevel.toFixed(1) ?? '—'} />
       </div>
 
       {full && links.length > 0 && (
@@ -73,7 +75,7 @@ export function PerfShareCard({
 
       {insights.length > 0 && (
         <section className="perf-section">
-          <h4>Pontos principais</h4>
+          <h4>{t.keyPoints}</h4>
           <ul className="perf-insights">
             {insights.map((i, k) => (
               <li key={k} className={`tone-${i.tone}`}>
@@ -81,19 +83,19 @@ export function PerfShareCard({
                 {i.text}
               </li>
             ))}
-            {!full && allInsights.length > insights.length && <li className="share-more">+{allInsights.length - insights.length} no relatório completo</li>}
+            {!full && allInsights.length > insights.length && <li className="share-more">{t.moreInFull(allInsights.length - insights.length)}</li>}
           </ul>
         </section>
       )}
 
       {windows.length > 0 && (
         <section className="perf-section">
-          <h4>Janelas de burst</h4>
+          <h4>{t.bursts}</h4>
           {windows.map((w) => (
             <div key={burstKey(w)} className="perf-card-burst">
               <span className="perf-card-burst-title">
                 <SpellName spellId={w.spellId} name={`${w.name} ${w.index}`} size={16} />
-                <span className="muted small"> {w.mine ? mmss(w.mine.start) : 'não usou'}</span>
+                <span className="muted small"> {w.mine ? mmss(w.mine.start) : t.notUsed}</span>
               </span>
               <BurstCompare w={w} />
             </div>
@@ -111,7 +113,10 @@ export function PerfShareCard({
       )}
 
       <footer className="share-foot">
-        <span className="share-muted">Por minuto vivo; cooldowns no tempo em que os dois estavam vivos.{full ? ' Relatório completo.' : ''}</span>
+        <span className="share-muted">
+          {t.cardFoot}
+          {full ? t.cardFull : ''}
+        </span>
         <Brand />
       </footer>
     </div>

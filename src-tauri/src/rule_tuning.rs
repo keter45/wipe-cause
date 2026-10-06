@@ -6,6 +6,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use wipe_core::rules::{RuleBook, Tuning, TUNABLE_FIELDS};
+use wipe_core::i18n::pick;
 
 /// Pasta dos ajustes (criada se não existir).
 pub fn tuning_dir(app: &AppHandle) -> Option<PathBuf> {
@@ -15,7 +16,7 @@ pub fn tuning_dir(app: &AppHandle) -> Option<PathBuf> {
 }
 
 fn tuning_file(app: &AppHandle, encounter_id: u32) -> Result<PathBuf, String> {
-    Ok(tuning_dir(app).ok_or("Sem pasta de dados do app.")?.join(format!("{encounter_id}.json")))
+    Ok(tuning_dir(app).ok_or_else(|| pick("Sem pasta de dados do app.", "No app data folder."))?.join(format!("{encounter_id}.json")))
 }
 
 /// Regras do app + as da pasta do usuário (sem ajustes).
@@ -73,7 +74,7 @@ pub fn rules_save_tuning(app: AppHandle, tuning: Tuning) -> Result<(), String> {
     }
     base_book(&app).apply_tuning(&tuning)?;
     let json = serde_json::to_string_pretty(&tuning).map_err(|e| e.to_string())?;
-    std::fs::write(&file, json).map_err(|e| format!("não foi possível salvar os ajustes: {e}"))
+    std::fs::write(&file, json).map_err(|e| pick(format!("não foi possível salvar os ajustes: {e}"), format!("could not save the adjustments: {e}")))
 }
 
 #[tauri::command]

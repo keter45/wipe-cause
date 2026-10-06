@@ -4,9 +4,12 @@ import type { Pull } from '../types';
 import { checkAssignments, parseAssignments, savedNote, saveNote } from '../lib/assignments';
 import { mmss } from '../lib/format';
 import { SpellName } from './SpellIcon';
+import { useMessages } from '../i18n';
+import { assignMsg } from './AssignmentsPanel.i18n';
 
 /** Escala de interrupts do boss: colar a nota e ver, cast a cast, de quem era a vez. */
 export function AssignmentsPanel({ pull }: { pull: Pull }) {
+  const t = useMessages(assignMsg);
   const mechs = pull.mechanics.filter((m) => m.kind === 'interrupt' && (m.casts?.length ?? 0) > 0);
   const [note, setNote] = useState(() => savedNote(pull));
   const [editing, setEditing] = useState(false);
@@ -18,25 +21,22 @@ export function AssignmentsPanel({ pull }: { pull: Pull }) {
     <section className="panel assignments">
       <header className="assign-head">
         <h3>
-          <ClipboardList size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> Escala de interrupts
+          <ClipboardList size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.title}
         </h3>
         <button className="btn ghost sm" onClick={() => setEditing(!editing)} aria-expanded={editing}>
-          {editing ? 'Fechar' : note.trim() ? 'Editar escala' : 'Colar escala'}
+          {editing ? t.close : note.trim() ? t.edit : t.paste}
         </button>
       </header>
 
       {editing && (
         <div className="assign-edit">
-          <p className="muted small">
-            Cole a nota do MRT/NSRT ou escreva uma linha por add, na ordem de quem corta: <code>{mechs[0].name}: Fulano, Ciclano, Beltrano</code>. A
-            escala fica salva para este boss e vale para todos os pulls.
-          </p>
+          <p className="muted small">{t.help(`${mechs[0].name}: ${t.names}`)}</p>
           <textarea
             className="text-input"
             rows={6}
             value={note}
             spellCheck={false}
-            placeholder={`${mechs[0].name}: Fulano, Ciclano, Beltrano\n${mechs[0].name}: Eternål, Zé`}
+            placeholder={`${mechs[0].name}: ${t.names}\n${mechs[0].name}: ${t.names2}`}
             onChange={(e) => {
               setNote(e.target.value);
               saveNote(pull, e.target.value);
@@ -51,9 +51,10 @@ export function AssignmentsPanel({ pull }: { pull: Pull }) {
                 :{' '}
                 {parsed.get(m.key)?.map((g, i) => (
                   <span key={i}>
-                    {i > 0 && ' · '}add {i + 1}: {g.join(' → ')}
+                    {i > 0 && ' · '}
+                    {t.add(i + 1)}: {g.join(' → ')}
                   </span>
-                )) ?? <span className="muted">nenhum player do raid reconhecido</span>}
+                )) ?? <span className="muted">{t.noneRecognized}</span>}
               </li>
             ))}
           </ul>
@@ -65,7 +66,7 @@ export function AssignmentsPanel({ pull }: { pull: Pull }) {
         if (!groups?.length) {
           return !editing ? (
             <p key={m.key} className="muted small">
-              Sem escala para <SpellName spellId={m.spellId} name={m.name} size={16} />: cole a nota para ver de quem era a vez em cada cast.
+              {t.noRoster(<SpellName spellId={m.spellId} name={m.name} size={16} />)}
             </p>
           ) : null;
         }
@@ -78,19 +79,19 @@ export function AssignmentsPanel({ pull }: { pull: Pull }) {
             </h4>
             {missed.length > 0 ? (
               <p className="small">
-                <strong className="bad">Passou na vez de: </strong>
-                {missed.map((k) => `${k.name} (${k.missed} de ${k.turns})`).join(', ')}
+                <strong className="bad">{t.missedTurn}</strong>
+                {missed.map((k) => t.missedOf(k.name, k.missed, k.turns)).join(', ')}
               </p>
             ) : (
-              <p className="small ok-text">Ninguém da escala deixou passar.</p>
+              <p className="small ok-text">{t.nobodyMissed}</p>
             )}
             <table className="players">
               <thead>
                 <tr>
-                  <th>Tempo</th>
+                  <th>{t.time}</th>
                   <th>Add</th>
-                  <th>Vez de</th>
-                  <th>Cortou</th>
+                  <th>{t.turnOf}</th>
+                  <th>{t.kicked}</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,15 +101,15 @@ export function AssignmentsPanel({ pull }: { pull: Pull }) {
                     <td className="muted">{c.source}</td>
                     <td>{c.assigned ?? <span className="muted">—</span>}</td>
                     <td className={!c.by ? 'bad' : c.by !== c.assigned ? 'warn' : ''}>
-                      {c.by ?? 'passou'}
-                      {c.by && c.assigned && c.by !== c.assigned && <span className="muted small"> (cobriu)</span>}
+                      {c.by ?? t.passed}
+                      {c.by && c.assigned && c.by !== c.assigned && <span className="muted small">{t.covered}</span>}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="muted small">
-              {kickers.map((k) => `${k.name}: ${k.kept}/${k.turns} na vez${k.covered ? `, cobriu ${k.covered}` : ''}`).join(' · ')}
+              {kickers.map((k) => t.kicker(k.name, k.kept, k.turns, k.covered)).join(' · ')}
             </p>
           </div>
         );

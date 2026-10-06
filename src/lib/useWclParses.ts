@@ -3,6 +3,8 @@ import type { Pull } from '../types';
 import { inTauri } from './api';
 import { useSetup } from './setup';
 import { fetchHistory, fetchKillParses, type PlayerParse } from './wclParses';
+import { messagesOf } from '../i18n';
+import { wclMsg } from './wcl.i18n';
 
 export type ParseState =
   | { kind: 'off'; reason: string }
@@ -18,9 +20,9 @@ export function useWclParses(pull: Pull, wclCode: string | undefined): ParseStat
   const configured = !!useSetup().status?.wcl?.configured;
   const [state, setState] = useState<ParseState>({ kind: 'loading' });
   useEffect(() => {
-    if (!inTauri) return setState({ kind: 'off', reason: 'O parse do Warcraft Logs aparece no app instalado.' });
-    if (!configured) return setState({ kind: 'off', reason: 'Conecte o Warcraft Logs em Configurações para ver os parses.' });
-    if (pull.success && !wclCode) return setState({ kind: 'off', reason: 'Cole o link do report da noite (Warcraft Logs, no topo) para ver os parses deste kill.' });
+    if (!inTauri) return setState({ kind: 'off', reason: messagesOf(wclMsg).parsesOnlyInApp });
+    if (!configured) return setState({ kind: 'off', reason: messagesOf(wclMsg).parsesConnect });
+    if (pull.success && !wclCode) return setState({ kind: 'off', reason: messagesOf(wclMsg).parsesNeedLink });
     let alive = true;
     setState({ kind: 'loading' });
     (pull.success ? fetchKillParses(wclCode!, pull) : fetchHistory(pull))

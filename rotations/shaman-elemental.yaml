@@ -12,12 +12,12 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/shaman_elemental.simc
 
 key_points:
-  - "Não desperdiçar Maelstrom: gaste com Elemental Blast / Earth Shock (Earthquake em AoE) antes de chegar ao máximo."
-  - "Sempre castando: o Elemental quase não tem mobilidade. Planeje o movimento e use Spiritwalker's Grace e Nature's Swiftness nos momentos de andar."
-  - "Reaja aos procs: Lava Surge vira um Lava Burst instantâneo; Master of the Elements vai no feitiço mais forte (Elemental Blast, Earth Shock, Tempest)."
-  - "Stormkeeper no cooldown e o Ascendance logo depois dele. Farseer: Stormkeeper → Ancestral Swiftness → Voltaic Blaze → Ascendance."
-  - "Flame Shock sempre no alvo: renove na janela de pandemic (últimos 30% da duração)."
-  - "A partir de 2 alvos, Chain Lightning no lugar de Lightning Bolt; Earthquake com 3+ (Farseer) ou 4+ (Stormbringer)."
+  - { pt: "Não desperdiçar Maelstrom: gaste com Elemental Blast / Earth Shock (Earthquake em AoE) antes de chegar ao máximo.", en: "Don't waste Maelstrom: spend with Elemental Blast / Earth Shock (Earthquake in AoE) before reaching the cap." }
+  - { pt: "Sempre castando: o Elemental quase não tem mobilidade. Planeje o movimento e use Spiritwalker's Grace e Nature's Swiftness nos momentos de andar.", en: "Always casting: Elemental has almost no mobility. Plan movement and use Spiritwalker's Grace and Nature's Swiftness when you need to move." }
+  - { pt: "Reaja aos procs: Lava Surge vira um Lava Burst instantâneo; Master of the Elements vai no feitiço mais forte (Elemental Blast, Earth Shock, Tempest).", en: "React to procs: Lava Surge becomes an instant Lava Burst; Master of the Elements goes on the strongest spell (Elemental Blast, Earth Shock, Tempest)." }
+  - { pt: "Stormkeeper no cooldown e o Ascendance logo depois dele. Farseer: Stormkeeper → Ancestral Swiftness → Voltaic Blaze → Ascendance.", en: "Stormkeeper on cooldown and Ascendance right after it. Farseer: Stormkeeper → Ancestral Swiftness → Voltaic Blaze → Ascendance." }
+  - { pt: "Flame Shock sempre no alvo: renove na janela de pandemic (últimos 30% da duração).", en: "Flame Shock always on the target: refresh in the pandemic window (last 30% of the duration)." }
+  - { pt: "A partir de 2 alvos, Chain Lightning no lugar de Lightning Bolt; Earthquake com 3+ (Farseer) ou 4+ (Stormbringer).", en: "From 2 targets, Chain Lightning instead of Lightning Bolt; Earthquake on 3+ (Farseer) or 4+ (Stormbringer)." }
 
 hero_trees:
   - key: farseer
@@ -52,44 +52,44 @@ buffs:
 priority:
   farseer:
     st:
-      - { spell: stormkeeper, note: "no cooldown" }
-      - { spell: ancestral_swiftness, note: "no cooldown" }
-      - { spell: ascendance, note: "perto do cooldown, sempre depois do Stormkeeper" }
-      - { spell: elemental_blast, note: "com Overcharge! (tier), perto do máximo de Maelstrom ou com Master of the Elements" }
-      - { spell: earth_shock, note: "mesmas condições, se não usar Elemental Blast" }
-      - { spell: lava_burst, note: "sem Master of the Elements ativo" }
-      - { spell: lightning_bolt, note: "para gastar Master of the Elements" }
-      - { spell: flame_shock, note: "renovar no pandemic, sem Master of the Elements" }
-      - { spell: voltaic_blaze, note: "renova o Flame Shock" }
-      - { spell: lightning_bolt, note: "preenche" }
+      - { spell: stormkeeper, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: ancestral_swiftness, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: ascendance, note: { pt: "perto do cooldown, sempre depois do Stormkeeper", en: "near cooldown, always after Stormkeeper" } }
+      - { spell: elemental_blast, note: { pt: "com Overcharge! (tier), perto do máximo de Maelstrom ou com Master of the Elements", en: "with Overcharge! (tier), near max Maelstrom or with Master of the Elements" } }
+      - { spell: earth_shock, note: { pt: "mesmas condições, se não usar Elemental Blast", en: "same conditions, if not using Elemental Blast" } }
+      - { spell: lava_burst, note: { pt: "sem Master of the Elements ativo", en: "without Master of the Elements up" } }
+      - { spell: lightning_bolt, note: { pt: "para gastar Master of the Elements", en: "to spend Master of the Elements" } }
+      - { spell: flame_shock, note: { pt: "renovar no pandemic, sem Master of the Elements", en: "refresh in pandemic, without Master of the Elements" } }
+      - { spell: voltaic_blaze, note: { pt: "renova o Flame Shock", en: "refreshes Flame Shock" } }
+      - { spell: lightning_bolt, note: { pt: "preenche", en: "filler" } }
     aoe:
-      - { spell: stormkeeper, note: "no cooldown" }
-      - { spell: ancestral_swiftness, note: "perto do cooldown" }
-      - { spell: ascendance, note: "depois do Stormkeeper" }
-      - { spell: earthquake, note: "3+ alvos" }
-      - { spell: elemental_blast, note: "2 alvos" }
-      - { spell: lava_burst, note: "com Lava Surge e Purging Flames" }
-      - { spell: voltaic_blaze, note: "no cooldown" }
-      - { spell: chain_lightning, note: "preenche" }
+      - { spell: stormkeeper, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: ancestral_swiftness, note: { pt: "perto do cooldown", en: "near cooldown" } }
+      - { spell: ascendance, note: { pt: "depois do Stormkeeper", en: "after Stormkeeper" } }
+      - { spell: earthquake, note: { pt: "3+ alvos", en: "3+ targets" } }
+      - { spell: elemental_blast, note: { pt: "2 alvos", en: "2 targets" } }
+      - { spell: lava_burst, note: { pt: "com Lava Surge e Purging Flames", en: "with Lava Surge and Purging Flames" } }
+      - { spell: voltaic_blaze, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: chain_lightning, note: { pt: "preenche", en: "filler" } }
   stormbringer:
     st:
-      - { spell: stormkeeper, note: "no cooldown" }
-      - { spell: ascendance, note: "perto do cooldown, sempre depois do Stormkeeper" }
-      - { spell: flame_shock, note: "renovar no pandemic" }
-      - { spell: voltaic_blaze, note: "renova o Flame Shock" }
-      - { spell: lava_burst, note: "sem estourar Maelstrom; com Lava Surge" }
-      - { spell: tempest, note: "para gastar Master of the Elements" }
-      - { spell: lightning_bolt, note: "com Stormkeeper, para gastar Master of the Elements" }
+      - { spell: stormkeeper, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: ascendance, note: { pt: "perto do cooldown, sempre depois do Stormkeeper", en: "near cooldown, always after Stormkeeper" } }
+      - { spell: flame_shock, note: { pt: "renovar no pandemic", en: "refresh in pandemic" } }
+      - { spell: voltaic_blaze, note: { pt: "renova o Flame Shock", en: "refreshes Flame Shock" } }
+      - { spell: lava_burst, note: { pt: "sem estourar Maelstrom; com Lava Surge", en: "without capping Maelstrom; with Lava Surge" } }
+      - { spell: tempest, note: { pt: "para gastar Master of the Elements", en: "to spend Master of the Elements" } }
+      - { spell: lightning_bolt, note: { pt: "com Stormkeeper, para gastar Master of the Elements", en: "with Stormkeeper, to spend Master of the Elements" } }
       - { spell: elemental_blast }
       - { spell: earth_shock }
-      - { spell: lightning_bolt, note: "preenche (ou Tempest)" }
+      - { spell: lightning_bolt, note: { pt: "preenche (ou Tempest)", en: "filler (or Tempest)" } }
     aoe:
-      - { spell: stormkeeper, note: "no cooldown" }
-      - { spell: ascendance, note: "depois do Stormkeeper" }
-      - { spell: earthquake, note: "4+ alvos" }
-      - { spell: elemental_blast, note: "3 alvos ou menos" }
-      - { spell: voltaic_blaze, note: "renova o Flame Shock" }
-      - { spell: chain_lightning, note: "preenche (ou Tempest)" }
+      - { spell: stormkeeper, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: ascendance, note: { pt: "depois do Stormkeeper", en: "after Stormkeeper" } }
+      - { spell: earthquake, note: { pt: "4+ alvos", en: "4+ targets" } }
+      - { spell: elemental_blast, note: { pt: "3 alvos ou menos", en: "3 targets or fewer" } }
+      - { spell: voltaic_blaze, note: { pt: "renova o Flame Shock", en: "refreshes Flame Shock" } }
+      - { spell: chain_lightning, note: { pt: "preenche (ou Tempest)", en: "filler (or Tempest)" } }
 
 # Abertura: empilhar os cooldowns nos primeiros segundos (a ordem entre eles varia: o guia e a
 # dica avançada dão ordens diferentes)
@@ -105,29 +105,29 @@ checks:
     power_type: 11
     resource: Maelstrom
     importance: high
-    title: Maelstrom desperdiçado
-    tip: "Gaste antes de chegar ao máximo: Elemental Blast / Earth Shock (Earthquake em AoE) quando faltar ~15 para o teto."
+    title: { pt: "Maelstrom desperdiçado", en: "Maelstrom wasted" }
+    tip: { pt: "Gaste antes de chegar ao máximo: Elemental Blast / Earth Shock (Earthquake em AoE) quando faltar ~15 para o teto.", en: "Spend before reaching the cap: Elemental Blast / Earth Shock (Earthquake in AoE) when ~15 from the cap." }
   - kind: downtime
     id: always_be_casting
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem castar
-    tip: "Sempre castando: use Spiritwalker's Grace e Nature's Swiftness para castar andando; se precisar mover, instantâneos (Flame Shock, Lava Surge)."
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre castando: use Spiritwalker's Grace e Nature's Swiftness para castar andando; se precisar mover, instantâneos (Flame Shock, Lava Surge).", en: "Always casting: use Spiritwalker's Grace and Nature's Swiftness to cast while moving; if you must move, instants (Flame Shock, Lava Surge)." }
   - kind: proc
     id: lava_surge
     buff: lava_surge
     spenders: [lava_burst]
     importance: medium
-    title: Lava Surge perdido
-    tip: "Lava Surge deixa o próximo Lava Burst instantâneo: use antes de acabar."
+    title: { pt: "Lava Surge perdido", en: "Lava Surge lost" }
+    tip: { pt: "Lava Surge deixa o próximo Lava Burst instantâneo: use antes de acabar.", en: "Lava Surge makes the next Lava Burst instant: use it before it expires." }
   - kind: dot_uptime
     id: flame_shock
     debuff: flame_shock
     min_uptime: 0.9
     importance: medium
-    title: Flame Shock fora do alvo
-    tip: "Mantenha o Flame Shock no alvo: renove (ou Voltaic Blaze) nos últimos 30% da duração."
+    title: { pt: "Flame Shock fora do alvo", en: "Flame Shock off the target" }
+    tip: { pt: "Mantenha o Flame Shock no alvo: renove (ou Voltaic Blaze) nos últimos 30% da duração.", en: "Keep Flame Shock on the target: refresh it (or Voltaic Blaze) in the last 30% of its duration." }
   - kind: aoe_swap
     id: chain_lightning
     casts: [lightning_bolt]
@@ -135,12 +135,12 @@ checks:
     min_targets: 2
     unless_buff: stormkeeper
     importance: medium
-    title: Lightning Bolt em AoE
-    tip: "Com 2+ alvos, Chain Lightning no lugar de Lightning Bolt."
+    title: { pt: "Lightning Bolt em AoE", en: "Lightning Bolt in AoE" }
+    tip: { pt: "Com 2+ alvos, Chain Lightning no lugar de Lightning Bolt.", en: "On 2+ targets, Chain Lightning instead of Lightning Bolt." }
   - kind: cooldown
     id: cooldowns
     spells: [stormkeeper, ascendance, ancestral_swiftness]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Stormkeeper e Ancestral Swiftness no cooldown; Ascendance logo depois do Stormkeeper."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Stormkeeper e Ancestral Swiftness no cooldown; Ascendance logo depois do Stormkeeper.", en: "Stormkeeper and Ancestral Swiftness on cooldown; Ascendance right after Stormkeeper." }

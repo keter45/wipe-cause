@@ -21,8 +21,8 @@ mechanics:
     difficulty: [mythic]
     severity: wipe
     detect: { enrage_aura_id: 1296898 }
-    tip: "Ativar o Serpent's Fury com 14 players no círculo antes da fúria encher."
-    message: "Sszorak enfureceu (Serpent's Fury não ativado a tempo)"
+    tip: { pt: "Ativar o Serpent's Fury com 14 players no círculo antes da fúria encher.", en: "Activate Serpent's Fury with 14 players in the circle before the fury fills." }
+    message: { pt: "Sszorak enfureceu (Serpent's Fury não ativado a tempo)", en: "Sszorak enraged (Serpent's Fury not activated in time)" }
     notes: "Aplicado segundos antes do fim de 10 wipes no log."
 
   - key: serpents_fury
@@ -32,8 +32,8 @@ mechanics:
     difficulty: [mythic]
     severity: major
     detect: { aura_id: 1305621 }
-    tip: "14 players entram no círculo do marcado para ativar."
-    message: "Serpent's Fury"
+    tip: { pt: "14 players entram no círculo do marcado para ativar.", en: "14 players step into the marked player's circle to activate it." }
+    message: { pt: "Serpent's Fury", en: "Serpent's Fury" }
 
   - key: virulence
     name: "Virulence"
@@ -42,18 +42,18 @@ mechanics:
     difficulty: [mythic]
     severity: none
     detect: { damage_ids: [1312189], aura_id: 1297707 }
-    tip: "Depois do soak, levar a marca para a borda e espalhar: o estouro deixa poça."
-    message: "Virulence"
+    tip: { pt: "Depois do soak, levar a marca para a borda e espalhar: o estouro deixa poça.", en: "After the soak, take the mark to the edge and spread: the burst leaves a pool." }
+    message: { pt: "Virulence", en: "Virulence" }
 
   - key: virulence_spread
-    name: "Virulence (espalhado)"
+    name: "Virulence (spread)"
     type: avoidable_damage
     source_unit: sszorak
     difficulty: [mythic]
     severity: minor
     detect: { damage_ids: [1300089] }
-    tip: "Ficar longe de quem vai estourar a Virulence."
-    message: "{player} foi pego pelo estouro de Virulence de outro ({count}x)"
+    tip: { pt: "Ficar longe de quem vai estourar a Virulence.", en: "Stay away from whoever is about to burst Virulence." }
+    message: { pt: "{player} foi pego pelo estouro de Virulence de outro ({count}x)", en: "{player} was caught by someone else's Virulence burst ({count}x)" }
     notes: "Hipótese: 1300089 é o estouro que acerta quem estava perto. Confirmar no vídeo."
 
   # ---------- Ventos ----------
@@ -63,8 +63,8 @@ mechanics:
     source_unit: sszorak
     severity: major
     detect: { aura_id: 1285447 }
-    tip: "Ver a sequência dos túneis e usar os Viscous Cysts para não cair; o boss toma +30% de dano nos ventos."
-    message: "Howling Maelstrom"
+    tip: { pt: "Ver a sequência dos túneis e usar os Viscous Cysts para não cair; o boss toma +30% de dano nos ventos.", en: "Watch the tunnel sequence and use the Viscous Cysts so you don't fall; the boss takes +30% damage during the winds." }
+    message: { pt: "Howling Maelstrom", en: "Howling Maelstrom" }
     notes: "Quem cai da plataforma aparece como dano de ambiente (queda)."
 
   - key: venomous_surge
@@ -73,8 +73,8 @@ mechanics:
     source_unit: sszorak
     severity: none
     detect: { damage_ids: [1306120, 1312156], aura_id: 1305963 }
-    tip: "Marcados soltam os Cysts no lado oposto aos túneis marcados."
-    message: "Venomous Surge"
+    tip: { pt: "Marcados soltam os Cysts no lado oposto aos túneis marcados.", en: "Marked players drop the Cysts on the side opposite the marked tunnels." }
+    message: { pt: "Venomous Surge", en: "Venomous Surge" }
 
   - key: viscous_cyst
     name: "Viscous Cyst"
@@ -82,8 +82,8 @@ mechanics:
     source_unit: sszorak
     severity: none
     detect: { damage_ids: [1287205], aura_id: 1287205 }
-    tip: "Estourar um Cyst em cada empurrão de vento; estourar os que sobrarem antes dos 2 minutos."
-    message: "Viscous Cyst"
+    tip: { pt: "Estourar um Cyst em cada empurrão de vento; estourar os que sobrarem antes dos 2 minutos.", en: "Pop one Cyst on each wind push; pop the leftovers before 2 minutes." }
+    message: { pt: "Viscous Cyst", en: "Viscous Cyst" }
 
   - key: raging_crosswinds
     name: "Raging Crosswinds"
@@ -91,8 +91,8 @@ mechanics:
     source_unit: sszorak
     severity: none
     detect: { damage_ids: [1285616, 1312219] }
-    tip: "Parear com alguém de seta oposta para os empurrões se anularem."
-    message: "Raging Crosswinds"
+    tip: { pt: "Parear com alguém de seta oposta para os empurrões se anularem.", en: "Pair with someone with the opposite arrow so the pushes cancel out." }
+    message: { pt: "Raging Crosswinds", en: "Raging Crosswinds" }
     notes: "Os marcados tomam o dano de qualquer jeito; errar o par aparece como queda."
 
   # ---------- Apex Predator (tank) ----------
@@ -103,8 +103,8 @@ mechanics:
     roles: [healer, dps]
     severity: major
     detect: { damage_ids: [1277101] }
-    tip: "Tank aponta o Ravage para longe; ninguém além do tank no cone."
-    message: "{player} foi pego pelo Ravage ({count}x)"
+    tip: { pt: "Tank aponta o Ravage para longe; ninguém além do tank no cone.", en: "The tank aims Ravage away; nobody but the tank in the cone." }
+    message: { pt: "{player} foi pego pelo Ravage ({count}x)", en: "{player} was caught by Ravage ({count}x)" }
 
   - key: ravage_tank
     name: "Ravage (tank)"
@@ -113,8 +113,8 @@ mechanics:
     roles: [tank]
     severity: none
     detect: { damage_ids: [1277101], aura_id: 1277105 }
-    tip: "Frontal solo com vulnerabilidade: taunt na sequência."
-    message: "Ravage"
+    tip: { pt: "Frontal solo com vulnerabilidade: taunt na sequência.", en: "Solo frontal with a vulnerability: taunt right after." }
+    message: { pt: "Ravage", en: "Ravage" }
 
   - key: mutilate
     name: "Mutilate"
@@ -122,18 +122,18 @@ mechanics:
     source_unit: sszorak
     severity: none
     detect: { damage_ids: [1285999, 1285998], cast_id: 1277027 }
-    tip: "Tank aponta o Mutilate para o raid e o grupo divide o dano."
-    message: "Mutilate"
+    tip: { pt: "Tank aponta o Mutilate para o raid e o grupo divide o dano.", en: "The tank aims Mutilate at the raid and the group splits the damage." }
+    message: { pt: "Mutilate", en: "Mutilate" }
 
   - key: mutilate_double
-    name: "Mutilate (soak duplo)"
+    name: "Mutilate (double soak)"
     type: avoidable_damage
     source_unit: sszorak
     difficulty: [heroic, mythic]
     severity: major
     detect: { damage_ids: [1285999], requires_aura: 1277051 }
-    tip: "Com a vulnerabilidade do Mutilate anterior, não soakar o próximo: alternar grupos."
-    message: "{player} soakou Mutilate com a vulnerabilidade ativa ({count}x)"
+    tip: { pt: "Com a vulnerabilidade do Mutilate anterior, não soakar o próximo: alternar grupos.", en: "With the vulnerability from the previous Mutilate, don't soak the next one: alternate groups." }
+    message: { pt: "{player} soakou Mutilate com a vulnerabilidade ativa ({count}x)", en: "{player} soaked Mutilate with the vulnerability up ({count}x)" }
     notes: "Mutilated Gash (1277051) é a vulnerabilidade de quem soakou; confirmar que é esse o debuff de 500%."
 
   - key: tempest
@@ -143,8 +143,8 @@ mechanics:
     severity: major
     detect: { damage_ids: [1287083] }
     tolerance: 2
-    tip: "Desviar dos tornados que saem do boss."
-    message: "{player} foi pego pelo Tempest ({count} hits)"
+    tip: { pt: "Desviar dos tornados que saem do boss.", en: "Dodge the tornadoes coming out of the boss." }
+    message: { pt: "{player} foi pego pelo Tempest ({count} hits)", en: "{player} was caught by Tempest ({count} hits)" }
     notes: "Hit e DoT têm o mesmo ID (e valores parecidos): a contagem inclui ticks; tolerance 2 para não culpar um tick isolado."
 
   - key: corroding_venom
@@ -154,8 +154,8 @@ mechanics:
     roles: [tank]
     severity: minor
     detect: { aura_id: 1282873 }
-    tip: "Trocar de tank com stacks altos."
-    message: "{player} chegou a {stacks} stacks de Corroding Venom"
+    tip: { pt: "Trocar de tank com stacks altos.", en: "Tank swap on high stacks." }
+    message: { pt: "{player} chegou a {stacks} stacks de Corroding Venom", en: "{player} reached {stacks} stacks of Corroding Venom" }
     notes: "Chega a 12 no log; sem warn_stacks até calibrar."
 
   # ---------- Poças ----------
@@ -166,8 +166,8 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: major
     detect: { damage_ids: [1305998] }
-    tip: "Sair dos círculos onde o veneno cai."
-    message: "{player} foi atingido por Caustic Claws ({count}x)"
+    tip: { pt: "Sair dos círculos onde o veneno cai.", en: "Get out of the circles where the venom lands." }
+    message: { pt: "{player} foi atingido por Caustic Claws ({count}x)", en: "{player} was hit by Caustic Claws ({count}x)" }
 
   - key: caustic_residue
     name: "Caustic Residue"
@@ -176,13 +176,13 @@ mechanics:
     severity: minor
     detect: { damage_ids: [1296667] }
     tolerance: 2
-    tip: "Não ficar nas poças de veneno."
-    message: "{player} tomou {count} ticks de Caustic Residue"
+    tip: { pt: "Não ficar nas poças de veneno.", en: "Don't stand in the venom pools." }
+    message: { pt: "{player} tomou {count} ticks de Caustic Residue", en: "{player} took {count} ticks of Caustic Residue" }
 
   - key: ulateks_presence
     name: "Ula'tek's Presence"
     type: unavoidable
     severity: none
     detect: { damage_ids: [1285965] }
-    tip: "Dano contínuo no raid a luta toda."
-    message: "Ula'tek's Presence"
+    tip: { pt: "Dano contínuo no raid a luta toda.", en: "Constant raid damage the whole fight." }
+    message: { pt: "Ula'tek's Presence", en: "Ula'tek's Presence" }

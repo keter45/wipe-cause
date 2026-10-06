@@ -8,6 +8,8 @@ import { PositionMap, type Mark } from '../PositionMap';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import { BossName, Colored } from '../Names';
 import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, timeOf, type CardDetail } from './common';
+import { tr, useMessages } from '../../i18n';
+import { shareMsg } from './share.i18n';
 
 const SUMMARY = { findings: 3, deaths: 3, scores: 4 };
 
@@ -17,6 +19,7 @@ const SUMMARY = { findings: 3, deaths: 3, scores: 4 };
  * quem errou, os interrupts que passaram e a tabela dos jogadores.
  */
 export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; detail?: CardDetail }) {
+  const t = useMessages(shareMsg);
   const full = detail === 'full';
   const v = analyzePull(p);
   const hp = lowestBossHp(p);
@@ -37,10 +40,10 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
     <Card
       tone={p.success ? 'kill' : 'wipe'}
       wide={full}
-      title={<BossName encounterId={p.encounterId} name={`${p.success ? 'Kill' : `Wipe · pull ${p.pullNumber}`} — ${p.encounterName} ${p.difficultyName}`} size={22} />}
-      sub={`${dateOf(p)} ${timeOf(p)} · ${mmss(p.durationMs)} · ${counted.length} morte${counted.length === 1 ? '' : 's'}`}
+      title={<BossName encounterId={p.encounterId} name={`${p.success ? 'Kill' : t.pullTitle(p.pullNumber)} — ${p.encounterName} ${p.difficultyName}`} size={22} />}
+      sub={`${dateOf(p)} ${timeOf(p)} · ${mmss(p.durationMs)} · ${t.deaths(counted.length)}`}
       big={!p.success && hp != null ? pct(hp) : undefined}
-      foot={full ? 'Relatório completo do pull' : undefined}
+      foot={full ? t.pullFoot : undefined}
     >
       <p className="share-headline">{v.headline}</p>
       {note && <p className="share-note">“{note}”</p>}
@@ -48,7 +51,7 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
       <div className="share-cols">
         <div>
           {shownFindings.length > 0 && (
-            <Section title="O que deu errado">
+            <Section title={t.wentWrong}>
               <ul>
                 {shownFindings.map((f, i) => (
                   <li key={i} className={f.severity}>
@@ -69,7 +72,7 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
             </Section>
           )}
           {decisive.length > 0 && (
-            <Section title="Mortes decisivas">
+            <Section title={t.decisiveDeaths}>
               <ul>
                 {decisive.map((d) => (
                   <li key={`${d.guid}:${d.t}`}>
@@ -79,7 +82,7 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
                       name={d.killingBlowMechanic ?? d.killingBlow?.spellName ?? '?'}
                       size={16}
                     />
-                    {d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0 && <span className="share-muted"> (sem defensivo)</span>}
+                    {d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0 && <span className="share-muted">{t.noDefensive}</span>}
                   </li>
                 ))}
                 {!full && <More n={v.decisiveDeaths.length - decisive.length} />}
@@ -87,21 +90,21 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
             </Section>
           )}
           {lowest.length > 0 && (
-            <Section title="Abaixo de 80" aside={!full && lowest.length > SUMMARY.scores ? `+${lowest.length - SUMMARY.scores}` : undefined}>
+            <Section title={t.below80} aside={!full && lowest.length > SUMMARY.scores ? `+${lowest.length - SUMMARY.scores}` : undefined}>
               <ScoreChips list={full ? lowest : lowest.slice(0, SUMMARY.scores)} />
             </Section>
           )}
         </div>
         {snap && (
           <div className="share-map">
-            <h4>Posições na falha ({mmss(snap.t)})</h4>
+            <h4>{t.positions(mmss(snap.t))}</h4>
             <PositionMap snap={snap} classes={classes} marks={marks} size={230} />
             <p className="share-legend">
-              <span className="lg-boss" /> boss · <span className="lg-player" /> jogador (cor da classe)
+              <span className="lg-boss" /> boss · <span className="lg-player" /> {t.legendPlayer}
               {marks.size > 0 && (
                 <>
                   {' '}
-                  · <span className="lg-culprit" /> errou {trigger!.name}
+                  · <span className="lg-culprit" /> {t.missed(trigger!.name)}
                 </>
               )}
             </p>
@@ -116,6 +119,7 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
 
 /** Só no completo: cada morte, as mecânicas, os interrupts e os jogadores. */
 function PullDetails({ pull: p }: { pull: Pull }) {
+  const t = useMessages(shareMsg);
   const scores = scorePull(p);
   const deaths = [...p.deaths].filter((d) => !d.ignored).sort((a, b) => a.t - b.t);
   const mechanics = p.mechanics.filter((m) => m.evaluated && m.failures > 0 && m.severity !== 'none');
@@ -124,26 +128,26 @@ function PullDetails({ pull: p }: { pull: Pull }) {
   return (
     <>
       {deaths.length > 0 && (
-        <Section title="Mortes em ordem">
+        <Section title={t.deathsInOrder}>
           <ol className="share-deaths">
             {deaths.map((d) => (
               <li key={`${d.guid}:${d.t}`}>
                 <span className="tabular share-muted">{mmss(d.t)}</span> <Who name={d.name} cls={d.class} /> —{' '}
                 {d.killingBlowMechanic ?? d.killingBlow?.spellName ?? '?'}
-                {d.causedBy && d.causedBy.name !== (d.killingBlowMechanic ?? d.killingBlow?.spellName) && <span className="share-muted"> (depois de {d.causedBy.name})</span>}
+                {d.causedBy && d.causedBy.name !== (d.killingBlowMechanic ?? d.killingBlow?.spellName) && <span className="share-muted">{t.after(d.causedBy.name)}</span>}
               </li>
             ))}
           </ol>
         </Section>
       )}
       {mechanics.length > 0 && (
-        <Section title="Mecânicas">
+        <Section title={t.mechanics}>
           <ul>
             {mechanics.map((m) => {
               const who = m.players.filter((x) => !x.credit && x.count > 0);
               return (
                 <li key={m.key} className={m.severity}>
-                  {m.spellId != null && <SpellIcon spellId={m.spellId} size={16} />} <strong>{m.name}</strong> — {m.summary || `${m.failures} falha${m.failures > 1 ? 's' : ''}`}
+                  {m.spellId != null && <SpellIcon spellId={m.spellId} size={16} />} <strong>{m.name}</strong> — {tr(m.summary) || t.failures(m.failures)}
                   {who.length > 0 && (
                     <span className="share-muted">
                       {' '}
@@ -164,26 +168,26 @@ function PullDetails({ pull: p }: { pull: Pull }) {
         </Section>
       )}
       {passed.length > 0 && (
-        <Section title="Interrupts que passaram">
+        <Section title={t.interruptsPassed}>
           <ul>
             {passed.map((e) => (
               <li key={e.spellId}>
-                <SpellName spellId={e.spellId} name={e.name} size={16} /> — {e.casts - e.interrupted} de {e.casts}
+                <SpellName spellId={e.spellId} name={e.name} size={16} /> — {t.outOf(e.casts - e.interrupted, e.casts)}
               </li>
             ))}
           </ul>
         </Section>
       )}
-      <Section title="Jogadores">
+      <Section title={t.players}>
         <table className="share-table">
           <thead>
             <tr>
-              <th>Jogador</th>
-              <th className="num">Nota</th>
+              <th>{t.player}</th>
+              <th className="num">{t.score}</th>
               <th className="num">DPS</th>
               <th className="num">HPS</th>
-              <th className="num">Dano tomado</th>
-              <th className="num">Interrupts</th>
+              <th className="num">{t.damageTaken}</th>
+              <th className="num">{t.interrupts}</th>
             </tr>
           </thead>
           <tbody>

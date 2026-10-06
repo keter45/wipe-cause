@@ -27,6 +27,8 @@ import { WclApiForm } from './WclApiForm';
 import { FirstSteps } from './FirstSteps';
 import { StartupForm } from './StartupForm';
 import { WcrCloudForm } from './WcrCloudForm';
+import { LOCALES, messagesOf, setLocale, useLocale, useMessages, type Locale } from '../../i18n';
+import { settingsMsg } from './SettingsView.i18n';
 
 type Tone = 'ok' | 'todo' | 'off' | 'info';
 
@@ -50,7 +52,7 @@ const LOGS_API: FolderApi = {
   detect: logsDetectDir,
   scan: async () => {
     const s = await logsList();
-    return { dir: s.dir, warning: s.warning, found: `${s.files.length} combat log${s.files.length === 1 ? '' : 's'} na pasta` };
+    return { dir: s.dir, warning: s.warning, found: messagesOf(settingsMsg).logsFound(s.files.length) };
   },
 };
 
@@ -61,7 +63,7 @@ const VIDEOS_API: FolderApi = {
   scan: async () => {
     await migrateWcrDir();
     const s = await wcrVideos();
-    return { dir: s.dir, warning: s.warning, found: `${s.videos.length} vídeos de encontros encontrados` };
+    return { dir: s.dir, warning: s.warning, found: messagesOf(settingsMsg).videosFound(s.videos.length) };
   },
 };
 
@@ -71,6 +73,7 @@ const VIDEOS_API: FolderApi = {
  */
 export function SettingsView({ focus, report, appVersion, updateState, onCheckUpdates, firstRun, onStart }: Props) {
   const { status, reload } = useSetup();
+  const t = useMessages(settingsMsg);
   const [open, setOpen] = useState<Set<SettingsSection>>(() => new Set(focus ? [focus.section] : []));
   const toggle = (s: SettingsSection) =>
     setOpen((prev) => {
@@ -115,109 +118,102 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
   return (
     <div className="settings">
       <header className="set-head">
-        <h1>Configurações</h1>
-        <p className="muted">O essencial para analisar os logs e as integrações que você pode ligar quando quiser. Tudo fica salvo só neste PC.</p>
+        <div className="set-title-row">
+          <h1>{t.title}</h1>
+          <LanguageSelect label={t.language} />
+        </div>
+        <p className="muted">{t.intro}</p>
         {status && (
           <div className="set-summary">
             <span className={`set-chip ${logsMissing ? 'todo' : 'ok'}`}>
               {logsMissing ? <CircleAlert size={14} strokeWidth={2} aria-hidden /> : <Check size={14} strokeWidth={2} aria-hidden />}
-              {logsMissing ? 'Falta a pasta de logs' : 'Essencial pronto'}
+              {logsMissing ? t.logsMissing : t.essentialReady}
             </span>
-            <span className="set-chip">
-              <span className="tabular">
-                {optional.done} de {optional.total}
-              </span>{' '}
-              integrações ligadas
-            </span>
+            <span className="set-chip">{t.integrationsOn(optional.done, optional.total)}</span>
           </div>
         )}
       </header>
       <FirstSteps firstRun={firstRun} onStart={onStart} onOpen={openSection} />
 
-      <SettingsGroup title="Essencial" hint="Sem isso não há o que analisar.">
+      <SettingsGroup title={t.groups.essential} hint={t.groups.essentialHint}>
         {card(
           'logs',
           FolderOpen,
-          'Pasta de logs do WoW',
-          'Onde o jogo grava os WoWCombatLog*.txt. A lista de “Nova análise” e o modo ao vivo leem daqui.',
+          t.logs.title,
+          t.logs.desc,
           !status ? 'info' : logsMissing ? 'todo' : 'ok',
-          !status ? '…' : logsMissing ? 'Falta configurar' : status.logsSource === 'detected' ? 'Detectada' : 'Configurada',
-          <FolderForm api={LOGS_API} pickTitle="Pasta de logs do WoW (World of Warcraft\_retail_\Logs)" placeholder="C:\Program Files (x86)\World of Warcraft\_retail_\Logs" detectedLabel="instalação do WoW" onSaved={reload} />,
+          !status ? '…' : logsMissing ? t.logs.missing : status.logsSource === 'detected' ? t.logs.detected : t.logs.configured,
+          <FolderForm api={LOGS_API} pickTitle={t.logs.pickTitle} placeholder="C:\Program Files (x86)\World of Warcraft\_retail_\Logs" detectedLabel={t.logs.detectedLabel} onSaved={reload} />,
         )}
         {card(
           'game',
           Gamepad2,
-          'Combat log no jogo',
-          'O WoW só grava o log quando você pede, e os detalhes dependem do Advanced Combat Logging.',
+          t.game.title,
+          t.game.desc,
           acl === 'on' ? 'ok' : acl === 'off' ? 'todo' : 'info',
-          acl === 'on' ? 'Ligado no log aberto' : acl === 'off' ? 'Desligado no log aberto' : 'Confira no jogo',
+          acl === 'on' ? t.game.on : acl === 'off' ? t.game.off : t.game.check,
           <ol className="small set-steps">
-            <li>
-              No jogo: <em>Opções → Rede → Advanced Combat Logging</em> ligado (uma vez só). Sem ele, HP, recap das mortes e posições ficam
-              incompletos.
-            </li>
-            <li>
-              Antes do primeiro pull da noite, digite <code>/combatlog</code> no chat (ou use um addon que liga sozinho na raid).
-            </li>
-            <li>O log vai para a pasta acima; depois é só abrir em “Nova análise” ou ligar o modo ao vivo.</li>
+            <li>{t.game.step1()}</li>
+            <li>{t.game.step2()}</li>
+            <li>{t.game.step3}</li>
           </ol>,
         )}
       </SettingsGroup>
 
-      <SettingsGroup title="Abrir com o WoW">
+      <SettingsGroup title={t.groups.startup}>
         {card(
           'startup',
           Power,
-          'Ao vivo quando o WoW abrir',
-          'Abriu o jogo, o Wipe Cause abre na bandeja e já acompanha a raid — sem precisar lembrar de ligar.',
+          t.startup.title,
+          t.startup.desc,
           status?.openWithWow ? 'ok' : 'off',
-          status?.openWithWow ? 'Ligado' : 'Desligado',
+          status?.openWithWow ? t.on : t.off,
           inTauri ? <StartupForm enabled={!!status?.openWithWow} onSaved={reload} /> : <OnlyInApp />,
         )}
       </SettingsGroup>
 
-      <SettingsGroup title="Análise">
+      <SettingsGroup title={t.groups.analysis}>
         {card(
           'analysis',
           Skull,
-          'Corte de mortes',
-          'Depois de algumas mortes o wipe já está decidido: dano, cura, erros e interrupts param de contar na N-ésima morte.',
+          t.cutoff.title,
+          t.cutoff.desc,
           'info',
-          cutoff === 0 ? 'Desligado' : `Após ${cutoff} morte${cutoff > 1 ? 's' : ''}`,
+          t.cutoff.label(cutoff),
           <>
             <CutoffStepper
               value={cutoff}
               disabled={false}
-              title="Padrão para logs novos. 0 = conta tudo."
+              title={t.cutoff.stepper}
               onChange={(n) => {
                 setCutoff(n);
                 saveDeathCutoff(n);
               }}
             />
-            <p className="muted small">Vale para os próximos logs. Para mudar só o log aberto, use o contador no topo (ele reanalisa na hora).</p>
+            <p className="muted small">{t.cutoff.note}</p>
           </>,
         )}
       </SettingsGroup>
 
-      <SettingsGroup title="Integrações" hint="Opcionais: cada uma liga um recurso a mais.">
+      <SettingsGroup title={t.groups.integrations} hint={t.groups.integrationsHint}>
         {card(
           'wcl',
           Trophy,
           'Warcraft Logs',
-          'Abre as noites da guilda sem o log no PC, compara você com os top players da spec e mostra o parse de cada um.',
+          t.wcl.desc,
           status?.wcl?.configured ? 'ok' : 'off',
-          status?.wcl?.user ? `Conectado: ${status.wcl.user.name}` : status?.wcl?.configured ? 'Conectado' : 'Não conectado',
+          status?.wcl?.user ? t.wcl.connectedAs(status.wcl.user.name) : status?.wcl?.configured ? t.wcl.connected : t.wcl.notConnected,
           inTauri ? <WclApiForm current={status?.wcl ?? null} onSaved={reload} /> : <OnlyInApp />,
         )}
         {card(
           'videos',
           Video,
-          'Vídeos do Warcraft Recorder',
-          'Assista ao gatilho do wipe e a cada morte no vídeo do Warcraft Recorder — o seu e, com a nuvem, o de quem mais da guilda subiu.',
+          t.videos.title,
+          t.videos.desc,
           status?.wcrDir || status?.wcrCloud?.configured ? 'ok' : 'off',
-          [status?.wcrDir ? 'Pasta encontrada' : null, status?.wcrCloud?.configured ? `Nuvem: ${status.wcrCloud.guild}` : null].filter(Boolean).join(' · ') || 'Sem pasta',
+          [status?.wcrDir ? t.videos.folderFound : null, status?.wcrCloud?.configured ? t.videos.cloud(status.wcrCloud.guild ?? '') : null].filter(Boolean).join(' · ') || t.videos.noFolder,
           <>
-            <FolderForm api={VIDEOS_API} pickTitle="Pasta de vídeos do Warcraft Recorder" placeholder="D:\WarcraftRecorder" detectedLabel="pasta do Warcraft Recorder" onSaved={reload} />
+            <FolderForm api={VIDEOS_API} pickTitle={t.videos.pickTitle} placeholder="D:\WarcraftRecorder" detectedLabel={t.videos.detectedLabel} onSaved={reload} />
             {inTauri && <WcrCloudForm current={status?.wcrCloud ?? null} onSaved={reload} />}
           </>,
         )}
@@ -225,30 +221,30 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           'discord',
           MessageSquare,
           'Discord',
-          'Manda o resumo de cada pull para o canal da raid, sozinho no modo ao vivo ou pelo botão “Discord”.',
+          t.discord.desc,
           status?.discord?.webhook ? 'ok' : 'off',
-          status?.discord?.webhook ? 'Ligado' : 'Desligado',
+          status?.discord?.webhook ? t.on : t.off,
           inTauri ? <DiscordForm current={status?.discord ?? null} onSaved={reload} /> : <OnlyInApp />,
         )}
         {card(
           'ai',
           Bot,
-          'Perguntar à IA',
-          'Tire dúvidas sobre o pull com um provedor gratuito (ou local). A IA recebe um dossiê da luta.',
+          t.ai.title,
+          t.ai.desc,
           status?.ai ? 'ok' : 'off',
-          status?.ai ? (aiPreset?.label ?? 'Configurada') : 'Não configurada',
+          status?.ai ? (aiPreset?.label ?? t.ai.configured) : t.ai.notConfigured,
           inTauri ? <AiForm current={status?.ai ?? null} onSaved={reload} /> : <OnlyInApp />,
         )}
       </SettingsGroup>
 
-      <SettingsGroup title="Sobre">
+      <SettingsGroup title={t.groups.about}>
         {card(
           'about',
           Info,
           'Wipe Cause',
-          'Versão, atualizações e a pasta das regras de boss.',
+          t.about.desc,
           updateState.kind === 'available' ? 'todo' : 'info',
-          updateState.kind === 'available' ? `v${updateState.version} disponível` : appVersion ? `v${appVersion}` : 'modo navegador',
+          updateState.kind === 'available' ? t.about.available(updateState.version) : appVersion ? `v${appVersion}` : t.about.browser,
           <About version={appVersion} state={updateState} onCheck={onCheckUpdates} />,
         )}
       </SettingsGroup>
@@ -316,36 +312,54 @@ function SettingsCard({
 }
 
 function OnlyInApp() {
-  return <p className="muted small">Configurar integrações funciona só no app instalado (no navegador a UI é só de exemplo).</p>;
+  return <p className="muted small">{useMessages(settingsMsg).onlyInApp}</p>;
+}
+
+/** Idioma do app (vale na hora, para todas as telas). */
+function LanguageSelect({ label }: { label: string }) {
+  const locale = useLocale();
+  return (
+    <label className="set-lang">
+      <span className="muted small">{label}</span>
+      <select className="select" value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
+        {LOCALES.map((l) => (
+          <option key={l.value} value={l.value}>
+            {l.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 function About({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
+  const t = useMessages(settingsMsg).about;
   const [rules, setRules] = useState<string | null>(null);
   useEffect(() => {
     rulesDir().then(setRules).catch(() => {});
   }, []);
   const label =
     state.kind === 'checking'
-      ? 'Procurando…'
+      ? t.checking
       : state.kind === 'none'
-        ? 'Você está na versão mais recente'
+        ? t.latest
         : state.kind === 'available'
-          ? `Versão ${state.version} disponível: instale pela faixa no topo`
+          ? t.availableLong(state.version)
           : state.kind === 'downloading'
-            ? 'Baixando atualização…'
+            ? t.downloading
             : state.kind === 'error'
               ? state.message
               : null;
   return (
     <>
       <div className="set-kv">
-        <span className="muted">Versão</span>
-        <span className="tabular">{version ? `v${version}` : 'modo navegador (desenvolvimento)'}</span>
+        <span className="muted">{t.version}</span>
+        <span className="tabular">{version ? `v${version}` : t.browserDev}</span>
       </div>
       {inTauri && (
         <div className="set-actions left">
           <button className="btn" onClick={onCheck} disabled={state.kind === 'checking' || state.kind === 'downloading'}>
-            <RefreshCw size={14} strokeWidth={1.5} className={state.kind === 'checking' ? 'spin' : ''} aria-hidden /> Procurar atualizações
+            <RefreshCw size={14} strokeWidth={1.5} className={state.kind === 'checking' ? 'spin' : ''} aria-hidden /> {t.check}
           </button>
           {label && <span className={`small ${state.kind === 'error' ? 'bad' : 'muted'}`}>{label}</span>}
         </div>
@@ -353,15 +367,13 @@ function About({ version, state, onCheck }: { version: string | null; state: Upd
       {rules && (
         <>
           <div className="set-kv">
-            <span className="muted">Regras de boss</span>
+            <span className="muted">{t.rules}</span>
             <code>{rules}</code>
           </div>
-          <p className="muted small">
-            Arquivos <code>.yaml</code> nesta pasta substituem as regras embutidas (mecânicas, dicas e quem deveria fazer o quê).
-          </p>
+          <p className="muted small">{t.rulesNote()}</p>
           <div className="set-actions left">
             <button className="btn ghost" onClick={() => revealInExplorer(rules)}>
-              <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> Mostrar no Explorador
+              <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> {t.reveal}
             </button>
           </div>
         </>

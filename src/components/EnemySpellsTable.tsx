@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Check, Plus } from 'lucide-react';
 import type { Pull } from '../types';
-import { num } from '../lib/format';
+import { num, damageSource } from '../lib/format';
 import { rulesGet } from '../lib/rules';
 import { SpellName } from './SpellIcon';
 import { CreateRule } from './CreateRule';
+import { useMessages } from '../i18n';
+import { enemySpellsMsg } from './EnemySpellsTable.i18n';
 
 /** IDs que alguma regra do boss (do app ou do usuário) já usa. */
 function coveredIds(mechs: { detect?: Record<string, unknown> }[]): Set<number> {
@@ -18,6 +20,7 @@ function coveredIds(mechs: { detect?: Record<string, unknown> }[]): Set<number> 
 }
 
 export function EnemySpellsTable({ pull, onRulesChanged }: { pull: Pull; onRulesChanged?: () => void }) {
+  const t = useMessages(enemySpellsMsg);
   const spells = pull.enemySpells;
   const [covered, setCovered] = useState<Set<number>>(new Set());
   const [creating, setCreating] = useState<number | null>(null);
@@ -32,22 +35,19 @@ export function EnemySpellsTable({ pull, onRulesChanged }: { pull: Pull; onRules
     };
   }, [pull]);
 
-  if (spells.length === 0) return <p className="muted pad">Nenhuma habilidade inimiga registrada.</p>;
+  if (spells.length === 0) return <p className="muted pad">{t.none}</p>;
   return (
     <>
-      <p className="muted small">
-        Tudo o que os inimigos castaram ou que causou dano em players neste pull. Achou algo que as regras não pegam? Use <strong>+ criar regra</strong>
-        para o app passar a apontar isso nos próximos pulls.
-      </p>
+      <p className="muted small">{t.intro()}</p>
       <table className="spells">
         <thead>
           <tr>
-            <th>Habilidade</th>
+            <th>{t.ability}</th>
             <th>ID</th>
-            <th>Origem</th>
+            <th>{t.source}</th>
             <th className="num">Casts</th>
-            <th className="num">Hits em players</th>
-            <th className="num">Dano em players</th>
+            <th className="num">{t.hits}</th>
+            <th className="num">{t.damage}</th>
             <th />
           </tr>
         </thead>
@@ -59,18 +59,18 @@ export function EnemySpellsTable({ pull, onRulesChanged }: { pull: Pull; onRules
                   <SpellName spellId={s.spellId} name={s.name} />
                 </td>
                 <td className="muted mono">{s.spellId}</td>
-                <td className="muted">{s.sources.join(', ')}</td>
+                <td className="muted">{s.sources.map(damageSource).join(', ')}</td>
                 <td className="num">{s.casts || ''}</td>
                 <td className="num">{s.hitsOnPlayers || ''}</td>
                 <td className="num">{s.damageToPlayers ? num(s.damageToPlayers) : ''}</td>
                 <td className="num">
                   {covered.has(s.spellId) ? (
-                    <span className="muted small rule-covered" title="Uma regra do boss já usa este spell">
-                      <Check size={13} strokeWidth={2} aria-hidden /> tem regra
+                    <span className="muted small rule-covered" title={t.coveredTitle}>
+                      <Check size={13} strokeWidth={2} aria-hidden /> {t.covered}
                     </span>
                   ) : (
                     <button className="link small" onClick={() => setCreating(creating === s.spellId ? null : s.spellId)} aria-expanded={creating === s.spellId}>
-                      <Plus size={13} strokeWidth={2} aria-hidden /> criar regra
+                      <Plus size={13} strokeWidth={2} aria-hidden /> {t.create}
                     </button>
                   )}
                 </td>

@@ -1,0 +1,36 @@
+import { defineMessages } from '../i18n';
+
+export const interruptsMsg = defineMessages(
+  {
+    none: 'Nenhum cast interrompível neste pull.',
+    enemyCast: 'Cast inimigo',
+    kicked: 'Cortados',
+    passed: 'Passaram',
+    kickedPct: '% cortado',
+    idle: 'Não cortaram nada',
+    hadKick: '(tinham interrupt):',
+    attempts: (n: number) => ` (${n} ${n === 1 ? 'tentativa' : 'tentativas'})`,
+    player: 'Jogador',
+    kicks: 'Cortes',
+    tries: 'Tentativas',
+    wasted: 'Perdidas',
+    wastedNote: '“Perdidas” = interrupt usado que não cortou nada (atrasado, alvo errado ou cast já cortado por outro).',
+    missed: 'não cortou nada',
+  },
+  {
+    none: 'No interruptible casts in this pull.',
+    enemyCast: 'Enemy cast',
+    kicked: 'Kicked',
+    passed: 'Went through',
+    kickedPct: '% kicked',
+    idle: "Didn't kick anything",
+    hadKick: '(had an interrupt):',
+    attempts: (n: number) => ` (${n} ${n === 1 ? 'attempt' : 'attempts'})`,
+    player: 'Player',
+    kicks: 'Kicks',
+    tries: 'Attempts',
+    wasted: 'Wasted',
+    wastedNote: '“Wasted” = an interrupt used that kicked nothing (late, wrong target or a cast already kicked by someone else).',
+    missed: 'kicked nothing',
+  },
+);

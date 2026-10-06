@@ -158,7 +158,7 @@ impl WclAnalyzer {
     pub fn add_report(&mut self, report: &Value, region: Option<&str>) -> Result<usize, String> {
         let start_time = int(&report["startTime"]);
         if start_time == 0 {
-            return Err("Report do Warcraft Logs sem startTime.".into());
+            return Err(crate::i18n::pick("Report do Warcraft Logs sem startTime.", "Warcraft Logs report without startTime."));
         }
         let index = self.sources.len();
         let region = region
@@ -227,7 +227,7 @@ impl WclAnalyzer {
             .iter()
             .find(|f| f.report == report && f.id == fight_id)
             .cloned()
-            .ok_or(format!("fight {fight_id} não é de boss"))?;
+            .ok_or_else(|| crate::i18n::pick(format!("fight {fight_id} não é de boss"), format!("fight {fight_id} isn't a boss fight")))?;
         let src = &self.sources[report];
         let t = fight.abs_start;
         let start = [

@@ -197,7 +197,7 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
         const a = await resolve(tok);
         if (!a) continue;
         const note = conditionNote(cond, nameOf);
-        const k = `${tok}|${note}`;
+        const k = `${tok}|${note?.pt}`;
         if (seen.has(k) || items.length >= 14 || items.filter((i) => i.spell === tok).length >= 2) continue;
         seen.add(k);
         items.push({ spell: tok, note });
@@ -241,7 +241,7 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
   const used = new Set();
   const playerFights = Math.max(1, logs.players.length);
 
-  checks.push({ kind: 'downtime', id: 'always_be_casting', gcd_ms: 1200, min_gap_ms: 800, importance: 'high', title: 'Tempo sem castar', tip: 'Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.' });
+  checks.push({ kind: 'downtime', id: 'always_be_casting', gcd_ms: 1200, min_gap_ms: 800, importance: 'high', title: { pt: 'Tempo sem castar', en: 'Time not casting' }, tip: { pt: 'Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.', en: 'Always have a GCD rolling: while moving, use the instant abilities.' } });
 
   // recurso: o que os gastos da APL consomem (sem mana e runas), se aparece no log como ganho
   const spendTypes = new Map();
@@ -260,7 +260,7 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
     const fromAbilities = Object.entries(energize.sources).filter(([id]) => ids.has(+id));
     const fromShare = fromAbilities.reduce((s, [, x]) => s + x.count, 0) / Math.max(1, total);
     const spenders = castable.filter((a) => a.entry?.resource?.type === rType && a.entry.resource.amount > 0).map((a) => a.name);
-    const c = { kind: 'resource_waste', id: token(rInfo.name), power_type: rType, resource: rInfo.name, importance: 'high', title: `${rInfo.name} desperdiçado`, tip: `Gaste${spenders.length ? ` com ${spenders.slice(0, 2).join(' / ')}` : ''} antes de chegar ao máximo de ${rInfo.name}.` };
+    const c = { kind: 'resource_waste', id: token(rInfo.name), power_type: rType, resource: rInfo.name, importance: 'high', title: { pt: `${rInfo.name} desperdiçado`, en: `${rInfo.name} wasted` }, tip: { pt: `Gaste${spenders.length ? ` com ${spenders.slice(0, 2).join(' / ')}` : ''} antes de chegar ao máximo de ${rInfo.name}.`, en: `Spend${spenders.length ? ` with ${spenders.slice(0, 2).join(' / ')}` : ''} before reaching max ${rInfo.name}.` } };
     if (fromShare < 0.85 && fromAbilities.length) {
       c.from = [...new Set(fromAbilities.map(([id]) => ids.get(+id)))];
       notes.push(`${rInfo.name}: ${pct(1 - fromShare)} vem de procs/passivos; só conta o dos geradores castados (from).`);
@@ -280,7 +280,7 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
     if (!id || logs.debuffs[id].count < playerFights) continue;
     const name = logs.debuffs[id].name;
     buffs[d] = { id, name };
-    checks.push({ kind: 'dot_uptime', id: d, debuff: d, min_uptime: 0.9, importance: 'medium', title: `${name} fora do alvo`, tip: `${name} sempre no alvo: renove no pandemic.` });
+    checks.push({ kind: 'dot_uptime', id: d, debuff: d, min_uptime: 0.9, importance: 'medium', title: { pt: `${name} fora do alvo`, en: `${name} off the target` }, tip: { pt: `${name} sempre no alvo: renove no pandemic.`, en: `${name} always on the target: refresh in pandemic.` } });
   }
 
   // procs: buff.X.react/up na condição de uma ação que o buff modifica (Affecting Spells do dump)
@@ -317,12 +317,12 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
     buffs[b] = { id: p.auraId, name };
     const sp = [...p.spenders].filter((s) => abilities.get(s)?.cast);
     if (!sp.length) continue;
-    checks.push({ kind: 'proc', id: b, buff: b, spenders: sp, importance: 'medium', title: `${name} perdido`, tip: `${name} melhora o próximo ${sp.map((s) => abilities.get(s).name).join(' / ')}: use antes de acabar.` });
+    checks.push({ kind: 'proc', id: b, buff: b, spenders: sp, importance: 'medium', title: { pt: `${name} perdido`, en: `${name} lost` }, tip: { pt: `${name} melhora o próximo ${sp.map((s) => abilities.get(s).name).join(' / ')}: use antes de acabar.`, en: `${name} empowers the next ${sp.map((s) => abilities.get(s).name).join(' / ')}: use it before it expires.` } });
   }
 
   // cooldowns: da APL, com 20s+ (ou cargas com 15s+)
   const cds = castable.filter((a) => a.cast && (a.cooldown_ms >= 20000 || (a.charges > 1 && a.cooldown_ms >= 15000)) && allActions.some((x) => x.action === a.key));
-  if (cds.length) checks.push({ kind: 'cooldown', id: 'cooldowns', spells: cds.map((a) => a.key), min_usage: 0.8, importance: 'medium', title: 'Cooldown parado', tip: `${cds.slice(0, 4).map((a) => a.name).join(', ')} no cooldown.` });
+  if (cds.length) checks.push({ kind: 'cooldown', id: 'cooldowns', spells: cds.map((a) => a.key), min_usage: 0.8, importance: 'medium', title: { pt: 'Cooldown parado', en: 'Cooldown sitting' }, tip: { pt: `${cds.slice(0, 4).map((a) => a.name).join(', ')} no cooldown.`, en: `${cds.slice(0, 4).map((a) => a.name).join(', ')} on cooldown.` } });
 
   // ---- calibração pelos tops
   const removed = [];
@@ -342,18 +342,18 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
         }
       } else if (c.kind === 'resource_waste') {
         if (med < 0.85) {
-          removed.push(`${c.title} (os tops desperdiçam ${pct(1 - med)})`);
+          removed.push(`${c.title.pt} (os tops desperdiçam ${pct(1 - med)})`);
           checks.splice(i, 1);
         }
       } else if (c.kind === 'dot_uptime') {
         if (med < 0.6) {
-          removed.push(`${c.title} (os tops ficam ${pct(med)} com ele)`);
+          removed.push(`${c.title.pt} (os tops ficam ${pct(med)} com ele)`);
           checks.splice(i, 1);
         } else c.min_uptime = clamp(round5(p25 - 0.03), 0.6, 0.95);
       } else if (c.kind === 'proc') {
         // proc de verdade os tops gastam quase sempre; abaixo disso é buff de janela ou gasto por outra coisa
         if (med < 0.85) {
-          removed.push(`${c.title} (os tops "perdem" ${pct(1 - med)}: o buff é gasto por outra coisa ou de propósito)`);
+          removed.push(`${c.title.pt} (os tops "perdem" ${pct(1 - med)}: o buff é gasto por outra coisa ou de propósito)`);
           checks.splice(i, 1);
         }
       } else if (c.kind === 'cooldown') {
@@ -420,11 +420,11 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
   const dotNames = checks.filter((c) => c.kind === 'dot_uptime').map((c) => buffs[c.debuff].name);
   const res = checks.find((c) => c.kind === 'resource_waste');
   const keyPoints = [
-    cdNames.length && `Cooldowns no cooldown: ${cdNames.join(', ')}.`,
-    dotNames.length && `Sempre no alvo: ${dotNames.join(', ')} (renove no pandemic).`,
-    procNames.length && `Gaste os procs antes de acabar: ${procNames.join('; ')}.`,
-    res && `Não estoure ${res.resource}.`,
-    checks.some((c) => c.kind === 'downtime') && 'Sempre com um GCD rodando; no movimento, as habilidades instantâneas.',
+    cdNames.length && { pt: `Cooldowns no cooldown: ${cdNames.join(', ')}.`, en: `Cooldowns on cooldown: ${cdNames.join(', ')}.` },
+    dotNames.length && { pt: `Sempre no alvo: ${dotNames.join(', ')} (renove no pandemic).`, en: `Always on the target: ${dotNames.join(', ')} (refresh in pandemic).` },
+    procNames.length && { pt: `Gaste os procs antes de acabar: ${procNames.join('; ')}.`, en: `Spend the procs before they expire: ${procNames.join('; ')}.` },
+    res && { pt: `Não estoure ${res.resource}.`, en: `Don't cap ${res.resource}.` },
+    checks.some((c) => c.kind === 'downtime') && { pt: 'Sempre com um GCD rodando; no movimento, as habilidades instantâneas.', en: 'Always have a GCD rolling; while moving, the instant abilities.' },
   ].filter(Boolean);
 
   const usedAbilities = new Set([

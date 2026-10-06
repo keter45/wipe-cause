@@ -1,5 +1,7 @@
 # wipe-cause
 
+[English](README.en.md) · Português
+
 Ferramenta para descobrir **por que a try deu wipe** no World of Warcraft. Lê o `WoWCombatLog.txt` direto da sua máquina e, com a sua conta do Warcraft Logs, completa a noite com o que o seu log não pegou — sem servidor próprio.
 
 ## Primeiros passos
@@ -22,6 +24,16 @@ Na primeira vez, o app abre em **Configurações** com o passo a passo (depois e
    - dano causado/tomado por player.
 
 Wipes com menos de 30s são ignorados.
+
+## Idiomas
+
+O app é em português (Brasil) e inglês: o idioma vem do sistema na primeira vez e troca em **Configurações** (no título da página), na hora e sem perder o que está aberto. A análise, as dicas das regras, a rotação, os cartões de compartilhar, as mensagens do Discord, o dossiê da IA e o menu da bandeja seguem o idioma escolhido. Nomes de habilidades, bosses e mecânicas ficam em inglês nos dois, como vêm do jogo.
+
+Para quem contribui: todo texto novo entra nas duas línguas na mesma mudança.
+
+- **Interface:** os textos ficam em dicionários (`*.i18n.ts`, com `defineMessages(pt, en)`); o inglês é tipado contra o português, então faltar uma frase não compila. Um teste falha se aparecer português fora dos dicionários, e outro se o lado inglês de um dicionário tiver português.
+- **Regras de boss e rotações (YAML):** dicas, mensagens, títulos e notas são `{ pt: "...", en: "..." }`; os nomes ficam em inglês. O teste do `wipe-core` confere as duas coisas.
+- **Notas de versão:** uma seção `## Português` e uma `## English` (o app mostra a do idioma escolhido).
 
 ## Ajustar as regras do boss
 
@@ -104,7 +116,7 @@ No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é po
 
 ## Rotação
 
-Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.yaml` (pontos principais, prioridade por árvore de herói em alvo único e AoE, abertura e checagens), feita a partir do guia de rotação do Wowhead e da APL do SimulationCraft do patch. Na aba **Desempenho**, o log do player é lido contra ela: aproveitamento (0–100), os erros claros e os ajustes, com o momento de cada um (▶ no vídeo), a abertura e o uso dos cooldowns.
+Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.yaml` (pontos principais, prioridade por árvore de herói em alvo único e AoE, abertura e checagens), feita a partir do guia de rotação do Wowhead e da APL do SimulationCraft do patch. Os textos (pontos principais, títulos, dicas e notas) ficam em português e inglês (`{ pt, en }`), como as dicas e mensagens das regras de boss. Na aba **Desempenho**, o log do player é lido contra ela: aproveitamento (0–100), os erros claros e os ajustes, com o momento de cada um (▶ no vídeo), a abertura e o uso dos cooldowns.
 
 Tipos de checagem: `proc` (buff que precisa ser gasto, carga por carga — ex.: Precise Shots, Demonic Core), `requires_buff` (casts que pedem um buff, em AoE ou sempre — ex.: Trick Shots só para quem tem o talento, Demonbolt com Demonic Core), `downtime` (tempo sem castar, só quando a raid estava batendo: intermissões não contam), `cooldown` (usos vs. possíveis no tempo vivo; talentos opcionais só contam se usados), `resource_waste` (recurso estourado, ex.: Maelstrom, Astral Power, Soul Shards; pode contar só os geradores castados, fora os procs automáticos), `dot_uptime` (DoT no alvo, ex.: Flame Shock), `aoe_swap` (com N+ alvos o cast deveria ser outro, ex.: Chain Lightning) e `after_cast` (cast que precisa vir logo antes ou depois de outro, ex.: Demonic Tyrant com os Dreadstalkers fora, Vanish seguido de Garrote).
 
@@ -196,4 +208,4 @@ Publicar uma versão:
 
 1. Suba a versão em `Cargo.toml`, `package.json` e `src-tauri/tauri.conf.json`.
 2. `npm run release:build` — build assinado com a chave privada em `~/.tauri/wipe-cause.key` (fora do repo; sem ela não dá para publicar atualizações, guarde um backup).
-3. `node scripts/release.mjs notas.md` — gera `target/release/upload/` com o instalador e o `latest.json` e mostra o `gh release create` para publicar os dois.
+3. `node scripts/release.mjs notas.md` (com as seções `## Português` e `## English`) — gera `target/release/upload/` com o instalador e o `latest.json` e mostra o `gh release create` para publicar os dois.

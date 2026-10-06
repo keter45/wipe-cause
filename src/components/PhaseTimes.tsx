@@ -4,8 +4,11 @@ import { useSeek } from '../lib/wcr';
 import { failedPhase, phaseLabel, phaseMechanics, phaseSec, phaseTone, phasesOfNight } from '../lib/phases';
 import { SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
+import { intlLocale, messagesOf, tr, useMessages } from '../i18n';
+import { phaseMsg } from './PhaseTimes.i18n';
 
-const ordinal = (i: number) => `${i + 1}ª`;
+const ordinal = (i: number) => messagesOf(phaseMsg).ordinal(i + 1);
+const oneDecimal = (n: number) => n.toLocaleString(intlLocale(), { maximumFractionDigits: 1 });
 const secs = (ms: number | undefined) => (ms != null ? `${Math.round(ms / 1000)}s` : '—');
 
 /** Pull: cada vez que a fase aconteceu, com a duração numa barra contra o tempo bom e o máximo. */
@@ -23,6 +26,7 @@ export function PullPhaseTimes({ pull }: { pull: Pull }) {
 
 function PhaseCard({ m }: { m: MechanicResult }) {
   const seek = useSeek();
+  const t = useMessages(phaseMsg);
   const windows = m.phases ?? [];
   const longest = Math.max(...windows.map((w) => phaseSec(w) ?? 0), 0);
   // escala: um pouco além do máximo (ou da mais longa) para as marcas caberem
@@ -34,9 +38,7 @@ function PhaseCard({ m }: { m: MechanicResult }) {
         <strong>
           <SpellName spellId={m.spellId} name={m.name} size={20} />
         </strong>
-        <span className="muted small">
-          tempo da fase · bom até {secs(m.targetMs)}, lenta acima de {secs(m.maxMs)}
-        </span>
+        <span className="muted small">{t.pullHead(secs(m.targetMs), secs(m.maxMs))}</span>
       </header>
       <ol className="phase-rows">
         {windows.map((w, i) => {
@@ -46,23 +48,21 @@ function PhaseCard({ m }: { m: MechanicResult }) {
             <li key={w.start} className="phase-row">
               <span className="phase-n">{ordinal(i)}</span>
               <span className="muted small tabular">{mmss(w.start)}</span>
-              <div className="phase-track" role="img" aria-label={`${ordinal(i)} vez: ${phaseLabel(w)}`}>
+              <div className="phase-track" role="img" aria-label={t.rowAria(ordinal(i), phaseLabel(w))}>
                 {s != null && <div className={`phase-bar ${tone}`} style={{ width: at(s) }} />}
-                {m.targetMs != null && <span className="phase-mark target" style={{ left: at(m.targetMs / 1000) }} title={`tempo bom: ${secs(m.targetMs)}`} />}
-                {m.maxMs != null && <span className="phase-mark max" style={{ left: at(m.maxMs / 1000) }} title={`lenta acima de ${secs(m.maxMs)}`} />}
+                {m.targetMs != null && <span className="phase-mark target" style={{ left: at(m.targetMs / 1000) }} title={t.goodTime(secs(m.targetMs))} />}
+                {m.maxMs != null && <span className="phase-mark max" style={{ left: at(m.maxMs / 1000) }} title={t.slowAbove(secs(m.maxMs))} />}
               </div>
               <strong className={`phase-time tabular ${tone}`}>{phaseLabel(w)}</strong>
               <span className="small phase-note">
                 {failedPhase(w) ? (
-                  <span className="bad">{w.wiped ? 'wipe na fase' : `${w.deaths} mortes na fase`}</span>
+                  <span className="bad">{w.wiped ? t.wipeInPhase : t.deathsInPhase(w.deaths ?? 0)}</span>
                 ) : w.deaths ? (
-                  <span className="warn">
-                    {w.deaths} morte{w.deaths > 1 ? 's' : ''}
-                  </span>
+                  <span className="warn">{t.deaths(w.deaths)}</span>
                 ) : tone === 'good' ? (
-                  <span className="good">no tempo</span>
+                  <span className="good">{t.onTime}</span>
                 ) : tone === 'bad' ? (
-                  <span className="bad">lenta</span>
+                  <span className="bad">{t.slow}</span>
                 ) : null}
               </span>
               <PlayAt t={w.start} seek={seek} />
@@ -70,13 +70,14 @@ function PhaseCard({ m }: { m: MechanicResult }) {
           );
         })}
       </ol>
-      {m.tip && <p className="muted small">{m.tip}</p>}
+      {tr(m.tip) && <p className="muted small">{tr(m.tip)}</p>}
     </section>
   );
 }
 
 /** Boss na noite: a fase pull a pull (1ª, 2ª, 3ª vez), o melhor de cada vez e a média. */
 export function NightPhaseTimes({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPull?: (id: number) => void }) {
+  const t = useMessages(phaseMsg);
   const phases = phasesOfNight(pulls);
   if (!phases.length) return null;
   return (
@@ -88,8 +89,8 @@ export function NightPhaseTimes({ pulls, onSelectPull }: { pulls: Pull[]; onSele
               <SpellName spellId={n.spellId} name={n.name} size={20} />
             </strong>
             <span className="muted small">
-              tempo de cada vez, pull a pull · bom até {secs(n.targetMs)}, lenta acima de {secs(n.maxMs)}
-              {n.avg != null && ` · média da noite ${n.avg.toFixed(1).replace('.', ',').replace(/,0$/, '')}s`}
+              {t.nightHead(secs(n.targetMs), secs(n.maxMs))}
+              {n.avg != null && t.nightAvg(oneDecimal(n.avg))}
             </span>
           </header>
           <div className="table-scroll">
@@ -102,7 +103,7 @@ export function NightPhaseTimes({ pulls, onSelectPull }: { pulls: Pull[]; onSele
                       {ordinal(i)}
                     </th>
                   ))}
-                  <th className="num">Média</th>
+                  <th className="num">{t.avg}</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,24 +126,21 @@ export function NightPhaseTimes({ pulls, onSelectPull }: { pulls: Pull[]; onSele
                         if (!w) return <td key={i} className="num muted">—</td>;
                         const best = n.best[i] != null && phaseSec(w) === n.best[i] && !failedPhase(w);
                         return (
-                          <td key={i} className={`num phase-cell ${phaseTone(w, n)}`} title={w.deaths ? `${w.deaths} morte(s) na fase` : undefined}>
+                          <td key={i} className={`num phase-cell ${phaseTone(w, n)}`} title={w.deaths ? t.cellDeaths(w.deaths) : undefined}>
                             {phaseLabel(w)}
                             {(w.deaths ?? 0) > 0 && <span className="small"> †{w.deaths}</span>}
-                            {best && <span className="phase-best" aria-label="melhor da noite"> ★</span>}
+                            {best && <span className="phase-best" aria-label={t.bestOfNight}> ★</span>}
                           </td>
                         );
                       })}
-                      <td className="num">{avg != null ? `${avg.toFixed(1).replace('.', ',').replace(/,0$/, '')}s` : '—'}</td>
+                      <td className="num">{avg != null ? `${oneDecimal(avg)}s` : '—'}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <p className="muted small">
-            Verde no tempo bom, amarelo entre o bom e o máximo, vermelho lenta · ★ melhor da noite em cada vez · † mortes dentro da fase (3 ou mais = a
-            mecânica deu errado, fica fora da média).
-          </p>
+          <p className="muted small">{t.legend}</p>
         </section>
       ))}
     </>

@@ -14,6 +14,7 @@ use std::net::{TcpListener, TcpStream};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::AppHandle;
 use tauri_plugin_opener::OpenerExt;
+use wipe_core::i18n::pick;
 
 /// Client público do Wipe Cause no Warcraft Logs (o id não é segredo; PKCE dispensa o secret).
 /// `WIPE_WCL_CLIENT_ID` troca em tempo de execução (desenvolvimento).
@@ -74,9 +75,9 @@ fn set_secret(name: &str, value: &str) -> Result<(), String> {
     let chars: Vec<char> = value.chars().collect();
     let parts: Vec<String> = chars.chunks(CHUNK).map(|c| c.iter().collect()).collect();
     for (i, part) in parts.iter().enumerate() {
-        entry(&format!("{name}#{i}")).ok_or("cofre de credenciais indisponível")?.set_password(part).map_err(|e| e.to_string())?;
+        entry(&format!("{name}#{i}")).ok_or_else(|| pick("cofre de credenciais indisponível", "credential vault unavailable"))?.set_password(part).map_err(|e| e.to_string())?;
     }
-    entry(name).ok_or("cofre de credenciais indisponível")?.set_password(&parts.len().to_string()).map_err(|e| e.to_string())
+    entry(name).ok_or_else(|| pick("cofre de credenciais indisponível", "credential vault unavailable"))?.set_password(&parts.len().to_string()).map_err(|e| e.to_string())
 }
 
 fn get_secret(name: &str) -> Option<String> {
@@ -145,7 +146,7 @@ fn query_param(query: &str, key: &str) -> Option<String> {
 }
 
 fn save_session(json: &serde_json::Value, old_refresh: Option<String>) -> Result<Session, String> {
-    let access_token = json["access_token"].as_str().ok_or("O Warcraft Logs não devolveu o token.")?.to_string();
+    let access_token = json["access_token"].as_str().ok_or_else(|| pick("O Warcraft Logs não devolveu o token.", "Warcraft Logs didn't return the token."))?.to_string();
     let secs = json["expires_in"].as_i64().unwrap_or(3600);
     let s = Session {
         access_token,
@@ -153,7 +154,7 @@ fn save_session(json: &serde_json::Value, old_refresh: Option<String>) -> Result
         expires_at: now_ms() + secs * 1000,
     };
     let text = serde_json::to_string(&s).map_err(|e| e.to_string())?;
-    set_secret(SESSION_KEY, &text).map_err(|e| format!("não foi possível guardar o login: {e}"))?;
+    set_secret(SESSION_KEY, &text).map_err(|e| pick(format!("não foi possível guardar o login: {e}"), format!("could not store the login: {e}")))?;
     Ok(s)
 }
 
@@ -171,7 +172,7 @@ fn post_token(form: &[(&str, &str)]) -> Result<serde_json::Value, String> {
             };
             Err(format!("O Warcraft Logs recusou o login ({code}): {detail}"))
         }
-        Err(e) => Err(format!("Sem conexão com o Warcraft Logs: {e}")),
+        Err(e) => Err(pick(format!("Sem conexão com o Warcraft Logs: {e}"), format!("No connection to Warcraft Logs: {e}"))),
     }
 }
 
@@ -194,7 +195,7 @@ pub fn forget_session() {
 const PROFILE_QUERY: &str = "query { userData { currentUser { id name guilds { id name server { slug name region { slug } } } } } }";
 
 fn fetch_profile(token: &str) -> Result<WclUser, String> {
-    let data = crate::wcl::post_graphql(USER_API, token, PROFILE_QUERY, &serde_json::json!({}))?;
+    let data = crate::wcl::post_graphql(USER_API, token, PROFILE_QUERY, &serde_json::json!({})).map_err(|e| if e == crate::wcl::UNAUTHORIZED { pick("Sessão do Warcraft Logs expirou; tente de novo.", "The Warcraft Logs session expired; try again.") } else { e })?;
     let u = &data["userData"]["currentUser"];
     let guilds = u["guilds"]
         .as_array()
@@ -231,7 +232,7 @@ fn wait_callback(listener: &TcpListener) -> Result<(TcpStream, String), String> 
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 if Instant::now() > deadline {
-                    return Err("O login não foi concluído a tempo. Tente de novo.".into());
+                    return Err(pick("O login não foi concluído a tempo. Tente de novo.", "The login didn't finish in time. Try again."));
                 }
                 std::thread::sleep(Duration::from_millis(200));
             }
@@ -241,8 +242,8 @@ fn wait_callback(listener: &TcpListener) -> Result<(TcpStream, String), String> 
 }
 
 fn login(app: &AppHandle) -> Result<WclUser, String> {
-    let id = client_id().ok_or("Esta versão do app ainda não tem o login do Warcraft Logs configurado.")?;
-    let listener = TcpListener::bind(("127.0.0.1", PORT)).map_err(|_| format!("A porta {PORT} está ocupada (outro login aberto?). Feche e tente de novo."))?;
+    let id = client_id().ok_or_else(|| pick("Esta versão do app ainda não tem o login do Warcraft Logs configurado.", "This version of the app doesn't have the Warcraft Logs login set up yet."))?;
+    let listener = TcpListener::bind(("127.0.0.1", PORT)).map_err(|_| pick(format!("A porta {PORT} está ocupada (outro login aberto?). Feche e tente de novo."), format!("Port {PORT} is busy (another login open?). Close it and try again.")))?;
     let verifier = random(48)?;
     let challenge = b64url(&Sha256::digest(verifier.as_bytes()));
     let state = random(16)?;
@@ -251,14 +252,17 @@ fn login(app: &AppHandle) -> Result<WclUser, String> {
         enc(&id),
         enc(&redirect_uri()),
     );
-    app.opener().open_url(&url, None::<&str>).map_err(|e| format!("não foi possível abrir o navegador: {e}"))?;
+    app.opener().open_url(&url, None::<&str>).map_err(|e| pick(format!("não foi possível abrir o navegador: {e}"), format!("could not open the browser: {e}")))?;
 
     let (mut stream, query) = wait_callback(&listener)?;
     // a aba do navegador só responde depois da troca do código: mostra o resultado de verdade
     let result = finish_login(&id, &verifier, &state, &query);
     let (title, text) = match &result {
-        Ok(u) => (format!("Pronto, você entrou como {}.", html_escape(&u.name)), "Pode fechar esta aba e voltar ao Wipe Cause.".to_string()),
-        Err(e) => ("Não foi possível entrar.".to_string(), html_escape(e)),
+        Ok(u) => {
+            let name = html_escape(&u.name);
+            (pick(format!("Pronto, você entrou como {name}."), format!("Done, you are signed in as {name}.")), pick("Pode fechar esta aba e voltar ao Wipe Cause.", "You can close this tab and go back to Wipe Cause."))
+        }
+        Err(e) => (pick("Não foi possível entrar.", "Could not sign in."), html_escape(e)),
     };
     let body = format!(
         "<!doctype html><meta charset=utf-8><title>Wipe Cause</title><body style=\"font-family:system-ui;background:#0f1115;color:#e6e8ee;display:grid;place-items:center;height:100vh;margin:0\"><div style=\"text-align:center;max-width:560px;padding:16px\"><h2>{title}</h2><p style=\"color:#8b93a5\">{text}</p></div>"
@@ -274,12 +278,16 @@ fn html_escape(s: &str) -> String {
 /// Confere a resposta do navegador, troca o código pelo token e busca o perfil.
 fn finish_login(id: &str, verifier: &str, state: &str, query: &str) -> Result<WclUser, String> {
     if query_param(query, "state").as_deref() != Some(state) {
-        return Err("Resposta de login inválida (state não confere).".into());
+        return Err(pick("Resposta de login inválida (state não confere).", "Invalid login response (state doesn't match)."));
     }
     if let Some(err) = query_param(query, "error") {
-        return Err(if err == "access_denied" { "Login cancelado no Warcraft Logs.".into() } else { format!("O Warcraft Logs recusou o login: {err}") });
+        return Err(if err == "access_denied" {
+            pick("Login cancelado no Warcraft Logs.", "Login cancelled on Warcraft Logs.")
+        } else {
+            pick(format!("O Warcraft Logs recusou o login: {err}"), format!("Warcraft Logs rejected the login: {err}"))
+        });
     }
-    let code = query_param(query, "code").ok_or("O Warcraft Logs não devolveu o código de login.")?;
+    let code = query_param(query, "code").ok_or_else(|| pick("O Warcraft Logs não devolveu o código de login.", "Warcraft Logs didn't return the login code."))?;
     let redirect = redirect_uri();
     let json = post_token(&[
         ("grant_type", "authorization_code"),

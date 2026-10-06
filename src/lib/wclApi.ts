@@ -10,6 +10,8 @@ import type { GearItem, PlayerStats, Pull, Setup, SpellAmount, SpellCasts } from
 import type { Sample } from './performance';
 import { SPEC_NAMES } from './specs';
 import { WCL_DIFFICULTY } from './wcl';
+import { messagesOf } from '../i18n';
+import { wclMsg } from './wcl.i18n';
 
 export interface WclGuild {
   id: number;
@@ -124,7 +126,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 export async function fetchRankings(pull: Pull, specId: number, healer: boolean): Promise<TopRanking[]> {
   const spec = SPEC_NAMES[specId];
   const difficulty = WCL_DIFFICULTY[pull.difficultyId];
-  if (!spec || !difficulty) throw new Error('Sem rankings para esta dificuldade ou spec no Warcraft Logs.');
+  if (!spec || !difficulty) throw new Error(messagesOf(wclMsg).noRankings);
   const metric = healer ? 'hps' : 'dps';
   const vars = { id: pull.encounterId, difficulty, className: spec.class, specName: spec.spec, metric };
   // rankings mudam ao longo do dia: cache diário, 2 páginas (200 parses)
@@ -288,10 +290,10 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
   const fightData = await query<any>(FIGHT_QUERY, { code: top.code, fight: top.fightId }, `fight-${key}`);
   const report = fightData?.reportData?.report;
   const fight = report?.fights?.[0];
-  if (!fight) throw new Error('Fight do top não encontrado no Warcraft Logs (report privado ou apagado).');
+  if (!fight) throw new Error(messagesOf(wclMsg).topFightMissing);
   const actors: any[] = report.masterData?.actors ?? [];
   const actor = actors.find((a) => a.name === top.name && (!top.server || !a.server || a.server === top.server)) ?? actors.find((a) => a.name === top.name);
-  if (!actor) throw new Error(`${top.name} não aparece no report do Warcraft Logs.`);
+  if (!actor) throw new Error(messagesOf(wclMsg).actorMissing(top.name));
   const names = new Map<number, string>((report.masterData?.abilities ?? []).map((a: any) => [Number(a.gameID), String(a.name)]));
 
   const events: any[] = [];

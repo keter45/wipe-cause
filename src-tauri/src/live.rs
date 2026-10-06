@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
+use wipe_core::i18n::pick;
 
 /// Intervalo entre as olhadas no arquivo.
 const POLL: Duration = Duration::from_millis(1000);
@@ -62,7 +63,7 @@ pub fn live_start(app: AppHandle, path: Option<String>, death_cutoff: u32) -> Re
         None => dir
             .as_deref()
             .and_then(logs::newest_live_log)
-            .ok_or("Nenhum WoWCombatLog encontrado na pasta de logs. Escolha a pasta em \"Nova análise\".")?,
+            .ok_or_else(|| pick("Nenhum WoWCombatLog encontrado na pasta de logs. Escolha a pasta em \"Nova análise\".", "No WoWCombatLog found in the logs folder. Choose the folder in \"New analysis\"."))?,
     };
     let session = Arc::new(Session {
         stop: AtomicBool::new(false),
@@ -123,7 +124,7 @@ fn watch(app: AppHandle, s: Arc<Session>, mut file: PathBuf, dir: Option<PathBuf
             Err(e) => {
                 set_status(&app, &s, |st| {
                     st.state = "error".into();
-                    st.message = Some(format!("não foi possível ler o log: {e}"));
+                    st.message = Some(pick(format!("não foi possível ler o log: {e}"), format!("could not read the log: {e}")));
                 });
                 continue;
             }
@@ -252,8 +253,8 @@ fn notify(app: &AppHandle, report: &wipe_core::LogReport) {
         format!("Wipe {} · {}", p.pull_number, p.encounter_name)
     };
     let body = match &p.trigger {
-        Some(t) if !p.success => format!("Gatilho: {}", t.name),
-        _ => "Abra o Wipe Cause para ver o pull.".into(),
+        Some(t) if !p.success => pick(format!("Gatilho: {}", t.name), format!("Trigger: {}", t.name)),
+        _ => pick("Abra o Wipe Cause para ver o pull.", "Open Wipe Cause to see the pull."),
     };
     let _ = app.notification().builder().title(title).body(body).show();
 }

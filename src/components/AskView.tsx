@@ -4,7 +4,9 @@ import type { Pull } from '../types';
 import { inTauri } from '../lib/api';
 import { PRESETS, aiChat, type ChatMessage } from '../lib/ai';
 import { useSetup } from '../lib/setup';
-import { SUGGESTED, SYSTEM_PROMPT, estimateTokens, pullContext } from '../lib/aiContext';
+import { dossierTitle, estimateTokens, pullContext, suggestedQuestions, systemPrompt } from '../lib/aiContext';
+import { messagesOf, useMessages } from '../i18n';
+import { askMsg } from './AskView.i18n';
 import { spellIndex } from '../lib/spells';
 import { SpellName } from './SpellIcon';
 import { withPlayerNames } from './Names';
@@ -19,6 +21,7 @@ const HISTORY = 10;
 /** "Perguntar à IA": conversa sobre este pull, com o dossiê da luta como contexto. */
 export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }) {
   const { status, openSettings } = useSetup();
+  const t = useMessages(askMsg);
   const [messages, setMessages] = useState<ChatMessage[]>(() => conversations.get(convKey(pull)) ?? []);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,7 +54,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
     setBusy(true);
     setError(null);
     try {
-      const system: ChatMessage = { role: 'system', content: `${SYSTEM_PROMPT}\n\n# Dossiê do pull\n${context}` };
+      const system: ChatMessage = { role: 'system', content: `${systemPrompt()}\n\n# ${dossierTitle()}\n${context}` };
       const answer = inTauri ? await aiChat([system, ...next.slice(-HISTORY)]) : await demoAnswer(q);
       update([...next, { role: 'assistant', content: answer }]);
     } catch (e) {
@@ -61,20 +64,18 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
     }
   }
 
-  if (!status) return <p className="muted pad">Carregando…</p>;
+  if (!status) return <p className="muted pad">{t.loading}</p>;
   const config = status.ai;
   if (!config) {
     return (
       <div className="panel setup-cta">
         <Bot size={20} strokeWidth={1.5} className="muted" aria-hidden />
         <div>
-          <h3>Pergunte à IA sobre este pull</h3>
-          <p className="muted small">
-            Escolha um provedor gratuito (Gemini, Groq, OpenRouter) ou o Ollama no seu PC. A IA recebe um dossiê da luta e responde com base nele.
-          </p>
+          <h3>{t.setupTitle}</h3>
+          <p className="muted small">{t.setupText}</p>
         </div>
         <button className="btn primary" onClick={() => openSettings('ai')}>
-          <Settings2 size={14} strokeWidth={1.5} aria-hidden /> Configurar a IA
+          <Settings2 size={14} strokeWidth={1.5} aria-hidden /> {t.setup}
         </button>
       </div>
     );
@@ -85,23 +86,23 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
     <div className="ask">
       <header className="ask-head">
         <span className="small muted">
-          <Bot size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> {preset?.label ?? config.provider} · {config.model || 'modelo padrão'}
+          <Bot size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> {preset?.label ?? config.provider} · {config.model || t.defaultModel}
         </span>
-        <span className="small muted" title="Tamanho aproximado do dossiê enviado a cada pergunta">
-          contexto ≈ {Math.round(estimateTokens(context) / 100) / 10} mil tokens
+        <span className="small muted" title={t.contextSizeTitle}>
+          {t.contextSize(Math.round(estimateTokens(context) / 100) / 10)}
         </span>
         <span className="head-actions">
           <button className="btn ghost sm" onClick={() => setShowContext(!showContext)} aria-expanded={showContext}>
-            <FileText size={14} strokeWidth={1.5} aria-hidden /> {showContext ? 'Esconder dossiê' : 'Ver dossiê'}
+            <FileText size={14} strokeWidth={1.5} aria-hidden /> {showContext ? t.hideDossier : t.showDossier}
           </button>
           {messages.length > 0 && (
             <button className="btn ghost sm" onClick={() => update([])}>
-              <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> Nova conversa
+              <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> {t.newChat}
             </button>
           )}
           {inTauri && (
             <button className="btn ghost sm" onClick={() => openSettings('ai')}>
-              <Settings2 size={14} strokeWidth={1.5} aria-hidden /> Trocar provedor
+              <Settings2 size={14} strokeWidth={1.5} aria-hidden /> {t.switchProvider}
             </button>
           )}
         </span>
@@ -112,12 +113,9 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
       <div className="ask-thread">
         {messages.length === 0 && (
           <div className="ask-empty">
-            <p className="muted small">
-              A IA recebe um dossiê deste pull (mecânicas do boss com as dicas, mortes, defensivos, posições, escala de interrupts e notas) e
-              responde só com base nele.
-            </p>
+            <p className="muted small">{t.emptyHint}</p>
             <div className="ask-suggestions">
-              {SUGGESTED.map((s) => (
+              {suggestedQuestions().map((s) => (
                 <button key={s} className="btn ghost sm" onClick={() => ask(s)} disabled={busy}>
                   {s}
                 </button>
@@ -130,7 +128,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
             {m.role === 'assistant' ? <Markdown text={m.content} spells={spells} /> : <p>{m.content}</p>}
           </div>
         ))}
-        {busy && <div className="ask-msg assistant muted">Analisando o pull…</div>}
+        {busy && <div className="ask-msg assistant muted">{t.thinking}</div>}
         {error && <p className="small bad">{error}</p>}
         <div ref={endRef} />
       </div>
@@ -146,7 +144,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
           className="text-input"
           rows={2}
           value={input}
-          placeholder="Pergunte sobre este pull… (Enter envia, Shift+Enter quebra linha)"
+          placeholder={t.placeholder}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -156,10 +154,10 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
           }}
         />
         <button className="btn primary" type="submit" disabled={busy || !input.trim()}>
-          <Send size={14} strokeWidth={1.75} aria-hidden /> Perguntar
+          <Send size={14} strokeWidth={1.75} aria-hidden /> {t.ask}
         </button>
       </form>
-      <p className="muted small">O dossiê (com os nomes dos players) vai para o provedor escolhido a cada pergunta. A IA pode errar: confira no log.</p>
+      <p className="muted small">{t.privacy}</p>
     </div>
   );
 }
@@ -167,7 +165,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
 /** Navegador (desenvolvimento da UI): resposta de exemplo, sem chamar provedor. */
 async function demoAnswer(q: string): Promise<string> {
   await new Promise((r) => setTimeout(r, 500));
-  return `**Modo navegador** — resposta de exemplo para: _${q}_\n\n- No app, a pergunta vai para o provedor configurado junto com o dossiê do pull.\n- Exemplo com habilidades: a **Virulent Mutation (detonação)** matou 4; ninguém usou defensivo contra Venom Rupture.\n- Use **Ver dossiê** para conferir o que a IA recebe.`;
+  return messagesOf(askMsg).demo(q);
 }
 
 // ---------------------------------------------------------------------------

@@ -11,6 +11,7 @@ use crate::settings;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::AppHandle;
+use wipe_core::i18n::pick;
 
 const KEYRING_SERVICE: &str = "wipe-cause";
 
@@ -66,14 +67,17 @@ pub fn ai_get_config(app: AppHandle) -> Option<AiConfig> {
 #[tauri::command]
 pub fn ai_set_config(app: AppHandle, config: AiConfig, api_key: Option<String>) -> Result<(), String> {
     if !valid_base_url(&config.base_url) {
-        return Err("A URL precisa começar com https:// (ou http://localhost para modelos locais).".into());
+        return Err(pick(
+            "A URL precisa começar com https:// (ou http://localhost para modelos locais).",
+            "The URL must start with https:// (or http://localhost for local models).",
+        ));
     }
     if let Some(k) = api_key {
         let entry = key_entry(&config.provider)?;
         if k.trim().is_empty() {
             let _ = entry.delete_credential();
         } else {
-            entry.set_password(k.trim()).map_err(|e| format!("não foi possível guardar a chave: {e}"))?;
+            entry.set_password(k.trim()).map_err(|e| pick(format!("não foi possível guardar a chave: {e}"), format!("could not store the key: {e}")))?;
         }
     }
     settings::update(&app, |s| {
@@ -98,10 +102,13 @@ fn request(agent: &ureq::Agent, method: &str, url: &str, key: Option<&str>) -> u
 /// Mensagem de erro amigável para os códigos comuns dos provedores.
 fn http_error(code: u16, body: String) -> String {
     match code {
-        401 | 403 => "O provedor recusou a chave de API (inválida ou sem permissão).".into(),
-        404 => "Modelo ou URL não encontrados no provedor. Confira o nome do modelo.".into(),
-        429 => "Limite do plano gratuito atingido. Espere um pouco ou troque de modelo/provedor.".into(),
-        _ => format!("O provedor respondeu {code}: {}", body.chars().take(400).collect::<String>()),
+        401 | 403 => pick("O provedor recusou a chave de API (inválida ou sem permissão).", "The provider rejected the API key (invalid or without permission)."),
+        404 => pick("Modelo ou URL não encontrados no provedor. Confira o nome do modelo.", "Model or URL not found at the provider. Check the model name."),
+        429 => pick("Limite do plano gratuito atingido. Espere um pouco ou troque de modelo/provedor.", "Free plan limit reached. Wait a bit or switch model/provider."),
+        _ => {
+            let body: String = body.chars().take(400).collect();
+            pick(format!("O provedor respondeu {code}: {body}"), format!("The provider answered {code}: {body}"))
+        }
     }
 }
 
@@ -109,7 +116,7 @@ fn http_error(code: u16, body: String) -> String {
 #[tauri::command]
 pub async fn ai_list_models(provider: String, base_url: String, api_key: Option<String>) -> Result<Vec<String>, String> {
     if !valid_base_url(&base_url) {
-        return Err("URL inválida.".into());
+        return Err(pick("URL inválida.", "Invalid URL."));
     }
     let key = api_key.filter(|k| !k.trim().is_empty()).or_else(|| load_key(&provider));
     tauri::async_runtime::spawn_blocking(move || {
@@ -117,7 +124,7 @@ pub async fn ai_list_models(provider: String, base_url: String, api_key: Option<
         let json: serde_json::Value = match res {
             Ok(r) => r.into_json().map_err(|e| e.to_string())?,
             Err(ureq::Error::Status(code, r)) => return Err(http_error(code, r.into_string().unwrap_or_default())),
-            Err(e) => return Err(format!("Sem conexão com o provedor: {e}")),
+            Err(e) => return Err(pick(format!("Sem conexão com o provedor: {e}"), format!("No connection to the provider: {e}"))),
         };
         let mut ids: Vec<String> = json["data"]
             .as_array()
@@ -137,9 +144,9 @@ pub async fn ai_list_models(provider: String, base_url: String, api_key: Option<
 /// Envia a conversa e devolve a resposta do modelo.
 #[tauri::command]
 pub async fn ai_chat(app: AppHandle, messages: Vec<ChatMessage>) -> Result<String, String> {
-    let cfg = ai_get_config(app).ok_or("Configure a IA primeiro (provedor e modelo).")?;
+    let cfg = ai_get_config(app).ok_or_else(|| pick("Configure a IA primeiro (provedor e modelo).", "Set up the AI first (provider and model)."))?;
     if !valid_base_url(&cfg.base_url) {
-        return Err("URL do provedor inválida.".into());
+        return Err(pick("URL do provedor inválida.", "Invalid provider URL."));
     }
     let key = load_key(&cfg.provider);
     let body = serde_json::json!({ "model": cfg.model, "messages": messages, "temperature": 0.3 });
@@ -148,13 +155,16 @@ pub async fn ai_chat(app: AppHandle, messages: Vec<ChatMessage>) -> Result<Strin
         let json: serde_json::Value = match res {
             Ok(r) => r.into_json().map_err(|e| e.to_string())?,
             Err(ureq::Error::Status(code, r)) => return Err(http_error(code, r.into_string().unwrap_or_default())),
-            Err(e) => return Err(format!("Sem conexão com o provedor: {e}")),
+            Err(e) => return Err(pick(format!("Sem conexão com o provedor: {e}"), format!("No connection to the provider: {e}"))),
         };
         json["choices"][0]["message"]["content"]
             .as_str()
             .map(str::to_string)
             .filter(|s| !s.trim().is_empty())
-            .ok_or_else(|| format!("Resposta vazia do provedor: {}", json.to_string().chars().take(300).collect::<String>()))
+            .ok_or_else(|| {
+                let j: String = json.to_string().chars().take(300).collect();
+                pick(format!("Resposta vazia do provedor: {j}"), format!("Empty answer from the provider: {j}"))
+            })
     })
     .await
     .map_err(|e| e.to_string())?

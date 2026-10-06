@@ -13,6 +13,8 @@ import { loadTop, type TopRanking, type TopSample } from '../../lib/wclApi';
 
 import { Stat, Bursts, Rotation, Potions, SetupView } from './sections';
 import { PerfShareCard } from '../share/PerfCard';
+import { messagesOf, useMessages } from '../../i18n';
+import { perfViewMsg } from './perf.i18n';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
 
@@ -36,8 +38,9 @@ const sampleKey = (s: Sample) => `${s.pull.id}:${s.player.guid}`;
 
 /** "Fulano · pull 14" / "você no pull 14" */
 function refLabel(me: Sample, s: Sample): string {
-  const who = s.player.guid === me.player.guid ? 'Você' : shortName(s.player.name);
-  const where = s.pull.id === me.pull.id ? 'neste pull' : `pull ${s.pull.pullNumber}${s.pull.success ? ' (kill)' : ''}`;
+  const t = messagesOf(perfViewMsg);
+  const who = s.player.guid === me.player.guid ? t.you : shortName(s.player.name);
+  const where = s.pull.id === me.pull.id ? t.thisPull : t.pullN(s.pull.pullNumber, s.pull.success);
   return `${who} · ${where}`;
 }
 
@@ -51,17 +54,18 @@ export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid }: { pu
         .sort((a, b) => ROLE_ORDER[a.role ?? 'dps'] - ROLE_ORDER[b.role ?? 'dps'] || a.name.localeCompare(b.name)),
     [pull],
   );
+  const t = useMessages(perfViewMsg);
   const [guid, setGuid] = useState<string | null>(null);
   const player =
     players.find((p) => p.guid === guid) ?? players.find((p) => p.guid === defaultGuid) ?? players.find((p) => p.name === rememberedPlayer()) ?? players.find((p) => p.role === 'dps') ?? players[0];
 
-  if (!player) return <p className="muted pad">Sem dados de spec dos jogadores neste pull.</p>;
-  if (!player.casts) return <p className="muted pad">Esta análise é de uma versão antiga do app. Analise o log de novo para ver o desempenho.</p>;
+  if (!player) return <p className="muted pad">{t.noSpecs}</p>;
+  if (!player.casts) return <p className="muted pad">{t.oldAnalysis}</p>;
 
   return (
     <div className="perf">
       <label className="perf-field">
-        <span className="muted small">Jogador</span>
+        <span className="muted small">{t.player}</span>
         <select
           className="select"
           value={player.guid}
@@ -79,17 +83,16 @@ export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid }: { pu
         </select>
       </label>
       {player.rotation ? (
-        <ErrorBoundary label={`na rotação de ${shortName(player.name)}`} resetKey={player.guid}>
+        <ErrorBoundary label={t.errorRotation(shortName(player.name))} resetKey={player.guid}>
           <RotationPanel rotation={player.rotation} />
         </ErrorBoundary>
       ) : (
         <p className="rot-wip small">
-          <span className="chip">Em construção</span> A leitura da rotação de {specLabel(player.specId)} ainda está sendo preparada. Por enquanto, use a
-          comparação com a referência abaixo.
+          <span className="chip">{t.wipChip}</span> {t.wipText(specLabel(player.specId))}
         </p>
       )}
       {/* erro na comparação de um jogador não some com o seletor: dá para escolher outro */}
-      <ErrorBoundary label={`na comparação de ${shortName(player.name)}`} resetKey={player.guid}>
+      <ErrorBoundary label={t.errorComparison(shortName(player.name))} resetKey={player.guid}>
         <Comparison key={`${player.guid}:${pull.encounterId}:${pull.difficultyId}`} me={{ pull, player }} nightPulls={nightPulls} wclCode={wclCode} />
       </ErrorBoundary>
     </div>
@@ -131,27 +134,28 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
   const links = perfLinks(me.player.name, own, wclCode, mode === 'tops' && topSample ? topSample.source : null);
   const healer = isHealer(me.player);
   const unit = healer ? 'HPS' : 'DPS';
+  const m = messagesOf(perfViewMsg);
   const picker = (
     <>
-      <div className="segmented" role="radiogroup" aria-label="Comparar com">
+      <div className="segmented" role="radiogroup" aria-label={m.compareWith}>
         <button
           role="radio"
           aria-checked={mode === 'tops'}
           className={mode === 'tops' ? 'active' : ''}
           onClick={() => setMode('tops')}
-          title="Só parses sem buffs externos (Power Infusion e afins): a referência é o que o player fez sozinho"
+          title={m.topsTitle}
         >
-          Top players (Warcraft Logs)
+          {m.tops}
         </button>
         <button role="radio" aria-checked={mode === 'raid'} className={mode === 'raid' ? 'active' : ''} onClick={() => setMode('raid')}>
-          Na própria raid
+          {m.raid}
         </button>
       </div>
       {mode === 'tops' ? (
         <>
           <WclTopsButton me={me} onTops={setTops} />
           {tops && tops.length > 0 && (
-            <div className="chips top-chips" role="radiogroup" aria-label="Top player">
+            <div className="chips top-chips" role="radiogroup" aria-label={m.topPlayer}>
               {tops.map((t, i) => {
                 const k = topKey(t);
                 const active = wantTop != null && topKey(wantTop) === k;
@@ -171,12 +175,12 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
         </>
       ) : (
         <label className="perf-field">
-          <span className="muted small">Outro da mesma spec na noite (ou você em outra tentativa)</span>
+          <span className="muted small">{m.sameSpecLabel}</span>
           <select className="select" value={raidRef ? sampleKey(raidRef) : ''} onChange={(e) => setRaidKey(e.target.value)}>
             {!raidRef && <option value="">—</option>}
             {list.map((s) => (
               <option key={sampleKey(s)} value={sampleKey(s)}>
-                {refLabel(me, s)} — {num(outputPerSec(s))} {unit} vivo
+                {refLabel(me, s)} — {num(outputPerSec(s))} {m.aliveSuffix(unit)}
               </option>
             ))}
           </select>
@@ -191,9 +195,9 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
       <>
         {picker}
         {mode === 'tops' ? (
-          wantTop && <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? `Baixando o fight de ${wantTop.name} no Warcraft Logs…`}</p>
+          wantTop && <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? m.downloadingTop(wantTop.name)}</p>
         ) : (
-          <p className="muted pad">Ninguém mais jogou de {specLabel(me.player.specId)} neste boss na noite (nem você em outro pull com 30s+ vivo).</p>
+          <p className="muted pad">{m.nobodyElse(specLabel(me.player.specId))}</p>
         )}
       </>
     );
@@ -201,15 +205,15 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
   const [mo, ro] = [outputPerSec(me), outputPerSec(ref)];
   const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
   const insights = perfInsights(me, ref, cds);
-  const refName = mode === 'tops' && topSample ? `${topSample.source.name} (top ${num(topSample.source.amount)} ${unit})` : refLabel(me, ref);
+  const refName = mode === 'tops' && topSample ? m.topName(topSample.source.name, num(topSample.source.amount), unit) : refLabel(me, ref);
 
   return (
     <>
       {picker}
       <div className="perf-bar">
         <p className="muted small perf-note">
-          {mode === 'tops' ? 'Parse do Warcraft Logs com item level parecido' : 'Mesma spec, no mesmo boss e dificuldade'}. Tudo é por minuto vivo e os
-          cooldowns são comparados só no tempo em que os dois estavam vivos, então dá para comparar um wipe com um kill.
+          {mode === 'tops' ? m.noteTops : m.noteRaid}
+          {m.noteRest}
         </p>
         <ShareMenu
           card={(detail) => <PerfShareCard me={me} ref_={ref} refName={refName} cds={cds} links={links} detail={detail} />}
@@ -218,15 +222,15 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
       </div>
 
       <div className="death-stats perf-stats">
-        <Stat label={`${healer ? 'Cura' : 'Dano'} por segundo vivo`} mine={num(mo)} ref={num(ro)} tone={diff <= -15 ? 'bad' : diff < -3 ? 'warn' : ''} extra={ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : undefined} />
-        <Stat label="Tempo vivo" mine={mmss(me.player.aliveMs ?? 0)} ref={mmss(ref.player.aliveMs ?? 0)} />
-        <Stat label="Casts por minuto" mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref).toFixed(1)} />
-        <Stat label="Item level" mine={me.player.setup?.itemLevel.toFixed(1) ?? '—'} ref={ref.player.setup?.itemLevel.toFixed(1) ?? '—'} />
+        <Stat label={m.perSecondAlive(healer)} mine={num(mo)} ref={num(ro)} tone={diff <= -15 ? 'bad' : diff < -3 ? 'warn' : ''} extra={ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : undefined} />
+        <Stat label={m.timeAlive} mine={mmss(me.player.aliveMs ?? 0)} ref={mmss(ref.player.aliveMs ?? 0)} />
+        <Stat label={m.cpm} mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref).toFixed(1)} />
+        <Stat label={m.itemLevel} mine={me.player.setup?.itemLevel.toFixed(1) ?? '—'} ref={ref.player.setup?.itemLevel.toFixed(1) ?? '—'} />
       </div>
 
       {insights.length > 0 && (
         <section className="perf-section">
-          <h4>Pontos principais</h4>
+          <h4>{m.keyPoints}</h4>
           <ul className="perf-insights">
             {insights.map((i, k) => (
               <li key={k} className={`tone-${i.tone}`}>

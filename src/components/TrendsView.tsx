@@ -9,12 +9,15 @@ import { Markdown } from './AskView';
 import { withErrorBoundary } from './ErrorBoundary';
 import { spellIndex } from '../lib/spells';
 import { BossName } from './Names';
+import { messagesOf, useMessages } from '../i18n';
+import { trendsViewMsg } from './TrendsView.i18n';
 
 /**
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
  * cada player. Usa todas as análises salvas no histórico.
  */
 function TrendsViewInner() {
+  const t = useMessages(trendsViewMsg);
   const [nights, setNights] = useState<NightInput[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [boss, setBoss] = useState<string | null>(null);
@@ -32,34 +35,35 @@ function TrendsViewInner() {
   return (
     <div className="night trends">
       <header className="night-head">
-        <h2>Evolução</h2>
-        <span className="muted small">Compara as noites salvas no histórico</span>
+        <h2>{t.title}</h2>
+        <span className="muted small">{t.subtitle}</span>
       </header>
 
-      {error && <div className="error">Erro: {error}</div>}
-      {!nights && !error && <p className="muted">Lendo o histórico…</p>}
-      {nights && bosses.length === 0 && <p className="muted">Nenhuma análise salva ainda. Analise algumas noites de raid para ver a evolução.</p>}
+      {error && <div className="error">{t.error(error)}</div>}
+      {!nights && !error && <p className="muted">{t.reading}</p>}
+      {nights && bosses.length === 0 && <p className="muted">{t.empty}</p>}
 
       {bosses.length > 0 && (
-        <div className="chips" role="tablist" aria-label="Boss">
+        <div className="chips" role="tablist" aria-label={t.boss}>
           {bosses.map((b) => (
             <button key={b.key} role="tab" aria-selected={b.key === selected} className={b.key === selected ? 'active' : ''} onClick={() => setBoss(b.key)}>
               <BossName encounterId={b.encounterId} name={b.key} size={16} />
-              <span className="muted">· {b.nights} noite{b.nights > 1 ? 's' : ''}</span>
+              <span className="muted">{t.nights(b.nights)}</span>
             </button>
           ))}
         </div>
       )}
 
       {trends && trends.nights.length < 2 && (
-        <p className="muted">Só há uma noite de {selected} no histórico. Com duas ou mais, esta tela mostra o que melhorou e o que se repete.</p>
+        <p className="muted">{t.oneNight(selected ?? '')}</p>
       )}
-      {trends && trends.nights.length >= 1 && <TrendsBody t={trends} />}
+      {trends && trends.nights.length >= 1 && <TrendsBody tr={trends} />}
     </div>
   );
 }
 
-function TrendsBody({ t }: { t: Trends }) {
+function TrendsBody({ tr: t }: { tr: Trends }) {
+  const m = useMessages(trendsViewMsg);
   // nomes de habilidades citados nas frases ganham ícone
   const spells = useMemo(() => {
     const m = new Map<string, number>();
@@ -71,7 +75,7 @@ function TrendsBody({ t }: { t: Trends }) {
       {t.insights.length > 0 && (
         <section className="panel">
           <h3>
-            <TrendingUp size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> O que mudou
+            <TrendingUp size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {m.changed}
           </h3>
           <ul className="insights">
             {t.insights.map((s) => (
@@ -84,36 +88,36 @@ function TrendsBody({ t }: { t: Trends }) {
       )}
 
       <section className="panel">
-        <h3>Progresso por noite</h3>
+        <h3>{m.progress}</h3>
         <div className="night-cols">
           {t.nights.map((n) => {
             const s = n.summary;
             const hp = s.kills ? 0 : s.best?.hp ?? 100;
             return (
-              <div key={n.id} className="night-col" title={`${n.label}: ${s.pulls.length} pulls, ${s.kills ? 'kill' : `melhor ${pct(hp)}`}`}>
+              <div key={n.id} className="night-col" title={m.nightTitle(n.label, s.pulls.length, s.kills ? 'kill' : m.best(pct(hp)))}>
                 <span className="night-col-value">{s.kills ? 'Kill' : pct(hp)}</span>
                 <span className="night-col-track" aria-hidden>
                   <span className={s.kills ? 'kill' : ''} style={{ transform: `scaleY(${(100 - hp) / 100})` }} />
                 </span>
                 <strong>{n.label}</strong>
-                <span className="muted small">{s.pulls.length} pulls</span>
+                <span className="muted small">{m.pulls(s.pulls.length)}</span>
               </div>
             );
           })}
         </div>
-        <p className="muted small">Barra = quanto do boss já foi no melhor pull da noite.</p>
+        <p className="muted small">{m.progressHint}</p>
       </section>
 
       <section className="panel">
-        <h3>Gatilho dos wipes por noite</h3>
+        <h3>{m.triggers}</h3>
         {t.causes.length === 0 ? (
-          <p className="muted small">Sem gatilhos apontados (o boss tem regras?).</p>
+          <p className="muted small">{m.noTriggers}</p>
         ) : (
           <div className="table-scroll">
             <table className="heat">
               <thead>
                 <tr>
-                  <th>Mecânica</th>
+                  <th>{m.mechanic}</th>
                   {t.nights.map((n) => (
                     <th key={n.id} className="num">
                       {n.label}
@@ -131,7 +135,7 @@ function TrendsBody({ t }: { t: Trends }) {
                       const wipes = t.nights[i].summary.wipes;
                       const share = v != null && wipes ? v / wipes : 0;
                       return (
-                        <td key={i} className="num heat-cell" style={{ ['--heat' as string]: share }} title={`${v ?? 0} de ${wipes} wipes`}>
+                        <td key={i} className="num heat-cell" style={{ ['--heat' as string]: share }} title={m.ofWipes(v ?? 0, wipes)}>
                           {v ? `${Math.round(share * 100)}%` : '—'}
                         </td>
                       );
@@ -142,22 +146,24 @@ function TrendsBody({ t }: { t: Trends }) {
             </table>
           </div>
         )}
-        <p className="muted small">% dos wipes da noite em que a mecânica foi o gatilho.</p>
+        <p className="muted small">{m.triggersHint}</p>
       </section>
 
       <section className="panel">
-        <h3>Jogadores</h3>
+        <h3>{m.players}</h3>
         <div className="table-scroll">
           <table className="players">
             <thead>
               <tr>
-                <th>Jogador</th>
-                <th title="Mortes por pull em cada noite (antes do corte)">Mortes por pull</th>
-                <th title="Nota média de cada noite (0-100)">Nota por noite</th>
-                <th className="num">Total</th>
-                <th>Mais morre para</th>
-                <th className="num" title="Mortes com defensivo disponível e nenhum usado">Sem def.</th>
-                <th className="num">Erros mec.</th>
+                <th>{m.player}</th>
+                <th title={m.deathsPerPullTitle}>{m.deathsPerPull}</th>
+                <th title={m.scorePerNightTitle}>{m.scorePerNight}</th>
+                <th className="num">{m.total}</th>
+                <th>{m.diesTo}</th>
+                <th className="num" title={m.noDefTitle}>
+                  {m.noDef}
+                </th>
+                <th className="num">{m.mechErrors}</th>
               </tr>
             </thead>
             <tbody>
@@ -200,16 +206,17 @@ function TrendsBody({ t }: { t: Trends }) {
 
 /** Barrinhas de mortes por pull, uma por noite (vazio = não jogou). */
 function Spark({ values, labels }: { values: (number | null)[]; labels: string[] }) {
+  const m = messagesOf(trendsViewMsg);
   const W = 10;
   const H = 22;
   const max = 1; // 1 morte por pull = barra cheia
   return (
-    <svg className="spark" width={values.length * (W + 3)} height={H} role="img" aria-label={values.map((v, i) => `${labels[i]}: ${v == null ? 'não jogou' : v.toFixed(2)}`).join(', ')}>
+    <svg className="spark" width={values.length * (W + 3)} height={H} role="img" aria-label={values.map((v, i) => `${labels[i]}: ${v == null ? m.didNotPlay : v.toFixed(2)}`).join(', ')}>
       {values.map((v, i) => {
         const h = v == null ? 2 : Math.max(2, Math.min(1, v / max) * H);
         return (
           <rect key={i} x={i * (W + 3)} y={H - h} width={W} height={h} rx={2} className={v == null ? 'spark-none' : 'spark-bar'}>
-            <title>{`${labels[i]}: ${v == null ? 'não jogou' : `${v.toFixed(2)} mortes por pull`}`}</title>
+            <title>{`${labels[i]}: ${v == null ? m.didNotPlay : m.perPull(v.toFixed(2))}`}</title>
           </rect>
         );
       })}
@@ -217,4 +224,4 @@ function Spark({ values, labels }: { values: (number | null)[]; labels: string[]
   );
 }
 
-export const TrendsView = withErrorBoundary(TrendsViewInner, 'na Evolução');
+export const TrendsView = withErrorBoundary(TrendsViewInner, () => messagesOf(trendsViewMsg).errorScope);

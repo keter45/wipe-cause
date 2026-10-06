@@ -3,12 +3,15 @@ import { Flag, X } from 'lucide-react';
 import type { Pull } from '../types';
 import { classColor, shortName } from '../lib/format';
 import { addMark, removeMark, useMarks } from '../lib/marks';
+import { useMessages } from '../i18n';
+import { marksMsg } from './PullMarks.i18n';
 
 /**
  * Erros marcados à mão no pull (o que o log não prova: posição, bait, escala). Entram no
  * veredito e na nota como qualquer erro.
  */
 export function PullMarks({ pull }: { pull: Pull }) {
+  const t = useMessages(marksMsg);
   const marks = useMarks(pull);
   const [open, setOpen] = useState(false);
   const [guid, setGuid] = useState('');
@@ -28,19 +31,19 @@ export function PullMarks({ pull }: { pull: Pull }) {
   return (
     <div className="pull-marks">
       {marks.map((m) => (
-        <span key={m.id} className={`mark-chip ${m.severity}`} title={m.severity === 'major' ? 'Erro grave (marcado à mão)' : 'Atenção (marcado à mão)'}>
+        <span key={m.id} className={`mark-chip ${m.severity}`} title={m.severity === 'major' ? t.majorTitle : t.minorTitle}>
           <Flag size={12} strokeWidth={1.75} aria-hidden />
           <span style={{ color: classColor(classOf.get(m.guid)) }}>{shortName(m.name)}</span>
           <span>{m.what}</span>
-          <button className="icon-btn xs" onClick={() => removeMark(pull, m.id)} aria-label={`Remover marca de ${shortName(m.name)}`}>
+          <button className="icon-btn xs" onClick={() => removeMark(pull, m.id)} aria-label={t.remove(shortName(m.name))}>
             <X size={12} strokeWidth={1.75} aria-hidden />
           </button>
         </span>
       ))}
       {open ? (
         <span className="mark-form">
-          <select className="select sm" value={guid} onChange={(e) => setGuid(e.target.value)} aria-label="Jogador">
-            <option value="">Jogador…</option>
+          <select className="select sm" value={guid} onChange={(e) => setGuid(e.target.value)} aria-label={t.player}>
+            <option value="">{t.pickPlayer}</option>
             {players.map((p) => (
               <option key={p.guid} value={p.guid}>
                 {shortName(p.name)}
@@ -51,7 +54,7 @@ export function PullMarks({ pull }: { pull: Pull }) {
             className="text-input sm"
             list="mark-mechanics"
             value={what}
-            placeholder="o que errou (ex.: soakou o orb errado)"
+            placeholder={t.whatPlaceholder}
             onChange={(e) => setWhat(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && submit()}
           />
@@ -60,20 +63,20 @@ export function PullMarks({ pull }: { pull: Pull }) {
               <option key={m.key} value={m.name} />
             ))}
           </datalist>
-          <select className="select sm" value={severity} onChange={(e) => setSeverity(e.target.value as 'major' | 'minor')} aria-label="Gravidade">
-            <option value="major">Grave</option>
-            <option value="minor">Atenção</option>
+          <select className="select sm" value={severity} onChange={(e) => setSeverity(e.target.value as 'major' | 'minor')} aria-label={t.severity}>
+            <option value="major">{t.major}</option>
+            <option value="minor">{t.minor}</option>
           </select>
           <button className="btn sm primary" onClick={submit} disabled={!guid || !what.trim()}>
-            Marcar
+            {t.mark}
           </button>
           <button className="btn sm" onClick={() => setOpen(false)}>
-            Cancelar
+            {t.cancel}
           </button>
         </span>
       ) : (
-        <button className="link small" onClick={() => setOpen(true)} title="Para o que o log não mostra: posição, bait, escala errada">
-          <Flag size={12} strokeWidth={1.75} aria-hidden /> Marcar erro
+        <button className="link small" onClick={() => setOpen(true)} title={t.markTitle}>
+          <Flag size={12} strokeWidth={1.75} aria-hidden /> {t.markError}
         </button>
       )}
     </div>

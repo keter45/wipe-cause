@@ -11,7 +11,10 @@ import type { Pull, PlayerStats, RotationFinding } from '../types';
 import { PERSONAL_BLAME } from './blame';
 import { bossKey } from './night';
 import { castsOf, isHealer, outputPerSec, type Sample } from './performance';
+import { damageSource } from './format';
 import { meIn } from './mode';
+import { messagesOf, tr } from '../i18n';
+import { soloMsg } from './solo.i18n';
 
 /** Janela da linha do tempo do núcleo (TIMELINE_MS). */
 export const BUCKET_MS = 5_000;
@@ -33,6 +36,8 @@ export interface Loss {
   lost: number | null;
   /** peso para ordenar, em segundos do próprio output */
   weightSec: number;
+  /** mecânica: o nome, para agrupar o mesmo erro entre pulls */
+  subject?: string;
   times: number[];
   spellId: number | null;
 }
@@ -76,6 +81,7 @@ export function myMechanicFailures(s: Sample) {
 
 /** O que corrigir primeiro: os erros do pull ordenados pelo que custaram. */
 export function losses(s: Sample): Loss[] {
+  const t = messagesOf(soloMsg);
   const p = s.player;
   const ops = outputPerSec(s);
   const perCast = damagePerCast(p);
@@ -85,18 +91,18 @@ export function losses(s: Sample): Loss[] {
     if (remainingMs < 10_000) continue;
     const unused = death.defensivesAvailable.filter((d) => d.kind === 'personal').map((d) => d.name);
     const tips = [
-      unused.length ? `tinha ${unused.join(', ')} disponível` : null,
-      !death.usedHealthstone && death.healthstoneKnown ? 'não usou Healthstone' : null,
-      !death.usedHealthPotion ? 'não usou poção de vida' : null,
+      unused.length ? t.hadAvailable(unused.join(', ')) : null,
+      !death.usedHealthstone && death.healthstoneKnown ? t.noHealthstone : null,
+      !death.usedHealthPotion ? t.noPotion : null,
     ].filter(Boolean);
-    const kb = death.killingBlow ? `${death.killingBlow.spellName} (${death.killingBlow.source})` : 'causa desconhecida';
+    const kb = death.killingBlow ? `${death.killingBlow.spellName} (${damageSource(death.killingBlow.source)})` : t.unknownCause;
     const lost = ops * (remainingMs / 1000);
     out.push({
       key: `death:${death.t}`,
       kind: 'death',
-      title: `Morreu com ${fmtSec(remainingMs)} de luta pela frente`,
-      detail: `Golpe final: ${kb}${death.causedBy ? `, depois de ${death.causedBy.name}` : ''}.`,
-      tip: tips.length ? `Na hora: ${tips.join('; ')}.` : 'Veja no vídeo o que veio antes do golpe final.',
+      title: t.diedEarly(fmtSec(remainingMs)),
+      detail: t.killingBlow(kb, death.causedBy?.name ?? null),
+      tip: tips.length ? t.atTheTime(tips.join('; ')) : t.watchVideo,
       lost,
       weightSec: remainingMs / 1000,
       times: [death.t],
@@ -114,9 +120,10 @@ export function losses(s: Sample): Loss[] {
     out.push({
       key: `mech:${m.key}`,
       kind: m.kind === 'avoidable_damage' ? 'avoidable' : 'mechanic',
-      title: `${m.name}: ${mp.count} erro${mp.count > 1 ? 's' : ''}`,
-      detail: mp.message || m.summary,
-      tip: m.tip,
+      title: t.mechanicErrors(m.name, mp.count),
+      subject: m.name,
+      detail: tr(mp.message) || tr(m.summary),
+      tip: tr(m.tip),
       lost: null,
       weightSec: MECHANIC_SEC[m.severity] * Math.min(3, mp.count),
       times: times.length ? times : mp.firstT != null ? [mp.firstT] : [],
@@ -127,7 +134,7 @@ export function losses(s: Sample): Loss[] {
 }
 
 function findingLoss(f: RotationFinding, s: Sample, ops: number, perCast: number): Loss | null {
-  const base = { key: `rot:${f.id}`, title: f.title, detail: f.detail, tip: f.tip, times: f.times, spellId: f.spellId };
+  const base = { key: `rot:${f.id}`, title: tr(f.title), detail: tr(f.detail), tip: tr(f.tip), times: f.times, spellId: f.spellId };
   // análises antigas não têm o tipo: os ids padrão das rotações escritas resolvem o principal
   const kind = f.kind ?? (f.id === 'cooldowns' ? 'cooldown' : f.id === 'always_be_casting' ? 'downtime' : '');
   if (kind === 'downtime') {
@@ -142,7 +149,7 @@ function findingLoss(f: RotationFinding, s: Sample, ops: number, perCast: number
   }
   if (kind === 'dot_uptime') {
     // dano do DoT no tempo em que estava no alvo, estendido ao tempo em que faltou
-    const dmg = spellAmount(s.player, f.spellId, subject(f.title));
+    const dmg = spellAmount(s.player, f.spellId, subject(typeof f.title === 'string' ? f.title : f.title.pt));
     const lost = f.rate > 0.05 ? dmg * ((1 - f.rate) / f.rate) : null;
     return { ...base, kind: 'dot', lost, weightSec: lost != null && ops > 0 ? lost / ops : FINDING_SEC[f.importance] };
   }
@@ -332,7 +339,7 @@ export const fairReference = (me: Sample, s: Sample) => (s.player.aliveMs ?? s.p
 
 /** Mortes viram uma chave só (a hora muda de pull para pull). */
 const recurringKey = (l: Loss) => (l.kind === 'death' ? 'death' : l.key);
-const recurringTitle = (l: Loss) => (l.kind === 'death' ? 'Morre antes do fim' : l.title.replace(/: \d+ erros?$/, ''));
+const recurringTitle = (l: Loss) => (l.kind === 'death' ? messagesOf(soloMsg).diesBeforeEnd : (l.subject ?? l.title));
 
 export interface SoloNightPoint {
   id: string;

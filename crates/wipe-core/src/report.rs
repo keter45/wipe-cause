@@ -1,5 +1,6 @@
 //! Estruturas de saída da análise, serializadas para a UI (camelCase).
 
+use crate::i18n::Text;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -95,7 +96,7 @@ pub struct MechanicResult {
     pub kind: String,
     /// wipe | major | minor | none
     pub severity: String,
-    pub tip: String,
+    pub tip: Text,
     /// marcada pelo usuário como foco da progressão
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub focus: bool,
@@ -109,7 +110,7 @@ pub struct MechanicResult {
     pub evaluated: bool,
     pub failures: u32,
     /// mensagem da falha coletiva (soak, interrupt, enrage), já renderizada
-    pub summary: String,
+    pub summary: Text,
     /// culpados primeiro; depois quem ajudou (`credit`: interrupts, soaks)
     pub players: Vec<MechanicPlayer>,
     pub events: Vec<MechanicEvent>,
@@ -204,7 +205,7 @@ pub struct MechanicPlayer {
     pub amount: i64,
     pub first_t: Option<i64>,
     pub credit: bool,
-    pub message: String,
+    pub message: Text,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -212,7 +213,7 @@ pub struct MechanicPlayer {
 pub struct MechanicEvent {
     pub t: i64,
     pub player: Option<String>,
-    pub detail: String,
+    pub detail: Text,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -415,7 +416,7 @@ pub struct DeathAura {
     pub applied_t: i64,
     /// mecânica do boss (regras) a que esse debuff pertence
     pub mechanic: Option<String>,
-    pub tip: Option<String>,
+    pub tip: Option<Text>,
 }
 
 #[derive(Debug, Clone, Serialize)]

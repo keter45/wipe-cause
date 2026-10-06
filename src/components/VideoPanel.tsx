@@ -4,6 +4,8 @@ import { PlayerName } from './Names';
 import { videoSrc, type WcrVideo } from '../lib/api';
 import { LEAD_MS } from '../lib/wcr';
 import { mmss } from '../lib/format';
+import { useMessages } from '../i18n';
+import { videoMsg } from './VideoPanel.i18n';
 
 interface Props {
   /** POVs do pull: este PC e a nuvem da guilda */
@@ -20,6 +22,7 @@ interface Props {
  * trocar mantém o momento: a mesma cena vista por outra pessoa da raid.
  */
 export function VideoPanel({ povs, video, onPov, seek, onClose }: Props) {
+  const t = useMessages(videoMsg);
   const ref = useRef<HTMLVideoElement>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -59,18 +62,18 @@ export function VideoPanel({ povs, video, onPov, seek, onClose }: Props) {
     <section className="video-panel">
       <header>
         <span className="pov-head">
-          <Video size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> POV de
+          <Video size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.povOf}
           {povs.length > 1 ? (
-            <span className="pov-list" role="group" aria-label="Ponto de vista">
+            <span className="pov-list" role="group" aria-label={t.pointOfView}>
               {povs.map((v) => (
                 <button
                   key={v.videoPath}
                   className={`pov ${v === video ? 'active' : ''}`}
                   onClick={() => switchTo(v)}
                   aria-pressed={v === video}
-                  title={v.cloud ? 'Vídeo da nuvem do Warcraft Recorder (guilda)' : 'Vídeo deste PC'}
+                  title={v.cloud ? t.cloudVideo : t.localVideo}
                 >
-                  {v.cloud && <Cloud size={12} strokeWidth={1.75} aria-label="nuvem" />}
+                  {v.cloud && <Cloud size={12} strokeWidth={1.75} aria-label={t.cloud} />}
                   {v.player ? <PlayerName name={v.player} /> : '?'}
                 </button>
               ))}
@@ -78,19 +81,19 @@ export function VideoPanel({ povs, video, onPov, seek, onClose }: Props) {
           ) : (
             <strong> {video.player ? <PlayerName name={video.player} /> : '?'}</strong>
           )}
-          {seek && <span className="muted"> · indo para {mmss(Math.max(0, seek.t - LEAD_MS))} (5s antes)</span>}
+          {seek && <span className="muted">{t.goingTo(mmss(Math.max(0, seek.t - LEAD_MS)))}</span>}
         </span>
-        <button className="icon-btn" onClick={onClose} title="Fechar vídeo" aria-label="Fechar vídeo">
+        <button className="icon-btn" onClick={onClose} title={t.close} aria-label={t.close}>
           <X size={16} strokeWidth={1.5} aria-hidden />
         </button>
       </header>
       {error ? (
         <p className="muted small">
           {video.cloud ? (
-            <>Não foi possível tocar este vídeo da nuvem (o link pode ter expirado: reabra a análise).</>
+            t.cloudError
           ) : (
             <>
-              Não foi possível tocar o vídeo aqui (codec não suportado?). Arquivo: <code>{video.videoPath}</code>
+              {t.localError} <code>{video.videoPath}</code>
             </>
           )}
         </p>
@@ -103,12 +106,13 @@ export function VideoPanel({ povs, video, onPov, seek, onClose }: Props) {
 
 /** Botão "play" que pula o vídeo para `t`; some quando o pull não tem vídeo. */
 export function PlayAt({ t, seek, label }: { t: number; seek: ((t: number) => void) | null; label?: string }) {
+  const m = useMessages(videoMsg);
   if (!seek) return null;
   return (
     <button
       className="play"
-      aria-label={label ?? 'Ver no vídeo'}
-      title={`Ver no vídeo (${mmss(Math.max(0, t - LEAD_MS))})`}
+      aria-label={label ?? m.watch}
+      title={m.watchAt(mmss(Math.max(0, t - LEAD_MS)))}
       onClick={(e) => {
         e.stopPropagation();
         seek(t);

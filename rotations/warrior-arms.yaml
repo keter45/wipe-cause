@@ -14,12 +14,12 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/warrior_arms.simc
 
 key_points:
-  - "Ficar no alvo é o principal: a Rage vem dos auto-ataques. Charge e Heroic Leap para voltar rápido e sair no último momento."
-  - "Colossus Smash, Avatar e Bladestorm / Demolish no cooldown: atrasar um desalinha os outros."
-  - "Avatar logo antes ou junto do Colossus Smash; Bladestorm (Slayer) ou Demolish (Colossus) dentro do Colossus Smash."
-  - "Rend sempre no alvo (via Cleave), renovando antes do Colossus Smash."
-  - "Execute com Sudden Death (2 cargas não esperam); Mortal Strike e Overpower no resto; Slam só sem mais nada."
-  - "Em 2 alvos, Sweeping Strikes no cooldown; em mais, Cleave e Bladestorm."
+  - { pt: "Ficar no alvo é o principal: a Rage vem dos auto-ataques. Charge e Heroic Leap para voltar rápido e sair no último momento.", en: "Staying on the target is what matters most: Rage comes from auto attacks. Charge and Heroic Leap to get back fast, and leave at the last moment." }
+  - { pt: "Colossus Smash, Avatar e Bladestorm / Demolish no cooldown: atrasar um desalinha os outros.", en: "Colossus Smash, Avatar and Bladestorm / Demolish on cooldown: delaying one misaligns the others." }
+  - { pt: "Avatar logo antes ou junto do Colossus Smash; Bladestorm (Slayer) ou Demolish (Colossus) dentro do Colossus Smash.", en: "Avatar right before or with Colossus Smash; Bladestorm (Slayer) or Demolish (Colossus) inside Colossus Smash." }
+  - { pt: "Rend sempre no alvo (via Cleave), renovando antes do Colossus Smash.", en: "Rend always on the target (via Cleave), refreshing before Colossus Smash." }
+  - { pt: "Execute com Sudden Death (2 cargas não esperam); Mortal Strike e Overpower no resto; Slam só sem mais nada.", en: "Execute with Sudden Death (2 charges don't wait); Mortal Strike and Overpower otherwise; Slam only with nothing else." }
+  - { pt: "Em 2 alvos, Sweeping Strikes no cooldown; em mais, Cleave e Bladestorm.", en: "On 2 targets, Sweeping Strikes on cooldown; on more, Cleave and Bladestorm." }
 
 hero_trees:
   - key: slayer
@@ -51,56 +51,56 @@ buffs:
 priority:
   slayer:
     st:
-      - { spell: cleave, note: "aplicar/renovar Rend com menos de 10s e o Colossus Smash pronto" }
-      - { spell: avatar, note: "no cooldown" }
-      - { spell: colossus_smash, note: "no cooldown" }
-      - { spell: execute, note: "com 2 Sudden Death" }
-      - { spell: bladestorm, note: "dentro do Colossus Smash" }
+      - { spell: cleave, note: { pt: "aplicar/renovar Rend com menos de 10s e o Colossus Smash pronto", en: "apply/refresh Rend with less than 10s left and Colossus Smash ready" } }
+      - { spell: avatar, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: colossus_smash, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: execute, note: { pt: "com 2 Sudden Death", en: "with 2 Sudden Death" } }
+      - { spell: bladestorm, note: { pt: "dentro do Colossus Smash", en: "inside Colossus Smash" } }
       - { spell: heroic_strike }
       - { spell: mortal_strike }
-      - { spell: execute, note: "com Sudden Death" }
+      - { spell: execute, note: { pt: "com Sudden Death", en: "with Sudden Death" } }
       - { spell: overpower }
-      - { spell: cleave, note: "renovar Rend com menos de 5s" }
-      - { spell: slam, note: "sem mais nada" }
+      - { spell: cleave, note: { pt: "renovar Rend com menos de 5s", en: "refresh Rend with less than 5s left" } }
+      - { spell: slam, note: { pt: "sem mais nada", en: "with nothing else" } }
     aoe:
-      - { spell: sweeping_strikes, note: "no cooldown" }
-      - { spell: cleave, note: "cedo, para o Rend" }
+      - { spell: sweeping_strikes, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: cleave, note: { pt: "cedo, para o Rend", en: "early, for Rend" } }
       - { spell: avatar }
       - { spell: colossus_smash }
-      - { spell: cleave, note: "com 3 Collateral Damage" }
+      - { spell: cleave, note: { pt: "com 3 Collateral Damage", en: "with 3 Collateral Damage" } }
       - { spell: bladestorm }
-      - { spell: execute, note: "com 2 Sudden Death" }
+      - { spell: execute, note: { pt: "com 2 Sudden Death", en: "with 2 Sudden Death" } }
       - { spell: cleave }
-      - { spell: overpower, note: "com 2 cargas" }
-      - { spell: execute, note: "com Sudden Death" }
+      - { spell: overpower, note: { pt: "com 2 cargas", en: "at 2 charges" } }
+      - { spell: execute, note: { pt: "com Sudden Death", en: "with Sudden Death" } }
       - { spell: mortal_strike }
-      - { spell: slam, note: "sem mais nada" }
+      - { spell: slam, note: { pt: "sem mais nada", en: "with nothing else" } }
   colossus:
     st:
-      - { spell: mortal_strike, note: "com menos de 10 Colossal Might" }
-      - { spell: cleave, note: "aplicar/renovar Rend com menos de 10s e o Colossus Smash pronto" }
-      - { spell: ravager, note: "logo antes do Colossus Smash" }
-      - { spell: avatar, note: "logo antes ou junto do Colossus Smash" }
+      - { spell: mortal_strike, note: { pt: "com menos de 10 Colossal Might", en: "with fewer than 10 Colossal Might" } }
+      - { spell: cleave, note: { pt: "aplicar/renovar Rend com menos de 10s e o Colossus Smash pronto", en: "apply/refresh Rend with less than 10s left and Colossus Smash ready" } }
+      - { spell: ravager, note: { pt: "logo antes do Colossus Smash", en: "right before Colossus Smash" } }
+      - { spell: avatar, note: { pt: "logo antes ou junto do Colossus Smash", en: "right before or with Colossus Smash" } }
       - { spell: colossus_smash }
-      - { spell: demolish, note: "dentro do Colossus Smash" }
+      - { spell: demolish, note: { pt: "dentro do Colossus Smash", en: "inside Colossus Smash" } }
       - { spell: heroic_strike }
-      - { spell: execute, note: "com 2 Sudden Death" }
+      - { spell: execute, note: { pt: "com 2 Sudden Death", en: "with 2 Sudden Death" } }
       - { spell: mortal_strike }
-      - { spell: execute, note: "com Sudden Death" }
+      - { spell: execute, note: { pt: "com Sudden Death", en: "with Sudden Death" } }
       - { spell: overpower }
-      - { spell: slam, note: "preenche" }
+      - { spell: slam, note: { pt: "preenche", en: "filler" } }
     aoe:
-      - { spell: sweeping_strikes, note: "no cooldown" }
-      - { spell: ravager, note: "logo antes do Colossus Smash" }
+      - { spell: sweeping_strikes, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: ravager, note: { pt: "logo antes do Colossus Smash", en: "right before Colossus Smash" } }
       - { spell: avatar }
       - { spell: colossus_smash }
       - { spell: cleave }
-      - { spell: mortal_strike, note: "com menos de 10 Colossal Might" }
+      - { spell: mortal_strike, note: { pt: "com menos de 10 Colossal Might", en: "with fewer than 10 Colossal Might" } }
       - { spell: demolish }
       - { spell: overpower }
       - { spell: mortal_strike }
-      - { spell: execute, note: "com Sudden Death" }
-      - { spell: slam, note: "sem mais nada" }
+      - { spell: execute, note: { pt: "com Sudden Death", en: "with Sudden Death" } }
+      - { spell: slam, note: { pt: "sem mais nada", en: "with nothing else" } }
 
 # Abertura: Charge e os cooldowns logo de cara
 opener:
@@ -115,34 +115,34 @@ checks:
     gcd_ms: 1200
     min_gap_ms: 800
     importance: high
-    title: Tempo sem atacar
-    tip: "Fique no alvo: Charge e Heroic Leap para voltar, e saia das mecânicas no último momento."
+    title: { pt: "Tempo sem atacar", en: "Time not attacking" }
+    tip: { pt: "Fique no alvo: Charge e Heroic Leap para voltar, e saia das mecânicas no último momento.", en: "Stay on the target: Charge and Heroic Leap to get back, and leave mechanics at the last moment." }
   - kind: dot_uptime
     id: rend
     debuff: rend
     min_uptime: 0.85
     importance: medium
-    title: Rend fora do alvo
-    tip: "Rend sempre no alvo: Cleave para aplicar e renovar, antes do Colossus Smash."
+    title: { pt: "Rend fora do alvo", en: "Rend off the target" }
+    tip: { pt: "Rend sempre no alvo: Cleave para aplicar e renovar, antes do Colossus Smash.", en: "Rend always on the target: Cleave to apply and refresh it, before Colossus Smash." }
   - kind: proc
     id: sudden_death
     buff: sudden_death
     spenders: [execute]
     importance: medium
-    title: Sudden Death perdido
-    tip: "Sudden Death libera o Execute: use antes de acumular a terceira ou expirar."
+    title: { pt: "Sudden Death perdido", en: "Sudden Death lost" }
+    tip: { pt: "Sudden Death libera o Execute: use antes de acumular a terceira ou expirar.", en: "Sudden Death unlocks Execute: use it before the third charge or before it expires." }
   - kind: after_cast
     id: bladestorm_in_smash
     casts: [bladestorm, demolish]
     after: [colossus_smash]
     within_ms: 10000
     importance: low
-    title: Bladestorm fora do Colossus Smash
-    tip: "Bladestorm (ou Demolish) dentro do Colossus Smash."
+    title: { pt: "Bladestorm fora do Colossus Smash", en: "Bladestorm outside Colossus Smash" }
+    tip: { pt: "Bladestorm (ou Demolish) dentro do Colossus Smash.", en: "Bladestorm (or Demolish) inside Colossus Smash." }
   - kind: cooldown
     id: cooldowns
     spells: [colossus_smash, avatar, bladestorm, demolish, ravager]
     min_usage: 0.8
     importance: medium
-    title: Cooldown parado
-    tip: "Colossus Smash, Avatar e Bladestorm / Demolish no cooldown: atrasar um desalinha os outros."
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Colossus Smash, Avatar e Bladestorm / Demolish no cooldown: atrasar um desalinha os outros.", en: "Colossus Smash, Avatar and Bladestorm / Demolish on cooldown: delaying one misaligns the others." }

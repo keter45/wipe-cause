@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 use tauri::{AppHandle, Manager};
+use wipe_core::i18n::pick;
 
 const TALENTS_URL: &str = "https://www.raidbots.com/static/data/live/talents.json";
 /// Árvores mudam com patches: busca de novo depois disso (o cache velho segue valendo offline).
@@ -41,7 +42,7 @@ fn download() -> Result<String, String> {
         .build()
         .get(TALENTS_URL)
         .call()
-        .map_err(|e| format!("Não consegui baixar a lista de talentos: {e}"))?
+        .map_err(|e| pick(format!("Não consegui baixar a lista de talentos: {e}"), format!("Couldn't download the talent list: {e}")))?
         .into_string()
         .map_err(|e| e.to_string())
 }
@@ -49,13 +50,13 @@ fn download() -> Result<String, String> {
 /// Entradas de talento da spec: id da entrada -> nome, spell e ícone.
 pub fn tree_for(json: &str, spec_id: u32) -> Result<HashMap<u32, TalentEntry>, String> {
     let trees: serde_json::Value =
-        serde_json::from_str(json).map_err(|e| format!("Lista de talentos inválida: {e}"))?;
+        serde_json::from_str(json).map_err(|e| pick(format!("Lista de talentos inválida: {e}"), format!("Invalid talent list: {e}")))?;
     let spec = trees
         .as_array()
         .into_iter()
         .flatten()
         .find(|t| t["specId"].as_u64() == Some(spec_id as u64))
-        .ok_or_else(|| format!("Spec {spec_id} não está na lista de talentos."))?;
+        .ok_or_else(|| pick(format!("Spec {spec_id} não está na lista de talentos."), format!("Spec {spec_id} is not in the talent list.")))?;
     let mut out = HashMap::new();
     for (key, tree) in [
         ("classNodes", "class"),
@@ -88,7 +89,7 @@ pub async fn talent_tree(
     app: AppHandle,
     spec_id: u32,
 ) -> Result<HashMap<u32, TalentEntry>, String> {
-    let path = cache_path(&app).ok_or("Sem pasta de dados do app.")?;
+    let path = cache_path(&app).ok_or_else(|| pick("Sem pasta de dados do app.", "No app data folder."))?;
     tauri::async_runtime::spawn_blocking(move || {
         let json = if fresh(&path) {
             std::fs::read_to_string(&path).map_err(|e| e.to_string())?

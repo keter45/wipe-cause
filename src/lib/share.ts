@@ -7,6 +7,7 @@ import { toPng } from 'html-to-image';
 import { invoke } from '@tauri-apps/api/core';
 import { inTauri } from './api';
 import { EagerIcons } from '../components/SpellIcon';
+import { getLocale } from '../i18n';
 
 /** Renderiza `node` fora da tela e devolve o elemento pronto (e como desmontar). */
 async function mount(node: ReactElement): Promise<{ el: HTMLElement; done: () => void }> {
@@ -68,7 +69,7 @@ export async function cardHtml(node: ReactElement, title: string): Promise<strin
       })
       .join('\n');
     const esc = title.replace(/[<&>]/g, (c) => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;' })[c]!);
-    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc}</title><style>${css}\nbody{display:flex;justify-content:center;padding:24px;}</style></head><body>${el.outerHTML}</body></html>`;
+    return `<!doctype html><html lang="${getLocale() === 'en' ? 'en' : 'pt-BR'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc}</title><style>${css}\nbody{display:flex;justify-content:center;padding:24px;}</style></head><body>${el.outerHTML}</body></html>`;
   } finally {
     done();
   }

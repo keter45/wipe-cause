@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Send } from 'lucide-react';
 import { discordPost, discordSetConfig, type DiscordConfig } from '../../lib/api';
+import { useMessages } from '../../i18n';
+import { discordFormMsg } from './DiscordForm.i18n';
 
 /** Webhook do canal da raid: no modo ao vivo, imagens de cada pull e da noite; no Compartilhar, na hora. */
 export function DiscordForm({ current, onSaved }: { current: DiscordConfig | null; onSaved: () => void }) {
+  const t = useMessages(discordFormMsg);
   const [webhook, setWebhook] = useState(current?.webhook ?? '');
   const [onWipe, setOnWipe] = useState(current?.onWipe ?? true);
   const [onKill, setOnKill] = useState(current?.onKill ?? true);
@@ -15,8 +18,8 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
     setSending(true);
     setMsg(null);
     try {
-      await discordPost({ username: 'Wipe Cause', content: 'Wipe Cause conectado: os resumos dos pulls vão chegar neste canal.' }, webhook.trim());
-      setMsg({ ok: true, text: 'Mensagem de teste enviada. Confira o canal.' });
+      await discordPost({ username: 'Wipe Cause', content: t.testContent }, webhook.trim());
+      setMsg({ ok: true, text: t.testSent });
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
     } finally {
@@ -27,7 +30,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
   async function save() {
     try {
       await discordSetConfig({ webhook: webhook.trim() || null, onWipe, onKill, onNight, auto: current?.auto ?? true });
-      setMsg({ ok: true, text: webhook.trim() ? 'Salvo.' : 'Discord desligado.' });
+      setMsg({ ok: true, text: webhook.trim() ? t.saved : t.off });
       onSaved();
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -38,13 +41,11 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
   return (
     <>
       <ol className="small set-steps">
-        <li>No Discord, abra as configurações do canal → Integrações → Webhooks.</li>
-        <li>
-          <em>Novo webhook</em> → <em>Copiar URL do webhook</em> e cole abaixo.
-        </li>
+        <li>{t.step1}</li>
+        <li>{t.step2()}</li>
       </ol>
       <label className="field">
-        URL do webhook
+        {t.url}
         <input
           className="text-input"
           type="password"
@@ -56,30 +57,28 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
         />
       </label>
       <div className="check-row">
-        <span className="small muted">Com o modo ao vivo ligado, enviar sozinho:</span>
+        <span className="small muted">{t.autoSend}</span>
         <label>
-          <input type="checkbox" checked={onWipe} onChange={(e) => setOnWipe(e.target.checked)} /> cada wipe (o motivo do wipe)
+          <input type="checkbox" checked={onWipe} onChange={(e) => setOnWipe(e.target.checked)} /> {t.onWipe}
         </label>
         <label>
-          <input type="checkbox" checked={onKill} onChange={(e) => setOnKill(e.target.checked)} /> cada kill (o resumo do boss)
+          <input type="checkbox" checked={onKill} onChange={(e) => setOnKill(e.target.checked)} /> {t.onKill}
         </label>
         <label>
-          <input type="checkbox" checked={onNight} onChange={(e) => setOnNight(e.target.checked)} /> o resumo da noite, no fim da raid
+          <input type="checkbox" checked={onNight} onChange={(e) => setOnNight(e.target.checked)} /> {t.onNight}
         </label>
       </div>
-      {current?.webhook && current.auto === false && <p className="small warn">O envio automático está pausado pelo botão Discord no topo do app.</p>}
+      {current?.webhook && current.auto === false && <p className="small warn">{t.paused}</p>}
       {msg && <p className={`small ${msg.ok ? 'ok-text' : 'bad'}`}>{msg.text}</p>}
       <div className="set-actions">
         <button className="btn" onClick={test} disabled={!webhook.trim() || sending}>
-          <Send size={14} strokeWidth={1.5} aria-hidden /> Enviar teste
+          <Send size={14} strokeWidth={1.5} aria-hidden /> {t.sendTest}
         </button>
         <button className="btn primary" onClick={save} disabled={!dirty}>
-          Salvar
+          {t.save}
         </button>
       </div>
-      <p className="muted small">
-        Tudo vai como imagem, o mesmo cartão do <em>Compartilhar</em>. O fim da raid é quando você desliga o ao vivo ou depois de 30 min sem pull novo.
-      </p>
+      <p className="muted small">{t.footer()}</p>
     </>
   );
 }

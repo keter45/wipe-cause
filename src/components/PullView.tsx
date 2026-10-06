@@ -28,13 +28,14 @@ import { pullPayload } from '../lib/discord';
 import { scorePull } from '../lib/score';
 import { meIn, useMode, useSoloCharacter, type AppMode } from '../lib/mode';
 import { SoloPullView } from './SoloPullView';
+import { messagesOf, useMessages } from '../i18n';
+import { pullMsg } from './PullView.i18n';
 
 type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'ask';
 
 /** Aba aberta por último em cada modo: continua nela ao trocar de pull ou voltar das Configurações. */
 const lastTab: Record<AppMode, Tab> = { guild: 'deaths', solo: 'me' };
 
-const SEVERITY_LABEL = { wipe: 'Causa', major: 'Grave', minor: 'Atenção', info: 'Info' } as const;
 
 interface Props {
   pull: Pull;
@@ -58,13 +59,14 @@ const classesOf = (p: Pull) => new Map(p.players.map((x) => [x.guid, x.class] as
 /** Erro no pull (dados inesperados de um log) fica no pull: a lista e o resto do app seguem. */
 export function PullView(props: Props) {
   return (
-    <ErrorBoundary label="neste pull" resetKey={props.pull.id}>
+    <ErrorBoundary label={messagesOf(pullMsg).errorScope} resetKey={props.pull.id}>
       <PullViewInner {...props} />
     </ErrorBoundary>
   );
 }
 
 function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Props) {
+  const t = useMessages(pullMsg);
   useMarks(pull);
   const mode = useMode();
   const chosen = useSoloCharacter();
@@ -109,40 +111,40 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
   const tabGroups: { label: string; tabs: { key: Tab; label: string; count?: number }[] }[] = solo
     ? [
         {
-          label: 'Seu desempenho',
+          label: t.groups.you,
           tabs: [
-            { key: 'me', label: 'Você' },
-            { key: 'perf', label: 'Comparação detalhada' },
+            { key: 'me', label: t.tabs.me },
+            { key: 'perf', label: t.tabs.perfSolo },
           ],
         },
         {
-          label: 'A raid',
+          label: t.groups.raid,
           tabs: [
-            { key: 'deaths', label: 'Mortes', count: deathCount },
-            { key: 'mechanics', label: 'Mecânicas', count: pull.rulesFile ? mechFailures : undefined },
-            { key: 'interrupts', label: 'Interrupts' },
-            { key: 'players', label: 'Jogadores', count: pull.players.length },
+            { key: 'deaths', label: t.tabs.deaths, count: deathCount },
+            { key: 'mechanics', label: t.tabs.mechanics, count: pull.rulesFile ? mechFailures : undefined },
+            { key: 'interrupts', label: t.tabs.interrupts },
+            { key: 'players', label: t.tabs.players, count: pull.players.length },
           ],
         },
-        { label: 'A luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
+        { label: t.groups.fight, tabs: [{ key: 'spells', label: t.tabs.spells }] },
       ]
     : [
     {
-      label: 'O que aconteceu',
+      label: t.groups.happened,
       tabs: [
-        { key: 'deaths', label: 'Mortes', count: deathCount },
-        { key: 'mechanics', label: 'Mecânicas', count: pull.rulesFile ? mechFailures : undefined },
-        { key: 'interrupts', label: 'Interrupts' },
+        { key: 'deaths', label: t.tabs.deaths, count: deathCount },
+        { key: 'mechanics', label: t.tabs.mechanics, count: pull.rulesFile ? mechFailures : undefined },
+        { key: 'interrupts', label: t.tabs.interrupts },
       ],
     },
     {
-      label: 'Quem jogou como',
+      label: t.groups.who,
       tabs: [
-        { key: 'players', label: 'Jogadores', count: pull.players.length },
-        { key: 'perf', label: 'Desempenho' },
+        { key: 'players', label: t.tabs.players, count: pull.players.length },
+        { key: 'perf', label: t.tabs.perf },
       ],
     },
-    { label: 'A luta', tabs: [{ key: 'spells', label: 'Habilidades do boss' }] },
+    { label: t.groups.fight, tabs: [{ key: 'spells', label: t.tabs.spells }] },
       ];
 
   return (
@@ -157,12 +159,11 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
           </h2>
           <div className="muted">
             {pull.startLocal.split(' ')[1]?.slice(0, 8)} · {mmss(pull.durationMs)}
-            {pull.incomplete && <span className="warn"> · log terminou antes do fim do encontro</span>}
+            {pull.incomplete && <span className="warn">{t.incomplete}</span>}
             {pull.cutoffT != null && (
-              <span title="Ignorar eventos após N mortes: dano, cura, erros e falhas contam só até aqui">
-                {' '}
-                · analisado até {mmss(pull.cutoffT)}
-                {!pull.success && ` (no fim do pull o boss estava em ${pct(lowestBossHpAtEnd(pull))})`}
+              <span title={t.cutoffTitle}>
+                {t.analyzedUntil(mmss(pull.cutoffT))}
+                {!pull.success && t.bossAtEnd(pct(lowestBossHpAtEnd(pull)))}
               </span>
             )}
           </div>
@@ -186,21 +187,21 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
           {video && (
             <button className="btn sm" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
               {videoOpen ? <X size={14} strokeWidth={1.5} aria-hidden /> : <Play size={14} strokeWidth={1.5} aria-hidden />}
-              {videoOpen ? 'Fechar vídeo' : povs && povs.length > 1 ? `Vídeo (${povs.length} POVs)` : `Vídeo (${video.player ?? 'POV'})`}
+              {videoOpen ? t.closeVideo : povs && povs.length > 1 ? t.videoPovs(povs.length) : t.video(video.player ?? 'POV')}
             </button>
           )}
           {wclCode && (
             <button
               className="btn sm"
               onClick={() => openExternal(bossUrl(wclCode, pull))}
-              title={`Abre o report filtrado neste boss; a try é a "${wclPullLabel(pull)}" da lista`}
+              title={t.wclTitle(wclPullLabel(pull))}
             >
               Warcraft Logs <span className="muted">{wclPullLabel(pull)}</span>
               <ExternalLink size={14} strokeWidth={1.5} aria-hidden />
             </button>
           )}
           {(video || wclCode) && <span className="toolbar-divider" aria-hidden />}
-          <ShareMenu discord={() => pullPayload(pull, wclCode)} card={(detail) => <PullShareCard pull={pull} detail={detail} />} name={`${pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`} - ${pull.encounterName} ${pull.difficultyName}`} />
+          <ShareMenu discord={() => pullPayload(pull, wclCode)} card={(detail) => <PullShareCard pull={pull} detail={detail} />} name={t.shareName(pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`, pull.encounterName, pull.difficultyName)} />
         </span>
       </div>
 
@@ -210,9 +211,9 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
 
       {solo && (
         <p className="solo-raid small">
-          <span className="muted">Raid:</span> {verdict.headline}{' '}
+          <span className="muted">{t.raid}</span> {verdict.headline}{' '}
           <button className="link small" onClick={() => setShowVerdict(!showVerdict)} aria-expanded={showVerdict}>
-            {showVerdict ? 'esconder' : 'ver o porquê'}
+            {showVerdict ? t.hide : t.why}
           </button>
         </p>
       )}
@@ -221,7 +222,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
         <h3>
           {pull.trigger && <SpellIcon spellId={mechanicSpellId(pull, pull.trigger.key)} size={20} />}
           {verdict.headline}
-          {pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label="ver gatilho" />}
+          {pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label={t.seeTrigger} />}
         </h3>
         {main.length > 0 && (
           <ul className="findings">
@@ -234,7 +235,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
           <>
             <button className="link small more-toggle" onClick={() => setShowMinor(!showMinor)} aria-expanded={showMinor}>
               <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${showMinor ? 'open' : ''}`} aria-hidden />
-              {showMinor ? 'Esconder' : 'Mostrar'} {minor.length} aviso{minor.length > 1 ? 's' : ''} menor{minor.length > 1 ? 'es' : ''}
+              {t.minor(showMinor, minor.length)}
             </button>
             {showMinor && (
               <ul className="findings minor">
@@ -248,7 +249,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       </section>
       )}
 
-      <div className="tabs" role="tablist" aria-label="Detalhes do pull">
+      <div className="tabs" role="tablist" aria-label={t.tabsAria}>
         {tabGroups.map((g) => (
           <div key={g.label} className="tab-group" role="presentation">
             <span className="tab-group-label" aria-hidden>
@@ -264,13 +265,13 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
         ))}
         <span className="topbar-spacer" />
         <button role="tab" aria-selected={tab === 'ask'} className={`tab-ask ${tab === 'ask' ? 'active' : ''}`} onClick={() => setTab('ask')}>
-          <Sparkles size={14} strokeWidth={1.5} aria-hidden /> Perguntar à IA
+          <Sparkles size={14} strokeWidth={1.5} aria-hidden /> {t.tabs.ask}
         </button>
       </div>
 
       {/* erro numa aba fica na aba: as outras e o resto do pull continuam */}
       <ErrorBoundary
-        label={`na aba ${tab === 'ask' ? 'Perguntar à IA' : (tabGroups.flatMap((g) => g.tabs).find((t) => t.key === tab)?.label ?? '')}`}
+        label={t.tabScope(tab === 'ask' ? t.tabs.ask : (tabGroups.flatMap((g) => g.tabs).find((x) => x.key === tab)?.label ?? ''))}
         resetKey={`${pull.id}:${tab}`}
       >
       {tab === 'mechanics' && <MechanicsView pull={pull} onRulesChanged={onRulesChanged} />}
@@ -285,7 +286,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
             addMark(pull, {
               guid: d.guid,
               name: d.name,
-              what: `morreu para ${d.killingBlowMechanic ?? d.killingBlow?.spellName ?? 'dano'}`,
+              what: t.diedTo(d.killingBlowMechanic ?? d.killingBlow?.spellName ?? t.damage),
               severity: 'major',
               t: d.t,
               spellId: d.killingBlow?.spellId ?? null,
@@ -314,14 +315,15 @@ function PlayersTab({ pull, wclCode }: { pull: Pull; wclCode?: string }) {
 /** Anotação livre do pull (a mesma do aviso do modo ao vivo). */
 function PullNote({ pull }: { pull: Pull }) {
   const [note, setNote] = useNote(pull);
+  const t = useMessages(pullMsg);
   return (
     <label className="pull-note">
       <NotebookPen size={14} strokeWidth={1.5} className="muted" aria-hidden />
       <input
         className="text-input"
         value={note}
-        placeholder={pull.success ? 'Anotação do kill…' : 'Motivo do wipe ou anotação…'}
-        aria-label="Anotação do pull"
+        placeholder={pull.success ? t.notePlaceholderKill : t.notePlaceholderWipe}
+        aria-label={t.noteAria}
         onChange={(e) => setNote(e.target.value)}
       />
     </label>
@@ -329,13 +331,14 @@ function PullNote({ pull }: { pull: Pull }) {
 }
 
 function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] }) {
+  const t = useMessages(pullMsg);
   return (
     <li className={`finding ${f.severity}`}>
-      <span className="badge">{SEVERITY_LABEL[f.severity]}</span>
+      <span className="badge">{t.severity[f.severity]}</span>
       <span>
         {f.focus && (
-          <span className="focus-mark" title="Foco da progressão">
-            <Star size={14} strokeWidth={1.75} fill="currentColor" aria-label="Foco" />
+          <span className="focus-mark" title={t.focus}>
+            <Star size={14} strokeWidth={1.75} fill="currentColor" aria-label={t.focusMark} />
           </span>
         )}
         {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}

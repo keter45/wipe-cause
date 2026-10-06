@@ -2,18 +2,13 @@ import { useState } from 'react';
 import type { EnemySpell, MechanicSeverity, Pull } from '../types';
 import { rulesGet, rulesSaveTuning, type RuleMechanic } from '../lib/rules';
 import { num } from '../lib/format';
+import { messagesOf, useMessages } from '../i18n';
+import { createRuleMsg } from './CreateRule.i18n';
 
 /** O que o usuário quer dizer com a habilidade, em linguagem simples -> tipo de regra. */
-const KINDS = [
-  { value: 'avoidable_damage', label: 'Tomar isso é erro', hint: 'Cada hit em player conta como erro de quem tomou (poça, linha, frontal).' },
-  { value: 'failure_event', label: 'Isso acontecer é falha do raid', hint: 'Explosão, orb perdido, algo que só sai quando o raid erra.' },
-  { value: 'interrupt', label: 'Tem que ser cortado', hint: 'Cada cast que passa sem interrupt é falha.' },
-  { value: 'dispel', label: 'Tem que ser dispelado', hint: 'Mede o tempo até o dispel e quem ficou sem.' },
-  { value: 'stack_limit', label: 'Stack que mata', hint: 'Avisa quando alguém passa do limite de stacks.' },
-  { value: 'unavoidable', label: 'Só contexto', hint: 'Dano de raid que não é culpa de ninguém; aparece nas mortes.' },
-] as const;
+const KINDS = ['avoidable_damage', 'failure_event', 'interrupt', 'dispel', 'stack_limit', 'unavoidable'] as const;
 
-type Kind = (typeof KINDS)[number]['value'];
+type Kind = (typeof KINDS)[number];
 
 const SEVERITY_BY_KIND: Record<Kind, MechanicSeverity> = {
   avoidable_damage: 'minor',
@@ -42,18 +37,8 @@ export function buildRule(kind: Kind, id: number, name: string, severity: Mechan
         : kind === 'failure_event'
           ? { fail_ids: [id] }
           : { damage_ids: [id] };
-  const message =
-    kind === 'avoidable_damage'
-      ? `{player} tomou ${name} ({count}x)`
-      : kind === 'failure_event'
-        ? `${name} aconteceu {count}x`
-        : kind === 'interrupt'
-          ? `{count} ${name} passaram sem interrupt`
-          : kind === 'dispel'
-            ? `{count} ${name} sem dispel a tempo`
-            : kind === 'stack_limit'
-              ? `{player} chegou a {stacks} stacks de ${name}`
-              : name;
+  // regra do usuário: um texto só, no idioma em que ele está usando o app
+  const message = kind === 'unavoidable' ? name : messagesOf(createRuleMsg).message[kind](name);
   return {
     key: `${slug(name)}_${id}`,
     name,
@@ -70,15 +55,17 @@ export function buildRule(kind: Kind, id: number, name: string, severity: Mechan
 
 /** Prévia com o que o log deste pull já mostra (sem reanalisar). */
 function preview(kind: Kind, s: EnemySpell): string {
-  if (kind === 'avoidable_damage') return s.hitsOnPlayers ? `Neste pull: ${s.hitsOnPlayers} hit(s) em players seriam erro.` : 'Neste pull ninguém tomou dano deste spell.';
-  if (kind === 'failure_event') return s.hitsOnPlayers || s.casts ? `Neste pull: aconteceu (${s.casts} cast(s), ${s.hitsOnPlayers} hit(s)).` : 'Neste pull não aconteceu.';
-  if (kind === 'interrupt') return `Neste pull: ${s.interrupted} cortado(s), ${s.casts} passaram.`;
-  if (kind === 'unavoidable') return `Neste pull: ${num(s.damageToPlayers)} de dano em players.`;
-  return 'O ID precisa ser o do debuff (aura); confira se é o mesmo do dano.';
+  const t = messagesOf(createRuleMsg);
+  if (kind === 'avoidable_damage') return s.hitsOnPlayers ? t.previewHits(s.hitsOnPlayers) : t.previewNoHits;
+  if (kind === 'failure_event') return s.hitsOnPlayers || s.casts ? t.previewHappened(s.casts, s.hitsOnPlayers) : t.previewNotHappened;
+  if (kind === 'interrupt') return t.previewKicks(s.interrupted, s.casts);
+  if (kind === 'unavoidable') return t.previewDamage(num(s.damageToPlayers));
+  return t.previewAura;
 }
 
 /** Assistente de "criar regra" a partir de uma habilidade do log. */
 export function CreateRule({ pull, spell, onSaved, onCancel }: { pull: Pull; spell: EnemySpell; onSaved: () => void; onCancel: () => void }) {
+  const m = useMessages(createRuleMsg);
   const [kind, setKind] = useState<Kind>(spell.interrupted > 0 ? 'interrupt' : spell.hitsOnPlayers > 0 ? 'avoidable_damage' : 'failure_event');
   const [id, setId] = useState(String(spell.spellId));
   const [severity, setSeverity] = useState<MechanicSeverity>(SEVERITY_BY_KIND[kind]);
@@ -96,7 +83,7 @@ export function CreateRule({ pull, spell, onSaved, onCancel }: { pull: Pull; spe
     try {
       const rules = await rulesGet(pull);
       const t = rules.tuning ?? { encounter_id: rules.encounterId, name: rules.name, mechanics: {}, custom: [] };
-      const rule = buildRule(kind, Number(id), spell.name, severity, tip.trim() || KINDS.find((k) => k.value === kind)!.hint, {
+      const rule = buildRule(kind, Number(id), spell.name, severity, tip.trim() || m.kinds[kind].hint, {
         tolerance: Number(tolerance) || 0,
         warn: warn ? Number(warn) : undefined,
         lethal: Number(lethal) || 10,
@@ -113,76 +100,77 @@ export function CreateRule({ pull, spell, onSaved, onCancel }: { pull: Pull; spe
 
   return (
     <div className="create-rule">
-      <div className="chips" role="radiogroup" aria-label="O que é esta habilidade">
+      <div className="chips" role="radiogroup" aria-label={m.whatIsIt}>
         {KINDS.map((k) => (
           <button
-            key={k.value}
+            key={k}
             role="radio"
-            aria-checked={kind === k.value}
-            className={kind === k.value ? 'active' : ''}
+            aria-checked={kind === k}
+            className={kind === k ? 'active' : ''}
             onClick={() => {
-              setKind(k.value);
-              setSeverity(SEVERITY_BY_KIND[k.value]);
+              setKind(k);
+              setSeverity(SEVERITY_BY_KIND[k]);
             }}
           >
-            {k.label}
+            {m.kinds[k].label}
           </button>
         ))}
       </div>
       <p className="muted small">
-        {KINDS.find((k) => k.value === kind)!.hint} {preview(kind, spell)}
+        {m.kinds[kind].hint} {preview(kind, spell)}
       </p>
       <div className="rule-fields">
         <label className="field sm">
-          Spell ID {kind === 'dispel' || kind === 'stack_limit' ? '(do debuff)' : ''}
+          {m.spellId} {kind === 'dispel' || kind === 'stack_limit' ? m.ofDebuff : ''}
           <input className="text-input" inputMode="numeric" value={id} onChange={(e) => setId(e.target.value.replace(/\D/g, ''))} />
         </label>
         <label className="field sm">
-          Gravidade
+          {m.severity}
           <select className="select" value={severity} onChange={(e) => setSeverity(e.target.value as MechanicSeverity)}>
-            <option value="wipe">Causa de wipe</option>
-            <option value="major">Grave</option>
-            <option value="minor">Atenção</option>
-            <option value="none">Só contexto</option>
+            {(['wipe', 'major', 'minor', 'none'] as const).map((s) => (
+              <option key={s} value={s}>
+                {m.severities[s]}
+              </option>
+            ))}
           </select>
         </label>
         {kind === 'avoidable_damage' && (
           <label className="field sm">
-            Hits tolerados por player
+            {m.tolerance}
             <input className="text-input" type="number" min={0} value={tolerance} onChange={(e) => setTolerance(e.target.value)} />
           </label>
         )}
         {kind === 'stack_limit' && (
           <>
             <label className="field sm">
-              Avisar a partir de
-              <input className="text-input" type="number" min={0} value={warn} placeholder="sem aviso" onChange={(e) => setWarn(e.target.value)} />
+              {m.warnFrom}
+              <input className="text-input" type="number" min={0} value={warn} placeholder={m.noWarning} onChange={(e) => setWarn(e.target.value)} />
             </label>
             <label className="field sm">
-              Stacks que matam
+              {m.lethal}
               <input className="text-input" type="number" min={1} value={lethal} onChange={(e) => setLethal(e.target.value)} />
             </label>
           </>
         )}
         {kind === 'dispel' && (
           <label className="field sm">
-            Tempo máximo até o dispel (s)
+            {m.maxDelay}
             <input className="text-input" type="number" min={0} step={0.5} value={maxDelay} onChange={(e) => setMaxDelay(e.target.value)} />
           </label>
         )}
       </div>
       <label className="field">
-        Dica para o raid
-        <input className="text-input" value={tip} placeholder="ex.: sair da poça para a borda" onChange={(e) => setTip(e.target.value)} />
+        {m.tip}
+        <input className="text-input" value={tip} placeholder={m.tipPlaceholder} onChange={(e) => setTip(e.target.value)} />
       </label>
       {msg && <p className="small bad">{msg}</p>}
       <div className="dialog-actions">
         <span className="topbar-spacer" />
         <button className="btn" onClick={onCancel}>
-          Cancelar
+          {m.cancel}
         </button>
         <button className="btn primary" onClick={save} disabled={busy || !id}>
-          {busy ? 'Salvando…' : 'Criar regra e reanalisar'}
+          {busy ? m.saving : m.create}
         </button>
       </div>
     </div>
