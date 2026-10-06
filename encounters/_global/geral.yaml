@@ -6,7 +6,7 @@ updated: 2026-09-28
 
 mechanics:
   - key: environmental
-    name: "Dano de ambiente"
+    name: "Environmental damage"
     type: avoidable_damage
     severity: minor
     # ENVIRONMENTAL_DAMAGE (queda, lava, afogamento...) usa spell id 0 no wipe-core

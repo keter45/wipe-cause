@@ -33,7 +33,7 @@ mechanics:
     message: { pt: "Nek'zali encheu a energia (Uncoiled Rage)", en: "Nek'zali filled her energy (Uncoiled Rage)" }
 
   - key: soulcoil_well_adds
-    name: "Soulcoil Well (esqueletos)"
+    name: "Soulcoil Well (skeletons)"
     type: info
     source_unit: restless_amani
     severity: major

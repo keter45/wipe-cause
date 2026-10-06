@@ -36,7 +36,7 @@ mechanics:
   # e dispara 20 Venom Ruptures de uma vez. Também acontece se sobrar roxo no timer da
   # fase. No log só aparece como tick gigante de Venom Rupture (normal < 400k, explosão > 1M).
   - key: purple_detonation
-    name: "Virulent Mutation (detonação)"
+    name: "Virulent Mutation (detonation)"
     type: failure_event
     source_unit: virulent_mutation
     difficulty: [mythic]
@@ -54,7 +54,7 @@ mechanics:
       (boss explode todos), não há portador e a lista fica vazia.
 
   - key: mutagenic_venom_splash
-    name: "Mutagenic Venom (perto do portador)"
+    name: "Mutagenic Venom (near the carrier)"
     type: avoidable_damage
     source_unit: virulent_mutation
     difficulty: [mythic]
@@ -66,7 +66,7 @@ mechanics:
     notes: "O portador também toma o dano; excludes_aura tira ele da conta."
 
   - key: volatile_venom_splash
-    name: "Volatile Venom (perto do portador)"
+    name: "Volatile Venom (near the carrier)"
     type: avoidable_damage
     source_unit: coalesced_venom
     severity: minor
@@ -86,7 +86,7 @@ mechanics:
     notes: "Stacks normais: 2-12 por leva. No Mythic, 20+ de uma vez = detonação (regra acima)."
 
   - key: coalesced_venom_pulse
-    name: "Coalesced Venom (pulso)"
+    name: "Coalesced Venom (pulse)"
     type: unavoidable
     source_unit: coalesced_venom
     severity: none
@@ -172,7 +172,7 @@ mechanics:
       dividido passa de 1M: sem defensivo, soaker morre (pull 6).
 
   - key: guillotine_double_soak
-    name: "Guillotine (soak duplo)"
+    name: "Guillotine (double soak)"
     type: avoidable_damage
     source_unit: zuljan
     difficulty: [heroic, mythic]
@@ -417,7 +417,7 @@ mechanics:
     needs_id: true
 
   - key: grim_guillotine_double_soak
-    name: "Grim Guillotine (soak duplo)"
+    name: "Grim Guillotine (double soak)"
     type: avoidable_damage
     source_unit: zuljan
     difficulty: [heroic, mythic]

@@ -89,7 +89,7 @@ mechanics:
     message: { pt: "{count} círculo(s) do Malignant Catalyst sem soak", en: "{count} Malignant Catalyst circle(s) without a soak" }
 
   - key: malignant_catalyst_burst
-    name: "Malignant Catalyst (pulso)"
+    name: "Malignant Catalyst (pulse)"
     type: unavoidable
     source_unit: vashnik
     difficulty: [heroic, mythic]

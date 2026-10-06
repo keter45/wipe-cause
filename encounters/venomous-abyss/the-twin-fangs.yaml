@@ -87,7 +87,7 @@ mechanics:
     notes: "O primeiro hit de cada linha é o alvo; hits extras na mesma rajada são erro."
 
   - key: stir_the_depths_wave
-    name: "Stir the Depths (onda)"
+    name: "Stir the Depths (wave)"
     type: avoidable_damage
     source_unit: vexhul
     severity: minor
@@ -96,7 +96,7 @@ mechanics:
     message: { pt: "{player} foi pego por {count} ondas de Stir the Depths", en: "{player} was caught by {count} Stir the Depths waves" }
 
   - key: stir_the_depths_pulse
-    name: "Stir the Depths (pulso)"
+    name: "Stir the Depths (pulse)"
     type: unavoidable
     source_unit: vexhul
     severity: none
@@ -165,7 +165,7 @@ mechanics:
     message: { pt: "Ravenous Feast", en: "Ravenous Feast" }
 
   - key: feasted_double_soak
-    name: "Feasted (soak duplo)"
+    name: "Feasted (double soak)"
     type: avoidable_damage
     source_unit: ithraz
     difficulty: [heroic, mythic]

@@ -46,7 +46,7 @@ mechanics:
     message: { pt: "Virulence", en: "Virulence" }
 
   - key: virulence_spread
-    name: "Virulence (espalhado)"
+    name: "Virulence (spread)"
     type: avoidable_damage
     source_unit: sszorak
     difficulty: [mythic]
@@ -126,7 +126,7 @@ mechanics:
     message: { pt: "Mutilate", en: "Mutilate" }
 
   - key: mutilate_double
-    name: "Mutilate (soak duplo)"
+    name: "Mutilate (double soak)"
     type: avoidable_damage
     source_unit: sszorak
     difficulty: [heroic, mythic]

@@ -150,6 +150,46 @@ mod tests {
         assert!(missing.is_empty(), "{} textos sem pt e en:\n{}", missing.len(), missing.iter().take(40).cloned().collect::<Vec<_>>().join("\n"));
     }
 
+    /// Acento ou palavra que só existe em português.
+    fn looks_portuguese(s: &str) -> bool {
+        const WORDS: &[&str] = &[
+            "não", "você", "com", "para", "pelo", "pela", "quem", "cada", "ainda", "aqui", "até", "dos", "das", "uma", "morte", "mortes", "nenhum",
+            "mais", "depois", "isso", "esta", "sua", "seu", "que", "por", "mas", "ou", "em", "na", "ao", "os", "da", "de", "perto", "duplo",
+        ];
+        s.chars().any(|c| "áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ".contains(c))
+            || s.split(|c: char| !c.is_alphanumeric()).any(|w| WORDS.contains(&w.to_lowercase().as_str()))
+    }
+
+    /// O inglês das frases e os nomes (de mecânica, de habilidade) não têm português: os nomes
+    /// ficam em inglês nas duas línguas, como no jogo.
+    #[test]
+    fn english_side_and_names_have_no_portuguese() {
+        use yaml_serde::Value;
+        fn walk(v: &Value, at: &str, out: &mut Vec<String>) {
+            match v {
+                Value::Mapping(m) => {
+                    for (k, x) in m {
+                        let k = k.as_str().unwrap_or("?");
+                        let here = format!("{at}.{k}");
+                        if let ("en" | "name", Some(s)) = (k, x.as_str()) {
+                            if looks_portuguese(s) {
+                                out.push(format!("{here}: {s}"));
+                            }
+                        }
+                        walk(x, &here, out);
+                    }
+                }
+                Value::Sequence(s) => s.iter().enumerate().for_each(|(i, x)| walk(x, &format!("{at}[{i}]"), out)),
+                _ => {}
+            }
+        }
+        let mut found = Vec::new();
+        for (file, src) in crate::rules::embedded_sources().iter().chain(crate::rotation::EMBEDDED_ROTATIONS) {
+            walk(&yaml_serde::from_str(src).unwrap(), file, &mut found);
+        }
+        assert!(found.is_empty(), "{} textos em inglês com português:\n{}", found.len(), found.iter().take(40).cloned().collect::<Vec<_>>().join("\n"));
+    }
+
     #[test]
     fn text_reads_string_or_both() {
         let one: Text = yaml_serde::from_str("\"sair da poça\"").unwrap();
