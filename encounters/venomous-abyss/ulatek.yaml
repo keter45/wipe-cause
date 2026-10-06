@@ -1,0 +1,431 @@
+schema_version: 1
+raid: venomous-abyss
+boss: ulatek
+name: "Ula'tek"
+encounter_id: 3492
+source:
+  - https://www.mythictrap.com/pt/venomous-abyss/ulatek/heroic
+  - https://warcraft.wiki.gg/wiki/Ula'tek
+  - "mítico: https://www.youtube.com/watch?v=khgd47t-ONQ (Tactyks, guia do kill mítico) + Wowhead para os IDs"
+  - "log: WoWCombatLog-100126_164410 (5 pulls heroicos) — IDs de dano calibrados"
+updated: 2026-10-06
+difficulties: [normal, heroic, mythic]
+
+units:
+  - { key: ulatek, name: "Ula'tek", npc_id: null, boss: true }
+  - { key: gore_rattle, name: "Gore Rattle", npc_id: null }
+  - { key: spectral_coil, name: "Spectral Coil", npc_id: null }
+  - { key: venomous_heart, name: "Venomous Heart", npc_id: null }
+  - { key: blightscale_viper, name: "Blightscale Viper", npc_id: null }
+  - { key: blightscale_rawling, name: "Blightscale Rawling", npc_id: null }
+  - { key: doomscale_warden, name: "Doomscale Warden", npc_id: null }
+  - { key: weakened_doomscale, name: "Weakened Doomscale", npc_id: null }
+  - { key: blightscale_shrieker, name: "Blightscale Shrieker", npc_id: null }
+  - { key: blightscale_wretch, name: "Blightscale Wretch", npc_id: null }
+
+phases:
+  - { key: p1, name: "Fury of the Serpent Mother", start: pull }
+  - { key: p2, name: "Children of the Doomscale", start: { cast: grasping_fangs } }
+  - { key: p3, name: "Ula'tek's Ascension", start: { cast: circling_prey } }
+
+mechanics:
+  # ---------- Ovos: o centro da luta ----------
+  - key: viper_hatched
+    name: "Putrid Membrane (Viper hatched)"
+    type: failure_event
+    source_unit: blightscale_viper
+    severity: major
+    overrides:
+      mythic: { severity: wipe }
+    detect:
+      fail_ids: [1308275]       # Putrid Membrane: o raid todo toma quando um ovo vira Viper
+    tip: { pt: "Pegar os ovos e manter longe das ondas e do veneno; ovo quebrado cedo vira filhote fraco, ovo que choca vira Viper.", en: "Pick up the eggs and keep them away from waves and venom; an egg broken early becomes a weak hatchling, one that hatches becomes a Viper." }
+    message: { pt: "{count} Viper chocada — Putrid Membrane no raid", en: "{count} Viper hatched — Putrid Membrane on the raid" }
+    notes: "Aura 1301268 no raid inteiro no momento em que a Viper nasce; o dano 1308275 pulsa ~19s. Duas Vipers a menos de 1,5s contam uma vez."
+
+  - key: malignant_shell
+    name: "Malignant Shell"
+    type: unavoidable
+    severity: none
+    detect: { damage_ids: [1297213] }
+    tip: { pt: "Dano de quem carrega ovo; revezar quem carrega para espalhar o dano.", en: "Damage taken while carrying an egg; rotate carriers to spread the damage." }
+    message: { pt: "Malignant Shell", en: "Malignant Shell" }
+
+  - key: falling_eggs
+    name: "Blightscale Clutch (falling eggs)"
+    type: avoidable_damage
+    source_unit: ulatek
+    severity: minor
+    detect: { damage_ids: [1290409] }
+    tolerance: 0
+    tip: { pt: "Sair de baixo dos ovos que caem do teto e depois pegá-los.", en: "Step out from under the eggs falling from the ceiling, then pick them up." }
+    message: { pt: "{player} levou um ovo na cabeça ({count}x)", en: "{player} was hit by a falling egg ({count}x)" }
+    notes: "1290409 também acerta adds e pets; só o dano em player conta."
+
+  - key: acidic_burst
+    name: "Acidic Burst"
+    type: unavoidable
+    source_unit: blightscale_viper
+    severity: none
+    detect: { damage_ids: [1301800] }
+    tip: { pt: "Matar a Viper rápido: ela cospe veneno em players aleatórios.", en: "Kill the Viper fast: it spits venom at random players." }
+    message: { pt: "Acidic Burst", en: "Acidic Burst" }
+
+  - key: petrifying_sting
+    name: "Petrifying Sting"
+    type: avoidable_damage
+    source_unit: blightscale_viper
+    severity: minor
+    difficulty: [heroic, mythic]
+    detect: { damage_ids: [1303414] }
+    tolerance: 0
+    tip: { pt: "Sair da área onde a Viper mergulha: quem fica vira pedra.", en: "Leave the area where the Viper dives: whoever stays turns to stone." }
+    message: { pt: "{player} virou pedra no Petrifying Sting", en: "{player} was petrified by Petrifying Sting" }
+    notes: "No log o 1303414 aparece como aura + dano periódico; o 1º alvo pode ser o mirado. Calibrar."
+
+  - key: poisonous_bite
+    name: "Poisonous Bite"
+    type: unavoidable
+    source_unit: blightscale_rawling
+    severity: none
+    difficulty: [heroic, mythic]
+    detect: { damage_ids: [1287032] }
+    tip: { pt: "Filhotes acumulam DoT no alvo: matar logo.", en: "Hatchlings stack a DoT on their target: kill them quickly." }
+    message: { pt: "Poisonous Bite", en: "Poisonous Bite" }
+
+  # ---------- Ula'tek (fase 1 e 3) ----------
+  - key: caustic_waves
+    name: "Caustic Waves"
+    type: avoidable_damage
+    source_unit: ulatek
+    severity: minor
+    overrides:
+      mythic: { severity: major }   # no mítico a onda quase mata sozinha
+    detect: { damage_ids: [1292403], min_amount: 150000 }   # só o impacto (~530k); o DoT tica ~20-40k
+    tolerance: 0
+    tip: { pt: "Desviar das ondas de veneno (da Ula'tek e da cauda) e não deixar ovo no caminho delas.", en: "Dodge the venom waves (from Ula'tek and from the tail) and keep eggs out of their path." }
+    message: { pt: "{player} tomou Caustic Waves ({count}x)", en: "{player} was hit by Caustic Waves ({count}x)" }
+    notes: "Casts: 1292211 (Ula'tek) e 1298570/1311807 (Gore Rattle); o dano é o mesmo 1292403."
+
+  - key: mothers_wrath
+    name: "Mother's Wrath"
+    type: unavoidable
+    source_unit: ulatek
+    severity: none
+    roles: [tank]
+    detect: { damage_ids: [1298369], cast_id: 1298367 }
+    tip: { pt: "Tank: defensivo nas mordidas e ficar dentro do alcance; as mordidas deixam Stone Venom acumulado.", en: "Tank: use a defensive for the bites and stay within reach; the bites leave stacking Stone Venom." }
+    message: { pt: "Mother's Wrath", en: "Mother's Wrath" }
+
+  - key: mothers_wrath_raid
+    name: "Mother's Wrath (raid-wide)"
+    type: failure_event
+    source_unit: ulatek
+    severity: major
+    detect: { fail_ids: [1301122] }
+    tip: { pt: "O alvo do Mother's Wrath tem que ficar no alcance da mordida; fora dele, o raid inteiro toma as mordidas e o Stone Venom.", en: "The Mother's Wrath target must stay within reach of the bite; outside it, the whole raid takes the bites and the Stone Venom." }
+    message: { pt: "Mother's Wrath pegou o raid ({count}x) — o tank saiu do alcance", en: "Mother's Wrath hit the raid ({count}x) — the tank left its reach" }
+
+  - key: stone_venom
+    name: "Stone Venom"
+    type: unavoidable
+    source_unit: ulatek
+    severity: none
+    detect: { damage_ids: [1298418], aura_id: 1298418 }
+    tip: { pt: "DoT longo das mordidas; trocar de tank a cada Mother's Wrath.", en: "Long DoT from the bites; swap tanks every Mother's Wrath." }
+    message: { pt: "Stone Venom", en: "Stone Venom" }
+
+  - key: unchecked_rage
+    name: "Unchecked Rage"
+    type: failure_event
+    source_unit: ulatek
+    severity: major
+    detect: { fail_ids: [1286945] }
+    tip: { pt: "Sempre ter alguém em melee da Ula'tek, senão ela bate no raid inteiro.", en: "Always keep someone in Ula'tek's melee range, or she hits the whole raid." }
+    message: { pt: "Unchecked Rage ({count}x) — ninguém em melee da Ula'tek", en: "Unchecked Rage ({count}x) — nobody in Ula'tek's melee range" }
+    notes: "ID do Journal; não apareceu nos pulls de calibração (ninguém errou). Confirmar no log quando acontecer."
+
+  - key: deadly_venom
+    name: "Deadly Venom"
+    type: unavoidable
+    severity: none
+    detect: { damage_ids: [1297338] }
+    tip: { pt: "Dano de quem está dentro do veneno da sala: atravessar rápido na fase 2 e não ficar parado nele.", en: "Damage while inside the room's venom: cross it quickly in phase 2 and don't stand in it." }
+    message: { pt: "Deadly Venom", en: "Deadly Venom" }
+    notes: "Aura de 1,2s renovada enquanto o player está no veneno (sem origem no log). A travessia da fase 2 é obrigatória, então não conta como erro."
+
+  - key: necrotic_vapors
+    name: "Necrotic Vapors"
+    type: unavoidable
+    source_unit: ulatek
+    severity: none
+    detect: { damage_ids: [1286835] }
+    tip: { pt: "Dano constante no raid a luta toda: só curar.", en: "Constant raid damage the whole fight: just heal through it." }
+    message: { pt: "Necrotic Vapors", en: "Necrotic Vapors" }
+
+  - key: rage_of_the_shackled
+    name: "Rage of the Shackled"
+    type: unavoidable
+    source_unit: ulatek
+    severity: none
+    detect: { damage_ids: [1307367], cast_id: 1286860 }
+    tip: { pt: "Janela de dano: todo mundo no Venomous Heart (dano dobrado) enquanto desvia das pedras; curar o pulso no raid.", en: "Damage window: everyone on the Venomous Heart (double damage) while dodging the rocks; heal the raid pulses." }
+    message: { pt: "Rage of the Shackled", en: "Rage of the Shackled" }
+
+  - key: falling_debris
+    name: "Falling Debris"
+    type: avoidable_damage
+    source_unit: ulatek
+    severity: minor
+    overrides:
+      mythic: { severity: major }   # no mítico as pedras matam até tank
+    detect: { damage_ids: [1286885] }
+    tolerance: 0
+    tip: { pt: "Sair dos círculos das pedras que caem durante o Rage of the Shackled.", en: "Step out of the falling rock circles during Rage of the Shackled." }
+    message: { pt: "{player} tomou Falling Debris ({count}x)", en: "{player} was hit by Falling Debris ({count}x)" }
+
+  # ---------- Gore Rattle (a cauda) ----------
+  - key: rattler_slam
+    name: "Rattler Slam"
+    type: failure_event
+    source_unit: gore_rattle
+    severity: major
+    detect: { fail_ids: [1299206] }
+    tip: { pt: "Um tank sempre em melee da cauda (Gore Rattle); sem ninguém, ela bate no raid inteiro.", en: "One tank always in melee of the tail (Gore Rattle); with nobody there, it hits the whole raid." }
+    message: { pt: "Rattler Slam ({count}x) — ninguém tankando a cauda", en: "Rattler Slam ({count}x) — nobody tanking the tail" }
+    notes: "ID do Journal; não apareceu nos pulls de calibração (ninguém errou). Confirmar no log quando acontecer."
+
+  - key: mephitic_thrash
+    name: "Mephitic Thrash"
+    type: unavoidable
+    source_unit: gore_rattle
+    severity: none
+    detect: { damage_ids: [1296301], cast_id: 1296301 }
+    tip: { pt: "Sair do círculo grande da cauda levando os ovos; o tank sai e volta rápido.", en: "Leave the tail's big circle taking the eggs with you; the tank goes out and back in quickly." }
+    message: { pt: "Mephitic Thrash", en: "Mephitic Thrash" }
+    notes: "Todo o raid toma dano e DoT mesmo saindo (23-27 alvos por cast); por isso unavoidable."
+
+  - key: spectral_coils
+    name: "Spectral Coils"
+    type: unavoidable
+    source_unit: spectral_coil
+    severity: none
+    detect: { damage_ids: [1287265], cast_id: 1299010 }
+    tip: { pt: "Cada grupo no seu círculo ao lado da cauda: quanto mais gente dentro, menos o raid toma.", en: "Each group in its circle next to the tail: the more people inside, the less the raid takes." }
+    message: { pt: "Spectral Coils", en: "Spectral Coils" }
+    notes: "Acerta o raid todo; o soak só reduz o dano. Soul Constrictor (1300685) cai em quem soakou e impede soakar o próximo."
+
+  # ---------- Fase 2: bordas, Wardens e caldeirão ----------
+  - key: malice
+    name: "Malice"
+    type: interrupt
+    source_unit: doomscale_warden
+    severity: major
+    detect: { cast_id: 1290779 }
+    accept: [interrupt, cc, kill]
+    tip: { pt: "Cortar todo Malice do Warden.", en: "Interrupt every Malice from the Warden." }
+    message: { pt: "{count} Malice passaram", en: "{count} Malice went through" }
+
+  - key: grasping_fangs
+    name: "Grasping Fangs"
+    type: unavoidable
+    source_unit: doomscale_warden
+    severity: none
+    difficulty: [heroic, mythic]
+    detect: { damage_ids: [1311612], cast_id: 1301117 }
+    tip: { pt: "Quebrar as correntes aos poucos, no máximo duas por vez: cada uma quebrada põe Blight Vein no raid todo.", en: "Break the tethers gradually, at most two at a time: each broken one puts Blight Vein on the whole raid." }
+    message: { pt: "Grasping Fangs", en: "Grasping Fangs" }
+
+  - key: blight_vein
+    name: "Blight Vein"
+    type: unavoidable
+    source_unit: doomscale_warden
+    severity: none
+    difficulty: [heroic, mythic]
+    detect: { damage_ids: [1317955], aura_id: 1311609 }
+    tip: { pt: "DoT no raid a cada corrente quebrada; acumula se quebrarem várias juntas.", en: "Raid DoT for every broken tether; it stacks if several break together." }
+    message: { pt: "Blight Vein", en: "Blight Vein" }
+    notes: "Nos pulls de calibração chegou a 3-4 stacks (correntes quebradas juntas). Não dá para saber pelo log quem quebrou cedo demais."
+
+  - key: virulent_spit
+    name: "Virulent Spit"
+    type: avoidable_damage
+    source_unit: ulatek
+    severity: minor
+    overrides:
+      mythic: { severity: major }   # círculos marrons matam na hora no mítico
+    detect: { damage_ids: [1302982] }
+    tolerance: 0
+    tip: { pt: "Desviar das poças que a Ula'tek cospe nas bordas.", en: "Dodge the puddles Ula'tek spits on the ledges." }
+    message: { pt: "{player} tomou Virulent Spit ({count}x)", en: "{player} was hit by Virulent Spit ({count}x)" }
+
+  - key: wardens_protection
+    name: "Warden's Protection"
+    type: avoidable_damage
+    source_unit: doomscale_warden
+    severity: minor
+    detect: { damage_ids: [1306858] }
+    tolerance: 0
+    tip: { pt: "Não chegar perto dos ovos enquanto o Warden estiver vivo.", en: "Don't go near the eggs while the Warden is alive." }
+    message: { pt: "{player} encostou nos ovos protegidos ({count}x)", en: "{player} touched the protected eggs ({count}x)" }
+
+  - key: doomscale_shell
+    name: "Doomscale Shell"
+    type: unavoidable
+    severity: none
+    detect: { damage_ids: [1300314], aura_id: 1300312 }
+    tip: { pt: "Quem pega o ovo grande tem 20s até ele chocar: levar direto ao caldeirão.", en: "Whoever picks up the big egg has 20s until it hatches: take it straight to the cauldron." }
+    message: { pt: "Doomscale Shell", en: "Doomscale Shell" }
+
+  - key: anguished_cry
+    name: "Anguished Cry"
+    type: interrupt
+    source_unit: weakened_doomscale
+    severity: major
+    detect: { cast_id: 1305650 }
+    accept: [interrupt, cc, kill]
+    tip: { pt: "Cortar o Anguished Cry do Doomscale enfraquecido: ele atordoa todo mundo perto.", en: "Interrupt the Weakened Doomscale's Anguished Cry: it stuns everyone nearby." }
+    message: { pt: "{count} Anguished Cry passaram", en: "{count} Anguished Cry went through" }
+
+  - key: desperate_thrash
+    name: "Desperate Thrash"
+    type: avoidable_damage
+    source_unit: weakened_doomscale
+    severity: minor
+    roles: [healer, dps]
+    detect: { damage_ids: [1305709] }
+    tolerance: 0
+    tip: { pt: "O frontal do Doomscale vai no tank: ninguém mais na frente dele, nem na volta para a plataforma.", en: "The Doomscale's frontal goes on the tank: nobody else in front of it, also on the way back to the platform." }
+    message: { pt: "{player} tomou Desperate Thrash ({count}x)", en: "{player} was hit by Desperate Thrash ({count}x)" }
+
+  # ---------- Fase 3: plataformas, Shriekers e Serpent's Bite ----------
+  - key: circling_prey
+    name: "Circling Prey"
+    type: unavoidable
+    source_unit: ulatek
+    severity: none
+    detect: { damage_ids: [1301510], cast_id: 1315341 }
+    tip: { pt: "Ir para a próxima plataforma antes da Ula'tek destruir a atual.", en: "Move to the next platform before Ula'tek destroys the current one." }
+    message: { pt: "Circling Prey", en: "Circling Prey" }
+    notes: "O dano 1301510 acerta o raid todo (knockback); quem fica na plataforma destruída cai (dano de queda)."
+
+  - key: acidic_expulsion
+    name: "Acidic Expulsion"
+    type: unavoidable
+    source_unit: blightscale_shrieker
+    severity: none
+    detect: { damage_ids: [1313531], cast_id: 1313531 }
+    tip: { pt: "Trocar para o Shrieker e matar antes do segundo DoT no raid.", en: "Swap to the Shrieker and kill it before its second raid DoT." }
+    message: { pt: "Acidic Expulsion", en: "Acidic Expulsion" }
+
+  - key: vicious_echoes
+    name: "Vicious Echoes"
+    type: interrupt
+    source_unit: blightscale_shrieker
+    severity: wipe
+    detect: { cast_id: 1310764 }
+    accept: [interrupt, cc, kill]
+    tip: { pt: "Cortar sempre o Vicious Echoes do Shrieker: atordoa e machuca o raid inteiro.", en: "Always interrupt the Shrieker's Vicious Echoes: it stuns and hurts the whole raid." }
+    message: { pt: "{count} Vicious Echoes passaram", en: "{count} Vicious Echoes went through" }
+
+  - key: serpents_bite
+    name: "Serpent's Bite"
+    type: failure_event
+    source_unit: ulatek
+    severity: major
+    detect:
+      fail_ids: [1318329]       # Calcified Corpse: o mordido virou pedra e irradia dano no raid
+    tip: { pt: "Grupos fixos (melee, ranged, healers) entram nos três círculos dos mordidos; todo mundo soaka.", en: "Fixed groups (melee, ranged, healers) go into the three bitten players' circles; everyone soaks." }
+    message: { pt: "{count} mordido virou pedra (Calcified Corpse) — círculo sem soak", en: "{count} bitten player turned to stone (Calcified Corpse) — circle not soaked" }
+    notes: "Mordida inicial 1295838 (3 alvos), aura Surging Fang 1288879 (15s); Calcified Corpse 1306119 no mordido. O dano do soak é 1293146; como soak, o dano irradiado no raid culpava todo mundo, então fica como falha coletiva."
+
+  - key: volatile_purge
+    name: "Volatile Purge"
+    type: unavoidable
+    source_unit: ulatek
+    severity: none
+    detect: { damage_ids: [1305878, 1316357] }
+    tip: { pt: "Depois do soak, espalhar: quem soakou explode em quem estiver perto.", en: "After the soak, spread: whoever soaked explodes on anyone nearby." }
+    message: { pt: "Volatile Purge", en: "Volatile Purge" }
+    notes: "1305878 é o hit inicial e 1316357 o DoT de 14s em quem soakou. A explosão no fim não apareceu com ID separado; espalhar não dá para checar pelo log."
+
+  # ---------- Só no mítico ----------
+  - key: noxious_splash
+    name: "Noxious Splash"
+    type: failure_event
+    severity: major
+    difficulty: [mythic]
+    detect:
+      fail_ids: [1307635]       # dois portadores de ovo a menos de 3 jardas: o ovo choca na hora
+      culprit_auras: [1307612]  # Noxious Shell: quem carregava
+    tip: { pt: "Com ovo na mão, nunca chegar a 3 jardas de outro portador: andar em faixas e posições combinadas.", en: "While carrying an egg, never get within 3 yards of another carrier: move in agreed lanes and spots." }
+    message: { pt: "{count} Noxious Splash — portadores de ovo se encostaram", en: "{count} Noxious Splash — egg carriers touched" }
+    blame_message: { pt: "{player} encostou em outro portador de ovo", en: "{player} touched another egg carrier" }
+    notes: "IDs do Wowhead, ainda sem log mítico para confirmar. O ovo choca uma Viper (conta também em viper_hatched)."
+
+  - key: egg_pickup_with_yolk
+    name: "Noxious Shell (picked up with Rancid Yolk)"
+    type: avoidable_damage
+    severity: major
+    difficulty: [mythic]
+    roles: [healer, dps]
+    detect:
+      damage_ids: [1307612]     # dano de quem carrega o ovo
+      requires_aura: 1312150    # Rancid Yolk: o ovo anterior ainda triplica esse dano
+    tolerance: 0
+    tip: { pt: "Depois de largar ou quebrar um ovo, esperar o Rancid Yolk (debuff amarelo, 20s) acabar antes de pegar outro; com ele, o ovo mata.", en: "After dropping or breaking an egg, wait for Rancid Yolk (yellow debuff, 20s) to expire before picking up another; with it, the egg kills you." }
+    message: { pt: "{player} pegou ovo com Rancid Yolk ({count} ticks)", en: "{player} picked up an egg with Rancid Yolk ({count} ticks)" }
+    notes: "Tanks aguentam e ficam de fora (roles). O dano de carregar no mítico pode ter outro ID além de 1307612: confirmar no log."
+
+  - key: mothers_boon
+    name: "Mother's Boon"
+    type: enrage
+    source_unit: blightscale_wretch
+    severity: major
+    difficulty: [mythic]
+    detect: { enrage_aura_id: 1299764 }
+    tip: { pt: "O tank livre fica no caminho do raio da Ula'tek espectral até o Wretch e atira as ondas para longe dos ovos.", en: "The free tank stands in the spectral Ula'tek's beam on its way to the Wretch and aims the waves away from the eggs." }
+    message: { pt: "Wretch ganhou {count} Mother's Boon — raio sem tank no caminho", en: "Wretch gained {count} Mother's Boon — nobody tanking the beam" }
+    notes: "Toxic Incubation (1299757) é o raio; cada impacto que chega no Wretch aplica Mother's Boon."
+
+  - key: fester_burst
+    name: "Fester Burst"
+    type: avoidable_damage
+    source_unit: blightscale_wretch
+    severity: major
+    difficulty: [mythic]
+    detect: { damage_ids: [1310763], min_amount: 300000 }   # só o impacto (~540k); o DoT tica ~100k
+    tolerance: 0
+    tip: { pt: "Entrar na bolha de 10 jardas do Wretch antes de estourar; com o Wretch enfurecido o cast é bem mais rápido, então se posicionar antes.", en: "Get inside the Wretch's 10-yard bubble before it bursts; once the Wretch enrages the cast is much faster, so pre-position." }
+    message: { pt: "{player} ficou fora da bolha do Fester Burst ({count}x)", en: "{player} was outside the Fester Burst bubble ({count}x)" }
+    notes: "ID e valores do Wowhead; confirmar no log mítico se impacto e DoT usam o mesmo ID. Meta do raid: matar o Wretch antes da 3ª bolha."
+
+  - key: revenge
+    name: "Revenge"
+    type: enrage
+    source_unit: weakened_doomscale
+    severity: minor
+    difficulty: [mythic]
+    detect: { enrage_aura_id: 1307941 }
+    tip: { pt: "Matar os Doomscales enfraquecidos juntos: quando um morre, os outros dobram velocidade e dano em cima dos tanks.", en: "Kill the Weakened Doomscales together: when one dies, the others double their speed and damage on the tanks." }
+    message: { pt: "Revenge em {count} Doomscale — morreram em tempos diferentes", en: "Revenge on {count} Doomscale — they died at different times" }
+    notes: "Quase sempre algum ganha Revenge; vale olhar quantos e por quanto tempo. Se marcar todo pull, baixar para info."
+
+  - key: noxious_shell
+    name: "Noxious Shell"
+    type: unavoidable
+    severity: none
+    difficulty: [mythic]
+    detect: { damage_ids: [1307612], aura_id: 1307612 }
+    tip: { pt: "No mítico o ovo tem escudo (quebrar antes de pegar) e o dano de carregar é bem maior; morrer com o ovo choca uma Viper.", en: "On Mythic the egg has a shield (break it before picking it up) and carrying it hurts much more; dying with the egg hatches a Viper." }
+    message: { pt: "Noxious Shell", en: "Noxious Shell" }
+
+  - key: serpents_bite_soakers
+    name: "Serpent's Bite (soakers)"
+    type: info
+    severity: wipe
+    difficulty: [mythic]
+    detect: { damage_ids: [1293146] }
+    tip: { pt: "Soakar com o mínimo de gente, de cargos combinados, com defensivo grande para a explosão do fim; quem soakou solta ondas: mirar longe do raid. Soaker que morre durante o soak wipa o raid.", en: "Soak with the minimum number of people, from agreed roles, with a big defensive for the final explosion; soakers release waves: aim them away from the raid. A soaker dying mid-soak wipes the raid." }
+    message: { pt: "Serpent's Bite", en: "Serpent's Bite" }
+    notes: "No mítico, quem soakou solta Caustic Waves ao fim do Volatile Purge; as ondas que acertam o raid já contam em caustic_waves."
