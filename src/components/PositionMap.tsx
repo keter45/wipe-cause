@@ -1,5 +1,7 @@
 import type { Positions, UnitPos } from '../types';
 import { classColor, shortName } from '../lib/format';
+import { useMessages } from '../i18n';
+import { positionMapMsg } from './misc.i18n';
 
 export type Mark = 'dead' | 'culprit';
 
@@ -44,6 +46,7 @@ export const mainEnemy = (snap: Positions) => snap.units.find((u) => u.kind === 
  * distâncias batem.
  */
 export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
+  const t = useMessages(positionMapMsg);
   const units = snap.units;
   if (units.length === 0) return null;
   const boss = mainEnemy(snap);
@@ -66,7 +69,7 @@ export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
   const order = (u: UnitPos) => (marks?.has(u.guid) ? 1 : 0);
 
   return (
-    <svg className="posmap" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Posições dos jogadores">
+    <svg className="posmap" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t.aria}>
       {rings.map((r) => (
         <g key={r}>
           <circle cx={sx(boss!)} cy={sy(boss!)} r={r * scale} className="posmap-ring" style={STYLE.ring} />
@@ -87,12 +90,12 @@ export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
       ))}
       {[...players].sort((a, b) => order(a) - order(b)).map((p) => {
         const mark = marks?.get(p.guid);
-        const d = boss ? ` · ${dist(p, boss).toFixed(0)} jd do ${boss.name}` : '';
+        const d = boss ? t.distance(dist(p, boss).toFixed(0), boss.name) : '';
         return (
           <g key={p.guid} opacity={p.ageMs > STALE_MS && !mark ? 0.45 : 1}>
             {mark && <circle cx={sx(p)} cy={sy(p)} r={9} className={`posmap-mark ${mark}`} style={mark === 'dead' ? STYLE.dead : STYLE.culprit} />}
             <circle cx={sx(p)} cy={sy(p)} r={5} fill={classColor(classes.get(p.guid))} className="posmap-player" style={STYLE.player}>
-              <title>{`${shortName(p.name)}${d}${p.ageMs > STALE_MS ? ` (posição de ${(p.ageMs / 1000).toFixed(1)}s antes)` : ''}`}</title>
+              <title>{`${shortName(p.name)}${d}${p.ageMs > STALE_MS ? t.stale((p.ageMs / 1000).toFixed(1)) : ''}`}</title>
             </circle>
             {mark && (
               <text x={sx(p)} y={sy(p) + 19} className="posmap-label strong" style={STYLE.strong} textAnchor="middle">

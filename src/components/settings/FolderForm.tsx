@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { FolderOpen, FolderSearch } from 'lucide-react';
 import { inTauri, pickFolder } from '../../lib/api';
+import { useMessages } from '../../i18n';
+import { folderMsg } from './FolderForm.i18n';
 
 export interface FolderApi {
   /** pasta cadastrada pelo usuário (null = detecção automática) */
@@ -17,6 +19,7 @@ export interface FolderApi {
  * `detectedLabel`: de onde vem a detecção ("instalação do WoW", "Warcraft Recorder").
  */
 export function FolderForm({ api, pickTitle, placeholder, detectedLabel, onSaved }: { api: FolderApi; pickTitle: string; placeholder: string; detectedLabel: string; onSaved: () => void }) {
+  const t = useMessages(folderMsg);
   const [path, setPath] = useState('');
   const [saved, setSaved] = useState<string | null>(null);
   const [detected, setDetected] = useState<string | null>(null);
@@ -59,9 +62,9 @@ export function FolderForm({ api, pickTitle, placeholder, detectedLabel, onSaved
     if (dir) await save(dir);
   }
 
-  if (!inTauri) return <p className="muted small">Escolher pastas funciona só no app instalado.</p>;
+  if (!inTauri) return <p className="muted small">{t.appOnly}</p>;
 
-  const using = saved ? 'escolhida por você' : scan?.dir ? `detectada (${detectedLabel})` : null;
+  const using = saved ? t.chosen : scan?.dir ? t.detected(detectedLabel) : null;
   return (
     <>
       <div className="folder-status small">
@@ -74,12 +77,12 @@ export function FolderForm({ api, pickTitle, placeholder, detectedLabel, onSaved
             {scan.warning ? <div className="bad">{scan.warning}</div> : <div className="ok-text">{scan.found}</div>}
           </>
         ) : (
-          <div className="muted">Nenhuma pasta definida{detected ? '' : `, e a ${detectedLabel} não foi encontrada neste PC`}.</div>
+          <div className="muted">{t.none(detected ? null : detectedLabel)}</div>
         )}
       </div>
 
       <label className="field">
-        Caminho da pasta
+        {t.path}
         <span className="model-row">
           <input
             className="text-input"
@@ -90,7 +93,7 @@ export function FolderForm({ api, pickTitle, placeholder, detectedLabel, onSaved
             onKeyDown={(e) => e.key === 'Enter' && path.trim() && save(path)}
           />
           <button className="btn sm" onClick={browse}>
-            <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> Procurar…
+            <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> {t.browse}
           </button>
         </span>
       </label>
@@ -98,11 +101,11 @@ export function FolderForm({ api, pickTitle, placeholder, detectedLabel, onSaved
       <div className="set-actions">
         {detected && saved && (
           <button className="btn ghost" onClick={() => save(null)} title={detected}>
-            <FolderSearch size={14} strokeWidth={1.5} aria-hidden /> Usar a detectada
+            <FolderSearch size={14} strokeWidth={1.5} aria-hidden /> {t.useDetected}
           </button>
         )}
         <button className="btn primary" onClick={() => save(path)} disabled={!path.trim() || path.trim() === saved}>
-          Salvar
+          {t.save}
         </button>
       </div>
     </>

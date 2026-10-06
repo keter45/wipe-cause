@@ -5,18 +5,20 @@ import { classColor, mmss, num, ROLE_LABEL, shortName } from '../lib/format';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { parseColor, type PlayerParse } from '../lib/wclParses';
 import type { ParseState } from '../lib/useWclParses';
+import { useMessages } from '../i18n';
+import { playersMsg } from './PlayersTable.i18n';
 
 type SortKey = 'name' | 'score' | 'parse' | 'dps' | 'hps' | 'damageTaken' | 'deaths' | 'defensives';
 
-const COLUMNS: { key: SortKey; label: string; num?: boolean }[] = [
-  { key: 'name', label: 'Jogador' },
-  { key: 'score', label: 'Nota', num: true },
-  { key: 'parse', label: 'Parse WCL', num: true },
-  { key: 'dps', label: 'DPS', num: true },
-  { key: 'hps', label: 'HPS', num: true },
-  { key: 'damageTaken', label: 'Dano tomado', num: true },
-  { key: 'deaths', label: 'Mortes', num: true },
-  { key: 'defensives', label: 'Defensivos', num: true },
+const COLUMNS: { key: SortKey; num?: boolean }[] = [
+  { key: 'name' },
+  { key: 'score', num: true },
+  { key: 'parse', num: true },
+  { key: 'dps', num: true },
+  { key: 'hps', num: true },
+  { key: 'damageTaken', num: true },
+  { key: 'deaths', num: true },
+  { key: 'defensives', num: true },
 ];
 
 function value(p: PlayerStats, k: SortKey, scores: Map<string, PlayerScore>, parses?: Map<string, PlayerParse>): number | string {
@@ -28,6 +30,7 @@ function value(p: PlayerStats, k: SortKey, scores: Map<string, PlayerScore>, par
 }
 
 export function PlayersTable({ players, scores, parseState }: { players: PlayerStats[]; scores: Map<string, PlayerScore>; parseState?: ParseState }) {
+  const t = useMessages(playersMsg);
   const parses = parseState?.kind === 'ready' ? parseState.parses : undefined;
   const [sort, setSort] = useState<SortKey>('score');
   const [open, setOpen] = useState<string | null>(null);
@@ -50,9 +53,9 @@ export function PlayersTable({ players, scores, parseState }: { players: PlayerS
               <button
                 className={`sort ${sort === c.key ? 'active' : ''}`}
                 onClick={() => setSort(c.key)}
-                title={c.key === 'parse' ? 'Parse do Warcraft Logs no ranking do papel: DPS para dps e tanks, HPS para healers' : undefined}
+                title={c.key === 'parse' ? t.parseTitle : undefined}
               >
-                {c.label}
+                {t.columns[c.key]}
               </button>
             </th>
           ))}
@@ -79,32 +82,30 @@ export function PlayersTable({ players, scores, parseState }: { players: PlayerS
 
 /** Linha explicando de onde vem o parse (ou por que não aparece). */
 function ParseNote({ state }: { state: ParseState }) {
+  const t = useMessages(playersMsg);
   if (state.kind === 'off') return <p className="muted small parse-note">{state.reason}</p>;
-  if (state.kind === 'error') return <p className="small bad parse-note">Warcraft Logs: {state.message}</p>;
+  if (state.kind === 'error') return <p className="small bad parse-note">{t.wclError(state.message)}</p>;
   if (state.kind === 'ready' && state.source === 'history')
     return (
-      <p className="muted small parse-note">
-        O Warcraft Logs só ranqueia kills: num wipe, “Parse WCL” mostra a <strong>mediana</strong> de cada player neste boss (histórico), no ranking do papel
-        dele (DPS ou HPS).
-        {state.parses.size === 0 && ' Ninguém tem kill registrado neste boss no Warcraft Logs ainda.'}
-      </p>
+      <p className="muted small parse-note">{t.historyNote(state.parses.size === 0)}</p>
     );
   return null;
 }
 
 /** Parse colorido como no site; métrica do papel ao lado (DPS/HPS). */
 function ParseCell({ parse, loading }: { parse?: PlayerParse; loading: boolean }) {
+  const t = useMessages(playersMsg);
   if (!parse) return <span className="muted">{loading ? '…' : '—'}</span>;
   const metric = parse.metric.toUpperCase();
   if (parse.kind === 'history') {
-    const title = `Histórico no boss (${metric}): mediana ${parse.percent ?? '—'} · melhor ${parse.best ?? '—'} · ${parse.kills} kill${parse.kills === 1 ? '' : 's'}`;
+    const title = t.historyTitle(metric, String(parse.percent ?? '—'), String(parse.best ?? '—'), parse.kills ?? 0);
     return (
       <span className="parse history" title={title}>
-        <span className="parse-hint">med</span> <strong style={{ color: parseColor(parse.percent) }}>{parse.percent ?? '—'}</strong> <span className="parse-metric">{metric}</span>
+        <span className="parse-hint">{t.median}</span> <strong style={{ color: parseColor(parse.percent) }}>{parse.percent ?? '—'}</strong> <span className="parse-metric">{metric}</span>
       </span>
     );
   }
-  const title = `Parse de ${metric} neste kill: ${parse.percent ?? '—'} geral · ${parse.bracketPercent ?? '—'} na faixa de item level${parse.rank ? ` · #${parse.rank} de ${parse.total}` : ''}`;
+  const title = t.killTitle(metric, String(parse.percent ?? '—'), String(parse.bracketPercent ?? '—'), parse.rank ? t.rank(parse.rank, parse.total ?? 0) : '');
   return (
     <span className="parse" title={title}>
       <strong style={{ color: parseColor(parse.percent) }}>{parse.percent ?? '—'}</strong> <span className="parse-metric">{metric}</span>
@@ -127,6 +128,7 @@ function PlayerRow({
   open: boolean;
   onToggle: () => void;
 }) {
+  const t = useMessages(playersMsg);
   return (
     <>
       <tr className="player-row" onClick={onToggle}>
@@ -136,7 +138,7 @@ function PlayerRow({
         </td>
         <td className="num">
           {score && (
-            <span className={`score-pill ${scoreTone(score.score)}`} title={score.parts.length ? score.parts.join('\n') : 'Sem descontos'}>
+            <span className={`score-pill ${scoreTone(score.score)}`} title={score.parts.length ? score.parts.join('\n') : t.noDeductions}>
               {score.score}
             </span>
           )}
@@ -158,7 +160,7 @@ function PlayerRow({
           <td colSpan={9}>
             <div className="detail-grid">
               <div>
-                <h4>Dano tomado por habilidade</h4>
+                <h4>{t.takenByAbility}</h4>
                 <table>
                   <tbody>
                     {p.takenByAbility.map((a) => (
@@ -175,9 +177,9 @@ function PlayerRow({
                 </table>
               </div>
               <div>
-                <h4>Defensivos</h4>
+                <h4>{t.defensives}</h4>
                 {p.defensivesUsed.length === 0 ? (
-                  <p className="muted">Nenhum.</p>
+                  <p className="muted">{t.none}</p>
                 ) : (
                   <ul className="plain">
                     {p.defensivesUsed.map((d, i) => (

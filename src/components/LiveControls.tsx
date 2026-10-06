@@ -2,28 +2,23 @@ import { useState } from 'react';
 import { Radio, Square } from 'lucide-react';
 import { sourceName, type LiveStatus } from '../lib/api';
 import { Popover } from './Popover';
+import { useMessages } from '../i18n';
+import { liveControlsMsg } from './LiveControls.i18n';
 
 const ICON = { size: 16, strokeWidth: 1.5, 'aria-hidden': true } as const;
-
-const STATE_LABEL: Record<LiveStatus['state'], string> = {
-  watching: 'aguardando pull',
-  in_combat: 'em combate',
-  analyzing: 'analisando…',
-  error: 'erro',
-  stopped: 'parado',
-};
 
 // ---------------------------------------------------------------------------
 // Ao vivo
 
 export function LiveButton({ status, error, onStart, onStop }: { status: LiveStatus; error: string | null; onStart: () => void; onStop: () => void }) {
   const [open, setOpen] = useState(false);
+  const t = useMessages(liveControlsMsg);
 
   if (!status.active) {
     return (
       <div className="live-off">
-        <button className="btn ghost" onClick={onStart} title="Acompanha o log enquanto vocês jogam e analisa cada pull assim que ele termina">
-          <Radio {...ICON} /> Ao vivo
+        <button className="btn ghost" onClick={onStart} title={t.startTitle}>
+          <Radio {...ICON} /> {t.live}
         </button>
         {error && (
           <span className="small bad live-error" title={error}>
@@ -34,28 +29,23 @@ export function LiveButton({ status, error, onStart, onStop }: { status: LiveSta
     );
   }
 
-  const label = status.state === 'in_combat' && status.encounter ? `em combate: ${status.encounter}` : STATE_LABEL[status.state];
+  const label = status.state === 'in_combat' && status.encounter ? t.inCombatWith(status.encounter) : t.state[status.state];
   const fileName = status.file ? sourceName(status.file) : null;
   return (
     <Popover
       open={open}
       onClose={() => setOpen(false)}
-      label="Modo ao vivo"
+      label={t.liveMode}
       trigger={
         <button className={`btn ghost live-on ${status.state} ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open}>
           <span className="live-dot" aria-hidden />
-          Ao vivo <span className="small muted live-state">{label}</span>
+          {t.live} <span className="small muted live-state">{label}</span>
         </button>
       }
     >
-      <h4>Modo ao vivo</h4>
-      <p className="muted small">
-        Acompanhando {fileName ? <code>{fileName}</code> : 'a guilda no Warcraft Logs'}. Quando um pull termina, o log é reanalisado e o pull abre
-        sozinho (e vai para o Discord, se configurado).
-      </p>
-      <p className="small">
-        {status.analyzed} pull{status.analyzed === 1 ? '' : 's'} analisado{status.analyzed === 1 ? '' : 's'} nesta sessão
-      </p>
+      <h4>{t.liveMode}</h4>
+      <p className="muted small">{t.following(fileName ? <code>{fileName}</code> : t.guildOnWcl)}</p>
+      <p className="small">{t.analyzed(status.analyzed)}</p>
       {status.message && <p className={`small ${status.state === 'error' ? 'bad' : 'muted'}`}>{status.message}</p>}
       <div className="popover-footer">
         <span className="topbar-spacer" />
@@ -66,7 +56,7 @@ export function LiveButton({ status, error, onStart, onStop }: { status: LiveSta
             onStop();
           }}
         >
-          <Square size={12} strokeWidth={2} aria-hidden /> Parar
+          <Square size={12} strokeWidth={2} aria-hidden /> {t.stop}
         </button>
       </div>
     </Popover>

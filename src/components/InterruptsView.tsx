@@ -3,9 +3,12 @@ import type { PlayerStats, Pull } from '../types';
 import { classColor, mmss, shortName } from '../lib/format';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { AssignmentsPanel } from './AssignmentsPanel';
+import { useMessages } from '../i18n';
+import { interruptsMsg } from './InterruptsView.i18n';
 
 /** Casts interrompíveis (cortados ao menos uma vez no log) e quem cortou / quem não. */
 export function InterruptsView({ pull }: { pull: Pull }) {
+  const t = useMessages(interruptsMsg);
   const [open, setOpen] = useState<string | null>(null);
   const spells = pull.enemySpells.filter((e) => e.interruptible);
   const kickers = [...pull.players]
@@ -14,7 +17,7 @@ export function InterruptsView({ pull }: { pull: Pull }) {
   const idle = kickers.filter((p) => p.interrupts === 0);
 
   if (spells.length === 0 && kickers.every((p) => p.interruptAttempts === 0)) {
-    return <p className="muted pad">Nenhum cast interrompível neste pull.</p>;
+    return <p className="muted pad">{t.none}</p>;
   }
 
   return (
@@ -24,10 +27,10 @@ export function InterruptsView({ pull }: { pull: Pull }) {
         <table className="spells">
           <thead>
             <tr>
-              <th>Cast inimigo</th>
-              <th className="num">Cortados</th>
-              <th className="num">Passaram</th>
-              <th className="num">% cortado</th>
+              <th>{t.enemyCast}</th>
+              <th className="num">{t.kicked}</th>
+              <th className="num">{t.passed}</th>
+              <th className="num">{t.kickedPct}</th>
             </tr>
           </thead>
           <tbody>
@@ -50,11 +53,11 @@ export function InterruptsView({ pull }: { pull: Pull }) {
 
       {idle.length > 0 && (
         <p className="recap-note">
-          <strong className="bad">Não cortaram nada</strong> <span className="muted">(tinham interrupt):</span>{' '}
+          <strong className="bad">{t.idle}</strong> <span className="muted">{t.hadKick}</span>{' '}
           {idle.map((p) => (
             <span key={p.guid} className="chip" style={{ color: classColor(p.class) }}>
               {shortName(p.name)}
-              {p.interruptAttempts > 0 ? ` (${p.interruptAttempts} tentativa${p.interruptAttempts > 1 ? 's' : ''})` : ''}
+              {p.interruptAttempts > 0 ? t.attempts(p.interruptAttempts) : ''}
             </span>
           ))}
         </p>
@@ -63,10 +66,10 @@ export function InterruptsView({ pull }: { pull: Pull }) {
       <table className="players">
         <thead>
           <tr>
-            <th>Jogador</th>
-            <th className="num">Cortes</th>
-            <th className="num">Tentativas</th>
-            <th className="num">Perdidas</th>
+            <th>{t.player}</th>
+            <th className="num">{t.kicks}</th>
+            <th className="num">{t.tries}</th>
+            <th className="num">{t.wasted}</th>
           </tr>
         </thead>
         <tbody>
@@ -75,14 +78,13 @@ export function InterruptsView({ pull }: { pull: Pull }) {
           ))}
         </tbody>
       </table>
-      <p className="muted small">
-        “Perdidas” = interrupt usado que não cortou nada (atrasado, alvo errado ou cast já cortado por outro).
-      </p>
+      <p className="muted small">{t.wastedNote}</p>
     </div>
   );
 }
 
 function KickerRow({ p, open, onToggle }: { p: PlayerStats; open: boolean; onToggle: () => void }) {
+  const t = useMessages(interruptsMsg);
   const wasted = p.interruptAttempts - p.interrupts;
   return (
     <>
@@ -102,7 +104,7 @@ function KickerRow({ p, open, onToggle }: { p: PlayerStats; open: boolean; onTog
                   {u.targetSpell ? (
                     <SpellName spellId={u.targetSpellId} name={u.targetSpell} size={16} />
                   ) : (
-                    <span className="muted">não cortou nada</span>
+                    <span className="muted">{t.missed}</span>
                   )}
                 </li>
               ))}

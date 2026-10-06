@@ -1,0 +1,38 @@
+import { defineMessages } from '../../i18n';
+
+export const wcrCloudMsg = defineMessages(
+  {
+    disconnected: 'Desconectado da nuvem.',
+    pickGuild: 'A conta está em mais de uma guilda: escolha qual.',
+    connected: 'Conectado: os vídeos da guilda aparecem como outros POVs dos pulls.',
+    title: 'Vídeos da guilda na nuvem',
+    text: 'Quem tem a nuvem do Warcraft Recorder e sobe os vídeos vira mais um ponto de vista de cada pull (troque de POV no player). Use a conta da nuvem do Recorder; a senha fica no cofre do Windows.',
+    user: 'Usuário',
+    password: 'Senha',
+    passwordSaved: '•••••••• (guardada)',
+    guild: 'Guilda na nuvem',
+    choose: 'Escolha…',
+    guildHint: '(se tiver só uma, pode deixar vazio)',
+    checking: 'Conferindo…',
+    save: 'Salvar',
+    connect: 'Conectar',
+    disconnect: 'Desconectar',
+  },
+  {
+    disconnected: 'Disconnected from the cloud.',
+    pickGuild: 'The account is in more than one guild: pick which.',
+    connected: "Connected: the guild's videos show up as other POVs of the pulls.",
+    title: 'Guild videos in the cloud',
+    text: "Anyone with Warcraft Recorder's cloud who uploads their videos becomes another point of view of each pull (switch POV in the player). Use the Recorder's cloud account; the password stays in the Windows vault.",
+    user: 'Username',
+    password: 'Password',
+    passwordSaved: '•••••••• (saved)',
+    guild: 'Cloud guild',
+    choose: 'Choose…',
+    guildHint: '(if there is only one, you can leave it empty)',
+    checking: 'Checking…',
+    save: 'Save',
+    connect: 'Connect',
+    disconnect: 'Disconnect',
+  },
+);

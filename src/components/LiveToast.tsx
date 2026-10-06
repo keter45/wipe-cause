@@ -7,6 +7,8 @@ import { mechanicSpellId } from '../lib/spells';
 import { useNote } from '../lib/notes';
 import { SpellName } from './SpellIcon';
 import { BossName } from './Names';
+import { useMessages } from '../i18n';
+import { liveToastMsg } from './LiveToast.i18n';
 
 /** Tempo na tela: dá para ler entre um pull e outro sem ficar no caminho. */
 const SHOW_MS = 20_000;
@@ -16,6 +18,7 @@ const SHOW_MS = 20_000;
  * motivo do wipe na hora. Enquanto a pessoa escreve, o aviso não some sozinho.
  */
 export function LiveToast({ pull: p, discord, onOpen, onClose }: { pull: Pull; discord: string | null; onOpen: () => void; onClose: () => void }) {
+  const t = useMessages(liveToastMsg);
   const close = useRef(onClose);
   close.current = onClose;
   const [note, setNote] = useNote(p);
@@ -39,23 +42,23 @@ export function LiveToast({ pull: p, discord, onOpen, onClose }: { pull: Pull; d
           </strong>
           {!p.success && p.trigger && (
             <span className="small">
-              Gatilho: <SpellName spellId={mechanicSpellId(p, p.trigger.key)} name={p.trigger.name} size={14} />
+              {t.trigger} <SpellName spellId={mechanicSpellId(p, p.trigger.key)} name={p.trigger.name} size={14} />
             </span>
           )}
           {discord && <span className="small muted">{discord}</span>}
         </div>
         <button className="btn sm" onClick={onOpen}>
-          Ver
+          {t.see}
         </button>
-        <button className="icon-btn sm" onClick={onClose} aria-label="Fechar">
+        <button className="icon-btn sm" onClick={onClose} aria-label={t.close}>
           <X size={14} strokeWidth={1.5} aria-hidden />
         </button>
       </div>
       <input
         className="text-input live-note"
         value={note}
-        placeholder={p.success ? 'Anotação (opcional)' : 'Motivo do wipe ou anotação…'}
-        aria-label="Anotação do pull"
+        placeholder={p.success ? t.noteKill : t.noteWipe}
+        aria-label={t.noteAria}
         onFocus={() => setHolding(true)}
         onChange={(e) => {
           setHolding(true);

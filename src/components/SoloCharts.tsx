@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { mmss, num } from '../lib/format';
+import { useMessages } from '../i18n';
+import { soloChartMsg } from './misc.i18n';
 import { BUCKET_MS } from '../lib/solo';
 
 /**
@@ -19,6 +21,7 @@ export function OutputChart({
   unit: string;
   refLabel: string;
 }) {
+  const t = useMessages(soloChartMsg);
   const box = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<number | null>(null);
   const n = Math.max(mine.length, ref?.length ?? 0);
@@ -41,14 +44,14 @@ export function OutputChart({
     <figure className="out-chart">
       <figcaption className="out-legend small">
         <span>
-          <span className="out-key mine" aria-hidden /> Você
+          <span className="out-key mine" aria-hidden /> {t.you}
         </span>
         {ref && (
           <span>
             <span className="out-key ref" aria-hidden /> {refLabel}
           </span>
         )}
-        <span className="muted">{unit} a cada 5s</span>
+        <span className="muted">{t.every5s(unit)}</span>
       </figcaption>
       <div className="out-plot">
         <div className="out-yaxis small muted" aria-hidden>
@@ -62,7 +65,7 @@ export function OutputChart({
           onPointerMove={onMove}
           onPointerLeave={() => setHover(null)}
           role="img"
-          aria-label={`${unit} ao longo do pull: você e ${refLabel}. Trechos destacados: ${windows.map((w) => `${mmss(w.startMs)} a ${mmss(w.endMs)}`).join(', ')}.`}
+          aria-label={t.aria(unit, refLabel, windows.map((w) => t.range(mmss(w.startMs), mmss(w.endMs))).join(', '))}
         >
           {windows.map((w, i) => (
             <div key={i} className="out-band" style={{ left: at(w.startMs), width: `calc(${at(w.endMs)} - ${at(w.startMs)})` }}>
@@ -82,7 +85,7 @@ export function OutputChart({
                   {mmss(hover * BUCKET_MS)}–{mmss((hover + 1) * BUCKET_MS)}
                 </strong>
                 <span>
-                  <span className="out-key mine" aria-hidden /> Você: {num(perSec(mine[hover] ?? 0))}
+                  <span className="out-key mine" aria-hidden /> {t.you}: {num(perSec(mine[hover] ?? 0))}
                 </span>
                 {ref && (
                   <span>

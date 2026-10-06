@@ -96,37 +96,10 @@ export function portugueseLines(file: string): { line: number; text: string }[] 
   return out;
 }
 
-/** Arquivos ainda não migrados para os dicionários (a lista só pode diminuir). */
-export const PENDING = new Set<string>([
-
-
-
-  'components/PlayersTable.tsx',
-  'components/PullList.tsx',
-  'components/PhaseTimes.tsx',
-  'components/settings/DiscordForm.tsx',
-  'components/LiveControls.tsx',
-  'components/settings/WcrCloudForm.tsx',
-  'components/VideoPanel.tsx',
-  'components/CutoffStepper.tsx',
-  'components/EnemySpellsTable.tsx',
-  'components/PullMarks.tsx',
-
-  'components/WclOpen.tsx',
-  'components/settings/FolderForm.tsx',
-  'components/InterruptsView.tsx',
-  'components/PositionMap.tsx',
-  'components/LiveToast.tsx',
-  'components/settings/StartupForm.tsx',
-  'components/SoloCharts.tsx',
-  'components/UpdateBanner.tsx',
-]);
-
 describe('internacionalização', () => {
   it('nenhum texto em português fora dos dicionários', () => {
     const offenders = files(ROOT)
       .map((f) => path.relative(ROOT, f).replace(/\\/g, '/'))
-      .filter((f) => !PENDING.has(f))
       .flatMap((f) => portugueseLines(path.join(ROOT, f)).map((x) => `${f}:${x.line}  ${x.text}`));
     expect(offenders, offenders.slice(0, 40).join('\n')).toEqual([]);
   });
