@@ -11,6 +11,8 @@ import { LiveButton } from './LiveControls';
 import { CutoffStepper } from './CutoffStepper';
 import { useSetup } from '../lib/setup';
 import { setMode, useMode } from '../lib/mode';
+import { useMessages } from '../i18n';
+import { headerMsg } from './Header.i18n';
 
 /** Tamanho e traço dos ícones ao lado de texto regular. */
 const ICON = { size: 16, strokeWidth: 1.5, 'aria-hidden': true } as const;
@@ -40,6 +42,7 @@ interface Props {
  */
 export function Header(props: Props) {
   const { report } = props;
+  const t = useMessages(headerMsg);
   return (
     <header className="topbar">
       <div className="brand">
@@ -58,17 +61,17 @@ export function Header(props: Props) {
             disabled={!inTauri || props.busy || !props.canReanalyze}
             title={
               !props.canReanalyze
-                ? 'O log original não existe mais: esta análise salva usa o corte com que foi feita.'
+                ? t.cutoffMissingLog
                 : inTauri
-                  ? 'Depois de algumas mortes o wipe já está decidido: nada depois da N-ésima morte conta (dano, cura, erros, falhas, interrupts). 0 = conta tudo. Mudar reanalisa o log.'
-                  : 'No navegador o corte vem do JSON (wipe-cli analyze --cutoff N)'
+                  ? t.cutoffHint
+                  : t.cutoffBrowser
             }
             onChange={props.onCutoff}
           />
           <span className="topbar-divider" aria-hidden />
         </>
       )}
-      <div className="topbar-group" aria-label="Desta noite">
+      <div className="topbar-group" aria-label={t.tonight}>
         {props.showLive && <LiveButton status={props.live} error={props.liveError} onStart={props.onLiveStart} onStop={props.onLiveStop} />}
         {inTauri && <DiscordAutoButton />}
         {report && <WclButton logFile={report.file} onWcl={props.onWcl} />}
@@ -84,6 +87,7 @@ export function Header(props: Props) {
  */
 function DiscordAutoButton() {
   const { status, reload } = useSetup();
+  const t = useMessages(headerMsg);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cfg = status?.discord;
@@ -106,17 +110,17 @@ function DiscordAutoButton() {
     <button
       className={`btn ghost discord-auto ${on ? 'on' : 'off'}`}
       aria-pressed={on}
-      aria-label="Envio automático ao Discord"
+      aria-label={t.discordAria}
       disabled={busy}
       onClick={toggle}
       title={
         error ??
         (on
-          ? 'Envio automático ao Discord ligado: no ao vivo, cada wipe, kill e o resumo da noite vão para o canal. Clique para pausar.'
-          : 'Envio automático ao Discord pausado: nada vai sozinho (o Compartilhar continua funcionando). Clique para ligar.')
+          ? t.discordOn
+          : t.discordOff)
       }
     >
-      <Icon {...ICON} /> <span className="topbar-label">Discord</span> <span className="small live-state">{error ? 'erro' : on ? 'automático' : 'pausado'}</span>
+      <Icon {...ICON} /> <span className="topbar-label">Discord</span> <span className="small live-state">{error ? t.error : on ? t.automatic : t.paused}</span>
     </button>
   );
 }
@@ -124,25 +128,26 @@ function DiscordAutoButton() {
 /** Guilda (por que a raid wipou) ou Solo (como você pode melhorar): muda o foco do app inteiro. */
 function ModeSwitch() {
   const mode = useMode();
+  const t = useMessages(headerMsg);
   return (
-    <div className="segmented sm mode-switch" role="radiogroup" aria-label="Foco da análise">
+    <div className="segmented sm mode-switch" role="radiogroup" aria-label={t.focusAria}>
       <button
         role="radio"
         aria-checked={mode === 'guild'}
         className={mode === 'guild' ? 'active' : ''}
         onClick={() => setMode('guild')}
-        title="Por que a raid wipou: mortes, mecânicas e quem errou o quê"
+        title={t.guildTitle}
       >
-        <Users size={14} strokeWidth={1.5} aria-hidden /> Guilda
+        <Users size={14} strokeWidth={1.5} aria-hidden /> {t.guild}
       </button>
       <button
         role="radio"
         aria-checked={mode === 'solo'}
         className={mode === 'solo' ? 'active' : ''}
         onClick={() => setMode('solo')}
-        title="Como você pode melhorar: os seus erros, a sua rotação e onde a referência abriu vantagem"
+        title={t.soloTitle}
       >
-        <User size={14} strokeWidth={1.5} aria-hidden /> Solo
+        <User size={14} strokeWidth={1.5} aria-hidden /> {t.solo}
       </button>
     </div>
   );
@@ -152,14 +157,15 @@ function ModeSwitch() {
 // Log aberto
 
 function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
+  const t = useMessages(headerMsg);
   if (!report) return null;
 
   const fileName = sourceName(report.file);
   const short = report.ignoredShortPulls;
   const meta = [
-    `${report.pulls.length} pulls`,
-    short > 0 ? `${short} curto${short > 1 ? 's' : ''} ignorado${short > 1 ? 's' : ''}` : null,
-    fileName + (report.localLogs?.length ? ` (${report.pulls.length - (report.wclPulls ?? 0)} do log do PC, ${report.wclPulls ?? 0} do WCL)` : ''),
+    t.pulls(report.pulls.length),
+    short > 0 ? t.shortIgnored(short) : null,
+    fileName + (report.localLogs?.length ? t.sources(report.pulls.length - (report.wclPulls ?? 0), report.wclPulls ?? 0) : ''),
   ]
     .filter(Boolean)
     .join(' · ');
@@ -175,13 +181,13 @@ function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
           <span className="log-meta">{meta}</span>
         </div>
         {!report.advancedLogging && (
-          <span className="warn-pill" title="Sem Advanced Combat Logging: HP, recap e bosses ficam incompletos. Ative em Opções → Rede.">
-            <CircleAlert size={14} strokeWidth={2} aria-hidden /> Advanced Logging desligado
+          <span className="warn-pill" title={t.advancedOffTitle}>
+            <CircleAlert size={14} strokeWidth={2} aria-hidden /> {t.advancedOff}
           </span>
         )}
       </div>
       {inTauri && canReanalyze && (
-        <button className="icon-btn" onClick={onReanalyze} disabled={busy} title="Reanalisar o log">
+        <button className="icon-btn" onClick={onReanalyze} disabled={busy} title={t.reanalyze}>
           <RotateCw {...ICON} />
         </button>
       )}
@@ -193,6 +199,7 @@ function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
 // Warcraft Logs: link do report da noite
 
 function WclButton({ logFile, onWcl }: { logFile: string; onWcl: (code: string | null) => void }) {
+  const t = useMessages(headerMsg);
   const [input, setInput] = useState(() => savedWclLink(logFile));
   const [open, setOpen] = useState(false);
   const code = reportCode(input);
@@ -215,17 +222,17 @@ function WclButton({ logFile, onWcl }: { logFile: string; onWcl: (code: string |
     <Popover
       open={open}
       onClose={() => setOpen(false)}
-      label="Link do Warcraft Logs"
+      label={t.wclPopover}
       trigger={
-        <button className={`btn ghost ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Warcraft Logs" title="Report desta noite no Warcraft Logs">
+        <button className={`btn ghost ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Warcraft Logs" title={t.wclTitle}>
           <Link2 {...ICON} />
           <span className="topbar-label">Warcraft Logs</span>
-          <span className={`status-dot ${code ? 'on' : ''}`} aria-label={code ? 'report ligado' : 'sem report'} />
+          <span className={`status-dot ${code ? 'on' : ''}`} aria-label={code ? t.reportOn : t.noReport} />
         </button>
       }
     >
-      <h4>Report desta noite</h4>
-      <p className="muted small">Cada pull ganha um botão que abre o report filtrado no boss, com a try numerada como no WCL.</p>
+      <h4>{t.reportTitle}</h4>
+      <p className="muted small">{t.reportHint}</p>
       <input
         className="text-input"
         autoFocus
@@ -235,19 +242,19 @@ function WclButton({ logFile, onWcl }: { logFile: string; onWcl: (code: string |
       />
       <div className="popover-footer">
         {input ? (
-          <span className={`small ${code ? 'muted' : 'bad'}`}>{code ? `report ${code}` : 'Link inválido'}</span>
+          <span className={`small ${code ? 'muted' : 'bad'}`}>{code ? t.report(code) : t.invalidLink}</span>
         ) : (
-          <span className="small muted">Nenhum report ligado</span>
+          <span className="small muted">{t.noReportLinked}</span>
         )}
         <span className="topbar-spacer" />
         {input && (
           <button className="btn ghost sm" onClick={() => change('')}>
-            <Unlink size={14} strokeWidth={1.5} aria-hidden /> Remover
+            <Unlink size={14} strokeWidth={1.5} aria-hidden /> {t.remove}
           </button>
         )}
         {code && (
           <button className="btn sm" onClick={() => openExternal(`https://www.warcraftlogs.com/reports/${code}`)}>
-            Abrir <ExternalLink size={14} strokeWidth={1.5} aria-hidden />
+            {t.open} <ExternalLink size={14} strokeWidth={1.5} aria-hidden />
           </button>
         )}
       </div>
@@ -260,6 +267,7 @@ function WclButton({ logFile, onWcl }: { logFile: string; onWcl: (code: string |
 
 function VideosButton({ pulls, onVideos }: { pulls: Pull[]; onVideos: (videos: Map<number, WcrVideo[]>) => void }) {
   const { status, openSettings } = useSetup();
+  const t = useMessages(headerMsg);
   const [scan, setScan] = useState<WcrScan | null>(null);
   const [count, setCount] = useState(0);
   const [cloud, setCloud] = useState(0);
@@ -287,23 +295,23 @@ function VideosButton({ pulls, onVideos }: { pulls: Pull[]; onVideos: (videos: M
   return (
     <button
       className="btn ghost"
-      aria-label="Vídeos"
+      aria-label={t.videosAria}
       onClick={() => openSettings('videos')}
       title={
         scan?.warning ??
         (ok
-          ? `${count} de ${pulls.length} pulls com vídeo${cloud ? ` · ${cloud} POV${cloud > 1 ? 's' : ''} da guilda na nuvem` : ''}${scan?.dir ? ` · pasta: ${scan.dir}` : ''}`
-          : 'Configurar os vídeos do Warcraft Recorder')
+          ? t.videosOk(count, pulls.length, cloud, scan?.dir ?? null)
+          : t.videosSetup)
       }
     >
       {scan?.warning ? <CircleAlert {...ICON} className="warn" /> : <Video {...ICON} />}
-      <span className="topbar-label">Vídeos</span>
+      <span className="topbar-label">{t.videos}</span>
       {ok ? (
         <span className="count-badge tabular">
           {count}/{pulls.length}
         </span>
       ) : (
-        <span className="small muted">{scan?.warning ? 'verificar' : 'configurar'}</span>
+        <span className="small muted">{scan?.warning ? t.check : t.configure}</span>
       )}
     </button>
   );

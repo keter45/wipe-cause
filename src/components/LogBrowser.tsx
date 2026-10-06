@@ -6,6 +6,8 @@ import { fetchGuildReports, groupNights, saveGuildId, savedGuildId, type GuildNi
 import { buildNights, completePath, downloadMinutes, type Night } from '../lib/nights';
 import { BossName } from './Names';
 import { WclOpen } from './WclOpen';
+import { intlLocale, useMessages } from '../i18n';
+import { logsMsg } from './LogBrowser.i18n';
 
 interface Props {
   history: HistoryEntry[];
@@ -23,6 +25,7 @@ const DIFF_SHORT: Record<number, string> = { 14: 'N', 15: 'H', 16: 'M', 17: 'LFR
  * marcado e baixar é escolha do usuário.
  */
 export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
+  const t = useMessages(logsMsg);
   const [scan, setScan] = useState<LogsScan | null>(null);
   const [peeks, setPeeks] = useState<Map<string, LogPeek | 'error'>>(new Map());
   const [error, setError] = useState<string | null>(null);
@@ -72,8 +75,8 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
   const nights = useMemo(() => buildNights(files, guild.nights ?? []), [files, guild.nights]);
 
   async function chooseFolder() {
-    if (!inTauri) return setError('No navegador não dá para escolher pastas: use o app.');
-    const dir = await pickFolder('Pasta de logs do WoW (World of Warcraft\\_retail_\\Logs)');
+    if (!inTauri) return setError(t.browserNoFolders);
+    const dir = await pickFolder(t.pickTitle);
     if (!dir) return;
     await logsSetDir(dir);
     setPeeks(new Map());
@@ -92,10 +95,7 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
   if (!inTauri && !scan?.files.length) {
     return (
       <div className="logs">
-        <p className="muted small">
-          Modo navegador: gere o relatório com <code>wipe-cli analyze log.txt --json</code> e abra o JSON pela barra lateral (ou use{' '}
-          <code>?demoLogs=1</code> para ver esta tela).
-        </p>
+        <p className="muted small">{t.browserMode()}</p>
       </div>
     );
   }
@@ -106,20 +106,20 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
     <div className="logs">
       <header className="logs-head">
         <div>
-          <h2>Escolha a noite</h2>
+          <h2>{t.title}</h2>
           {scan?.dir ? (
             <p className="muted small logs-dir">
               <HardDrive size={14} strokeWidth={1.5} aria-hidden /> <code>{scan.dir}</code>
-              <span>{scan.source === 'detected' ? '· detectada automaticamente' : '· escolhida por você'}</span>
+              <span>{scan.source === 'detected' ? t.detected : t.chosen}</span>
             </p>
           ) : (
-            scan && <p className="muted small">Pasta de logs ainda não definida.</p>
+            scan && <p className="muted small">{t.noFolder}</p>
           )}
           {guild.current && (
             <p className="muted small logs-dir">
               <Users size={14} strokeWidth={1.5} aria-hidden />
               {guild.all.length > 1 ? (
-                <select className="text-input sm" value={guild.current.id} aria-label="Guilda" onChange={(e) => guild.choose(Number(e.target.value))}>
+                <select className="text-input sm" value={guild.current.id} aria-label={t.guild} onChange={(e) => guild.choose(Number(e.target.value))}>
                   {guild.all.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.name} ({g.serverName}-{g.region})
@@ -131,30 +131,30 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
                   {guild.current.name} ({guild.current.serverName}-{guild.current.region})
                 </span>
               )}
-              <span>· Warcraft Logs, últimos 30 dias</span>
-              {guild.loading && <LoaderCircle size={13} strokeWidth={1.5} className="spin" aria-label="buscando" />}
+              <span>{t.wclRange}</span>
+              {guild.loading && <LoaderCircle size={13} strokeWidth={1.5} className="spin" aria-label={t.searching} />}
             </p>
           )}
         </div>
         <div className="logs-actions">
-          <button className="btn ghost sm" onClick={refresh} title="Atualizar a lista" aria-label="Atualizar a lista">
+          <button className="btn ghost sm" onClick={refresh} title={t.refresh} aria-label={t.refresh}>
             <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
           </button>
           {scan?.source === 'settings' && (
-            <button className="btn ghost sm" onClick={useDetected} title="Voltar para a pasta do WoW detectada automaticamente">
-              <FolderSearch size={14} strokeWidth={1.5} aria-hidden /> Detectar
+            <button className="btn ghost sm" onClick={useDetected} title={t.detectTitle}>
+              <FolderSearch size={14} strokeWidth={1.5} aria-hidden /> {t.detect}
             </button>
           )}
           <button className="btn ghost sm" onClick={chooseFolder}>
-            <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> {scan?.dir ? 'Trocar pasta' : 'Escolher pasta'}
+            <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> {scan?.dir ? t.changeFolder : t.chooseFolder}
           </button>
-          <button className="btn ghost sm" onClick={onOpenFile} title="Abrir um arquivo de log de outro lugar">
-            <FileText size={14} strokeWidth={1.5} aria-hidden /> Abrir arquivo…
+          <button className="btn ghost sm" onClick={onOpenFile} title={t.openFileTitle}>
+            <FileText size={14} strokeWidth={1.5} aria-hidden /> {t.openFile}
           </button>
         </div>
       </header>
 
-      {error && <div className="error">Erro: {error}</div>}
+      {error && <div className="error">{t.error(error)}</div>}
       {guild.error && <div className="error">Warcraft Logs: {guild.error}</div>}
       {scan?.warning && <p className="logs-warning small">{scan.warning}</p>}
       {scan && !scan.dir && <NoFolder onChoose={chooseFolder} />}
@@ -170,7 +170,7 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
       )}
       {reading > 0 && (
         <p className="muted small log-reading">
-          <LoaderCircle size={13} strokeWidth={1.5} className="spin" aria-hidden /> lendo os encontros de {reading} log{reading > 1 ? 's' : ''}…
+          <LoaderCircle size={13} strokeWidth={1.5} className="spin" aria-hidden /> {t.readingLogs(reading)}
         </p>
       )}
 
@@ -243,18 +243,16 @@ function useGuild() {
 }
 
 function NoFolder({ onChoose }: { onChoose: () => void }) {
+  const t = useMessages(logsMsg);
   const [hint, setHint] = useState<string | null>(null);
   useEffect(() => {
     logsDetectDir().then(setHint).catch(() => {});
   }, []);
   return (
     <div className="panel logs-setup">
-      <p>
-        Escolha a pasta <code>Logs</code> da instalação do WoW, por exemplo <code>{hint ?? 'C:\\Program Files (x86)\\World of Warcraft\\_retail_\\Logs'}</code>. Os logs
-        aparecem aqui, com os bosses de cada noite.
-      </p>
+      <p>{t.setupText(hint ?? 'C:\\Program Files (x86)\\World of Warcraft\\_retail_\\Logs')}</p>
       <button className="btn primary" onClick={onChoose}>
-        <FolderOpen size={16} strokeWidth={2} aria-hidden /> Escolher pasta de logs
+        <FolderOpen size={16} strokeWidth={2} aria-hidden /> {t.chooseLogsFolder}
       </button>
     </div>
   );
@@ -262,8 +260,8 @@ function NoFolder({ onChoose }: { onChoose: () => void }) {
 
 function when(ms: number) {
   const d = new Date(ms);
-  const day = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '');
-  const hm = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const day = d.toLocaleDateString(intlLocale(), { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '');
+  const hm = d.toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });
   return { day, hm };
 }
 
@@ -271,9 +269,8 @@ function size(bytes: number) {
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 1e6))} MB`;
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-
 function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy: boolean; analyzed: (path: string) => boolean; onAnalyze: (path: string) => void }) {
+  const t = useMessages(logsMsg);
   const [confirm, setConfirm] = useState(false);
   const start = when(n.startMs);
   const end = when(n.endMs).hm;
@@ -298,10 +295,10 @@ function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy:
         <span className="log-bosses">
           {reading ? (
             <span className="muted small log-reading">
-              <LoaderCircle size={13} strokeWidth={1.5} className="spin" aria-hidden /> lendo encontros…
+              <LoaderCircle size={13} strokeWidth={1.5} className="spin" aria-hidden /> {t.readingEncounters}
             </span>
           ) : n.bosses.length === 0 ? (
-            <span className="muted small">sem bosses de raid</span>
+            <span className="muted small">{t.noRaidBosses}</span>
           ) : (
             n.bosses.map((b) => {
               const onlyWcl = b.local === 0;
@@ -310,18 +307,18 @@ function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy:
                 <span
                   key={`${b.encounterId}-${b.difficultyId}`}
                   className={`log-boss ${onlyWcl ? 'wcl-only' : ''}`}
-                  title={onlyWcl ? 'Só no Warcraft Logs: não está no log do seu PC' : b.missing > 0 ? `${plural(b.missing, 'pull', 'pulls')} só no Warcraft Logs` : undefined}
+                  title={onlyWcl ? t.onlyWclTitle : b.missing > 0 ? t.missingTitle(b.missing) : undefined}
                 >
-                  {b.missing > 0 && <CloudDownload size={13} strokeWidth={1.75} className="wcl-mark" aria-label="precisa baixar" />}
+                  {b.missing > 0 && <CloudDownload size={13} strokeWidth={1.75} className="wcl-mark" aria-label={t.needsDownload} />}
                   <strong>
                     <BossName encounterId={b.encounterId} name={b.name} size={16} />
                   </strong>{' '}
                   <span className="muted">{DIFF_SHORT[b.difficultyId] ?? ''}</span>
                   <span className="muted small">
                     {' '}
-                    · {plural(pulls, 'pull', 'pulls')}
+                    · {t.pulls(pulls)}
                     {b.localKills + b.missingKills > 0 && <span className="log-kill"> · kill</span>}
-                    {b.missing > 0 && !onlyWcl && <span className="wcl-mark"> · +{b.missing} no WCL</span>}
+                    {b.missing > 0 && !onlyWcl && <span className="wcl-mark">{t.plusWcl(b.missing)}</span>}
                   </span>
                 </span>
               );
@@ -330,7 +327,7 @@ function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy:
           {n.dungeonBosses > 0 && (
             <span className="muted small log-dungeons">
               {n.bosses.length ? '+ ' : ''}
-              {plural(n.dungeonBosses, 'chefe de masmorra (M+)', 'chefes de masmorra (M+)')}
+              {t.dungeons(n.dungeonBosses)}
             </span>
           )}
         </span>
@@ -343,30 +340,23 @@ function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy:
             </span>
           ) : (
             <span>
-              <HardDrive size={12} strokeWidth={1.5} aria-hidden /> não está no seu PC
+              <HardDrive size={12} strokeWidth={1.5} aria-hidden /> {t.notOnPc}
             </span>
           )}
           {n.wcl && (
             <span title={n.wcl.reports.map((r) => r.code).join(', ')}>
-              <CloudDownload size={12} strokeWidth={1.5} aria-hidden /> Warcraft Logs: {plural(n.wcl.reports.length, 'report', 'reports')}
-              {owners.length > 0 && ` de ${owners.join(', ')}`}
+              <CloudDownload size={12} strokeWidth={1.5} aria-hidden /> {t.wclReports(n.wcl.reports.length)}
+              {owners.length > 0 && t.from(owners.join(', '))}
             </span>
           )}
         </span>
 
         {n.missingPulls > 0 && local && !confirm && (
-          <p className="night-gap small">
-            O log do seu PC não tem{' '}
-            {missingBosses > 0 ? `${plural(missingBosses, 'boss', 'bosses')} (${plural(n.missingPulls, 'pull', 'pulls')})` : plural(n.missingPulls, 'pull', 'pulls')} desta noite: estão
-            no Warcraft Logs.
-          </p>
+          <p className="night-gap small">{t.gap(missingBosses, n.missingPulls)}</p>
         )}
         {confirm && full && (
           <div className="night-confirm small">
-            <p>
-              Baixar {plural(n.missingPulls, 'pull', 'pulls')} do Warcraft Logs — cerca de {downloadMinutes(n)} min.
-              {local ? ' O resto vem do log do seu PC.' : ' Esta noite não está no seu PC.'} Depois do primeiro download, reabrir é rápido.
-            </p>
+            <p>{t.confirm(n.missingPulls, downloadMinutes(n), !!local)}</p>
             <div className="night-actions">
               <button
                 className="btn primary sm"
@@ -376,10 +366,10 @@ function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy:
                   onAnalyze(full);
                 }}
               >
-                <CloudDownload size={14} strokeWidth={1.75} aria-hidden /> Baixar e analisar
+                <CloudDownload size={14} strokeWidth={1.75} aria-hidden /> {t.downloadAnalyze}
               </button>
               <button className="btn ghost sm" onClick={() => setConfirm(false)}>
-                Cancelar
+                {t.cancel}
               </button>
             </div>
           </div>
@@ -388,14 +378,14 @@ function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy:
 
       <div className="night-side">
         <span className="log-tags">
-          {n.live && <span className="log-tag live">{local && Date.now() - local.modifiedMs < 15 * 60_000 ? 'em andamento' : 'ao vivo'}</span>}
-          {done && <span className="log-tag">analisado</span>}
+          {n.live && <span className="log-tag live">{local && Date.now() - local.modifiedMs < 15 * 60_000 ? t.inProgress : t.live}</span>}
+          {done && <span className="log-tag">{t.analyzed}</span>}
         </span>
         {!confirm && (
           <div className="night-actions">
             {local && (
-              <button className="btn sm" disabled={busy} onClick={() => onAnalyze(local.path)} title="Analisar o log do seu PC (rápido, sem baixar nada)">
-                Analisar
+              <button className="btn sm" disabled={busy} onClick={() => onAnalyze(local.path)} title={t.analyzeTitle}>
+                {t.analyze}
               </button>
             )}
             {full && n.missingPulls > 0 && (
@@ -403,9 +393,9 @@ function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy:
                 className={`btn sm ${local ? 'ghost' : ''}`}
                 disabled={busy}
                 onClick={() => setConfirm(true)}
-                title={local ? 'Completar com os pulls que só estão no Warcraft Logs' : 'Baixar a noite do Warcraft Logs'}
+                title={local ? t.completeTitle : t.downloadTitle}
               >
-                <CloudDownload size={14} strokeWidth={1.75} aria-hidden /> {local ? 'Completar' : 'Baixar'}
+                <CloudDownload size={14} strokeWidth={1.75} aria-hidden /> {local ? t.complete : t.download}
               </button>
             )}
           </div>

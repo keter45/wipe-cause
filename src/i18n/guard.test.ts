@@ -99,9 +99,6 @@ export function portugueseLines(file: string): { line: number; text: string }[] 
 /** Arquivos ainda não migrados para os dicionários (a lista só pode diminuir). */
 export const PENDING = new Set<string>([
 
-  'components/PullView.tsx',
-  'components/Header.tsx',
-  'components/LogBrowser.tsx',
   'components/settings/FirstSteps.tsx',
 
   'components/share/ShareMenu.tsx',
