@@ -15,13 +15,15 @@ The first time, the app opens on **Settings** with a step-by-step guide (afterwa
 
 ## How it works
 
-1. **New analysis** shows one line per night: the logs on your PC and the guild's Warcraft Logs reports, together. **Analyze** uses your PC's log (fast, no download).
+1. **New analysis** shows one line per night: the logs on your PC and the guild's Warcraft Logs reports, together. **Analyze** uses your PC's log (fast, no download). To find a boss's nights, filter by it (and by difficulty) in the bar above the list; the choice is remembered.
 2. Bosses and pulls that **aren't in your log** but are on Warcraft Logs (you left early, joined late, were away) show a download icon. **Complete** downloads only what's missing — it takes a few minutes, so you decide; after the first download, reopening is fast. Dungeons (M+) are left out.
 3. Pick a pull and see:
    - the wipe's **trigger** (the mechanic failure that set off the deaths) and the boss mechanic mistakes;
    - every death: spike or slow death, missing healing, active debuffs (with stacks and description), killing blow, defensives/potion/healthstone;
    - **interrupts**: casts that went through, who kicked, who tried and missed, who could have and didn't;
    - damage done/taken per player.
+
+In the **boss summary**, **Group metrics** gathers the mechanics the group wants to track: **Add metric** lists the boss's mechanics (the ones that failed most first) and each one becomes a card with the failures pull by pull (click a bar to open the pull), who failed and who helped. You can reorder and remove them; the choice is saved for that boss.
 
 Wipes shorter than 30s are ignored.
 
