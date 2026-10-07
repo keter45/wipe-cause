@@ -4,7 +4,7 @@
 
 use crate::i18n::Text;
 use crate::tx;
-use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PhaseWindow, Positions};
+use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PhaseWindow, PlayerStackOrigins, Positions, StackOrigin};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
@@ -945,7 +945,7 @@ impl RuleTracker {
                 }
             }
         }
-        let origins: Vec<HashMap<String, StackOrigins>> =
+        let mut origins: Vec<HashMap<String, StackOrigins>> =
             self.mechs.iter().zip(&state).map(|(m, st)| stack_origins(m, st, &self.mechs, &touches)).collect();
         for i in 0..self.mechs.len() {
             let m = &self.mechs[i];
@@ -989,7 +989,11 @@ impl RuleTracker {
                 .filter_map(|(guid, p)| {
                     let blamed = match m.kind {
                         k if k.per_hit_blame() => p.count > m.tolerance,
-                        MechanicType::StackLimit => p.max_stacks >= m.warn_stacks.or(lethal).unwrap_or(u32::MAX),
+                        // com `sources`, só culpa quem teve algum stack evitável
+                        MechanicType::StackLimit => {
+                            p.max_stacks >= m.warn_stacks.or(lethal).unwrap_or(u32::MAX)
+                                && (m.sources.is_empty() || origins[mi].get(guid.as_str()).is_some_and(|o| !o.avoidable.is_empty()))
+                        }
                         _ => true, // atingidos por falha coletiva (explosão, enrage...)
                     };
                     blamed.then(|| MechanicPlayer {
@@ -1046,6 +1050,25 @@ impl RuleTracker {
             credits.sort_by(|a, b| b.count.cmp(&a.count).then(a.name.cmp(&b.name)));
             players.extend(credits);
 
+            let mut stack_origins: Vec<PlayerStackOrigins> = std::mem::take(&mut origins[mi])
+                .into_iter()
+                .map(|(guid, o)| {
+                    let p = st.players.get(&guid);
+                    PlayerStackOrigins {
+                        name: p.map(|p| p.name.clone()).unwrap_or_default(),
+                        max_stacks: p.map_or(0, |p| p.max_stacks),
+                        guid,
+                        avoidable: o.avoidable,
+                        unavoidable: o.unavoidable,
+                        removed: o.removed,
+                        unknown: o.unknown,
+                    }
+                })
+                .collect();
+            stack_origins.sort_by(|a, b| {
+                let n = |x: &PlayerStackOrigins| x.avoidable.iter().map(|o| o.count).sum::<u32>();
+                n(b).cmp(&n(a)).then(b.max_stacks.cmp(&a.max_stacks)).then(a.name.cmp(&b.name))
+            });
             let d = &m.detect;
             // ícone: o que o jogador vê — dano, depois a aura, o cast, a falha
             let spell_id = d
@@ -1091,6 +1114,7 @@ impl RuleTracker {
                 phases: st.phases,
                 target_ms: m.target_s.map(|s| (s * 1000.0) as i64),
                 max_ms,
+                stack_origins,
             });
         }
         let rank = |s: &str| match s {
@@ -1111,19 +1135,19 @@ impl RuleTracker {
     }
 }
 
-/// De onde vieram os stacks de um player: (nome da mecânica, quantos), em ordem de quantidade.
+/// De onde vieram os stacks de um player, em ordem de quantidade.
 #[derive(Default)]
 struct StackOrigins {
-    avoidable: Vec<(String, u32)>,
-    unavoidable: Vec<(String, u32)>,
-    removed: Vec<(String, u32)>,
+    avoidable: Vec<StackOrigin>,
+    unavoidable: Vec<StackOrigin>,
+    removed: Vec<StackOrigin>,
     unknown: u32,
 }
 
-fn add_origin(list: &mut Vec<(String, u32)>, name: &str) {
-    match list.iter_mut().find(|(n, _)| n == name) {
-        Some(e) => e.1 += 1,
-        None => list.push((name.to_string(), 1)),
+fn add_origin(list: &mut Vec<StackOrigin>, m: &Mechanic) {
+    match list.iter_mut().find(|o| o.key == m.key) {
+        Some(o) => o.count += 1,
+        None => list.push(StackOrigin { key: m.key.clone(), name: m.name.clone(), count: 1 }),
     }
 }
 
@@ -1158,15 +1182,15 @@ fn stack_origins(m: &Mechanic, st: &MechState, mechs: &[Mechanic], touches: &[(i
         let (i, gives) = keyed[order];
         let src = &mechs[i];
         match (gives, after > before) {
-            (true, _) if src.kind.per_hit_blame() => add_origin(&mut o.avoidable, &src.name),
-            (true, _) => add_origin(&mut o.unavoidable, &src.name),
-            (false, false) => add_origin(&mut o.removed, &src.name),
+            (true, _) if src.kind.per_hit_blame() => add_origin(&mut o.avoidable, src),
+            (true, _) => add_origin(&mut o.unavoidable, src),
+            (false, false) => add_origin(&mut o.removed, src),
             (false, true) => o.unknown += 1,
         }
     }
     for o in out.values_mut() {
         for l in [&mut o.avoidable, &mut o.unavoidable, &mut o.removed] {
-            l.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+            l.sort_by(|a, b| b.count.cmp(&a.count).then(a.name.cmp(&b.name)));
         }
     }
     out
@@ -1175,7 +1199,7 @@ fn stack_origins(m: &Mechanic, st: &MechState, mechs: &[Mechanic], touches: &[(i
 /// "… · evitáveis: Wave 3 · inevitáveis: Adds 4 · −2 Feast · 1 sem origem"
 fn with_origins(msg: Text, o: Option<&StackOrigins>) -> Text {
     let Some(o) = o else { return msg };
-    let list = |l: &[(String, u32)]| l.iter().map(|(n, c)| format!("{n} {c}")).collect::<Vec<_>>().join(", ");
+    let list = |l: &[StackOrigin]| l.iter().map(|o| format!("{} {}", o.name, o.count)).collect::<Vec<_>>().join(", ");
     let mut parts = vec![msg];
     if !o.avoidable.is_empty() {
         let l = list(&o.avoidable);
@@ -1185,8 +1209,8 @@ fn with_origins(msg: Text, o: Option<&StackOrigins>) -> Text {
         let l = list(&o.unavoidable);
         parts.push(tx!(" · inevitáveis: {l}", " · unavoidable: {l}"));
     }
-    for (n, c) in &o.removed {
-        parts.push(Text::same(format!(" · −{c} {n}")));
+    for r in &o.removed {
+        parts.push(Text::same(format!(" · −{} {}", r.count, r.name)));
     }
     if o.unknown > 0 {
         let n = o.unknown;
@@ -1774,8 +1798,26 @@ mechanics:
         tr.on_damage(205, "P", "P-R", 100, 30_000);
         v(&mut tr, 3, 30_020);
         v(&mut tr, 4, 40_000);
+        // Q chega a 3 stacks só com adds: passa do warn, mas não é culpado (nada evitável)
+        for (k, t) in [(1, 50_000), (2, 60_000), (3, 70_000)] {
+            tr.on_damage(204, "Q", "Q-R", 100, t);
+            tr.on_aura(200, "Q", "Q-R", k, true, t + 5);
+        }
         let res = tr.finish(&HashMap::new());
         let m = res.iter().find(|r| r.key == "venom").unwrap();
+        let blamed: Vec<&str> = m.players.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(blamed, ["P-R"]);
+        assert_eq!(m.failures, 1);
+        // a origem vem de todos, quem tem evitável primeiro
+        let rows: Vec<(&str, u32, u32)> = m
+            .stack_origins
+            .iter()
+            .map(|o| (o.name.as_str(), o.avoidable.iter().map(|x| x.count).sum(), o.unavoidable.iter().map(|x| x.count).sum()))
+            .collect();
+        assert_eq!(rows, [("P-R", 2, 2), ("Q-R", 0, 3)]);
+        assert_eq!(m.stack_origins[0].avoidable[0].key, "line");
+        assert_eq!(m.stack_origins[0].removed[0].count, 1);
+        assert_eq!(m.stack_origins[0].unknown, 1);
         assert_eq!(m.players[0].message.pt, "P chegou a 4 · evitáveis: Line 1, Wave 1 · inevitáveis: Adds 1, Spit 1 · −1 Feast · 1 sem origem");
         assert_eq!(m.players[0].message.en, "P chegou a 4 · avoidable: Line 1, Wave 1 · unavoidable: Adds 1, Spit 1 · −1 Feast · 1 without a source");
     }

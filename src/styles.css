@@ -5120,6 +5120,47 @@ svg.wcl-mark {
   margin: 8px 0 0;
 }
 
+/* origem dos stacks de um debuff acumulativo (resumo do boss) */
+.stack-origins {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.origin-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+.origin-total {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.origin-total strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.origin-total.bad strong {
+  color: var(--wipe);
+}
+.origin-sources {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.origin-sources li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.origin-table th .spell-icon {
+  vertical-align: middle;
+}
+
 /* Configurações: título com o seletor de idioma à direita */
 .set-title-row {
   display: flex;
