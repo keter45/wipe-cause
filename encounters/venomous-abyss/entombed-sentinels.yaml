@@ -57,6 +57,17 @@ mechanics:
     tip: { pt: "DoT acumulado de quem está perto do Blood; trocar de lado a cada intermissão.", en: "Stacking DoT on whoever is near the Blood; swap sides every intermission." }
     message: { pt: "Mark of Blood", en: "Mark of Blood" }
 
+  - key: double_mark
+    name: "Mark of Acid + Mark of Blood"
+    type: exclusive_auras
+    severity: major
+    detect: { aura_ids: [1284500, 1284506] }
+    swap_after: vitriolic_stasis
+    grace_s: 16
+    tip: { pt: "Ficar sempre com uma marca só: não chegar perto do outro boss no meio da luta; trocar de lado só depois da intermissão.", en: "Always keep a single mark: don't get near the other boss mid-fight; only swap sides after the intermission." }
+    message: { pt: "{player} pegou as duas marcas no meio da luta ({count}x)", en: "{player} got both marks mid-fight ({count}x)" }
+    notes: "As marcas pulsam a cada 5s em quem está perto do boss e a antiga fica 10-40s depois da troca, então o erro é pulso de uma com a outra pulsando há <10s. Folga de 16s no pull e depois de cada Vitriolic Stasis (pulsos em ~5,3s, 10,3s e 15,3s: os três primeiros não contam; troca de lado: 5-15s nos logs). 7+ players pegando as duas em 5s = coletivo (um boss morreu e o outro está vivo, raid desmoronando, buraco no log), não conta. Logs de 22/09 e 06/10: 3-13 erros por pull, quase sempre 1-2 por player."
+
   # ---------- Breath of Ula'tek ----------
   - key: toxic_droplets
     name: "Toxic Droplets"

@@ -38,6 +38,16 @@ const CULPRIT_AFTER_MS: i64 = 50;
 const PHASE_WIPE_SLACK_MS: i64 = 1_500;
 /// Mortes dentro de uma fase que mostram que a mecânica deu errado (não só alguém azarado).
 const PHASE_FAIL_DEATHS: u32 = 3;
+/// exclusive_auras: pulso de outra aura do grupo há menos disso = o player estava nas duas
+/// (as marcas da Entombed Sentinels pulsam a cada 5s em quem está perto do boss).
+const EXCLUSIVE_ACTIVE_MS: i64 = 10_000;
+/// exclusive_auras: EXCLUSIVE_MASS_MIN+ players pegando as duas dentro de EXCLUSIVE_MASS_MS (um
+/// ciclo de pulso) é coletivo (um boss morreu com o outro vivo, raid desmoronando, buraco no log),
+/// não erro de cada um.
+const EXCLUSIVE_MASS_MS: i64 = 5_000;
+const EXCLUSIVE_MASS_MIN: usize = 7;
+/// confirm_aura: a mudança de stack chega até ~200ms antes ou ~60ms depois da aura de acerto.
+const CONFIRM_MS: i64 = 250;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -58,6 +68,7 @@ pub enum MechanicType {
     FailureEvent,
     Dispel,
     PhaseDuration,
+    ExclusiveAuras,
     Info,
 }
 
@@ -80,6 +91,7 @@ impl MechanicType {
             Self::FailureEvent => "failure_event",
             Self::Dispel => "dispel",
             Self::PhaseDuration => "phase_duration",
+            Self::ExclusiveAuras => "exclusive_auras",
             Self::Info => "info",
         }
     }
@@ -115,6 +127,14 @@ pub struct Detect {
     /// carregava o orb que explodiu); sem elas, a lista é de quem foi atingido
     #[serde(default)]
     pub culprit_auras: Vec<u32>,
+    /// exclusive_auras: o player só pode estar tomando uma destas por vez
+    #[serde(default)]
+    pub aura_ids: Vec<u32>,
+    /// acerto marcado por aura (aplicada em quem foi pego), para mecânica que quase não loga dano
+    pub hit_aura_id: Option<u32>,
+    /// o acerto só conta se esta aura mudou de stack no player em até CONFIRM_MS (ex.: a onda
+    /// que dá stack de Eternal Venom, para não confundir com outro spell de mesmo nome)
+    pub confirm_aura: Option<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -141,6 +161,11 @@ pub struct Mechanic {
     pub tolerance: u32,
     pub lethal_stacks: Option<u32>,
     pub warn_stacks: Option<u32>,
+    /// stack_limit: keys das mecânicas que dão stack e das que tiram (para dizer de onde veio cada um)
+    #[serde(default)]
+    pub sources: Vec<String>,
+    #[serde(default)]
+    pub removed_by: Vec<String>,
     #[serde(default)]
     pub ignore_first_hit_in_burst: bool,
     /// dispel: segundos até o dispel antes de contar como atrasado
@@ -148,6 +173,14 @@ pub struct Mechanic {
     /// phase_duration: segundos de uma fase bem feita, e acima de quanto conta como lenta
     pub target_s: Option<f64>,
     pub max_s: Option<f64>,
+    /// exclusive_auras: `key` da regra phase_duration em que o raid troca de lado (vale durante
+    /// a fase e até `grace_s` depois dela)
+    pub swap_after: Option<String>,
+    /// exclusive_auras: segundos de folga no começo do pull e depois de cada troca
+    pub grace_s: Option<f64>,
+    /// dano evitável que pesa inteiro para tank (o padrão é metade: tank toma de propósito)
+    #[serde(default)]
+    pub tank_full_weight: bool,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -428,6 +461,7 @@ enum Hook {
     SoakAura,
     Cast,
     Enrage,
+    HitAura,
 }
 
 #[derive(Default)]
@@ -460,6 +494,13 @@ struct MechState {
     dispel_removed: HashMap<usize, i64>,
     /// phase_duration: janelas da aura no boss (a última pode estar aberta)
     phases: Vec<PhaseWindow>,
+    /// exclusive_auras: stacks atuais de cada (player, aura) e os pulsos (stack nova) em ordem
+    aura_stacks: HashMap<(String, u32), u32>,
+    pulses: Vec<(i64, u32, String, String)>,
+    /// hit_aura_id com confirm_aura: acertos esperando a confirmação (t, guid, nome)
+    pending_hits: Vec<(i64, String, String)>,
+    /// stack_limit com sources: cada mudança de stack (t, guid, antes, depois)
+    stack_changes: Vec<(i64, String, u32, u32)>,
 }
 
 pub struct RuleTracker {
@@ -474,6 +515,12 @@ pub struct RuleTracker {
     auras: HashMap<(String, u32), (i64, Option<i64>)>,
     /// remoções de auras acompanhadas: (t, aura, guid, nome) — para achar culpados depois
     removals: Vec<(i64, u32, String, String)>,
+    /// auras de confirm_aura e os momentos em que mudaram de stack em cada player
+    confirm_auras: HashSet<u32>,
+    confirm_changes: HashMap<(String, u32), Vec<i64>>,
+    /// mecânicas citadas em sources/removed_by de algum stack_limit e cada acerto delas (t, guid, mecânica)
+    touch_mechs: HashSet<usize>,
+    touches: Vec<(i64, String, usize)>,
 }
 
 impl RuleTracker {
@@ -497,11 +544,32 @@ impl RuleTracker {
             add(d.soak_aura_id, Hook::SoakAura);
             add(d.cast_id, Hook::Cast);
             add(d.enrage_aura_id, Hook::Enrage);
+            d.aura_ids.iter().for_each(|id| add(Some(*id), Hook::Aura));
+            add(d.hit_aura_id, Hook::HitAura);
             watched_auras.extend(d.requires_aura.iter().chain(&d.excludes_aura).chain(&d.culprit_auras));
         }
         let state = mechs.iter().map(|_| MechState::default()).collect();
         let files = sets.iter().map(|s| s.file.clone()).collect();
-        Ok(RuleTracker { files, mechs, state, hooks, watched_auras, auras: HashMap::new(), removals: Vec::new() })
+        let confirm_auras = mechs.iter().filter_map(|m| m.detect.confirm_aura).collect();
+        let touch_mechs = mechs
+            .iter()
+            .filter(|m| m.kind == MechanicType::StackLimit)
+            .flat_map(|m| m.sources.iter().chain(&m.removed_by))
+            .filter_map(|k| mechs.iter().position(|x| &x.key == k))
+            .collect();
+        Ok(RuleTracker {
+            files,
+            mechs,
+            state,
+            hooks,
+            watched_auras,
+            auras: HashMap::new(),
+            removals: Vec::new(),
+            confirm_auras,
+            confirm_changes: HashMap::new(),
+            touch_mechs,
+            touches: Vec::new(),
+        })
     }
 
     /// O player já estava com a aura antes de `t` (aplicada há pelo menos AURA_GRACE_MS)?
@@ -590,6 +658,9 @@ impl RuleTracker {
                     }
                 }
             }
+            if self.touch_mechs.contains(&i) {
+                self.touches.push((t, guid.to_string(), i));
+            }
             let st = &mut self.state[i];
             match hook {
                 Hook::Fail => {
@@ -629,6 +700,25 @@ impl RuleTracker {
         failed
     }
 
+    /// Hit que não causou dano (absorvido inteiro, imune): não conta como erro nas regras, mas
+    /// ainda aplica o debuff, então serve de origem para os stacks de um stack_limit.
+    pub fn on_missed(&mut self, spell_id: u32, guid: &str, t: i64) {
+        let Some(hooks) = self.hooks.get(&spell_id) else { return };
+        for &(i, hook) in hooks {
+            if !matches!(hook, Hook::Damage | Hook::Fail) || !self.touch_mechs.contains(&i) {
+                continue;
+            }
+            let d = &self.mechs[i].detect;
+            if d.min_amount.is_some()
+                || d.excludes_aura.is_some_and(|a| self.has_or_just_lost(guid, a, t))
+                || (hook == Hook::Damage && d.requires_aura.is_some_and(|a| !self.had_aura_before(guid, a, t)))
+            {
+                continue;
+            }
+            self.touches.push((t, guid.to_string(), i));
+        }
+    }
+
     /// Guarda as posições no momento de uma falha coletiva (só as primeiras de cada mecânica).
     pub fn add_snapshot(&mut self, mech: usize, snap: Positions) {
         let st = &mut self.state[mech];
@@ -639,6 +729,10 @@ impl RuleTracker {
 
     /// Aura aplicada/removida em qualquer unidade. `stacks` = 0 na remoção total.
     pub fn on_aura(&mut self, spell_id: u32, guid: &str, name: &str, stacks: u32, is_player: bool, t: i64) {
+        // aplicação ou dose (para cima ou para baixo); a remoção total (limpeza) não confirma
+        if is_player && stacks > 0 && self.confirm_auras.contains(&spell_id) {
+            self.confirm_changes.entry((guid.to_string(), spell_id)).or_default().push(t);
+        }
         if self.watched_auras.contains(&spell_id) {
             let key = (guid.to_string(), spell_id);
             if stacks > 0 {
@@ -667,6 +761,9 @@ impl RuleTracker {
                     let p = st.players.entry(guid.to_string()).or_default();
                     if p.name.is_empty() {
                         p.name = name.to_string();
+                    }
+                    if !m.sources.is_empty() && stacks != p.stacks {
+                        st.stack_changes.push((t, guid.to_string(), p.stacks, stacks));
                     }
                     p.stacks = stacks;
                     if stacks > p.max_stacks {
@@ -714,6 +811,25 @@ impl RuleTracker {
                         let secs = (t - p.start) as f64 / 1000.0;
                         let (n, pt, en) = (&m.name, fmt_secs(secs, false), fmt_secs(secs, true));
                         push_event(st, t, None, tx!("{n} em {pt}", "{n} in {en}"));
+                    }
+                }
+                // acerto pela aura: conta já ou espera a confirmação (resolvida no finish)
+                Hook::HitAura if is_player && stacks == 1 && m.kind.per_hit_blame() => {
+                    if m.detect.confirm_aura.is_some() {
+                        st.pending_hits.push((t, guid.to_string(), name.to_string()));
+                    } else {
+                        bump(&mut st.players, guid, name, 0, t);
+                        push_event(st, t, Some(name), Text::same(m.name.clone()));
+                        if self.touch_mechs.contains(&i) {
+                            self.touches.push((t, guid.to_string(), i));
+                        }
+                    }
+                }
+                // pulso = stack nova (aplicação ou dose); a remoção zera
+                Hook::Aura if is_player && m.kind == MechanicType::ExclusiveAuras => {
+                    let prev = st.aura_stacks.insert((guid.to_string(), spell_id), stacks).unwrap_or(0);
+                    if stacks > prev {
+                        st.pulses.push((t, spell_id, guid.to_string(), name.to_string()));
                     }
                 }
                 Hook::Enrage if stacks > 0 => {
@@ -813,7 +929,38 @@ impl RuleTracker {
     pub fn finish(self, roles: &HashMap<String, String>) -> Vec<MechanicResult> {
         let mut out = Vec::new();
         let removals = self.removals;
-        for (m, mut st) in self.mechs.into_iter().zip(self.state) {
+        let mut state = self.state;
+        // acertos pela aura que a aura de confirmação mudou junto
+        let mut touches = self.touches;
+        for (i, (m, st)) in self.mechs.iter().zip(&mut state).enumerate() {
+            let Some(confirm) = m.detect.confirm_aura else { continue };
+            for (t, guid, name) in std::mem::take(&mut st.pending_hits) {
+                let changes = self.confirm_changes.get(&(guid.clone(), confirm));
+                if changes.is_some_and(|c| c.iter().any(|&x| (x - t).abs() <= CONFIRM_MS)) {
+                    bump(&mut st.players, &guid, &name, 0, t);
+                    push_event(st, t, Some(&name), Text::same(m.name.clone()));
+                    if self.touch_mechs.contains(&i) {
+                        touches.push((t, guid, i));
+                    }
+                }
+            }
+        }
+        let origins: Vec<HashMap<String, StackOrigins>> =
+            self.mechs.iter().zip(&state).map(|(m, st)| stack_origins(m, st, &self.mechs, &touches)).collect();
+        for i in 0..self.mechs.len() {
+            let m = &self.mechs[i];
+            if m.kind != MechanicType::ExclusiveAuras {
+                continue;
+            }
+            let swaps = m
+                .swap_after
+                .as_ref()
+                .and_then(|k| self.mechs.iter().position(|x| &x.key == k))
+                .map(|j| state[j].phases.clone())
+                .unwrap_or_default();
+            judge_exclusive(m, &mut state[i], &swaps);
+        }
+        for (mi, (m, mut st)) in self.mechs.into_iter().zip(state).enumerate() {
             if m.kind == MechanicType::Dispel {
                 let open: Vec<usize> = st.open_dispels.drain().map(|(_, i)| i).collect();
                 for i in open {
@@ -852,11 +999,14 @@ impl RuleTracker {
                         amount: p.amount,
                         first_t: p.first_t,
                         credit: false,
-                        message: render(
-                            m.blame_message.as_ref().unwrap_or(&m.message),
-                            &p.name,
-                            if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count },
-                            lethal,
+                        message: with_origins(
+                            render(
+                                m.blame_message.as_ref().unwrap_or(&m.message),
+                                &p.name,
+                                if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count },
+                                lethal,
+                            ),
+                            origins[mi].get(guid),
                         ),
                     })
                 })
@@ -905,6 +1055,7 @@ impl RuleTracker {
                 .next()
                 .copied()
                 .or(d.aura_id)
+                .or(d.hit_aura_id)
                 .or(d.cast_id)
                 .or_else(|| d.fail_ids.iter().flatten().next().copied())
                 .or(d.soak_aura_id)
@@ -928,6 +1079,7 @@ impl RuleTracker {
                 focus: m.focus,
                 tuned: m.tuned,
                 custom: m.custom,
+                tank_full_weight: m.tank_full_weight,
                 evaluated: m.kind.evaluated(),
                 failures,
                 summary,
@@ -956,6 +1108,130 @@ impl RuleTracker {
                 .then(b.failures.cmp(&a.failures))
         });
         out
+    }
+}
+
+/// De onde vieram os stacks de um player: (nome da mecânica, quantos), em ordem de quantidade.
+#[derive(Default)]
+struct StackOrigins {
+    avoidable: Vec<(String, u32)>,
+    unavoidable: Vec<(String, u32)>,
+    removed: Vec<(String, u32)>,
+    unknown: u32,
+}
+
+fn add_origin(list: &mut Vec<(String, u32)>, name: &str) {
+    match list.iter_mut().find(|(n, _)| n == name) {
+        Some(e) => e.1 += 1,
+        None => list.push((name.to_string(), 1)),
+    }
+}
+
+/// stack_limit com `sources`: cada mudança de stack vai para a mecânica (de `sources` ou
+/// `removed_by`) que atingiu o player mais perto no tempo, até CONFIRM_MS; no empate vale a
+/// ordem da lista. Stack que cai junto com uma fonte (a aplicação letal) conta como ganho dela.
+fn stack_origins(m: &Mechanic, st: &MechState, mechs: &[Mechanic], touches: &[(i64, String, usize)]) -> HashMap<String, StackOrigins> {
+    let mut out: HashMap<String, StackOrigins> = HashMap::new();
+    if m.sources.is_empty() {
+        return out;
+    }
+    let keyed: Vec<(usize, bool)> = m
+        .sources
+        .iter()
+        .map(|k| (k, true))
+        .chain(m.removed_by.iter().map(|k| (k, false)))
+        .filter_map(|(k, gives)| mechs.iter().position(|x| &x.key == k).map(|i| (i, gives)))
+        .collect();
+    for (t, guid, before, after) in &st.stack_changes {
+        let best = touches
+            .iter()
+            .filter(|(tt, g, _)| g == guid && (tt - t).abs() <= CONFIRM_MS)
+            .filter_map(|(tt, _, i)| keyed.iter().position(|(k, _)| k == i).map(|order| ((tt - t).abs(), order)))
+            .min();
+        let o = out.entry(guid.clone()).or_default();
+        let Some((_, order)) = best else {
+            if after > before {
+                o.unknown += 1;
+            }
+            continue;
+        };
+        let (i, gives) = keyed[order];
+        let src = &mechs[i];
+        match (gives, after > before) {
+            (true, _) if src.kind.per_hit_blame() => add_origin(&mut o.avoidable, &src.name),
+            (true, _) => add_origin(&mut o.unavoidable, &src.name),
+            (false, false) => add_origin(&mut o.removed, &src.name),
+            (false, true) => o.unknown += 1,
+        }
+    }
+    for o in out.values_mut() {
+        for l in [&mut o.avoidable, &mut o.unavoidable, &mut o.removed] {
+            l.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        }
+    }
+    out
+}
+
+/// "… · evitáveis: Wave 3 · inevitáveis: Adds 4 · −2 Feast · 1 sem origem"
+fn with_origins(msg: Text, o: Option<&StackOrigins>) -> Text {
+    let Some(o) = o else { return msg };
+    let list = |l: &[(String, u32)]| l.iter().map(|(n, c)| format!("{n} {c}")).collect::<Vec<_>>().join(", ");
+    let mut parts = vec![msg];
+    if !o.avoidable.is_empty() {
+        let l = list(&o.avoidable);
+        parts.push(tx!(" · evitáveis: {l}", " · avoidable: {l}"));
+    }
+    if !o.unavoidable.is_empty() {
+        let l = list(&o.unavoidable);
+        parts.push(tx!(" · inevitáveis: {l}", " · unavoidable: {l}"));
+    }
+    for (n, c) in &o.removed {
+        parts.push(Text::same(format!(" · −{c} {n}")));
+    }
+    if o.unknown > 0 {
+        let n = o.unknown;
+        parts.push(tx!(" · {n} sem origem", " · {n} without a source"));
+    }
+    Text::new(parts.iter().map(|p| p.pt.as_str()).collect::<String>(), parts.iter().map(|p| p.en.as_str()).collect::<String>())
+}
+
+/// exclusive_auras: erro = pulso de uma aura do grupo com outra pulsando há menos de
+/// EXCLUSIVE_ACTIVE_MS (o player estava perto dos dois bosses). Não conta no começo do pull nem
+/// durante a fase de troca e até `grace_s` depois; idas e voltas seguidas são um erro só; e
+/// EXCLUSIVE_MASS_MIN+ players em EXCLUSIVE_MASS_MS viram uma nota, sem culpa.
+fn judge_exclusive(m: &Mechanic, st: &mut MechState, swaps: &[PhaseWindow]) {
+    let grace = (m.grace_s.unwrap_or(0.0) * 1000.0) as i64;
+    let in_grace = |t: i64| t < grace || swaps.iter().any(|p| t >= p.start && p.end.is_none_or(|e| t <= e + grace));
+    let mut last: HashMap<(&str, u32), i64> = HashMap::new();
+    let mut episode: HashMap<&str, i64> = HashMap::new();
+    let mut hits: Vec<(i64, &str, &str)> = Vec::new();
+    for (t, aura, guid, name) in &st.pulses {
+        let other = m.detect.aura_ids.iter().filter(|a| *a != aura).filter_map(|a| last.get(&(guid.as_str(), *a))).max();
+        if other.is_some_and(|&o| t - o <= EXCLUSIVE_ACTIVE_MS) && !in_grace(*t) {
+            if episode.get(guid.as_str()).is_none_or(|&e| t - e > EXCLUSIVE_ACTIVE_MS) {
+                hits.push((*t, guid, name));
+            }
+            episode.insert(guid, *t);
+        }
+        last.insert((guid, *aura), *t);
+    }
+    let mut blamed = Vec::new();
+    let mut i = 0;
+    while i < hits.len() {
+        let j = hits[i..].iter().position(|h| h.0 - hits[i].0 > EXCLUSIVE_MASS_MS).map_or(hits.len(), |k| i + k);
+        if j - i >= EXCLUSIVE_MASS_MIN {
+            let (n, count) = (&m.name, j - i);
+            blamed.push((hits[i].0, None, tx!("{count} players pegaram {n} juntos (não conta)", "{count} players got {n} together (doesn't count)")));
+        } else {
+            blamed.extend(hits[i..j].iter().map(|&(t, guid, name)| (t, Some((guid.to_string(), name.to_string())), Text::same(m.name.clone()))));
+        }
+        i = j;
+    }
+    for (t, who, detail) in blamed {
+        if let Some((guid, name)) = &who {
+            bump(&mut st.players, guid, name, 0, t);
+        }
+        push_event(st, t, who.as_ref().map(|(_, n)| n.as_str()), detail);
     }
 }
 
@@ -1338,5 +1614,169 @@ mechanics:
         assert_eq!(m.target_ms, Some(10_000));
         assert_eq!(m.summary.pt, "4 vezes: 12s, 18s, 6s (3 mortes), wipe · média 15s (alvo 10s)");
         assert_eq!(m.summary.en, "4 times: 12s, 18s, 6s (3 deaths), wipe · average 15s (target 10s)");
+    }
+
+    #[test]
+    fn exclusive_auras_blames_crossing_outside_swaps() {
+        let yaml = r#"
+name: "Boss"
+encounter_id: 44
+mechanics:
+  - key: stasis
+    name: Stasis
+    type: phase_duration
+    detect: { aura_id: 90 }
+  - key: double_mark
+    name: Double Mark
+    type: exclusive_auras
+    severity: major
+    detect: { aura_ids: [80, 81] }
+    swap_after: stasis
+    grace_s: 20
+    message: "{player} pegou as duas ({count}x)"
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        // pulsos de 5s: cada um soma uma stack na aura do lado em que o player está
+        let mut stacks: HashMap<(&str, u32), u32> = HashMap::new();
+        let mut pulse = |tr: &mut RuleTracker, guid: &'static str, aura: u32, t: i64| {
+            let s = stacks.entry((guid, aura)).or_default();
+            *s += 1;
+            tr.on_aura(aura, guid, &format!("{guid}-R"), *s, true, t);
+        };
+        // começo do pull: A pega as duas se posicionando (folga)
+        pulse(&mut tr, "A", 80, 5_000);
+        pulse(&mut tr, "A", 81, 5_000);
+        for t in (10_000..=60_000).step_by(5_000) {
+            pulse(&mut tr, "A", 80, t);
+            pulse(&mut tr, "B", 81, t);
+        }
+        // B passa perto do outro boss: erro; volta e passa de novo logo em seguida = o mesmo erro
+        pulse(&mut tr, "B", 80, 40_000);
+        pulse(&mut tr, "B", 80, 45_000);
+        // intermissão de 60s a 70s; todo mundo troca de lado logo depois (folga)
+        tr.on_aura(90, "Boss", "Boss", 1, false, 60_000);
+        tr.on_aura(90, "Boss", "Boss", 0, false, 70_000);
+        pulse(&mut tr, "A", 81, 75_000);
+        pulse(&mut tr, "B", 80, 75_000);
+        // A ainda tem a marca antiga, mas sem pulso: não é erro
+        pulse(&mut tr, "A", 81, 100_000);
+        // 7 players em um ciclo de pulso: coletivo, sem culpa
+        for g in ["C", "D", "E", "F", "G", "H", "I"] {
+            pulse(&mut tr, g, 80, 110_000);
+            pulse(&mut tr, g, 81, 113_000);
+        }
+        tr.close_pull(120_000, true, &[]);
+        let res = tr.finish(&HashMap::new());
+        let m = res.iter().find(|r| r.key == "double_mark").unwrap();
+        let blamed: Vec<(&str, u32)> = m.players.iter().map(|p| (p.name.as_str(), p.count)).collect();
+        assert_eq!(blamed, [("B-R", 1)]);
+        assert_eq!(m.failures, 1);
+        assert_eq!(m.players[0].message.pt, "B pegou as duas (1x)");
+        assert_eq!(m.events.last().unwrap().detail.pt, "7 players pegaram Double Mark juntos (não conta)");
+    }
+
+    #[test]
+    fn hit_aura_counts_only_when_confirm_aura_changes() {
+        let yaml = r#"
+name: "Boss"
+encounter_id: 45
+mechanics:
+  - key: wave
+    name: Wave
+    type: avoidable_damage
+    severity: major
+    detect: { hit_aura_id: 100, confirm_aura: 101 }
+    message: "{player} pegou {count} ondas"
+  - key: pulse
+    name: Pulse
+    type: unavoidable
+    detect: { damage_ids: [102] }
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        // A: onda e o stack sobe 12ms depois
+        tr.on_aura(100, "A", "A-R", 1, true, 10_000);
+        tr.on_aura(101, "A", "A-R", 3, true, 10_012);
+        tr.on_aura(100, "A", "A-R", 0, true, 10_400);
+        // B: stack chega um pouco antes da aura; depois a onda letal (stack cai de 9 para 7)
+        tr.on_aura(101, "B", "B-R", 2, true, 20_000);
+        tr.on_aura(100, "B", "B-R", 1, true, 20_150);
+        tr.on_aura(101, "B", "B-R", 9, true, 25_000);
+        tr.on_aura(100, "B", "B-R", 1, true, 30_000);
+        tr.on_aura(101, "B", "B-R", 7, true, 30_040);
+        // C: aura sem mudança de stack (imune/morreu) e pulso sozinho: não contam
+        tr.on_aura(100, "C", "C-R", 1, true, 40_000);
+        tr.on_aura(101, "C", "C-R", 0, true, 40_050); // limpeza total não confirma
+        tr.on_damage(102, "C", "C-R", 500_000, 41_000);
+        let res = tr.finish(&HashMap::new());
+        let m = res.iter().find(|r| r.key == "wave").unwrap();
+        let got: Vec<(&str, u32)> = m.players.iter().map(|p| (p.name.as_str(), p.count)).collect();
+        assert_eq!(got, [("B-R", 2), ("A-R", 1)]);
+        assert_eq!(m.failures, 3);
+        assert_eq!(m.players[0].message.pt, "B pegou 2 ondas");
+        assert_eq!(m.spell_id, Some(100));
+    }
+
+    #[test]
+    fn stack_limit_tells_where_each_stack_came_from() {
+        let yaml = r#"
+name: "Boss"
+encounter_id: 46
+mechanics:
+  - key: venom
+    name: Venom
+    type: stack_limit
+    detect: { aura_id: 200 }
+    warn_stacks: 3
+    message: "{player} chegou a {stacks}"
+    sources: [wave, line, adds, spit_target]
+    removed_by: [feast]
+  - key: wave
+    name: Wave
+    type: avoidable_damage
+    detect: { hit_aura_id: 201, confirm_aura: 200 }
+  - key: line
+    name: Line
+    type: avoidable_damage
+    detect: { damage_ids: [202], excludes_aura: 203 }
+  - key: adds
+    name: Adds
+    type: unavoidable
+    detect: { damage_ids: [204] }
+  - key: spit_target
+    name: Spit
+    type: unavoidable
+    detect: { damage_ids: [202] }
+  - key: feast
+    name: Feast
+    type: unavoidable
+    detect: { damage_ids: [205] }
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let v = |tr: &mut RuleTracker, s: u32, t: i64| tr.on_aura(200, "P", "P-R", s, true, t);
+        // adds (hit absorvido inteiro: SPELL_MISSED ainda dá origem)
+        tr.on_missed(204, "P", 1_000);
+        v(&mut tr, 1, 1_010);
+        // alvo do spit (tem a aura de alvo): inevitável
+        tr.on_aura(203, "P", "P-R", 1, true, 2_000);
+        tr.on_damage(202, "P", "P-R", 100, 3_000);
+        v(&mut tr, 2, 3_005);
+        tr.on_aura(203, "P", "P-R", 0, true, 3_010);
+        // na linha de outro (sem a aura): evitável
+        tr.on_damage(202, "P", "P-R", 100, 10_000);
+        v(&mut tr, 3, 10_005);
+        // onda: o stack chega antes da aura
+        v(&mut tr, 4, 20_000);
+        tr.on_aura(201, "P", "P-R", 1, true, 20_100);
+        // feast tira um; um stack sem nada perto fica sem origem
+        tr.on_damage(205, "P", "P-R", 100, 30_000);
+        v(&mut tr, 3, 30_020);
+        v(&mut tr, 4, 40_000);
+        let res = tr.finish(&HashMap::new());
+        let m = res.iter().find(|r| r.key == "venom").unwrap();
+        assert_eq!(m.players[0].message.pt, "P chegou a 4 · evitáveis: Line 1, Wave 1 · inevitáveis: Adds 1, Spit 1 · −1 Feast · 1 sem origem");
+        assert_eq!(m.players[0].message.en, "P chegou a 4 · avoidable: Line 1, Wave 1 · unavoidable: Adds 1, Spit 1 · −1 Feast · 1 without a source");
     }
 }

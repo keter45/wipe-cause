@@ -1,12 +1,12 @@
 // Nota de 0 a 100 por player e pull (inspirada no Wipefest): parte de 100, perde pontos por
-// erros de mecânica (pela gravidade), por deixar passar a própria vez na escala de interrupts
+// erros de mecânica (pela gravidade; dano evitável de tank pesa metade), por deixar passar a própria vez na escala de interrupts
 // e por morte decisiva; no fim, pesa o tempo vivo até a primeira morte. Mortes num "wipe geral"
 // (mais de 5 juntas) não contam: são consequência do wipe, não erro de cada um.
 
 import type { Pull } from '../types';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { mmss, shortName } from './format';
-import { PERSONAL_BLAME } from './blame';
+import { blameFactor, PERSONAL_BLAME } from './blame';
 import { analyzePull } from './verdict';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
 import { getMarks } from './marks';
@@ -43,14 +43,17 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
     penalties.set(guid, e);
   };
 
+  const roleOf = new Map(p.players.map((x) => [x.guid, x.role]));
   for (const m of p.mechanics) {
     if (!PERSONAL_BLAME.has(m.kind)) continue;
-    const per = Math.round((PENALTY[m.severity] ?? 0) * (m.focus ? FOCUS_MULTIPLIER : 1));
-    if (!per) continue;
+    const base = (PENALTY[m.severity] ?? 0) * (m.focus ? FOCUS_MULTIPLIER : 1);
+    if (!base) continue;
     for (const mp of m.players) {
       if (mp.credit) continue;
+      const factor = blameFactor(m, roleOf.get(mp.guid));
+      const per = Math.round(base * factor);
       const n = m.kind === 'stack_limit' ? 1 : Math.min(mp.count, MAX_PER_MECHANIC);
-      add(mp.guid, n * per, `${m.focus ? '★ ' : ''}${m.name}${n > 1 ? ` (${n}×)` : ''}`);
+      add(mp.guid, n * per, `${m.focus ? '★ ' : ''}${m.name}${n > 1 ? ` (${n}×)` : ''}${factor < 1 ? ` ${t.tankHalf}` : ''}`);
     }
   }
 

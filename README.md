@@ -87,7 +87,7 @@ O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compart
 
 ## Nota por player
 
-Cada player recebe uma nota de 0 a 100 por pull: parte de 100, perde pontos por erros de mecânica (pela gravidade da regra, até 3 por mecânica), por deixar passar a própria vez na escala de interrupts e por morte decisiva (mais se tinha defensivo sobrando); no fim pesa o tempo vivo até a primeira morte. Morte em **wipe geral** (mais de 5 mortes em até 1,5s — explosão, Execution, enrage) não conta: é consequência do wipe, e a culpa fica com a mecânica e quem a causou. Aparece na aba Jogadores (passe o mouse para ver os descontos), como média no placar do boss e por noite na Evolução.
+Cada player recebe uma nota de 0 a 100 por pull: parte de 100, perde pontos por erros de mecânica (pela gravidade da regra, até 3 por mecânica; dano evitável de tank pesa metade, porque muitas vezes ele toma de propósito para segurar ou posicionar o boss), por deixar passar a própria vez na escala de interrupts e por morte decisiva (mais se tinha defensivo sobrando); no fim pesa o tempo vivo até a primeira morte. Morte em **wipe geral** (mais de 5 mortes em até 1,5s — explosão, Execution, enrage) não conta: é consequência do wipe, e a culpa fica com a mecânica e quem a causou. Aparece na aba Jogadores (passe o mouse para ver os descontos), como média no placar do boss e por noite na Evolução.
 
 ## Desempenho
 
@@ -147,7 +147,7 @@ Os textos saem em modelo ("X perdido: use antes de acabar"): vale revisar os pon
 
 ## Escala de interrupts e dispels
 
-Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem. Regras do tipo `phase_duration` cronometram uma fase em que o boss fica imune até o raid resolver a mecânica (ex.: o puzzle do Vitriolic Stasis no Entombed Sentinels): a aba Mecânicas mostra cada vez com a duração contra o tempo bom e o máximo, e o resumo do boss mostra a fase pull a pull, com o melhor da noite e as vezes em que o raid morreu nela.
+Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar. Regras do tipo `dispel` medem o tempo até o dispel de cada debuff e quem ficou sem. Regras do tipo `phase_duration` cronometram uma fase em que o boss fica imune até o raid resolver a mecânica (ex.: o puzzle do Vitriolic Stasis no Entombed Sentinels): a aba Mecânicas mostra cada vez com a duração contra o tempo bom e o máximo, e o resumo do boss mostra a fase pull a pull, com o melhor da noite e as vezes em que o raid morreu nela. Regras do tipo `exclusive_auras` apontam quem pegou duas auras que não podem andar juntas (ex.: Mark of Acid e Mark of Blood no Entombed Sentinels, quando alguém chega perto do outro boss no meio da luta); a troca de lado depois da intermissão não conta.
 
 ## Posições
 

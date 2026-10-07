@@ -26,12 +26,24 @@ mechanics:
     detect: { aura_id: 1290336, damage_ids: [1290480] }
     lethal_stacks: 11
     warn_stacks: 8
+    # de onde vem cada stack (no empate de tempo vale a ordem: evitáveis primeiro)
+    sources:
+      - stir_the_depths_wave      # evitável: onda
+      - caustic_deluge_impact     # evitável: orb caindo em cima
+      - corrosive_spit            # evitável: na linha de outro
+      - vile_flood                # evitável: feixe da transição
+      - venomous_emergence        # inevitável: adds nascendo (raid toda)
+      - rouse_the_brood
+      - caustic_globule_soak      # inevitável: pisar na orb
+      - caustic_globule_explosion # inevitável: orb explodiu (raid toda)
+      - corrosive_spit_target     # inevitável: alvo do add
+    removed_by: [ravenous_feast]
     overrides:
       heroic: { warn_stacks: 9, severity: wipe }
       mythic: { warn_stacks: 9, severity: wipe }
     tip: { pt: "Cada mecânica errada dá stack; entrar no Ravenous Feast limpa.", en: "Every failed mechanic gives a stack; stepping into Ravenous Feast clears it." }
     message: { pt: "{player} chegou a {stacks} stacks de Eternal Venom", en: "{player} reached {stacks} stacks of Eternal Venom" }
-    notes: "Tooltip live: morre ao chegar em 11 aplicações (o 11º stack não aparece no log). Guia de PTR dizia 9-10."
+    notes: "Tooltip live: morre ao chegar em 11 aplicações (o 11º stack não aparece no log). Guia de PTR dizia 9-10. Origem dos stacks no log de 24/09: soak de orb ~1400, adds ~1430, onda ~300, explosão ~350, Corrosive Spit ~230 (9 na linha de outro), orb caindo 117; Ravenous Feast tira ~1000."
 
   # ---------- Vexhul ----------
   - key: caustic_globule
@@ -44,6 +56,36 @@ mechanics:
       fail_ids: [1290338]       # explosão: atinge 11-20 players
     tip: { pt: "Pisar em todos os orbs antes de explodirem.", en: "Step on every orb before it explodes." }
     message: { pt: "{count} Caustic Globule explodiram sem soak", en: "{count} Caustic Globule exploded without a soak" }
+
+  - key: caustic_globule_soak
+    name: "Caustic Globule (soak)"
+    type: unavoidable
+    source_unit: vexhul
+    severity: none
+    detect: { damage_ids: [1289201] }
+    tip: { pt: "Pisar na orb limpa ela e dá 1 stack de Eternal Venom: é o preço do soak.", en: "Stepping on the orb clears it and gives 1 Eternal Venom stack: that's the cost of the soak." }
+    message: { pt: "Caustic Globule (soak)", en: "Caustic Globule (soak)" }
+    notes: "No log o próprio player 'casta' 1289201 quando pisa na orb; só para dar origem aos stacks."
+
+  - key: caustic_globule_explosion
+    name: "Caustic Globule (explosion)"
+    type: unavoidable
+    source_unit: vexhul
+    severity: none
+    detect: { damage_ids: [1290338] }
+    tip: { pt: "Orb que ninguém pisou explode e dá 1 stack no raid todo.", en: "An orb nobody stepped on explodes and gives the whole raid 1 stack." }
+    message: { pt: "Caustic Globule (explosion)", en: "Caustic Globule (explosion)" }
+    notes: "Mesmo spell do fail_ids do caustic_globule; aqui só para dar origem aos stacks."
+
+  - key: caustic_deluge_impact
+    name: "Caustic Deluge (falling orb)"
+    type: avoidable_damage
+    source_unit: vexhul
+    severity: wipe
+    detect: { damage_ids: [1289994] }
+    tip: { pt: "Sair de baixo das orbs caindo: a orb que cai em você não é limpa, dá dano e 1 stack de Eternal Venom.", en: "Get out from under the falling orbs: an orb that lands on you isn't cleared, deals damage and gives 1 Eternal Venom stack." }
+    message: { pt: "{player} levou {count} orbs caindo na cabeça (+{count} Eternal Venom)", en: "{player} had {count} orbs land on them (+{count} Eternal Venom)" }
+    notes: "Cada orb caindo é um SPELL_CAST_SUCCESS 1289994 sem alvo; dano 1289994 em player = caiu em cima. 117 acertos no log de 24/09, todos com stack."
 
   - key: caustic_deluge
     name: "Caustic Deluge"
@@ -79,21 +121,31 @@ mechanics:
     name: "Corrosive Spit"
     type: avoidable_damage
     source_unit: spawn_of_vexhul
-    severity: minor
+    severity: wipe
+    detect: { damage_ids: [1293295], excludes_aura: 1293979 }
+    tip: { pt: "Sair da linha de quem é o alvo: quem fica no meio toma o cuspe e 1 stack de Eternal Venom.", en: "Get out of the target's line: whoever stands in it takes the spit and 1 Eternal Venom stack." }
+    message: { pt: "{player} tomou Corrosive Spit sem ser o alvo ({count}x, +{count} Eternal Venom)", en: "{player} took Corrosive Spit without being the target ({count}x, +{count} Eternal Venom)" }
+    notes: "O alvo do add recebe a aura 1293979 (sai no hit); dano sem ela = estava na linha de outro. Log de 24/09: 261 hits no alvo e 9 na linha, todos com stack."
+
+  - key: corrosive_spit_target
+    name: "Corrosive Spit (target)"
+    type: unavoidable
+    source_unit: spawn_of_vexhul
+    severity: none
     detect: { damage_ids: [1293295] }
-    ignore_first_hit_in_burst: true
-    tip: { pt: "Sair da linha se você não é o alvo.", en: "Get out of the line if you're not the target." }
-    message: { pt: "{player} tomou Corrosive Spit sem ser o alvo ({count}x)", en: "{player} took Corrosive Spit without being the target ({count}x)" }
-    notes: "O primeiro hit de cada linha é o alvo; hits extras na mesma rajada são erro."
+    tip: { pt: "O add cospe no alvo marcado: 1 stack inevitável.", en: "The add spits at the marked target: 1 unavoidable stack." }
+    message: { pt: "Corrosive Spit (target)", en: "Corrosive Spit (target)" }
 
   - key: stir_the_depths_wave
     name: "Stir the Depths (wave)"
     type: avoidable_damage
     source_unit: vexhul
-    severity: minor
-    detect: { damage_ids: [1292807] }
-    tip: { pt: "Desviar das ondas.", en: "Dodge the waves." }
-    message: { pt: "{player} foi pego por {count} ondas de Stir the Depths", en: "{player} was caught by {count} Stir the Depths waves" }
+    severity: wipe
+    tank_full_weight: true
+    detect: { hit_aura_id: 1292807, confirm_aura: 1290336 }
+    tip: { pt: "Desviar das ondas: cada onda que pega dá um stack de Eternal Venom.", en: "Dodge the waves: every wave that hits you gives an Eternal Venom stack." }
+    message: { pt: "{player} foi pego por {count} ondas de Stir the Depths (+{count} Eternal Venom)", en: "{player} was caught by {count} Stir the Depths waves (+{count} Eternal Venom)" }
+    notes: "Dois spells com o mesmo nome: 1292806 é o pulso no raid (SPELL_DAMAGE a cada 2s, sem stack) e 1292807 é a onda, que aparece como aura no player e quase nunca como dano (37 ticks para 431 ondas no log de 24/09). Onda = aura 1292807 aplicada + Eternal Venom mudando de stack em até 250ms (423 de 431 sobem até 56ms depois; as outras 8 são a aplicação letal, em que o stack cai de 9 para 7)."
 
   - key: stir_the_depths_pulse
     name: "Stir the Depths (pulse)"
@@ -108,9 +160,9 @@ mechanics:
     name: "Vile Flood"
     type: avoidable_damage
     source_unit: vexhul
-    severity: major
+    severity: wipe
     detect: { damage_ids: [1294605] }
-    tip: { pt: "Fugir do feixe giratório na transição.", en: "Run from the rotating beam during the transition." }
+    tip: { pt: "Fugir do feixe giratório na transição: cada hit dá 1 stack de Eternal Venom.", en: "Run from the rotating beam during the transition: every hit gives 1 Eternal Venom stack." }
     message: { pt: "{player} foi atingido pelo feixe do Vile Flood ({count}x)", en: "{player} was hit by the Vile Flood beam ({count}x)" }
 
   - key: concentrated_spittle
