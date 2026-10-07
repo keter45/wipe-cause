@@ -5266,6 +5266,12 @@ svg.wcl-mark {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.metric-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
 .metric-tools {
   margin-left: auto;
   display: inline-flex;

@@ -5,6 +5,8 @@
 //
 // Gera em target/release/upload/:
 //   WipeCause_<versão>_x64-setup.exe   instalador (nome sem espaço: vira a URL do asset)
+//   WipeCause_x64-setup.exe            a mesma cópia com nome fixo: o botão de download do README
+//                                      aponta para releases/latest/download/ com este nome
 //   latest.json                        o que o app instalado consulta para se atualizar
 // e imprime o comando `gh release create` que publica os dois.
 
@@ -26,6 +28,8 @@ const out = path.join(root, 'target/release/upload');
 fs.mkdirSync(out, { recursive: true });
 const asset = `WipeCause_${version}_x64-setup.exe`;
 fs.copyFileSync(path.join(nsis, exe), path.join(out, asset));
+const stable = 'WipeCause_x64-setup.exe';
+fs.copyFileSync(path.join(nsis, exe), path.join(out, stable));
 
 // notas nas duas línguas: uma seção "## Português" e uma "## English" (o app mostra a do idioma
 // escolhido; o GitHub, as duas)
@@ -50,8 +54,9 @@ fs.writeFileSync(path.join(out, 'latest.json'), JSON.stringify(latest, null, 2) 
 
 console.log(`pronto em ${path.relative(root, out)}:`);
 console.log(`  ${asset}`);
+console.log(`  ${stable}`);
 console.log('  latest.json');
 console.log('\npublicar:');
 console.log(
-  `  gh release create v${version} "${path.relative(root, path.join(out, asset))}" "${path.relative(root, path.join(out, 'latest.json'))}" --title "v${version}" --notes-file "${notesFile}"`,
+  `  gh release create v${version} "${path.relative(root, path.join(out, asset))}" "${path.relative(root, path.join(out, stable))}" "${path.relative(root, path.join(out, 'latest.json'))}" --title "v${version}" --notes-file "${notesFile}"`,
 );
