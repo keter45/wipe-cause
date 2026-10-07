@@ -151,7 +151,6 @@ function MetricCard({
         <strong className="metric-name">
           <SpellName spellId={m.spellId} name={m.name} size={18} />
         </strong>
-        <span className={`sev-tag ${m.severity}`}>{t.severities[m.severity] ?? m.severity}</span>
         <span className="metric-tools">
           <button className="icon-btn" disabled={first} onClick={() => onMove(-1)} title={t.moveUp} aria-label={t.moveUp}>
             <ArrowUp size={14} strokeWidth={1.5} aria-hidden />
@@ -165,7 +164,8 @@ function MetricCard({
         </span>
       </header>
 
-      <p className={`small ${m.total ? '' : 'good'}`}>
+      <p className={`small metric-stats ${m.total ? '' : 'good'}`}>
+        <span className={`sev-tag ${m.severity}`}>{t.severities[m.severity] ?? m.severity}</span>
         {m.total === 0 ? t.clean : stack ? t.statsStack(m.players.length, m.pullsWithFailure, m.perPull.length) : t.stats(m.total, m.pullsWithFailure, m.perPull.length)}
       </p>
 
