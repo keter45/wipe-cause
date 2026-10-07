@@ -211,7 +211,8 @@ export interface LogsScan {
 /** Dev no navegador: `?demoLogs=1` mostra uma pasta de exemplo (só visual). */
 const demoLogs = (): LogsScan | null => {
   if (!import.meta.env.DEV || !new URLSearchParams(window.location.search).has('demoLogs')) return null;
-  const enc = (name: string, pulls: number, kills: number, d = 'Mythic', id = 16): EncounterPeek => ({ encounterId: 0, name, difficultyId: id, difficultyName: d, pulls, kills });
+  const ids: Record<string, number> = { 'The Twin Fangs': 3421, 'The Coiled Altar': 3429, 'Nymrissa Wavecaller': 3379, Sszorak: 3420, 'Entombed Sentinels': 3445, 'Vashnik the Malignant': 3455 };
+  const enc = (name: string, pulls: number, kills: number, d = 'Mythic', id = 16): EncounterPeek => ({ encounterId: ids[name] ?? 0, name, difficultyId: id, difficultyName: d, pulls, kills });
   const h = 3_600_000;
   const now = Date.now();
   return {

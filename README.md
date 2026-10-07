@@ -15,13 +15,15 @@ Na primeira vez, o app abre em **Configurações** com o passo a passo (depois e
 
 ## Como funciona
 
-1. **Nova análise** mostra uma linha por noite: os logs do seu PC e os reports da guilda no Warcraft Logs, juntos. **Analisar** usa o log do seu PC (rápido, sem baixar nada).
+1. **Nova análise** mostra uma linha por noite: os logs do seu PC e os reports da guilda no Warcraft Logs, juntos. **Analisar** usa o log do seu PC (rápido, sem baixar nada). Para achar as noites de um boss, filtre por ele (e pela dificuldade) na barra acima da lista; a escolha fica lembrada.
 2. Bosses e pulls que **não estão no seu log** mas estão no Warcraft Logs (você saiu antes, entrou depois, estava longe) aparecem com o ícone de download. **Completar** baixa só o que falta — demora alguns minutos, então é você quem decide; depois do primeiro download, reabrir é rápido. Masmorras (M+) ficam de fora.
 3. Escolha o pull e veja:
    - o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e os erros de mecânica do boss;
    - cada morte: spike ou morte lenta, se faltou cura, debuffs ativos (com stacks e descrição), golpe final, defensivos/poção/healthstone;
    - **interrupts**: casts que passaram, quem cortou, quem tentou e errou, quem podia e não cortou;
    - dano causado/tomado por player.
+
+No **resumo do boss**, **Métricas do grupo** junta as mecânicas que o grupo quer acompanhar: **Adicionar métrica** lista as mecânicas do boss (as que mais falharam primeiro) e cada uma vira um cartão com as falhas pull a pull (clique numa barra para abrir o pull), quem errou e quem ajudou. Dá para reordenar e tirar; a escolha fica salva para aquele boss.
 
 Wipes com menos de 30s são ignorados.
 

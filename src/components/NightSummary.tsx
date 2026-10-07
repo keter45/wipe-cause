@@ -12,6 +12,7 @@ import { mechanicSpellId } from '../lib/spells';
 import { ShareMenu } from './share/ShareMenu';
 import { NightPhaseTimes } from './PhaseTimes';
 import { NightStackOrigins } from './StackOrigins';
+import { BossMetrics } from './BossMetrics';
 import { BossShareCard } from './share/BossCard';
 import { NightShareCard } from './share/NightCard';
 import { withErrorBoundary } from './ErrorBoundary';
@@ -169,6 +170,7 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
         <ProgressChart pulls={s.pulls} onSelect={onSelectPull} bestId={s.best?.pull.id} />
       </section>
 
+      <BossMetrics pulls={s.pulls} onSelectPull={onSelectPull} />
       <NightPhaseTimes pulls={s.pulls} onSelectPull={onSelectPull} />
       <NightStackOrigins pulls={s.pulls} />
 

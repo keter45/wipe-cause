@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CloudDownload, FileText, FolderOpen, FolderSearch, HardDrive, LoaderCircle, RefreshCw, Users } from 'lucide-react';
+import { CloudDownload, FileText, FolderOpen, FolderSearch, HardDrive, LoaderCircle, RefreshCw, Users, X } from 'lucide-react';
 import { inTauri, logsDetectDir, logsList, logsPeek, logsSetDir, pickFolder, sameLog, type HistoryEntry, type LogPeek, type LogsScan } from '../lib/api';
 import { useSetup } from '../lib/setup';
 import { fetchGuildReports, groupNights, saveGuildId, savedGuildId, type GuildNight } from '../lib/guildNights';
 import { buildNights, completePath, downloadMinutes, type Night } from '../lib/nights';
+import { bossOptions, filterNights, matchesBoss, saveLogFilter, savedLogFilter, type BossOption, type LogFilter } from '../lib/logFilter';
 import { BossName } from './Names';
 import { WclOpen } from './WclOpen';
 import { intlLocale, useMessages } from '../i18n';
@@ -18,6 +19,7 @@ interface Props {
 }
 
 const DIFF_SHORT: Record<number, string> = { 14: 'N', 15: 'H', 16: 'M', 17: 'LFR', 1: 'N', 2: 'H', 23: 'M', 8: 'M+' };
+const DIFF_NAME: Record<number, string> = { 14: 'Normal', 15: 'Heroic', 16: 'Mythic', 17: 'LFR' };
 
 /**
  * Noites para analisar: os logs do WoW neste PC e os reports da guilda no Warcraft Logs, juntos
@@ -73,6 +75,15 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
   );
   const reading = (scan?.files ?? []).filter((f) => !f.peek && !peeks.has(f.path)).length;
   const nights = useMemo(() => buildNights(files, guild.nights ?? []), [files, guild.nights]);
+  const bosses = useMemo(() => bossOptions(nights), [nights]);
+  const [filter, setFilterState] = useState<LogFilter>(savedLogFilter);
+  const setFilter = (f: LogFilter) => {
+    setFilterState(f);
+    saveLogFilter(f);
+  };
+  // boss lembrado que sumiu da lista (logs apagados, outra pasta): mostra tudo
+  const active: LogFilter = bosses.some((b) => b.encounterId === filter.encounterId) ? filter : { encounterId: null, difficultyId: null };
+  const shown = useMemo(() => filterNights(nights, active), [nights, active.encounterId, active.difficultyId]);
 
   async function chooseFolder() {
     if (!inTauri) return setError(t.browserNoFolders);
@@ -159,11 +170,13 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
       {scan?.warning && <p className="logs-warning small">{scan.warning}</p>}
       {scan && !scan.dir && <NoFolder onChoose={chooseFolder} />}
 
-      {nights.length > 0 && (
+      {bosses.length > 1 && <BossFilter bosses={bosses} filter={active} onChange={setFilter} shown={shown.length} total={nights.length} />}
+
+      {shown.length > 0 && (
         <ul className="plain log-list">
-          {nights.map((n) => (
+          {shown.map((n) => (
             <li key={n.key}>
-              <NightRow night={n} busy={busy} analyzed={analyzed} onAnalyze={onAnalyze} />
+              <NightRow night={n} busy={busy} analyzed={analyzed} onAnalyze={onAnalyze} filter={active} />
             </li>
           ))}
         </ul>
@@ -242,6 +255,57 @@ function useGuild() {
   };
 }
 
+/** Filtro da lista por boss (os mais recentes primeiro) e, com o boss escolhido, pela dificuldade. */
+function BossFilter({ bosses, filter, onChange, shown, total }: { bosses: BossOption[]; filter: LogFilter; onChange: (f: LogFilter) => void; shown: number; total: number }) {
+  const t = useMessages(logsMsg);
+  const chosen = bosses.find((b) => b.encounterId === filter.encounterId) ?? null;
+  return (
+    <div className="logs-filter">
+      <div className="chips boss-chips" role="radiogroup" aria-label={t.filterAria}>
+        <button role="radio" aria-checked={!chosen} className={!chosen ? 'active' : ''} onClick={() => onChange({ encounterId: null, difficultyId: null })}>
+          {t.allBosses}
+        </button>
+        {bosses.map((b) => {
+          const on = b.encounterId === filter.encounterId;
+          return (
+            <button
+              key={b.encounterId}
+              role="radio"
+              aria-checked={on}
+              className={on ? 'active' : ''}
+              onClick={() => onChange(on ? { encounterId: null, difficultyId: null } : { encounterId: b.encounterId, difficultyId: null })}
+              title={t.bossNights(b.nights)}
+            >
+              <BossName encounterId={b.encounterId} name={b.name} size={16} />
+              <span className="muted tabular">{b.nights}</span>
+            </button>
+          );
+        })}
+      </div>
+      {chosen && (
+        <div className="logs-filter-row">
+          {chosen.difficulties.length > 1 && (
+            <span className="segmented sm" role="radiogroup" aria-label={t.difficultyAria}>
+              <button role="radio" aria-checked={filter.difficultyId == null} className={filter.difficultyId == null ? 'active' : ''} onClick={() => onChange({ ...filter, difficultyId: null })}>
+                {t.allDifficulties}
+              </button>
+              {chosen.difficulties.map((d) => (
+                <button key={d} role="radio" aria-checked={filter.difficultyId === d} className={filter.difficultyId === d ? 'active' : ''} onClick={() => onChange({ ...filter, difficultyId: d })}>
+                  {DIFF_NAME[d] ?? DIFF_SHORT[d] ?? d}
+                </button>
+              ))}
+            </span>
+          )}
+          <span className="muted small">{t.showing(shown, total)}</span>
+          <button className="btn ghost sm" onClick={() => onChange({ encounterId: null, difficultyId: null })}>
+            <X size={14} strokeWidth={1.5} aria-hidden /> {t.clearFilter}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NoFolder({ onChoose }: { onChoose: () => void }) {
   const t = useMessages(logsMsg);
   const [hint, setHint] = useState<string | null>(null);
@@ -269,7 +333,19 @@ function size(bytes: number) {
   return bytes >= 1e9 ? `${(bytes / 1e9).toFixed(1)} GB` : `${Math.max(1, Math.round(bytes / 1e6))} MB`;
 }
 
-function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy: boolean; analyzed: (path: string) => boolean; onAnalyze: (path: string) => void }) {
+function NightRow({
+  night: n,
+  busy,
+  analyzed,
+  onAnalyze,
+  filter,
+}: {
+  night: Night;
+  busy: boolean;
+  analyzed: (path: string) => boolean;
+  onAnalyze: (path: string) => void;
+  filter: LogFilter;
+}) {
   const t = useMessages(logsMsg);
   const [confirm, setConfirm] = useState(false);
   const start = when(n.startMs);
@@ -306,7 +382,7 @@ function NightRow({ night: n, busy, analyzed, onAnalyze }: { night: Night; busy:
               return (
                 <span
                   key={`${b.encounterId}-${b.difficultyId}`}
-                  className={`log-boss ${onlyWcl ? 'wcl-only' : ''}`}
+                  className={`log-boss ${onlyWcl ? 'wcl-only' : ''} ${matchesBoss(b, filter) ? '' : 'dim'}`}
                   title={onlyWcl ? t.onlyWclTitle : b.missing > 0 ? t.missingTitle(b.missing) : undefined}
                 >
                   {b.missing > 0 && <CloudDownload size={13} strokeWidth={1.75} className="wcl-mark" aria-label={t.needsDownload} />}
