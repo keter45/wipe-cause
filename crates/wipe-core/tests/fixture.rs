@@ -117,7 +117,7 @@ fn boss_rules_are_applied() {
     // a morte fica ligada à mecânica
     assert_eq!(p1.deaths[0].killing_blow_mechanic.as_deref(), Some("Vile Flood"));
 
-    // Corrosive Spit: o 1º hit de cada rajada é o alvo; só o 3º (1s depois do 2º) é erro
+    // Corrosive Spit: os hits em quem tinha a aura de alvo (1293979) não contam; só o 3º, sem ela, é erro
     let p2 = &r.pulls[1];
     let spit = p2.mechanics.iter().find(|m| m.key == "corrosive_spit").unwrap();
     assert_eq!(spit.failures, 1);

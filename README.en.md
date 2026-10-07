@@ -87,7 +87,7 @@ The pull, the boss, the night, a player's performance and solo mode have **Share
 
 ## Player score
 
-Each player gets a 0–100 score per pull: it starts at 100 and loses points for mechanic mistakes (by the rule's severity, up to 3 per mechanic), for missing their own turn in the interrupt assignments and for a decisive death (more if they had a defensive left); at the end it weighs the time alive until the first death. A death in a **mass wipe** (more than 5 deaths within 1.5s — explosion, Execution, enrage) doesn't count: it's a consequence of the wipe, and the blame goes to the mechanic and whoever caused it. It shows in the Players tab (hover to see the deductions), as an average on the boss scoreboard and per night in Progress.
+Each player gets a 0–100 score per pull: it starts at 100 and loses points for mechanic mistakes (by the rule's severity, up to 3 per mechanic; a tank's avoidable damage weighs half, since they often take it on purpose to hold or position the boss), for missing their own turn in the interrupt assignments and for a decisive death (more if they had a defensive left); at the end it weighs the time alive until the first death. A death in a **mass wipe** (more than 5 deaths within 1.5s — explosion, Execution, enrage) doesn't count: it's a consequence of the wipe, and the blame goes to the mechanic and whoever caused it. It shows in the Players tab (hover to see the deductions), as an average on the boss scoreboard and per night in Progress.
 
 ## Performance
 
@@ -147,7 +147,7 @@ The texts come out as templates ("X wasted: use it before it expires"), in both 
 
 ## Interrupt assignments and dispels
 
-In the **Interrupts** tab, paste the MRT/NSRT note (or write `Cast: Alice, Bob, Carol`, one line per add): the app checks cast by cast whose turn it was, who kicked, who covered and on which turn the cast went through — and the pull's verdict and Discord start pointing out who let it through. `dispel` rules measure the time until each debuff is dispelled and who was left without one. `phase_duration` rules time a phase where the boss is immune until the raid solves the mechanic (e.g. the Vitriolic Stasis puzzle on Entombed Sentinels): the Mechanics tab shows each one with its duration against the good time and the maximum, and the boss summary shows the phase pull by pull, with the best of the night and the times the raid died in it.
+In the **Interrupts** tab, paste the MRT/NSRT note (or write `Cast: Alice, Bob, Carol`, one line per add): the app checks cast by cast whose turn it was, who kicked, who covered and on which turn the cast went through — and the pull's verdict and Discord start pointing out who let it through. `dispel` rules measure the time until each debuff is dispelled and who was left without one. `phase_duration` rules time a phase where the boss is immune until the raid solves the mechanic (e.g. the Vitriolic Stasis puzzle on Entombed Sentinels): the Mechanics tab shows each one with its duration against the good time and the maximum, and the boss summary shows the phase pull by pull, with the best of the night and the times the raid died in it. `exclusive_auras` rules point out who picked up two auras that must not be held together (e.g. Mark of Acid and Mark of Blood on Entombed Sentinels, when someone gets near the other boss mid-fight); swapping sides after the intermission doesn't count.
 
 ## Positions
 

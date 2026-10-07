@@ -416,6 +416,15 @@ impl PullBuilder {
                 self.damage(f, t, 12)
             }
             "SWING_DAMAGE" | "ENVIRONMENTAL_DAMAGE" => self.damage(f, t, 9),
+            // hit absorvido inteiro ou imune: não é dano, mas pode aplicar debuff (origem de stacks)
+            "SPELL_MISSED" | "SPELL_PERIODIC_MISSED" => {
+                if self.counting() && Self::is_group_player(f[5], hex(f[7])) {
+                    let rel = self.rel(t);
+                    if let Some(r) = self.rules.as_mut() {
+                        r.on_missed(f[9].parse().unwrap_or(0), f[5], rel);
+                    }
+                }
+            }
             "SWING_DAMAGE_LANDED" => {
                 if let Some(adv) = advanced_at(f, 9) {
                     self.track_advanced(&adv, f);

@@ -67,6 +67,31 @@ describe('wipe geral', () => {
   });
 });
 
+describe('tank', () => {
+  it('dano evitável pesa metade para tank; outras regras não mudam', () => {
+    const p = pull(0, 0, 100_000, {
+      analyzedMs: 100_000,
+      players: [player('T', { role: 'tank' }), player('D')],
+      mechanics: [
+        mech({ key: 'poca', severity: 'major', players: [blame('T', 1), blame('D', 1)] }),
+        mech({ key: 'alcance', name: 'Alcance', kind: 'tank_range', severity: 'major', players: [blame('T', 1)] }),
+      ],
+    });
+    const s = scorePull(p, new Map());
+    expect(s.get('T')!.parts).toEqual(['−6 Poça (tank: metade do peso)', '−12 Alcance']);
+    expect(s.get('D')!.parts).toEqual(['−12 Poça']);
+  });
+
+  it('regra com peso inteiro para tank não divide', () => {
+    const p = pull(0, 0, 100_000, {
+      analyzedMs: 100_000,
+      players: [player('T', { role: 'tank' })],
+      mechanics: [mech({ key: 'onda', name: 'Onda', severity: 'major', tankFull: true, players: [blame('T', 1)] })],
+    });
+    expect(scorePull(p, new Map()).get('T')!.parts).toEqual(['−12 Onda']);
+  });
+});
+
 describe('foco da progressão', () => {
   it('mecânica de foco entra no veredito mesmo leve, vem primeiro e pesa mais na nota', () => {
     const p = pull(0, 0, 100_000, {

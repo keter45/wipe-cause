@@ -106,6 +106,9 @@ pub struct MechanicResult {
     /// regra criada pelo usuário (não existe nas regras do app)
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub custom: bool,
+    /// dano evitável que pesa inteiro para tank
+    #[serde(skip_serializing_if = "std::ops::Not::not", rename = "tankFull")]
+    pub tank_full_weight: bool,
     /// false = tipo de regra que o motor ainda não avalia (só dica)
     pub evaluated: bool,
     pub failures: u32,

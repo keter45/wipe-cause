@@ -3,7 +3,7 @@
 
 import type { Pull } from '../types';
 import { analyzePull, lowestBossHp } from './verdict';
-import { PERSONAL_BLAME } from './blame';
+import { blameFactor, PERSONAL_BLAME } from './blame';
 import { scorePull } from './score';
 
 /** Intervalo entre trys acima disso vira "pausa" (break, troca de boss, reset de estratégia). */
@@ -137,6 +137,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
     const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
     const passedInterruptible = p.enemySpells.some((e) => e.interruptible && e.casts > 0);
     const errorsThisPull = new Map<string, number>();
+    const roleOf = new Map(p.players.map((x) => [x.guid, x.role]));
 
     for (const m of p.mechanics) {
       for (const mp of m.players) {
@@ -149,7 +150,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
         // stack_limit conta como 1 erro (count = stacks)
         const n = m.kind === 'stack_limit' ? 1 : mp.count;
         a.mechanicErrors += n;
-        a.mechanicErrorsWeighted += n * (SEVERITY_WEIGHT[m.severity] ?? 0);
+        a.mechanicErrorsWeighted += n * (SEVERITY_WEIGHT[m.severity] ?? 0) * blameFactor(m, roleOf.get(mp.guid));
         errorsThisPull.set(mp.guid, (errorsThisPull.get(mp.guid) ?? 0) + n);
       }
     }

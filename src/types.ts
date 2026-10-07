@@ -273,6 +273,8 @@ export interface MechanicResult {
   tuned?: string[];
   /** regra criada pelo usuário */
   custom?: boolean;
+  /** dano evitável que pesa inteiro para tank (padrão: metade) */
+  tankFull?: boolean;
   evaluated: boolean;
   failures: number;
   summary: Loc;

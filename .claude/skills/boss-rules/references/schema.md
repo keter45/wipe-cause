@@ -38,6 +38,7 @@ mechanics: [ ... ]              # lista de regras (abaixo)
 | `source_unit` | não | `key` de `units` |
 | `severity` | sim | `wipe` \| `major` \| `minor` \| `none` |
 | `roles` | não | `[tank, healer, dps]` — quem pode ser culpado; default todos |
+| `tank_full_weight` | não | `true` = dano evitável pesa inteiro para tank na nota (o padrão é metade, porque tank costuma tomar de propósito) |
 | `difficulty` | não | lista; default = todas do cabeçalho |
 | `overrides` | não | mapa dificuldade → campos que mudam (`mythic: { severity: wipe }`) |
 | `tip` | sim | o que fazer, 1 frase, palavras próprias, nas duas línguas: `{ pt: "...", en: "..." }` |
@@ -56,13 +57,15 @@ Opções extras:
 | `detect.excludes_aura` | o dano não conta em quem tem a aura ou a perdeu há <0,5s: é o portador. Ex.: bomba/orb que machuca quem está perto. |
 | `detect.min_amount` | hits abaixo do valor não contam (nem para culpa no recap). Ex.: separar a explosão do tick normal do mesmo spell. |
 | `detect.culprit_auras` | falha coletiva: culpa quem perdeu uma destas auras entre 0,5s antes e 50ms depois do 1º hit da falha (quem carregava o orb que explodiu). |
+| `detect.hit_aura_id` | `avoidable_damage`/`tank_range`/`positioning`: o acerto é a aplicação desta aura no player (para mecânica que quase não loga dano, só a aura de "dentro da onda"). |
+| `detect.confirm_aura` | com `hit_aura_id`: o acerto só conta se esta aura mudou de stack no player em até 250ms (subiu, ou desceu na aplicação letal; a limpeza total não conta). Ex.: `the-twin-fangs.yaml` → `stir_the_depths_wave` (onda = aura 1292807 + stack de Eternal Venom; o pulso de mesmo nome, 1292806, não dá stack). |
 | `blame_message` | texto por jogador numa regra coletiva (`{player}`); `message` fica para o resumo. |
 
 > **IDs do Journal ≠ IDs do log.** O cast, o dano, o debuff e a explosão da mesma habilidade costumam ter IDs diferentes, e o Encounter Journal (wiki/wowhead) mostra só um deles. Calibre sempre com `wipe-cli spells <log>` ou a aba "Habilidades do boss" do app.
 
 ### O que o motor avalia hoje
 
-`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event`, `dispel`, `phase_duration` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
+`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event`, `dispel`, `phase_duration`, `exclusive_auras` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
 
 ## Tipos
 
@@ -80,10 +83,10 @@ Debuff acumulativo com limite letal.
 detect: { aura_id: .. }
 lethal_stacks: 9
 warn_stacks: 7
-sources: [corrosive_spit, stir_the_depths]   # keys das mecânicas que dão stack (para atribuir a causa)
+sources: [stir_the_depths_wave, corrosive_spit, venomous_emergence]   # keys das mecânicas que dão stack; evitáveis primeiro
 removed_by: [ravenous_feast]                  # keys que removem stack
 ```
-Log: `SPELL_AURA_APPLIED_DOSE`/`REMOVED_DOSE`. Relatório mostra a curva de stacks e de onde veio cada uma.
+Log: `SPELL_AURA_APPLIED_DOSE`/`REMOVED_DOSE`. Com `sources`, cada mudança de stack vai para a mecânica da lista que atingiu o player mais perto no tempo (até 250ms; no empate vale a ordem da lista). Conta dano, hit absorvido inteiro ou imune (`SPELL_MISSED`, que ainda aplica o debuff) e acerto por `hit_aura_id`, respeitando `excludes_aura`/`requires_aura`. Stack que cai junto com uma fonte (a aplicação letal) conta como ganho dela. A frase de cada player ganha o resumo: `· evitáveis: … · inevitáveis: … · −N <removed_by> · N sem origem` (evitável = fonte do tipo `avoidable_damage`/`tank_range`/`positioning`). Para separar duas origens do mesmo spell, crie regras `unavoidable` só para isso (ex.: `caustic_globule_soak`/`caustic_globule_explosion` e `corrosive_spit_target` em `the-twin-fangs.yaml`).
 
 ### `soak`
 Algo precisa ser absorvido por players; se não, acontece um evento de falha.
@@ -132,6 +135,15 @@ overrides:
   mythic: { target_s: 11, max_s: 16 }
 ```
 Log: `SPELL_AURA_APPLIED` num inimigo abre a janela (dois bosses com a aura juntos = uma janela só) e `SPELL_AURA_REMOVED` fecha. Compara em segundos arredondados (a aura sai no tick do servidor). Falha = fase lenta, fase com 3+ mortes de players (a mecânica deu errado) ou wipe com a fase aberta. Relatório: cada janela com a duração e as mortes (aba Mecânicas) e a tabela pull a pull com o melhor da noite (resumo do boss). Ex.: `entombed-sentinels.yaml` → `vitriolic_stasis`.
+
+### `exclusive_auras`
+O player só pode carregar uma das auras por vez (ex.: marca de cada boss num encontro de dois bosses).
+```yaml
+detect: { aura_ids: [1284500, 1284506] }
+swap_after: vitriolic_stasis   # opcional: key da regra phase_duration em que o raid troca de lado
+grace_s: 16                    # folga no começo do pull e depois de cada troca
+```
+Log: cada stack nova (`SPELL_AURA_APPLIED`/`APPLIED_DOSE`) é um pulso. Erro = pulso de uma aura com outra do grupo pulsando há menos de 10s (o player estava perto dos dois); só ter a aura antiga não conta, porque ela fica no player um tempo depois da troca. Não conta nos primeiros `grace_s` do pull, durante a fase `swap_after` e até `grace_s` depois dela; idas e voltas seguidas são um erro só; 7+ players em 5s (um ciclo de pulso) viram uma nota sem culpa (um boss morreu e o outro está vivo, raid desmoronando, buraco no log). Ex.: `entombed-sentinels.yaml` → `double_mark`.
 
 ### `cc_required`
 Precisa de CC/stop para quebrar algo (escudo, cast).

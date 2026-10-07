@@ -119,6 +119,13 @@ startPull(p);
 cast(p + s(3), priest, 19236, 'Desperate Prayer');
 cast(p + s(20), warrior, 6262, 'Healthstone');
 for (let i = 1; i <= 55; i++) damage(p + s(i), mage, vexhul, 133, 'Fireball', 150000);
+// Corrosive Spit: o alvo recebe a aura 1293979 (sai no hit); o hit das 45s, sem a aura, é na linha de outro
+const spitTarget = (t) => {
+  debuff(t - 2000, spawn, mage, 1293979, 'Corrosive Spit', 1);
+  line(t + 10, ['SPELL_AURA_REMOVED', ...unit(spawn), ...unit(mage), 1293979, q('Corrosive Spit'), '0x8', 'DEBUFF']);
+};
+spitTarget(p + s(40));
+spitTarget(p + s(44));
 damage(p + s(40), spawn, mage, 1293295, 'Corrosive Spit', 500000);
 // debuff acumulando no mage (deve aparecer na foto da morte com 3 stacks)
 debuff(p + s(40), vexhul, mage, 1290336, 'Eternal Venom', 1);
