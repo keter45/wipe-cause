@@ -11,6 +11,7 @@ import { scoreTone } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
 import { ShareMenu } from './share/ShareMenu';
 import { NightPhaseTimes } from './PhaseTimes';
+import { NightStackOrigins } from './StackOrigins';
 import { BossShareCard } from './share/BossCard';
 import { NightShareCard } from './share/NightCard';
 import { withErrorBoundary } from './ErrorBoundary';
@@ -169,6 +170,7 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
       </section>
 
       <NightPhaseTimes pulls={s.pulls} onSelectPull={onSelectPull} />
+      <NightStackOrigins pulls={s.pulls} />
 
       <div className="two-col">
         <section className="panel">

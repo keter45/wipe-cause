@@ -291,6 +291,26 @@ export interface MechanicResult {
   /** phase_duration: tempo bom e tempo máximo aceitável (ms) */
   targetMs?: number;
   maxMs?: number;
+  /** stack_limit com fontes: de onde veio cada stack, por player (todos, não só os culpados) */
+  stackOrigins?: PlayerStackOrigins[];
+}
+
+/** Uma origem de stacks: a mecânica e quantos stacks deu (ou tirou). */
+export interface StackOrigin {
+  key: string;
+  name: string;
+  count: number;
+}
+
+export interface PlayerStackOrigins {
+  guid: string;
+  name: string;
+  maxStacks: number;
+  avoidable: StackOrigin[];
+  unavoidable: StackOrigin[];
+  removed: StackOrigin[];
+  /** stacks sem nenhuma fonte perto no tempo */
+  unknown: number;
 }
 
 export interface PhaseWindow {

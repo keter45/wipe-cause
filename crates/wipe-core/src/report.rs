@@ -134,6 +134,34 @@ pub struct MechanicResult {
     pub target_ms: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_ms: Option<i64>,
+    /// stack_limit com `sources`: de onde veio cada stack, por player (todos, não só os culpados)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub stack_origins: Vec<PlayerStackOrigins>,
+}
+
+/// Uma origem de stacks: a mecânica e quantos stacks deu (ou tirou).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StackOrigin {
+    pub key: String,
+    pub name: String,
+    pub count: u32,
+}
+
+/// De onde vieram os stacks de um player no pull, em ordem de quantidade.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerStackOrigins {
+    pub guid: String,
+    pub name: String,
+    pub max_stacks: u32,
+    /// fontes do tipo dano evitável (onda, linha, orb na cabeça...)
+    pub avoidable: Vec<StackOrigin>,
+    pub unavoidable: Vec<StackOrigin>,
+    /// `removed_by`: quantos stacks cada mecânica tirou
+    pub removed: Vec<StackOrigin>,
+    /// stacks sem nenhuma fonte perto no tempo
+    pub unknown: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
