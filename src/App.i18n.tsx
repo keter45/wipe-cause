@@ -6,6 +6,9 @@ export const appMsg = defineMessages(
     sentToDiscord: 'enviado ao Discord',
     demoNotes: '- Exemplo de novidade\n- Outra novidade',
     noPulls: 'Nenhum pull no log.',
+    analyzing: (name: string, pct: number) => `Analisando ${name}… ${pct}%`,
+    analyzingBatch: (i: number, n: number, name: string, pct: number) => `Analisando ${i} de ${n}: ${name}… ${pct}%`,
+    batchFailed: (list: string) => `Não deu para analisar: ${list}`,
     title: 'Por que deu wipe?',
     intro: () => (
       <>
@@ -27,6 +30,9 @@ export const appMsg = defineMessages(
     sentToDiscord: 'sent to Discord',
     demoNotes: '- Sample change\n- Another change',
     noPulls: 'No pulls in the log.',
+    analyzing: (name: string, pct: number) => `Analyzing ${name}… ${pct}%`,
+    analyzingBatch: (i: number, n: number, name: string, pct: number) => `Analyzing ${i} of ${n}: ${name}… ${pct}%`,
+    batchFailed: (list: string) => `Couldn't analyze: ${list}`,
     title: 'Why did we wipe?',
     intro: () => (
       <>

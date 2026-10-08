@@ -5,6 +5,16 @@ import { advantageWindows, castDiff, relevantSpells, takenMoreThan, timelineOf, 
 import { useSeek } from '../../lib/wcr';
 import { PlayAt } from '../VideoPanel';
 import { SpellIcon, SpellName } from '../SpellIcon';
+import { ExternalLink } from 'lucide-react';
+import { openExternal } from '../../lib/api';
+import { wclCompareUrl, wclRangeUrl, type WclFightRef, type WclView } from '../../lib/wclApi';
+
+/** Os fights no Warcraft Logs (se houver), para cada trecho abrir lá recortado no mesmo tempo. */
+export interface AdvantageWcl {
+  mine: WclFightRef | null;
+  ref: WclFightRef | null;
+  type: WclView;
+}
 import { OutputChart } from '../SoloCharts';
 import { messagesOf, useMessages } from '../../i18n';
 import { soloPullMsg } from '../SoloPullView.i18n';
@@ -25,7 +35,7 @@ function At({ t, seek }: { t: number; seek: ((t: number) => void) | null }) {
 // ---- vantagem da referência
 
 /** `casts`: mostrar os casts dos trechos (só faz sentido com a mesma spec). */
-export function Advantage({ me, ref_, refLabel, unit, casts }: { me: Sample; ref_: Sample; refLabel: string; unit: string; casts: boolean }) {
+export function Advantage({ me, ref_, refLabel, unit, casts, wcl }: { me: Sample; ref_: Sample; refLabel: string; unit: string; casts: boolean; wcl?: AdvantageWcl }) {
   const [mine, ref] = [timelineOf(me.player), timelineOf(ref_.player)];
   const windows = useMemo(() => advantageWindows(me, ref_), [me, ref_]);
   const relevant = useMemo(() => relevantSpells(me.player, ref_.player), [me, ref_]);
@@ -41,7 +51,7 @@ export function Advantage({ me, ref_, refLabel, unit, casts }: { me: Sample; ref
       ) : (
         <div className="solo-windows">
           {windows.map((w, i) => (
-            <WindowCard key={w.startMs} n={i + 1} w={w} unit={unit} relevant={relevant} casts={casts} />
+            <WindowCard key={w.startMs} n={i + 1} w={w} unit={unit} relevant={relevant} casts={casts} wcl={wcl} />
           ))}
         </div>
       )}
@@ -52,7 +62,7 @@ export function Advantage({ me, ref_, refLabel, unit, casts }: { me: Sample; ref
 const LANE_MS = 15_000;
 const ICON_GAP_PCT = 4.5;
 
-function WindowCard({ n, w, unit, relevant, casts }: { n: number; w: AdvantageWindow; unit: string; relevant: Set<string>; casts: boolean }) {
+function WindowCard({ n, w, unit, relevant, casts, wcl }: { n: number; w: AdvantageWindow; unit: string; relevant: Set<string>; casts: boolean; wcl?: AdvantageWcl }) {
   const seek = useSeek();
   const t = useMessages(soloPullMsg);
   const diff = casts ? castDiff(w, relevant) : [];
@@ -68,6 +78,7 @@ function WindowCard({ n, w, unit, relevant, casts }: { n: number; w: AdvantageWi
         <At t={w.startMs} seek={seek} />
       </div>
       {w.deadAt != null && <p className="small bad">{t.youDied(mmss(w.deadAt))}</p>}
+      {wcl && (wcl.ref || wcl.mine) && <WindowLinks w={w} wcl={wcl} />}
       {diff.length > 0 && (
         <p className="small">
           {t.refUsedMore}{' '}
@@ -151,5 +162,29 @@ export function TakenMore({ me, ref_ }: { me: Sample; ref_: Sample }) {
       </div>
       <p className="muted small">{t.avoidableHint}</p>
     </section>
+  );
+}
+
+/** O trecho no Warcraft Logs, recortado no mesmo tempo: o da referência, o seu e os dois lado a lado. */
+function WindowLinks({ w, wcl }: { w: AdvantageWindow; wcl: AdvantageWcl }) {
+  const t = useMessages(soloPullMsg);
+  const url = (f: WclFightRef) => wclRangeUrl(f, wcl.type, w.startMs, w.endMs);
+  const links = [
+    wcl.ref && { label: t.wclRef, url: url(wcl.ref) },
+    wcl.mine && { label: t.wclYou, url: url(wcl.mine) },
+    wcl.mine && wcl.ref && { label: t.wclBoth, url: wclCompareUrl(wcl.mine, wcl.ref, wcl.type, w.startMs, w.endMs) },
+  ].filter((l): l is { label: string; url: string } => !!l);
+  return (
+    <p className="small perf-links">
+      <span className="muted">{t.wclStretch} </span>
+      {links.map((l, i) => (
+        <span key={l.url}>
+          {i > 0 && ' · '}
+          <button className="link" onClick={() => openExternal(l.url)}>
+            {l.label} <ExternalLink size={12} strokeWidth={1.5} aria-hidden />
+          </button>
+        </span>
+      ))}
+    </p>
   );
 }

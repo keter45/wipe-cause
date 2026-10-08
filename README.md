@@ -78,7 +78,7 @@ Na primeira vez, o app abre em **Configurações** com o passo a passo (depois e
 ![Tela Escolha a noite: barra de filtro por boss com o The Twin Fangs escolhido e duas noites com o boss](docs/screenshots/pt/logs.png)
 <p align="center"><i>Uma linha por noite, com os bosses de cada uma. O filtro mostra só as noites de um boss.</i></p>
 
-**Nova análise** junta os logs do seu PC e os reports da guilda no Warcraft Logs, uma linha por noite. **Analisar** usa o log do seu PC (rápido, sem baixar nada). Para achar as noites de um boss, filtre por ele (e pela dificuldade) na barra acima da lista; a escolha fica lembrada.
+**Nova análise** junta os logs do seu PC e os reports da guilda no Warcraft Logs, uma linha por noite. **Analisar** usa o log do seu PC (rápido, sem baixar nada); **Analisar todos** lê um por um os logs da lista que ainda não foram analisados e guarda no histórico, para a Evolução. A pasta de logs inclui a `warcraftlogsarchive` do uploader do Warcraft Logs. Logs só de masmorra (M+) não aparecem. **Guilda / Pug** separa a raid da guilda das raids com outros personagens e gente aleatória: pelo núcleo de players que se repete nas suas noites (um mesmo log pode ter os dois, separados boss a boss). Para achar as noites de um boss, filtre por ele (e pela dificuldade) na barra acima da lista; a escolha fica lembrada.
 
 Bosses e pulls que **não estão no seu log** mas estão no Warcraft Logs (você saiu antes, entrou depois, estava longe) aparecem com o ícone de download. **Completar** baixa só o que falta — demora alguns minutos, então é você quem decide; depois do primeiro download, reabrir é rápido. Masmorras (M+) ficam de fora, e wipes com menos de 30s são ignorados.
 
@@ -151,7 +151,7 @@ Cada player recebe uma nota de 0 a 100 por pull: parte de 100 e perde pontos por
 - **deixar passar a própria vez** na escala de interrupts;
 - **morte decisiva**, e mais se tinha defensivo sobrando.
 
-No fim pesa o tempo vivo até a primeira morte. Morte em **wipe geral** (mais de 5 mortes em até 1,5s — explosão, Execution, enrage) não conta: é consequência do wipe, e a culpa fica com a mecânica e quem a causou. Aparece na aba Jogadores (passe o mouse para ver os descontos), como média no placar do boss e por noite na Evolução.
+No fim pesam o tempo vivo até a primeira morte e, no kill, o **parse do Warcraft Logs**: de 50 (a mediana) para cima não perde nada; abaixo perde proporcional, até 30% (parse 25 perde 15%). Wipe não tem parse, então fica sem essa parte. O parse é buscado uma vez (com o report da noite cadastrado e a conta do Warcraft Logs conectada) e fica salvo no app. Morte em **wipe geral** (mais de 5 mortes em até 1,5s — explosão, Execution, enrage) não conta: é consequência do wipe, e a culpa fica com a mecânica e quem a causou. Aparece na aba Jogadores (passe o mouse para ver os descontos), como média no placar do boss e por noite na Evolução.
 
 ### 🤖 Perguntar à IA
 
@@ -222,7 +222,7 @@ Com Advanced Combat Logging, cada morte (antes do corte) guarda onde todo mundo 
 
 ### 📈 Evolução
 
-Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando.
+Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull, nota e parse em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando. Usa só a raid da guilda (dá para incluir os pugs). Mostra também **quem está melhorando e quem está piorando** (começo x fim das noites em que cada um jogou) e, na **progressão** (os wipes antes da primeira kill), a melhor e a pior nota nos wipes e o melhor e o pior parse na kill.
 
 ### 🌐 Warcraft Logs
 

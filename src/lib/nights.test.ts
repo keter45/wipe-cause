@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildNights, completePath, downloadMinutes } from './nights';
+import { buildNights, completePath, downloadMinutes, pendingLogs } from './nights';
 import { groupNights, type GuildReport } from './guildNights';
 import type { EncounterPeek, LogFile } from './api';
 
@@ -76,5 +76,49 @@ describe('nova análise: log do PC e Warcraft Logs se completam', () => {
     expect(nights[0].wcl).toBeNull();
     expect(nights[1].files).toHaveLength(0);
     expect(nights[1].missingPulls).toBe(7);
+  });
+
+  it('log só de M+ (sem boss de raid) não aparece; o que está sendo gravado agora, sim', () => {
+    const mplus = file('WoWCombatLog-3.txt', [enc(8888, [T0 + 60 * H], 1, true), enc(8889, [T0 + 61 * H], 1, true)]);
+    expect(buildNights([mplus], [], T0 + 70 * H)).toHaveLength(0);
+    // gravando: modificado há pouco
+    expect(buildNights([mplus], [], mplus.modifiedMs + M)).toHaveLength(1);
+    // ainda sem leitura dos encontros: entra (a UI mostra "lendo")
+    expect(buildNights([{ ...mplus, peek: null }], [], T0 + 70 * H)).toHaveLength(1);
+  });
+});
+
+describe('analisar todos', () => {
+  const a = file('WoWCombatLog-a.txt', [enc(3470, [T0 + 100 * H])]);
+  const b = file('WoWCombatLog-b.txt', [enc(3470, [T0 + 130 * H])]);
+  const live = file('WoWCombatLog-c.txt', [enc(3470, [T0 + 160 * H])]);
+  const now = live.modifiedMs + M; // c está sendo gravado agora
+  const nights = buildNights([a, b, live], [], now);
+  it('só os logs ainda não analisados, sem a noite que está sendo gravada', () => {
+    expect(pendingLogs(nights, (p) => p === a.path)).toEqual([b.path]);
+    expect(pendingLogs(nights, () => true)).toEqual([]);
+  });
+});
+
+describe('guilda x pug na lista', () => {
+  const core = ['P-A', 'P-B', 'P-C', 'P-D'];
+  const withPlayers = (name: string, start: number, groups: [number, string[]][]) => {
+    const f = file(name, groups.map(([id], i) => enc(id, [start + i * H])));
+    f.peek!.encounters.forEach((e, i) => (e.players = groups[i][1]));
+    f.peek!.players = groups.flatMap(([, p]) => p);
+    return f;
+  };
+  const files = [
+    withPlayers('g1.txt', T0, [[1, core]]),
+    withPlayers('g2.txt', T0 + 30 * H, [[1, core]]),
+    withPlayers('g3.txt', T0 + 60 * H, [[1, core]]),
+    withPlayers('misto.txt', T0 + 90 * H, [[1, core], [2, ['X-1', 'X-2', 'X-3', 'P-A']]]),
+  ];
+  const nights = buildNights(files, [], T0 + 200 * H);
+  it('boss a boss: núcleo é guilda, gente que não se repete é pug', () => {
+    const misto = nights.find((n) => n.files[0].name === 'misto.txt')!;
+    expect(misto.kind).toBe('mixed');
+    expect(misto.bosses.map((b) => [b.encounterId, b.guild])).toEqual([[1, true], [2, false]]);
+    expect(nights.find((n) => n.files[0].name === 'g1.txt')!.kind).toBe('guild');
   });
 });

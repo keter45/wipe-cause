@@ -277,19 +277,74 @@ export function gearItemLevel(gear: any): number | null {
 }
 
 /** O que identifica o top e os links dele. */
-export interface TopSource {
-  code: string;
-  fightId: number;
-  actorId: number;
-  name: string;
+export interface TopSource extends WclFightRef {
   server: string;
+  /** us, eu, kr, tw, cn */
+  region: string;
   amount: number;
 }
 
 export type TopSample = Sample & { source: TopSource };
 
-export const wclFightUrl = (s: Pick<TopSource, 'code' | 'fightId' | 'actorId'>) =>
-  `https://www.warcraftlogs.com/reports/${s.code}#fight=${s.fightId}&type=damage-done&source=${s.actorId}`;
+/** Um player num fight do Warcraft Logs: o bastante para os links (o fight, o filtro dele e trechos). */
+export interface WclFightRef {
+  code: string;
+  fightId: number;
+  actorId: number;
+  /** início do fight em ms desde o começo do report (os trechos do link contam daí) */
+  fightStart: number;
+  name: string;
+}
+
+export type WclView = 'damage-done' | 'healing';
+
+/**
+ * O fight filtrado no player; com `from`/`to` (ms desde o início do fight), só aquele trecho — o
+ * mesmo `start`/`end` que o site grava ao selecionar um pedaço do gráfico.
+ */
+export function wclRangeUrl(f: WclFightRef, type: WclView, from?: number, to?: number): string {
+  const q = new URLSearchParams({ fight: String(f.fightId), type, source: String(f.actorId) });
+  if (from != null && to != null) {
+    q.set('start', String(Math.round(f.fightStart + from)));
+    q.set('end', String(Math.round(f.fightStart + to)));
+  }
+  return `https://www.warcraftlogs.com/reports/${f.code}?${q}`;
+}
+
+/** Nome do reino na URL do Raider.IO e do Warcraft Logs: "Moon Guard" -> "moon-guard", "Mal'Ganis" -> "malganis". */
+export const realmSlug = (realm: string) => realm.toLowerCase().replace(/['’]/g, '').trim().replace(/\s+/g, '-');
+
+export type ProfileSite = 'raiderio' | 'wcl';
+
+/**
+ * O perfil do player no Raider.IO e no Warcraft Logs (que mostra as redes dele quando ele cadastrou;
+ * nenhuma API expõe isso, então o app não linka rede social). Não cobrem a China.
+ */
+export function profileUrls(p: { name: string; server: string; region: string }): { site: ProfileSite; url: string }[] {
+  const out: { site: ProfileSite; url: string }[] = [];
+  const region = p.region.toLowerCase();
+  if (['us', 'eu', 'kr', 'tw'].includes(region) && p.server) {
+    const path = `${region}/${realmSlug(p.server)}/${encodeURIComponent(p.name)}`;
+    out.push({ site: 'raiderio', url: `https://raider.io/characters/${path}` });
+    out.push({ site: 'wcl', url: `https://www.warcraftlogs.com/character/${path}` });
+  }
+  return out;
+}
+
+/**
+ * Os dois fights lado a lado na comparação do próprio Warcraft Logs (vale para reports diferentes).
+ * Com `from`/`to` (ms desde o início do fight), o mesmo trecho nos dois: `start`/`end` levam um
+ * valor por log, cada um contado do começo do próprio report.
+ */
+export function wclCompareUrl(a: WclFightRef, b: WclFightRef, type: WclView, from?: number, to?: number): string {
+  const q = new URLSearchParams({ fight: `${a.fightId},${b.fightId}`, type, source: `${a.actorId},${b.actorId}` });
+  if (from != null && to != null) {
+    const at = (f: WclFightRef, ms: number) => Math.round(f.fightStart + ms);
+    q.set('start', `${at(a, from)},${at(b, from)}`);
+    q.set('end', `${at(a, to)},${at(b, to)}`);
+  }
+  return `https://www.warcraftlogs.com/reports/compare/${a.code}/${b.code}?${q}`;
+}
 export const wowAnalyzerUrl = (s: Pick<TopSource, 'code' | 'fightId' | 'name'>) =>
   `https://wowanalyzer.com/report/${s.code}/${s.fightId}/${encodeURIComponent(s.name)}/standard`;
 
@@ -395,7 +450,7 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
     players: [player],
     deaths: [],
   };
-  return { pull, player, source: { code: top.code, fightId: top.fightId, actorId: Number(actor.id), name: top.name, server: top.server, amount: top.amount } };
+  return { pull, player, source: { code: top.code, fightId: top.fightId, actorId: Number(actor.id), fightStart: Number(fight.startTime), name: top.name, server: top.server, region: top.region, amount: top.amount } };
 }
 
 // ---- o próprio pull no WCL (links do WoWAnalyzer)
@@ -406,6 +461,8 @@ const REPORT_FIGHTS_QUERY = `query Fights($code: String!, $encounter: Int!) {
 
 export interface OwnFight {
   fightId: number;
+  /** início do fight em ms desde o começo do report */
+  fightStart: number;
   actors: { id: number; name: string; server: string }[];
 }
 
@@ -429,5 +486,6 @@ export async function ownFight(code: string, pull: Pull): Promise<OwnFight | nul
   const report = d?.reportData?.report;
   const fightId = matchFight(report, pull);
   if (fightId == null) return null;
-  return { fightId, actors: (report.masterData?.actors ?? []).map((a: any) => ({ id: Number(a.id), name: String(a.name), server: String(a.server ?? '') })) };
+  const fightStart = Number(report.fights.find((f: any) => Number(f.id) === fightId)?.startTime) || 0;
+  return { fightId, fightStart, actors: (report.masterData?.actors ?? []).map((a: any) => ({ id: Number(a.id), name: String(a.name), server: String(a.server ?? '') })) };
 }

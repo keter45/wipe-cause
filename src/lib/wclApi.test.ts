@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupCasts, matchFight, parseCombatantInfo, parseRankings, pickTops, tableAmounts, wowAnalyzerUrl } from './wclApi';
+import { groupCasts, matchFight, parseCombatantInfo, parseRankings, pickTops, profileUrls, realmSlug, tableAmounts, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl } from './wclApi';
 import { pull } from './test-fixtures';
 
 // formato real de `characterRankings` (gear e talents direto na entrada; números às vezes como texto)
@@ -62,5 +62,41 @@ describe('Warcraft Logs', () => {
 
   it('link do WoWAnalyzer', () => {
     expect(wowAnalyzerUrl({ code: 'AbC', fightId: 12, name: 'Fulano' })).toBe('https://wowanalyzer.com/report/AbC/12/Fulano/standard');
+  });
+});
+
+describe('links do Warcraft Logs', () => {
+  const f = { code: 'AbC123', fightId: 7, actorId: 42, fightStart: 1_000_000, name: 'Fulano' };
+  it('fight filtrado no player', () => {
+    expect(wclRangeUrl(f, 'damage-done')).toBe('https://www.warcraftlogs.com/reports/AbC123?fight=7&type=damage-done&source=42');
+  });
+  it('trecho: start/end contam do começo do report (início do fight + ms do pull)', () => {
+    expect(wclRangeUrl(f, 'healing', 60_000, 75_000)).toBe('https://www.warcraftlogs.com/reports/AbC123?fight=7&type=healing&source=42&start=1060000&end=1075000');
+  });
+  it('comparação de dois reports, no formato do próprio site', () => {
+    const a = { code: 'VnyDcjLCpX8gxNBA', fightId: 6, actorId: 24, fightStart: 0, name: 'A' };
+    const b = { code: 'pATgFZ7Ld4fk9cwM', fightId: 8, actorId: 8, fightStart: 0, name: 'B' };
+    expect(wclCompareUrl(a, b, 'damage-done')).toBe('https://www.warcraftlogs.com/reports/compare/VnyDcjLCpX8gxNBA/pATgFZ7Ld4fk9cwM?fight=6%2C8&type=damage-done&source=24%2C8');
+    // o mesmo trecho (42,5s) nos dois, cada um contado do começo do próprio report
+    const at = (f: typeof a, start: number) => ({ ...f, fightStart: start });
+    expect(wclCompareUrl(at(a, 3_191_252 - 60_000), at(b, 2_336_635 - 60_000), 'damage-done', 60_000, 102_513)).toBe(
+      'https://www.warcraftlogs.com/reports/compare/VnyDcjLCpX8gxNBA/pATgFZ7Ld4fk9cwM?fight=6%2C8&type=damage-done&source=24%2C8&start=3191252%2C2336635&end=3233765%2C2379148',
+    );
+  });
+});
+
+describe('perfil da referência', () => {
+  it('reino na URL', () => {
+    expect(realmSlug('Moon Guard')).toBe('moon-guard');
+    expect(realmSlug("Mal'Ganis")).toBe('malganis');
+  });
+  it('Raider.IO e Warcraft Logs (sem rede social: nenhuma fonte confiável)', () => {
+    expect(profileUrls({ name: 'Yonderwayz', server: 'Moon Guard', region: 'US' })).toEqual([
+      { site: 'raiderio', url: 'https://raider.io/characters/us/moon-guard/Yonderwayz' },
+      { site: 'wcl', url: 'https://www.warcraftlogs.com/character/us/moon-guard/Yonderwayz' },
+    ]);
+  });
+  it('China: sem perfil (Raider.IO e o perfil do WCL não cobrem)', () => {
+    expect(profileUrls({ name: '奥丶小丁', server: '凤凰之神', region: 'CN' })).toEqual([]);
   });
 });

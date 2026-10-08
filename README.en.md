@@ -78,7 +78,7 @@ The first time, the app opens on **Settings** with a step-by-step guide (afterwa
 ![Pick the night screen: boss filter bar with The Twin Fangs selected and two nights with that boss](docs/screenshots/en/logs.png)
 <p align="center"><i>One line per night, with each night's bosses. The filter shows only one boss's nights.</i></p>
 
-**New analysis** brings together the logs on your PC and the guild's Warcraft Logs reports, one line per night. **Analyze** uses your PC's log (fast, no download). To find a boss's nights, filter by it (and by difficulty) in the bar above the list; the choice is remembered.
+**New analysis** brings together the logs on your PC and the guild's Warcraft Logs reports, one line per night. **Analyze** uses your PC's log (fast, no download); **Analyze all** reads one by one the logs in the list that haven't been analyzed yet and saves them in the history, for Progress. The logs folder includes the Warcraft Logs uploader's `warcraftlogsarchive`. Dungeon-only (M+) logs don't show up. **Guild / Pug** separates the guild raid from raids with other characters and random people: by the core of players that repeats across your nights (one log can have both, split boss by boss). To find a boss's nights, filter by it (and by difficulty) in the bar above the list; the choice is remembered.
 
 Bosses and pulls that **aren't in your log** but are on Warcraft Logs (you left early, joined late, were away) show a download icon. **Complete** downloads only what's missing — it takes a few minutes, so you decide; after the first download, reopening is fast. Dungeons (M+) are left out, and wipes shorter than 30s are ignored.
 
@@ -151,7 +151,7 @@ Each player gets a 0–100 score per pull: it starts at 100 and loses points for
 - **missing their own turn** in the interrupt assignments;
 - **a decisive death**, more if they had a defensive left.
 
-At the end it weighs the time alive until the first death. A death in a **mass wipe** (more than 5 deaths within 1.5s — explosion, Execution, enrage) doesn't count: it's a consequence of the wipe, and the blame goes to the mechanic and whoever caused it. It shows in the Players tab (hover to see the deductions), as an average on the boss scoreboard and per night in Progress.
+At the end it weighs the time alive until the first death and, on a kill, the **Warcraft Logs parse**: from 50 (the median) up it loses nothing; below it loses proportionally, up to 30% (parse 25 loses 15%). Wipes have no parse, so they skip this part. The parse is fetched once (with the night's report set and the Warcraft Logs account connected) and saved in the app. A death in a **mass wipe** (more than 5 deaths within 1.5s — explosion, Execution, enrage) doesn't count: it's a consequence of the wipe, and the blame goes to the mechanic and whoever caused it. It shows in the Players tab (hover to see the deductions), as an average on the boss scoreboard and per night in Progress.
 
 ### 🤖 Ask the AI
 
@@ -222,7 +222,7 @@ With Advanced Combat Logging, each death (before the cutoff) keeps where everyon
 
 ### 📈 Progress
 
-In the sidebar, **Progress** compares every saved night of a boss: best pull per night, the % of wipes where each mechanic was the trigger (to see whether the mistake is going down) and, per player, deaths per pull each night, what kills them most and how many of those deaths had a defensive left.
+In the sidebar, **Progress** compares every saved night of a boss: best pull per night, the % of wipes where each mechanic was the trigger (to see whether the mistake is going down) and, per player, deaths per pull, score and parse each night, what kills them most and how many of those deaths had a defensive left. It only uses the guild raid (pugs can be included). It also shows **who is improving and who is getting worse** (start vs end of the nights each one played) and, for the **progression** (the wipes before the first kill), the best and worst score on the wipes and the best and worst parse on the kill.
 
 ### 🌐 Warcraft Logs
 

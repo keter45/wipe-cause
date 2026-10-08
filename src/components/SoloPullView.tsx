@@ -13,6 +13,7 @@ import { SpellIcon } from './SpellIcon';
 import { PlayerName } from './Names';
 import { RotationPanel, uniqueSeconds } from './RotationPanel';
 import { compareWithTops, type BenchView } from '../lib/bench';
+import { killParseOf, ownPreviousParses } from '../lib/wclParses';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ShareMenu } from './share/ShareMenu';
 import { SoloShareCard } from './share/SoloCard';
@@ -104,6 +105,9 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
   const diff = refOut > 0 ? ((out - refOut) / refOut) * 100 : null;
   const cds = useMemo(() => detectCooldowns([me, ...list]), [me, list]);
   const bench = useMemo(() => compareWithTops(me.pull, me.player), [me]);
+  // kill: o parse do Warcraft Logs (salvo) e o dele nos kills anteriores deste boss
+  const parse = killParseOf(me.pull, me.player);
+  const own = ownPreviousParses(me.pull, me.player.name);
 
   const deaths = myDeaths(me);
   const mechs = myMechanicFailures(me);
@@ -132,6 +136,12 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
             {num(out)} {diff != null && <span className="small">({diff >= 0 ? '+' : ''}{diff.toFixed(0)}%)</span>}
           </strong>
           <span className="muted small">{ref ? `${refLabel}: ${num(refOut)}` : t.noReference}</span>
+          {parse != null && (
+            <span className="muted small">
+              {t.parseLine(parse)}
+              {own.previous && t.parseVsOwn(own.previous.percent, own.avg ?? own.previous.percent, own.kills)}
+            </span>
+          )}
         </div>
         <div className="stat">
           <span className="stat-label">{t.rotation}</span>

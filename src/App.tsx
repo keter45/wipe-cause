@@ -31,6 +31,7 @@ import { TrendsView } from './components/TrendsView';
 import { NIGHT } from './components/PullList';
 import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
+import { fetchMissingKillParses } from './lib/wclParses';
 import { PullView } from './components/PullView';
 import { SoloBossView, SoloNightView, SoloTrendsView } from './components/SoloNight';
 import { useMode } from './lib/mode';
@@ -48,7 +49,7 @@ import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSect
 /** O que ocupa a área principal: a análise aberta, a lista de logs, a evolução ou as configurações. */
 type Page = 'analysis' | 'browse' | 'trends' | 'settings';
 
-type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string } | { kind: 'error'; message: string };
+type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string; batch?: { i: number; n: number } } | { kind: 'error'; message: string };
 
 /** Analisar e escolher arquivos/pastas só funciona no app (o navegador é só para desenvolver a UI). */
 const needsApp = () => messagesOf(appMsg).needsApp;
@@ -115,6 +116,21 @@ export default function App() {
   }, [setup.status]);
   const live = useLive(onLiveReport, wclGuild);
   useAutoLive(wclGuild, live.status.active, () => live.start(deathCutoff));
+
+  // parse do Warcraft Logs dos kills (entra na nota): busca o que falta uma vez e salva; com parse
+  // novo, refaz as contas da noite (os resumos recalculam quando a lista de pulls muda)
+  const wclReady = inTauri && !!setup.status?.wcl?.configured;
+  useEffect(() => {
+    if (!wclReady || !wclCode || !report) return;
+    let alive = true;
+    fetchMissingKillParses(wclCode, report.pulls)
+      .then((n) => alive && n > 0 && setReport((r) => (r ? { ...r, pulls: [...r.pulls] } : r)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wclReady, wclCode, report?.file]);
   // "ao vivo quando o WoW abrir": o backend avisa (o app pode estar só na bandeja)
   const liveRef = useRef({ active: live.status.active, start: live.start, cutoff: deathCutoff });
   liveRef.current = { active: live.status.active, start: live.start, cutoff: deathCutoff };
@@ -264,6 +280,27 @@ export default function App() {
     await load(path, false, pref);
   }
 
+  /** "Analisar todos": um log depois do outro, sem abrir; cada análise vai para o histórico. */
+  async function analyzeAll(paths: string[]) {
+    if (!inTauri) {
+      setStatus({ kind: 'error', message: needsApp() });
+      return;
+    }
+    const cutoff = savedDeathCutoff();
+    const failed: string[] = [];
+    for (const [k, path] of paths.entries()) {
+      const batch = { i: k + 1, n: paths.length };
+      setStatus({ kind: 'loading', progress: 0, path, batch });
+      try {
+        await analyzeLog(path, cutoff, (progress) => setStatus({ kind: 'loading', progress, path, batch }));
+        refreshHistory();
+      } catch {
+        failed.push(sourceName(path));
+      }
+    }
+    setStatus(failed.length ? { kind: 'error', message: messagesOf(appMsg).batchFailed(failed.join(', ')) } : { kind: 'idle' });
+  }
+
   async function openFile() {
     if (!inTauri) {
       setStatus({ kind: 'error', message: needsApp() });
@@ -357,7 +394,11 @@ export default function App() {
       {status.kind === 'loading' && (
         <div className="progress">
           <div className="progress-bar" style={{ transform: `scaleX(${status.progress})` }} />
-          <span>Analisando {sourceName(status.path)}… {Math.round(status.progress * 100)}%</span>
+          <span>
+            {status.batch
+              ? messagesOf(appMsg).analyzingBatch(status.batch.i, status.batch.n, sourceName(status.path), Math.round(status.progress * 100))
+              : messagesOf(appMsg).analyzing(sourceName(status.path), Math.round(status.progress * 100))}
+          </span>
         </div>
       )}
       <UpdateBanner state={updateState} onInstall={updater.install} onDismiss={updater.dismiss} />
@@ -427,7 +468,7 @@ export default function App() {
             inTauri || demoLogs ? (
               <>
                 {!report && <Intro />}
-                <LogBrowser history={history} busy={status.kind === 'loading'} onAnalyze={analyzePath} onOpenFile={openFile} />
+                <LogBrowser history={history} busy={status.kind === 'loading'} onAnalyze={analyzePath} onAnalyzeAll={analyzeAll} onOpenFile={openFile} />
               </>
             ) : (
               <Empty hasHistory={history.length > 0} />

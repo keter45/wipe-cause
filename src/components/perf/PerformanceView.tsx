@@ -6,7 +6,7 @@ import { ShareMenu } from '../share/ShareMenu';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { specLabel } from '../../lib/specs';
 import { SpellIcon } from '../SpellIcon';
-import { PerfLinks, WclTopsButton, perfLinks, useOwnFight } from '../WclTops';
+import { PerfLinks, WclTopsButton, perfLinks, useWclFight } from '../WclTops';
 import { RotationPanel } from '../RotationPanel';
 import { CooldownCompare } from './CooldownCompare';
 import { loadTop, type TopRanking, type TopSample } from '../../lib/wclApi';
@@ -140,9 +140,14 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
     };
   }, [wantTop, loaded, me, tops]);
 
-  const own = useOwnFight(me.pull, me.player.name, wclCode);
-  const links = perfLinks(me.player.name, own, wclCode, mode === 'tops' && topSample ? topSample.source : null);
+  // o fight de cada um no Warcraft Logs: o seu e o da referência (top, ou alguém da raid no report da noite)
   const healer = isHealer(me.player);
+  const wclType = healer ? 'healing' : 'damage-done';
+  const mineWcl = useWclFight(me.pull, me.player.name, wclCode);
+  const raidWcl = useWclFight(raidRef?.pull ?? me.pull, raidRef?.player.name ?? '', mode === 'raid' ? wclCode : undefined);
+  const refWcl = mode === 'tops' ? (topSample?.source ?? null) : raidWcl;
+  const top = mode === 'tops' ? (topSample?.source ?? null) : null;
+  const links = perfLinks(mineWcl, refWcl, wclType, top && { name: top.name, server: top.server, region: top.region });
   const unit = healer ? 'HPS' : 'DPS';
   const m = messagesOf(perfViewMsg);
   const picker = (
@@ -256,7 +261,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
         <h4>
           <TrendingDown size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {messagesOf(soloPullMsg).advantage}
         </h4>
-        <Advantage me={me} ref_={ref} refLabel={refName} unit={unit} casts />
+        <Advantage me={me} ref_={ref} refLabel={refName} unit={unit} casts wcl={{ mine: mineWcl, ref: refWcl, type: wclType }} />
       </section>
       <Bursts me={me} ref_={ref} cds={cds} />
       <CooldownCompare me={me} ref_={ref} cds={cds} />

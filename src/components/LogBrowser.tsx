@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CloudDownload, FileText, FolderOpen, FolderSearch, HardDrive, LoaderCircle, RefreshCw, Users, X } from 'lucide-react';
+import { CloudDownload, FileText, FolderOpen, FolderSearch, HardDrive, LoaderCircle, Play, RefreshCw, Users, X } from 'lucide-react';
 import { inTauri, logsDetectDir, logsList, logsPeek, logsSetDir, pickFolder, sameLog, type HistoryEntry, type LogPeek, type LogsScan } from '../lib/api';
 import { useSetup } from '../lib/setup';
 import { fetchGuildReports, groupNights, saveGuildId, savedGuildId, type GuildNight } from '../lib/guildNights';
-import { buildNights, completePath, downloadMinutes, type Night } from '../lib/nights';
-import { bossOptions, filterNights, matchesBoss, saveLogFilter, savedLogFilter, type BossOption, type LogFilter } from '../lib/logFilter';
+import { buildNights, completePath, downloadMinutes, pendingLogs, type Night } from '../lib/nights';
+import { bossOptions, filterNights, matchesBoss, saveLogFilter, savedLogFilter, type BossOption, type LogFilter, inGroup } from '../lib/logFilter';
 import { BossName } from './Names';
 import { WclOpen } from './WclOpen';
 import { intlLocale, useMessages } from '../i18n';
@@ -14,6 +14,8 @@ interface Props {
   history: HistoryEntry[];
   busy: boolean;
   onAnalyze: (path: string) => void;
+  /** analisa em sequência, sem abrir (só salva no histórico) */
+  onAnalyzeAll: (paths: string[]) => void;
   /** escolher um arquivo avulso, fora da pasta */
   onOpenFile: () => void;
 }
@@ -26,7 +28,7 @@ const DIFF_NAME: Record<number, string> = { 14: 'Normal', 15: 'Heroic', 16: 'Myt
  * por noite. O log do PC é o padrão (rápido e de graça); o que só existe no Warcraft Logs fica
  * marcado e baixar é escolha do usuário.
  */
-export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
+export function LogBrowser({ history, busy, onAnalyze, onAnalyzeAll, onOpenFile }: Props) {
   const t = useMessages(logsMsg);
   const [scan, setScan] = useState<LogsScan | null>(null);
   const [peeks, setPeeks] = useState<Map<string, LogPeek | 'error'>>(new Map());
@@ -75,15 +77,18 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
   );
   const reading = (scan?.files ?? []).filter((f) => !f.peek && !peeks.has(f.path)).length;
   const nights = useMemo(() => buildNights(files, guild.nights ?? []), [files, guild.nights]);
-  const bosses = useMemo(() => bossOptions(nights), [nights]);
   const [filter, setFilterState] = useState<LogFilter>(savedLogFilter);
+  // guilda x pug só aparece quando há pug na pasta (senão é tudo da guilda)
+  const groups = useMemo(() => ({ guild: nights.filter((n) => n.kind !== 'pug').length, pug: nights.filter((n) => n.kind === 'pug' || n.kind === 'mixed').length }), [nights]);
+  const group = groups.pug > 0 ? filter.group : 'all';
+  const bosses = useMemo(() => bossOptions(nights, group), [nights, group]);
   const setFilter = (f: LogFilter) => {
     setFilterState(f);
     saveLogFilter(f);
   };
   // boss lembrado que sumiu da lista (logs apagados, outra pasta): mostra tudo
-  const active: LogFilter = bosses.some((b) => b.encounterId === filter.encounterId) ? filter : { encounterId: null, difficultyId: null };
-  const shown = useMemo(() => filterNights(nights, active), [nights, active.encounterId, active.difficultyId]);
+  const active: LogFilter = bosses.some((b) => b.encounterId === filter.encounterId) ? { ...filter, group } : { encounterId: null, difficultyId: null, group };
+  const shown = useMemo(() => filterNights(nights, active), [nights, active.encounterId, active.difficultyId, active.group]);
 
   async function chooseFolder() {
     if (!inTauri) return setError(t.browserNoFolders);
@@ -112,6 +117,7 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
   }
 
   const analyzed = (path: string) => history.some((h) => sameLog(h.logPath, path));
+  const pending = pendingLogs(shown, analyzed);
 
   return (
     <div className="logs">
@@ -159,6 +165,11 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
           <button className="btn ghost sm" onClick={chooseFolder}>
             <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> {scan?.dir ? t.changeFolder : t.chooseFolder}
           </button>
+          {pending.length > 0 && (
+            <button className="btn sm" disabled={busy} onClick={() => onAnalyzeAll(pending)} title={t.analyzeAllTitle}>
+              <Play size={14} strokeWidth={1.5} aria-hidden /> {t.analyzeAll(pending.length)}
+            </button>
+          )}
           <button className="btn ghost sm" onClick={onOpenFile} title={t.openFileTitle}>
             <FileText size={14} strokeWidth={1.5} aria-hidden /> {t.openFile}
           </button>
@@ -170,6 +181,18 @@ export function LogBrowser({ history, busy, onAnalyze, onOpenFile }: Props) {
       {scan?.warning && <p className="logs-warning small">{scan.warning}</p>}
       {scan && !scan.dir && <NoFolder onChoose={chooseFolder} />}
 
+      {groups.pug > 0 && (
+        <div className="logs-filter-row">
+          <span className="segmented sm" role="radiogroup" aria-label={t.groupAria}>
+            {(['guild', 'pug', 'all'] as const).map((g) => (
+              <button key={g} role="radio" aria-checked={group === g} className={group === g ? 'active' : ''} onClick={() => setFilter({ ...filter, group: g })} title={t.groupTitle[g]}>
+                {t.group[g]}
+                {g !== 'all' && <span className="muted tabular"> {groups[g]}</span>}
+              </button>
+            ))}
+          </span>
+        </div>
+      )}
       {bosses.length > 1 && <BossFilter bosses={bosses} filter={active} onChange={setFilter} shown={shown.length} total={nights.length} />}
 
       {shown.length > 0 && (
@@ -262,7 +285,7 @@ function BossFilter({ bosses, filter, onChange, shown, total }: { bosses: BossOp
   return (
     <div className="logs-filter">
       <div className="chips boss-chips" role="radiogroup" aria-label={t.filterAria}>
-        <button role="radio" aria-checked={!chosen} className={!chosen ? 'active' : ''} onClick={() => onChange({ encounterId: null, difficultyId: null })}>
+        <button role="radio" aria-checked={!chosen} className={!chosen ? 'active' : ''} onClick={() => onChange({ ...filter, encounterId: null, difficultyId: null })}>
           {t.allBosses}
         </button>
         {bosses.map((b) => {
@@ -273,7 +296,7 @@ function BossFilter({ bosses, filter, onChange, shown, total }: { bosses: BossOp
               role="radio"
               aria-checked={on}
               className={on ? 'active' : ''}
-              onClick={() => onChange(on ? { encounterId: null, difficultyId: null } : { encounterId: b.encounterId, difficultyId: null })}
+              onClick={() => onChange(on ? { ...filter, encounterId: null, difficultyId: null } : { ...filter, encounterId: b.encounterId, difficultyId: null })}
               title={t.bossNights(b.nights)}
             >
               <BossName encounterId={b.encounterId} name={b.name} size={16} />
@@ -297,7 +320,7 @@ function BossFilter({ bosses, filter, onChange, shown, total }: { bosses: BossOp
             </span>
           )}
           <span className="muted small">{t.showing(shown, total)}</span>
-          <button className="btn ghost sm" onClick={() => onChange({ encounterId: null, difficultyId: null })}>
+          <button className="btn ghost sm" onClick={() => onChange({ ...filter, encounterId: null, difficultyId: null })}>
             <X size={14} strokeWidth={1.5} aria-hidden /> {t.clearFilter}
           </button>
         </div>
@@ -382,7 +405,7 @@ function NightRow({
               return (
                 <span
                   key={`${b.encounterId}-${b.difficultyId}`}
-                  className={`log-boss ${onlyWcl ? 'wcl-only' : ''} ${matchesBoss(b, filter) ? '' : 'dim'}`}
+                  className={`log-boss ${onlyWcl ? 'wcl-only' : ''} ${matchesBoss(b, filter) && inGroup(b, filter.group) ? '' : 'dim'}`}
                   title={onlyWcl ? t.onlyWclTitle : b.missing > 0 ? t.missingTitle(b.missing) : undefined}
                 >
                   {b.missing > 0 && <CloudDownload size={13} strokeWidth={1.75} className="wcl-mark" aria-label={t.needsDownload} />}
@@ -395,6 +418,7 @@ function NightRow({
                     · {t.pulls(pulls)}
                     {b.localKills + b.missingKills > 0 && <span className="log-kill"> · kill</span>}
                     {b.missing > 0 && !onlyWcl && <span className="wcl-mark">{t.plusWcl(b.missing)}</span>}
+                    {n.kind === 'mixed' && b.guild === false && <span className="log-pug"> · {t.group.pug}</span>}
                   </span>
                 </span>
               );
@@ -455,6 +479,11 @@ function NightRow({
       <div className="night-side">
         <span className="log-tags">
           {n.live && <span className="log-tag live">{local && Date.now() - local.modifiedMs < 15 * 60_000 ? t.inProgress : t.live}</span>}
+          {(n.kind === 'pug' || n.kind === 'mixed') && (
+            <span className="log-tag pug" title={t.pugTitle}>
+              {n.kind === 'pug' ? t.group.pug : t.mixed}
+            </span>
+          )}
           {done && <span className="log-tag">{t.analyzed}</span>}
         </span>
         {!confirm && (

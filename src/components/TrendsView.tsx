@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { TrendingUp } from 'lucide-react';
+import { TrendingDown, TrendingUp, Trophy } from 'lucide-react';
 import { historyTrends } from '../lib/api';
 import { classColor, pct, shortName } from '../lib/format';
-import { buildTrends, trendBosses, type NightInput, type Trends } from '../lib/trends';
+import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
 import { scoreTone } from '../lib/score';
 import { SpellName } from './SpellIcon';
 import { Markdown } from './AskView';
@@ -28,15 +28,23 @@ function TrendsViewInner() {
       .catch((e) => setError(String(e)));
   }, []);
 
-  const bosses = useMemo(() => (nights ? trendBosses(nights) : []), [nights]);
+  // a Evolução é da raid da guilda; noites com outros personagens e gente aleatória ficam à parte
+  const [withPug, setWithPug] = useState(false);
+  const grouped = useMemo(() => (nights ? byGroup(nights, withPug ? 'all' : 'guild') : null), [nights, withPug]);
+  const bosses = useMemo(() => (grouped ? trendBosses(grouped.nights) : []), [grouped]);
   const selected = boss ?? bosses.find((b) => b.nights >= 2)?.key ?? bosses[0]?.key ?? null;
-  const trends = useMemo(() => (nights && selected ? buildTrends(nights, selected) : null), [nights, selected]);
+  const trends = useMemo(() => (grouped && selected ? buildTrends(grouped.nights, selected) : null), [grouped, selected]);
 
   return (
     <div className="night trends">
       <header className="night-head">
         <h2>{t.title}</h2>
         <span className="muted small">{t.subtitle}</span>
+        {grouped && grouped.pugPulls > 0 && (
+          <label className="trends-pug small" title={t.withPugTitle}>
+            <input type="checkbox" checked={withPug} onChange={(e) => setWithPug(e.target.checked)} /> {t.withPug(grouped.pugPulls)}
+          </label>
+        )}
       </header>
 
       {error && <div className="error">{t.error(error)}</div>}
@@ -149,6 +157,18 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
         <p className="muted small">{m.triggersHint}</p>
       </section>
 
+      {t.progression && <ProgressionPanel pr={t.progression} />}
+
+      {t.nights.length >= 2 && (
+        <section className="panel">
+          <div className="two-col moves">
+            <Moves title={m.improving} icon="up" list={t.improving} />
+            <Moves title={m.worsening} icon="down" list={t.worsening} />
+          </div>
+          <p className="muted small">{m.movesHint}</p>
+        </section>
+      )}
+
       <section className="panel">
         <h3>{m.players}</h3>
         <div className="table-scroll">
@@ -158,6 +178,7 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
                 <th>{m.player}</th>
                 <th title={m.deathsPerPullTitle}>{m.deathsPerPull}</th>
                 <th title={m.scorePerNightTitle}>{m.scorePerNight}</th>
+                <th title={m.perfPerNightTitle}>{m.perfPerNight}</th>
                 <th className="num">{m.total}</th>
                 <th>{m.diesTo}</th>
                 <th className="num" title={m.noDefTitle}>
@@ -177,6 +198,13 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
                     {p.scorePerNight.map((s, i) => (
                       <span key={i} className={s == null ? 'muted' : `score-pill ${scoreTone(s)}`} title={t.nights[i].label}>
                         {s ?? '—'}
+                      </span>
+                    ))}
+                  </td>
+                  <td className="score-trail">
+                    {p.perfPerNight.map((v, i) => (
+                      <span key={i} className={v == null ? 'muted' : `score-pill ${perfTone(v)}`} title={t.nights[i].label}>
+                        {v == null ? '—' : Math.round(v)}
                       </span>
                     ))}
                   </td>
@@ -201,6 +229,64 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
         </div>
       </section>
     </>
+  );
+}
+
+/** Faixa do parse: da mediana do Warcraft Logs para cima, um pouco abaixo, bem abaixo. */
+const perfTone = (v: number) => (v >= 50 ? 'good' : v >= 25 ? 'mid' : 'bad');
+const pctOf = (v: number) => Math.round(v);
+
+/** Melhor e pior nota e desempenho nos wipes antes da kill. */
+function ProgressionPanel({ pr }: { pr: Progression }) {
+  const m = useMessages(trendsViewMsg);
+  const card = (label: string, p: ProgressionPlayer | null, kind: 'score' | 'perf', tone: 'good' | 'bad') =>
+    p && (
+      <div className={`progression-card ${tone}`}>
+        <span className="muted small">{label}</span>
+        <strong style={{ color: classColor(p.class) }}>{shortName(p.name)}</strong>
+        <span className="small">{kind === 'score' ? m.avgScore(Math.round(p.avgScore), p.pulls) : m.killParse(pctOf(p.killParse ?? 0))}</span>
+      </div>
+    );
+  return (
+    <section className="panel">
+      <h3>
+        <Trophy size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {m.progression}
+      </h3>
+      <p className="muted small">{pr.killedOn ? m.progressionKilled(pr.pulls, pr.killedOn) : m.progressionOngoing(pr.pulls)}</p>
+      <div className="progression-cards">
+        {card(m.bestScore, pr.best, 'score', 'good')}
+        {card(m.worstScore, pr.worst, 'score', 'bad')}
+        {card(m.bestPerf, pr.bestPerf, 'perf', 'good')}
+        {card(m.worstPerf, pr.worstPerf, 'perf', 'bad')}
+      </div>
+      <p className="muted small">{m.progressionHint(pr.minPulls)}</p>
+    </section>
+  );
+}
+
+/** Quem subiu (ou caiu) de nota entre o começo e o fim das noites, com o desempenho junto. */
+function Moves({ title, icon, list }: { title: string; icon: 'up' | 'down'; list: PlayerMove[] }) {
+  const m = useMessages(trendsViewMsg);
+  const Icon = icon === 'up' ? TrendingUp : TrendingDown;
+  return (
+    <div>
+      <h3>
+        <Icon size={16} strokeWidth={1.5} className={`inline-icon ${icon === 'up' ? 'good' : 'bad'}`} aria-hidden /> {title}
+      </h3>
+      {list.length === 0 ? (
+        <p className="muted small">{m.noMoves}</p>
+      ) : (
+        <ul className="plain moves-list small">
+          {list.slice(0, 8).map((p) => (
+            <li key={p.guid}>
+              <strong style={{ color: classColor(p.class) }}>{shortName(p.name)}</strong>{' '}
+              <span className="tabular">{m.scoreMove(p.scoreFrom, p.scoreTo)}</span>
+              {p.perfFrom != null && p.perfTo != null && <span className="muted tabular"> · {m.perfMove(pctOf(p.perfFrom), pctOf(p.perfTo))}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { PlayerStats } from '../types';
+import type { PlayerStats, Pull } from '../types';
 import { scoreTone, type PlayerScore } from '../lib/score';
 import { classColor, mmss, num, ROLE_LABEL, shortName, damageSource } from '../lib/format';
 import { SpellIcon, SpellName } from './SpellIcon';
-import { parseColor, type PlayerParse } from '../lib/wclParses';
+import { ownPreviousParses, parseColor, type OwnParses, type PlayerParse } from '../lib/wclParses';
 import type { ParseState } from '../lib/useWclParses';
 import { useMessages } from '../i18n';
 import { playersMsg } from './PlayersTable.i18n';
@@ -29,7 +29,8 @@ function value(p: PlayerStats, k: SortKey, scores: Map<string, PlayerScore>, par
   return p[k];
 }
 
-export function PlayersTable({ players, scores, parseState }: { players: PlayerStats[]; scores: Map<string, PlayerScore>; parseState?: ParseState }) {
+/** `pull`: no kill, compara o parse de cada um com os kills anteriores dele no mesmo boss e dificuldade. */
+export function PlayersTable({ players, scores, parseState, pull }: { players: PlayerStats[]; scores: Map<string, PlayerScore>; parseState?: ParseState; pull?: Pull }) {
   const t = useMessages(playersMsg);
   const parses = parseState?.kind === 'ready' ? parseState.parses : undefined;
   const [sort, setSort] = useState<SortKey>('score');
@@ -70,6 +71,7 @@ export function PlayersTable({ players, scores, parseState }: { players: PlayerS
             score={scores.get(p.guid)}
             parse={parses?.get(p.guid)}
             parseLoading={parseState?.kind === 'loading'}
+            own={pull?.success ? ownPreviousParses(pull, p.name) : undefined}
             open={open === p.guid}
             onToggle={() => setOpen(open === p.guid ? null : p.guid)}
           />
@@ -92,8 +94,10 @@ function ParseNote({ state }: { state: ParseState }) {
   return null;
 }
 
-/** Parse colorido como no site; métrica do papel ao lado (DPS/HPS). */
-function ParseCell({ parse, loading }: { parse?: PlayerParse; loading: boolean }) {
+const dayMonth = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
+
+/** Parse colorido como no site; métrica do papel ao lado (DPS/HPS); no kill, a variação contra o kill anterior dele. */
+function ParseCell({ parse, loading, own }: { parse?: PlayerParse; loading: boolean; own?: OwnParses }) {
   const t = useMessages(playersMsg);
   if (!parse) return <span className="muted">{loading ? '…' : '—'}</span>;
   const metric = parse.metric.toUpperCase();
@@ -105,10 +109,17 @@ function ParseCell({ parse, loading }: { parse?: PlayerParse; loading: boolean }
       </span>
     );
   }
-  const title = t.killTitle(metric, String(parse.percent ?? '—'), String(parse.bracketPercent ?? '—'), parse.rank ? t.rank(parse.rank, parse.total ?? 0) : '');
+  const vs = own?.previous && parse.percent != null ? parse.percent - own.previous.percent : null;
+  const title = [
+    t.killTitle(metric, String(parse.percent ?? '—'), String(parse.bracketPercent ?? '—'), parse.rank ? t.rank(parse.rank, parse.total ?? 0) : ''),
+    own?.previous ? t.ownTitle(own.previous.percent, dayMonth(own.previous.startMs), own.avg ?? own.previous.percent, own.kills) : own ? t.firstKill : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
   return (
     <span className="parse" title={title}>
       <strong style={{ color: parseColor(parse.percent) }}>{parse.percent ?? '—'}</strong> <span className="parse-metric">{metric}</span>
+      {vs != null && <span className={`parse-vs ${vs > 0 ? 'up' : vs < 0 ? 'down' : ''}`}>{vs > 0 ? `▲${vs}` : vs < 0 ? `▼${-vs}` : '='}</span>}
     </span>
   );
 }
@@ -118,6 +129,7 @@ function PlayerRow({
   score,
   parse,
   parseLoading,
+  own,
   open,
   onToggle,
 }: {
@@ -125,6 +137,7 @@ function PlayerRow({
   score?: PlayerScore;
   parse?: PlayerParse;
   parseLoading: boolean;
+  own?: OwnParses;
   open: boolean;
   onToggle: () => void;
 }) {
@@ -144,7 +157,7 @@ function PlayerRow({
           )}
         </td>
         <td className="num">
-          <ParseCell parse={parse} loading={parseLoading} />
+          <ParseCell parse={parse} loading={parseLoading} own={own} />
         </td>
         <td className="num">{num(p.dps)}</td>
         <td className="num">{num(p.hps)}</td>

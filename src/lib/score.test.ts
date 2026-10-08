@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { MechanicResult } from '../types';
 import { scorePull } from './score';
 import { analyzePull } from './verdict';
@@ -37,7 +37,7 @@ describe('scorePull', () => {
 
   it('quem não errou fica com 100', () => {
     const clean = scorePull(pull(1, 0, 60_000, { players: [player('D')] }), new Map());
-    expect(clean.get('D')).toEqual({ score: 100, parts: [] });
+    expect(clean.get('D')).toEqual({ score: 100, parts: [], perf: null });
   });
 });
 
@@ -106,5 +106,29 @@ describe('foco da progressão', () => {
     expect(v.findings[0]).toMatchObject({ title: 'Poça', focus: true, severity: 'major' });
     const s = scorePull(p, new Map());
     expect(s.get('A')!.parts).toEqual(['−12 ★ Poça (2×)']); // 4 × 1,5 = 6 por erro
+  });
+});
+
+describe('parse do Warcraft Logs na nota', () => {
+  // Node não tem localStorage: um substituto em memória
+  const store = new Map<string, string>();
+  vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
+  const players = [player('A'), player('B'), player('C')];
+  const kill = pull(0, 5_000_000, 100_000, { success: true, analyzedMs: 100_000, players });
+  const wipe = pull(1, 6_000_000, 100_000, { analyzedMs: 100_000, players });
+  const parse = (percent: number) => ({ metric: 'dps', kind: 'kill', percent });
+  for (const p of [kill, wipe]) store.set(`wipe-cause:parses:${p.encounterId}:${p.startMs}`, JSON.stringify({ 'A-Realm': parse(25), 'B-Realm': parse(80), 'C-Realm': parse(0) }));
+
+  it('no kill: abaixo da mediana (50) perde proporcional, até 30%', () => {
+    const s = scorePull(kill, new Map());
+    expect(s.get('A')).toMatchObject({ perf: 25, score: 85 }); // 100 × (1 − 0,3 × 0,5)
+    expect(s.get('A')!.parts[0]).toContain('parse 25');
+    expect(s.get('B')).toMatchObject({ perf: 80, score: 100 });
+    expect(s.get('C')).toMatchObject({ perf: 0, score: 70 });
+  });
+
+  it('wipe não tem parse: a nota fica sem essa parte', () => {
+    const s = scorePull(wipe, new Map());
+    expect(s.get('A')).toMatchObject({ perf: null, score: 100 });
   });
 });
