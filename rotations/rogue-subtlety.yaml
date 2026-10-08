@@ -1,0 +1,138 @@
+# Subtlety Rogue — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 32 pulls nos logs; metas calibradas em 32 pulls dos tops.
+#
+# Removido na calibração:
+#   - Energy desperdiçado (os tops desperdiçam 18%)
+spec: 261
+name: "Subtlety Rogue"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL rogue_subtlety (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/rogue_subtlety.simc
+  - title: "Wowhead — Subtlety Rogue Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/rogue/subtlety/rotation-cooldowns-pve-dps
+
+# casts no log que não são o player apertando um botão
+ignore_casts: [212743]
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Goremaw's Bite, Shadow Blades.", en: "Cooldowns on cooldown: Goremaw's Bite, Shadow Blades." }
+  - { pt: "Gaste os procs antes de acabar: Ancient Arts (Shadow Blades / Goremaw's Bite / Shuriken Storm / Shadowstrike / Eviscerate / Secret Technique / Black Powder / Backstab).", en: "Spend the procs before they expire: Ancient Arts (Shadow Blades / Goremaw's Bite / Shuriken Storm / Shadowstrike / Eviscerate / Secret Technique / Black Powder / Backstab)." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: trickster
+    name: "Trickster"
+    markers: []
+  - key: deathstalker
+    name: "Deathstalker"
+    markers: [1248775, 457280]
+
+abilities:
+  shadow_blades: { id: 121471, name: "Shadow Blades", cooldown_ms: 90000 }
+  goremaws_bite: { id: 426591, name: "Goremaw's Bite", cooldown_ms: 45000 }
+  shadow_dance: { id: 185313, name: "Shadow Dance", cooldown_ms: 6000 }
+  vanish: { id: 1856, name: "Vanish", cooldown_ms: 1000 }
+  shuriken_storm: { id: 197835, name: "Shuriken Storm" }
+  gloomblade: { id: 200758, name: "Gloomblade" }
+  shadowstrike: { id: 185438, name: "Shadowstrike" }
+  eviscerate: { id: 196819, name: "Eviscerate" }
+  secret_technique: { id: 282449, alt_ids: [280719], name: "Secret Technique" }
+  coup_de_grace: { id: 441776, name: "Coup de Grace", tree: trickster }
+  black_powder: { id: 319175, name: "Black Powder" }
+  backstab: { id: 53, name: "Backstab" }
+
+buffs:
+  ancient_arts: { id: 1269163, name: "Ancient Arts" }
+
+priority:
+  trickster:
+    st:
+      - { spell: goremaws_bite }
+      - { spell: shadow_dance }
+      - { spell: shadow_dance, note: { pt: "com Shadow Blades", en: "with Shadow Blades" } }
+      - { spell: vanish, note: { pt: "com 50+ Energy, sem Subterfuge, com até 2 combo points", en: "with 50+ Energy, without Subterfuge, with up to 2 combo points" } }
+      - { spell: shuriken_storm }
+      - { spell: gloomblade, note: { pt: "com 35+ Lingering Shadow", en: "with 35+ Lingering Shadow" } }
+      - { spell: shadowstrike }
+      - { spell: eviscerate }
+      - { spell: secret_technique, note: { pt: "com Shadow Dance", en: "with Shadow Dance" } }
+      - { spell: secret_technique }
+      - { spell: coup_de_grace }
+      - { spell: black_powder }
+      - { spell: shuriken_storm, note: { pt: "com Shadow Dance, com Premeditation", en: "with Shadow Dance, with Premeditation" } }
+      - { spell: gloomblade }
+    aoe:
+      - { spell: goremaws_bite }
+      - { spell: shadow_dance }
+      - { spell: shadow_dance, note: { pt: "com Shadow Blades", en: "with Shadow Blades" } }
+      - { spell: vanish, note: { pt: "com 50+ Energy, sem Subterfuge, com até 2 combo points", en: "with 50+ Energy, without Subterfuge, with up to 2 combo points" } }
+      - { spell: shuriken_storm }
+      - { spell: gloomblade, note: { pt: "com 35+ Lingering Shadow", en: "with 35+ Lingering Shadow" } }
+      - { spell: shadowstrike }
+      - { spell: eviscerate }
+      - { spell: secret_technique, note: { pt: "com Shadow Dance", en: "with Shadow Dance" } }
+      - { spell: secret_technique }
+      - { spell: coup_de_grace }
+      - { spell: black_powder }
+      - { spell: shuriken_storm, note: { pt: "com Shadow Dance, com Premeditation", en: "with Shadow Dance, with Premeditation" } }
+      - { spell: gloomblade }
+  deathstalker:
+    st:
+      - { spell: goremaws_bite }
+      - { spell: shadow_blades }
+      - { spell: shadow_dance }
+      - { spell: vanish, note: { pt: "com 50+ Energy, sem Subterfuge, com até 2 combo points", en: "with 50+ Energy, without Subterfuge, with up to 2 combo points" } }
+      - { spell: shuriken_storm }
+      - { spell: eviscerate }
+      - { spell: secret_technique, note: { pt: "com Shadow Dance", en: "with Shadow Dance" } }
+      - { spell: coup_de_grace }
+      - { spell: black_powder }
+      - { spell: shuriken_storm, note: { pt: "com Shadow Dance, com Premeditation", en: "with Shadow Dance, with Premeditation" } }
+      - { spell: shadowstrike }
+      - { spell: gloomblade }
+      - { spell: backstab }
+    aoe:
+      - { spell: goremaws_bite }
+      - { spell: shadow_blades }
+      - { spell: shadow_dance }
+      - { spell: vanish, note: { pt: "com 50+ Energy, sem Subterfuge, com até 2 combo points", en: "with 50+ Energy, without Subterfuge, with up to 2 combo points" } }
+      - { spell: shuriken_storm }
+      - { spell: eviscerate }
+      - { spell: secret_technique, note: { pt: "com Shadow Dance", en: "with Shadow Dance" } }
+      - { spell: coup_de_grace }
+      - { spell: black_powder }
+      - { spell: shuriken_storm, note: { pt: "com Shadow Dance, com Premeditation", en: "with Shadow Dance, with Premeditation" } }
+      - { spell: shadowstrike }
+      - { spell: gloomblade }
+      - { spell: backstab }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  trickster: [goremaws_bite]
+  deathstalker: [shadow_blades, goremaws_bite]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: proc
+    id: ancient_arts
+    buff: ancient_arts
+    spenders: [shadow_blades, goremaws_bite, shuriken_storm, shadowstrike, eviscerate, secret_technique, black_powder, backstab]
+    importance: medium
+    title: { pt: "Ancient Arts perdido", en: "Ancient Arts lost" }
+    tip: { pt: "Ancient Arts melhora o próximo Shadow Blades / Goremaw's Bite / Shuriken Storm / Shadowstrike / Eviscerate / Secret Technique / Black Powder / Backstab: use antes de acabar.", en: "Ancient Arts empowers the next Shadow Blades / Goremaw's Bite / Shuriken Storm / Shadowstrike / Eviscerate / Secret Technique / Black Powder / Backstab: use it before it expires." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [goremaws_bite, shadow_blades]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Goremaw's Bite, Shadow Blades no cooldown.", en: "Goremaw's Bite, Shadow Blades on cooldown." }

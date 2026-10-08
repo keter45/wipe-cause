@@ -1,0 +1,141 @@
+# Enhancement Shaman — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 41 pulls nos logs; metas calibradas em 41 pulls dos tops.
+#
+# Removido na calibração:
+#   - Converging Storms perdido (os tops "perdem" 39%: o buff é gasto por outra coisa ou de propósito)
+#   - Maelstrom Weapon perdido (os tops "perdem" 88%: o buff é gasto por outra coisa ou de propósito)
+spec: 263
+name: "Enhancement Shaman"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL shaman_enhancement (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/shaman_enhancement.simc
+  - title: "Wowhead — Enhancement Shaman Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/shaman/enhancement/rotation-cooldowns-pve-dps
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Ascendance.", en: "Cooldowns on cooldown: Ascendance." }
+  - { pt: "Sempre no alvo: Flame Shock (renove no pandemic).", en: "Always on the target: Flame Shock (refresh in pandemic)." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: totemic
+    name: "Totemic"
+    markers: []
+  - key: stormbringer
+    name: "Stormbringer"
+    markers: [452201, 454394]
+
+abilities:
+  ascendance: { id: 114051, name: "Ascendance", cooldown_ms: 180000, optional: true }
+  sundering: { id: 197214, name: "Sundering", cooldown_ms: 30000 }
+  surging_totem: { id: 444995, name: "Surging Totem", cooldown_ms: 25000, tree: totemic }
+  lava_lash: { id: 60103, name: "Lava Lash", cooldown_ms: 18000, optional: true }
+  crash_lightning: { id: 187874, name: "Crash Lightning", cooldown_ms: 15000 }
+  voltaic_blaze: { id: 470057, name: "Voltaic Blaze", cooldown_ms: 10000 }
+  stormstrike: { id: 17364, name: "Stormstrike", cooldown_ms: 7500 }
+  windstrike: { id: 115356, name: "Windstrike", cooldown_ms: 7500 }
+  flame_shock: { id: 470411, name: "Flame Shock", cooldown_ms: 6000 }
+  primordial_storm: { id: 1218090, name: "Primordial Storm" }
+  doom_winds: { id: 469270, name: "Doom Winds" }
+  tempest: { id: 452201, name: "Tempest", cast_ms: 2000, tree: stormbringer }
+  lightning_bolt: { id: 188196, name: "Lightning Bolt", cast_ms: 2500 }
+
+buffs:
+  flame_shock: { id: 188389, name: "Flame Shock" }
+  maelstrom_weapon: { id: 344179, name: "Maelstrom Weapon" }
+  converging_storms: { id: 198300, name: "Converging Storms" }
+
+priority:
+  totemic:
+    st:
+      - { spell: primordial_storm }
+      - { spell: voltaic_blaze }
+      - { spell: flame_shock }
+      - { spell: lava_lash, note: { pt: "sem Lashing Flames no alvo", en: "without Lashing Flames on the target" } }
+      - { spell: stormstrike }
+      - { spell: sundering }
+      - { spell: doom_winds }
+      - { spell: crash_lightning }
+      - { spell: windstrike, note: { pt: "com 1+ Maelstrom Weapon", en: "with 1+ Maelstrom Weapon" } }
+      - { spell: ascendance }
+      - { spell: stormstrike, note: { pt: "com Doom Winds", en: "with Doom Winds" } }
+      - { spell: crash_lightning, note: { pt: "com Doom Winds", en: "with Doom Winds" } }
+      - { spell: tempest, note: { pt: "com 10 Maelstrom Weapon", en: "with 10 Maelstrom Weapon" } }
+      - { spell: lightning_bolt, note: { pt: "com 10 Maelstrom Weapon", en: "with 10 Maelstrom Weapon" } }
+    aoe:
+      - { spell: voltaic_blaze }
+      - { spell: flame_shock }
+      - { spell: surging_totem }
+      - { spell: ascendance }
+      - { spell: sundering }
+      - { spell: lava_lash, note: { pt: "com Whirling Fire", en: "with Whirling Fire" } }
+      - { spell: doom_winds }
+      - { spell: crash_lightning, note: { pt: "com Whirling Air", en: "with Whirling Air" } }
+      - { spell: windstrike, note: { pt: "com Whirling Air", en: "with Whirling Air" } }
+      - { spell: stormstrike, note: { pt: "com Doom Winds, com Whirling Air", en: "with Doom Winds, with Whirling Air" } }
+      - { spell: lava_lash, note: { pt: "com Hot Hand", en: "with Hot Hand" } }
+      - { spell: tempest, note: { pt: "com 10+ Maelstrom Weapon", en: "with 10+ Maelstrom Weapon" } }
+      - { spell: primordial_storm, note: { pt: "com 10+ Maelstrom Weapon", en: "with 10+ Maelstrom Weapon" } }
+      - { spell: crash_lightning, note: { pt: "com Hot Hand", en: "with Hot Hand" } }
+  stormbringer:
+    st:
+      - { spell: primordial_storm }
+      - { spell: voltaic_blaze }
+      - { spell: flame_shock }
+      - { spell: lava_lash, note: { pt: "sem Lashing Flames no alvo", en: "without Lashing Flames on the target" } }
+      - { spell: stormstrike }
+      - { spell: sundering }
+      - { spell: doom_winds }
+      - { spell: crash_lightning }
+      - { spell: windstrike, note: { pt: "com 1+ Maelstrom Weapon", en: "with 1+ Maelstrom Weapon" } }
+      - { spell: ascendance }
+      - { spell: stormstrike, note: { pt: "com Doom Winds", en: "with Doom Winds" } }
+      - { spell: crash_lightning, note: { pt: "com Doom Winds", en: "with Doom Winds" } }
+      - { spell: tempest, note: { pt: "com 10 Maelstrom Weapon", en: "with 10 Maelstrom Weapon" } }
+      - { spell: lightning_bolt, note: { pt: "com 10 Maelstrom Weapon", en: "with 10 Maelstrom Weapon" } }
+    aoe:
+      - { spell: flame_shock }
+      - { spell: surging_totem }
+      - { spell: ascendance }
+      - { spell: sundering }
+      - { spell: lava_lash, note: { pt: "com Whirling Fire", en: "with Whirling Fire" } }
+      - { spell: doom_winds }
+      - { spell: crash_lightning, note: { pt: "com Whirling Air", en: "with Whirling Air" } }
+      - { spell: windstrike, note: { pt: "com Whirling Air", en: "with Whirling Air" } }
+      - { spell: stormstrike, note: { pt: "com Doom Winds, com Whirling Air", en: "with Doom Winds, with Whirling Air" } }
+      - { spell: tempest, note: { pt: "com 10+ Maelstrom Weapon", en: "with 10+ Maelstrom Weapon" } }
+      - { spell: primordial_storm, note: { pt: "com 10+ Maelstrom Weapon", en: "with 10+ Maelstrom Weapon" } }
+      - { spell: voltaic_blaze }
+      - { spell: crash_lightning }
+      - { spell: windstrike }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  totemic: [lava_lash, crash_lightning, ascendance]
+  stormbringer: [crash_lightning, ascendance]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: dot_uptime
+    id: flame_shock
+    debuff: flame_shock
+    min_uptime: 0.95
+    importance: medium
+    title: { pt: "Flame Shock fora do alvo", en: "Flame Shock off the target" }
+    tip: { pt: "Flame Shock sempre no alvo: renove no pandemic.", en: "Flame Shock always on the target: refresh in pandemic." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [ascendance]
+    min_usage: 0.85
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Ascendance no cooldown.", en: "Ascendance on cooldown." }

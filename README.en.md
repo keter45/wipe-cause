@@ -165,7 +165,9 @@ Each pull's **Performance** tab compares a player with the **top players of the 
 
 - **Burst windows**: pick the cooldowns to compare; each use shows the casts from 3s before to 20s after on a timeline, side by side with the same use by the top.
 - **Cooldowns**: when each one was used, how many times (and how many fit in the time) and whether the 1st use came late or early.
-- **Rotation**: casts per minute and % of damage per ability, and the reading of the [spec's base rotation](#-rotation).
+- **Where the reference pulled ahead**: your damage every 5s against the reference's, with the 3 stretches with the biggest difference and each one's casts side by side.
+- **Casts by ability**: casts per minute and % of damage per ability, and the reading of the [spec's base rotation](#-rotation).
+- **Extra damage taken**: the boss abilities that hit you much more than the reference, per minute alive.
 - **Setup**: combat potion, stat distribution, different talents and items side by side, with missing enchants and gems.
 - **Export**: the player's report becomes a card to copy, save (PNG/HTML) or send to Discord — for people who don't have the app.
 
@@ -175,19 +177,21 @@ To use the tops, create a free client at [warcraftlogs.com/api/clients](https://
 
 At the top, **Guild / Solo** switches the app's focus. In guild mode, the question is why the raid wiped. In solo, it's how **you** can improve. "You" is whoever recorded the log; when analyzing from Warcraft Logs, or to look at another character, choose on the screen itself.
 
-- **Pull → You tab**, in four parts:
-  - **For the next pull:** your mistakes sorted by what they cost, each with the moment (▶ in the video) and the tip.
-  - **Where the reference pulled ahead:** your damage every 5s against a reference you choose (a top of your spec, someone in the raid, yourself on another pull), with the 3 stretches with the biggest difference side by side.
-  - **Cooldowns:** your uses against the reference's on a timeline.
-  - **Mechanics:** only yours, and the damage you took much more than the reference per minute alive.
+- **Pull → You tab**: what to fix, by topic:
+  - **For the next pull:** your mistakes sorted by what they cost, each with the moment (▶ in the video) and what to do.
+  - **Survival and mechanics:** your deaths and mechanic mistakes, and the defensives the spec's tops use on this boss's mechanics.
+  - **Rotation:** the reading of the [spec's base rotation](#-rotation), with the tops on the same boss on every item.
+- **Pull → Detailed comparison tab**: you against a reference (a top of your spec on Warcraft Logs, someone in the raid or yourself on another pull), with everything from the [Performance](#-performance) tab.
 - **Night and boss summary**: your pulls boss by boss, the best of each and the mistakes that repeat.
 - **Progress**: a boss across the saved nights: your best output, rotation, deaths and mechanic mistakes per pull.
 
 ### 📜 Rotation
 
-Each spec can have a **written base rotation** in `rotations/<class>-<spec>.yaml` (key points, priority per hero tree for single target and AoE, opener and checks), built from Wowhead's rotation guide and the patch's SimulationCraft APL. In the **Performance** tab, the player's log is read against it: efficiency (0–100), clear mistakes and tweaks, with the moment of each (▶ in the video), the opener and cooldown usage.
+Each spec can have a **written base rotation** in `rotations/<class>-<spec>.yaml` (key points, priority per hero tree for single target and AoE, opener and checks), built from Wowhead's rotation guide and the patch's SimulationCraft APL and calibrated on the logs of the world's best players of each spec (what not even they do is dropped). In the **Performance** tab (and in solo mode's **You** tab), the player's log is read against it: efficiency (0–100), clear mistakes and tweaks, with the moment of each (▶ in the video), the opener and cooldown usage.
 
-Specs with a rotation: **Marksmanship Hunter**, **Elemental Shaman**, **Balance Druid**, **Demonology Warlock**, **Arcane Mage**, **Havoc Demon Hunter**, **Assassination Rogue**, **Retribution Paladin**, **Arms Warrior**, **Shadow Priest**, **Unholy Death Knight**, **Devourer Demon Hunter**, **Destruction Warlock**, **Devastation Evoker**, **Beast Mastery Hunter** and **Affliction Warlock**.
+**Compared with the tops on this boss:** the app ships with the median of the world's best players of the spec on each raid boss. Every rotation item shows your number next to theirs, along with: the ability they use much more or less on that boss (AoE vs single target), the cooldown they hold for later (or fire on the pull), when they drink the potion and where you stopped after a boss mechanic while they kept casting.
+
+Specs with a rotation: every damage spec — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) and **Warrior** (Arms, Fury).
 
 ### 🛠️ Tuning the boss rules
 

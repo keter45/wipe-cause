@@ -13,6 +13,10 @@ import { loadTop, type TopRanking, type TopSample } from '../../lib/wclApi';
 
 import { Stat, Bursts, Rotation, Potions, SetupView } from './sections';
 import { PerfShareCard } from '../share/PerfCard';
+import { Advantage, TakenMore } from './Advantage';
+import { compareWithTops } from '../../lib/bench';
+import { soloPullMsg } from '../SoloPullView.i18n';
+import { TrendingDown } from 'lucide-react';
 import { messagesOf, useMessages } from '../../i18n';
 import { perfViewMsg } from './perf.i18n';
 
@@ -45,8 +49,12 @@ function refLabel(me: Sample, s: Sample): string {
 }
 
 
-/** Comparação de desempenho com a mesma spec na noite (etapa 1: sem dados externos). */
-export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid }: { pull: Pull; nightPulls: Pull[]; wclCode?: string; defaultGuid?: string }) {
+/**
+ * O desempenho de um player comparado com uma referência: um top do Warcraft Logs ou alguém da mesma
+ * spec na noite. No modo guilda vem com a rotação (e a referência dos tops do boss); no modo solo a
+ * rotação já está na aba Você, e o player é o escolhido lá (`solo`).
+ */
+export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid, solo = false }: { pull: Pull; nightPulls: Pull[]; wclCode?: string; defaultGuid?: string; solo?: boolean }) {
   const players = useMemo(
     () =>
       [...pull.players]
@@ -64,27 +72,29 @@ export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid }: { pu
 
   return (
     <div className="perf">
-      <label className="perf-field">
-        <span className="muted small">{t.player}</span>
-        <select
-          className="select"
-          value={player.guid}
-          onChange={(e) => {
-            setGuid(e.target.value);
-            const p = players.find((x) => x.guid === e.target.value);
-            if (p) rememberPlayer(p.name);
-          }}
-        >
-          {players.map((p) => (
-            <option key={p.guid} value={p.guid}>
-              {shortName(p.name)} — {specLabel(p.specId)}
-            </option>
-          ))}
-        </select>
-      </label>
-      {player.rotation ? (
+      {!solo && (
+        <label className="perf-field">
+          <span className="muted small">{t.player}</span>
+          <select
+            className="select"
+            value={player.guid}
+            onChange={(e) => {
+              setGuid(e.target.value);
+              const p = players.find((x) => x.guid === e.target.value);
+              if (p) rememberPlayer(p.name);
+            }}
+          >
+            {players.map((p) => (
+              <option key={p.guid} value={p.guid}>
+                {shortName(p.name)} — {specLabel(p.specId)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {solo ? null : player.rotation ? (
         <ErrorBoundary label={t.errorRotation(shortName(player.name))} resetKey={player.guid}>
-          <RotationPanel rotation={player.rotation} />
+          <RotationPanel rotation={player.rotation} bench={compareWithTops(pull, player)} boss={pull.encounterName} />
         </ErrorBoundary>
       ) : (
         <p className="rot-wip small">
@@ -242,10 +252,17 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
         </section>
       )}
 
+      <section className="perf-section">
+        <h4>
+          <TrendingDown size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {messagesOf(soloPullMsg).advantage}
+        </h4>
+        <Advantage me={me} ref_={ref} refLabel={refName} unit={unit} casts />
+      </section>
       <Bursts me={me} ref_={ref} cds={cds} />
       <CooldownCompare me={me} ref_={ref} cds={cds} />
       <Rotation me={me} ref_={ref} cds={cds} />
       <Potions me={me} ref_={ref} />
+      <TakenMore me={me} ref_={ref} />
       <SetupView me={me.player} ref_={ref.player} />
     </>
   );

@@ -411,6 +411,8 @@ pub struct RotationResult {
     pub opener: Option<OpenerResult>,
     pub downtime_ms: i64,
     pub active_ms: i64,
+    /// trechos parados (ms do pull): os que entram no tempo parado
+    pub idle: Vec<[i64; 2]>,
     pub cooldowns: Vec<CooldownUse>,
     pub key_points: Vec<Text>,
     pub priority_st: Vec<PrioView>,
@@ -1078,6 +1080,7 @@ impl RotationTracker {
             opener,
             downtime_ms,
             active_ms,
+            idle: self.gaps.iter().map(|(a, b)| [*a, *b]).collect(),
             cooldowns,
             key_points: spec.key_points.clone(),
             priority_st: prio.map(|p| view(&p.st)).unwrap_or_default(),
@@ -1182,19 +1185,35 @@ mod tests {
 
     #[test]
     fn opener_follows_the_tree_sequence() {
+        // Sentinel: Aimed Shot, Explosive Shot, Trueshot e Rapid Fire na janela, em qualquer ordem
+        let scrambled = [(500, 288613), (1700, 257044), (3900, 212431), (5100, 19434), (6500, 1264949)];
         let mut r = RotationTracker::new(mm());
-        for (t, id) in [(500, 212431), (1700, 212431), (2900, 260243), (4100, 288613), (5300, 257044), (6500, 1264949)] {
+        for (t, id) in scrambled {
             r.on_cast(t, id);
         }
-        let res = r.finish(20000, &[true; 40]);
-        let o = res.opener.unwrap();
+        let o = r.finish(20000, &[true; 40]).opener.unwrap();
         assert!(o.ok, "{:?}", o.missing);
         let mut r = RotationTracker::new(mm());
-        for (t, id) in [(500, 288613), (1700, 212431), (2900, 260243)] {
-            r.on_cast(t, id); // Trueshot antes: Explosive x2 / Volley / Rapid Fire fora de ordem
+        for (t, id) in [(500, 288613), (1700, 212431), (2900, 19434)] {
+            r.on_cast(t, id); // sem Rapid Fire
         }
         let o = r.finish(20000, &[true; 40]).opener.unwrap();
         assert!(!o.ok);
+
+        // em ordem: a mesma abertura embaralhada não vale
+        let mut ordered = mm().clone();
+        ordered.opener.ordered = true;
+        let ordered: &'static RotationSpec = Box::leak(Box::new(ordered));
+        let mut r = RotationTracker::new(ordered);
+        for (t, id) in scrambled {
+            r.on_cast(t, id);
+        }
+        assert!(!r.finish(20000, &[true; 40]).opener.unwrap().ok);
+        let mut r = RotationTracker::new(ordered);
+        for (t, id) in [(500, 19434), (1700, 212431), (2900, 288613), (4100, 257044)] {
+            r.on_cast(t, id);
+        }
+        assert!(r.finish(20000, &[true; 40]).opener.unwrap().ok);
     }
 
     fn demo() -> &'static RotationSpec {

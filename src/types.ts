@@ -251,6 +251,8 @@ export interface EnemySpell {
   name: string;
   sources: string[];
   casts: number;
+  /** ms desde o início do pull de cada cast */
+  castTimes?: number[];
   hitsOnPlayers: number;
   damageToPlayers: number;
   interrupted: number;
@@ -407,6 +409,8 @@ export interface RotationResult {
   opener: { expected: RotationSpellRef[]; actual: RotationSpellRef[]; missing: RotationSpellRef[]; ok: boolean } | null;
   downtimeMs: number;
   activeMs: number;
+  /** trechos parados (ms do pull) que entram no tempo parado */
+  idle?: [number, number][];
   cooldowns: { spellId: number; name: string; casts: number; possible: number; usage: number }[];
   keyPoints: Loc[];
   prioritySt: (RotationSpellRef & { note: Loc | null })[];

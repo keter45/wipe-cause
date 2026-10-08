@@ -1,0 +1,106 @@
+# Augmentation Evoker — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 36 pulls nos logs; metas calibradas em 36 pulls dos tops.
+#
+# Removido na calibração:
+#   - Emerald Blossom da checagem de cooldown (os tops usam 0% dos possíveis)
+spec: 1473
+name: "Augmentation Evoker"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL evoker_augmentation (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/evoker_augmentation.simc
+  - title: "Wowhead — Augmentation Evoker Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/evoker/augmentation/rotation-cooldowns-pve-dps
+
+# casts no log que não são o player apertando um botão
+ignore_casts: [361195]
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Ebon Might, Tip the Scales, Breath of Eons, Fire Breath, Upheaval, Time Skip.", en: "Cooldowns on cooldown: Ebon Might, Tip the Scales, Breath of Eons, Fire Breath, Upheaval, Time Skip." }
+  - { pt: "Gaste os procs antes de acabar: Essence Burst (Emerald Blossom / Eruption).", en: "Spend the procs before they expire: Essence Burst (Emerald Blossom / Eruption)." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: scalecommander
+    name: "Scalecommander"
+    markers: [358267, 395152]
+
+abilities:
+  fury_of_the_aspects: { id: 390386, name: "Fury of the Aspects", cooldown_ms: 300000 }
+  time_skip: { id: 404977, name: "Time Skip", cooldown_ms: 180000 }
+  tip_the_scales: { id: 370553, name: "Tip the Scales", cooldown_ms: 120000, optional: true }
+  breath_of_eons: { id: 403631, name: "Breath of Eons", cooldown_ms: 120000 }
+  upheaval: { id: 396286, name: "Upheaval", channel_ms: 2500, cooldown_ms: 40000 }
+  ebon_might: { id: 395152, name: "Ebon Might", cast_ms: 1500, cooldown_ms: 30000 }
+  fire_breath: { id: 357208, name: "Fire Breath", cooldown_ms: 30000 }
+  emerald_blossom: { id: 355913, name: "Emerald Blossom", cooldown_ms: 30000 }
+  prescience: { id: 409311, name: "Prescience", cooldown_ms: 12000, charges: 2 }
+  hover: { id: 358267, name: "Hover", cooldown_ms: 1000 }
+  deep_breath: { id: 357210, name: "Deep Breath", cooldown_ms: 1000 }
+  azure_strike: { id: 362969, name: "Azure Strike" }
+  eruption: { id: 395160, name: "Eruption", cast_ms: 2500 }
+
+buffs:
+  essence_burst: { id: 392268, name: "Essence Burst" }
+
+priority:
+  scalecommander:
+    st:
+      - { spell: hover }
+      - { spell: ebon_might }
+      - { spell: prescience }
+      - { spell: azure_strike, note: { pt: "Item Cd 1141 pronto", en: "Item Cd 1141 ready" } }
+      - { spell: fury_of_the_aspects, note: { pt: "sem Time Convergence Intellect", en: "without Time Convergence Intellect" } }
+      - { spell: tip_the_scales }
+      - { spell: deep_breath }
+      - { spell: breath_of_eons }
+      - { spell: eruption }
+      - { spell: fire_breath, note: { pt: "com Ebon Might Self, Upheaval pronto", en: "with Ebon Might Self, Upheaval ready" } }
+      - { spell: fire_breath, note: { pt: "com Ebon Might Self", en: "with Ebon Might Self" } }
+      - { spell: upheaval, note: { pt: "com Ebon Might Self", en: "with Ebon Might Self" } }
+      - { spell: time_skip }
+      - { spell: emerald_blossom, note: { pt: "com Essence Burst, sem Ancient Flame", en: "with Essence Burst, without Ancient Flame" } }
+    aoe:
+      - { spell: hover }
+      - { spell: ebon_might }
+      - { spell: prescience }
+      - { spell: azure_strike, note: { pt: "Item Cd 1141 pronto", en: "Item Cd 1141 ready" } }
+      - { spell: fury_of_the_aspects, note: { pt: "sem Time Convergence Intellect", en: "without Time Convergence Intellect" } }
+      - { spell: tip_the_scales }
+      - { spell: deep_breath }
+      - { spell: breath_of_eons }
+      - { spell: eruption }
+      - { spell: fire_breath, note: { pt: "com Ebon Might Self, Upheaval pronto", en: "with Ebon Might Self, Upheaval ready" } }
+      - { spell: fire_breath, note: { pt: "com Ebon Might Self", en: "with Ebon Might Self" } }
+      - { spell: upheaval, note: { pt: "com Ebon Might Self", en: "with Ebon Might Self" } }
+      - { spell: time_skip }
+      - { spell: emerald_blossom, note: { pt: "com Essence Burst, sem Ancient Flame", en: "with Essence Burst, without Ancient Flame" } }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  scalecommander: [breath_of_eons, ebon_might, tip_the_scales, fire_breath, upheaval]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: proc
+    id: essence_burst
+    buff: essence_burst
+    spenders: [emerald_blossom, eruption]
+    importance: medium
+    title: { pt: "Essence Burst perdido", en: "Essence Burst lost" }
+    tip: { pt: "Essence Burst melhora o próximo Emerald Blossom / Eruption: use antes de acabar.", en: "Essence Burst empowers the next Emerald Blossom / Eruption: use it before it expires." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [ebon_might, tip_the_scales, breath_of_eons, fire_breath, upheaval, time_skip]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Ebon Might, Tip the Scales, Breath of Eons, Fire Breath no cooldown.", en: "Ebon Might, Tip the Scales, Breath of Eons, Fire Breath on cooldown." }

@@ -1,0 +1,698 @@
+{
+ "spec": 262,
+ "name": "Elemental Shaman",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.039,
+   "cpm": 42.1,
+   "checks": {
+    "always_be_casting": 0.961,
+    "maelstrom": 0.999,
+    "cooldowns": 0.957,
+    "flame_shock": 0.999,
+    "lava_surge": 1,
+    "purging_flames": 1
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 3797,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 19849,
+     "early": 0.5
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.871,
+     "first": 884,
+     "early": 1
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.271
+    },
+    "61882": {
+     "name": "Earthquake",
+     "share": 0.068
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.013
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.089
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.174
+    },
+    "188443": {
+     "name": "Chain Lightning",
+     "share": 0.157
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.03
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.043
+    },
+    "470057": {
+     "name": "Voltaic Blaze",
+     "share": 0.133
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 1058,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.015,
+   "cpm": 46.3,
+   "checks": {
+    "always_be_casting": 0.985,
+    "maelstrom": 0.992,
+    "cooldowns": 0.972,
+    "flame_shock": 0.997,
+    "lava_surge": 1
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 2061,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 272,
+     "early": 1
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.917,
+     "first": 2160,
+     "early": 1
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.272
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.012
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.165
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.417
+    },
+    "188389": {
+     "name": "Flame Shock",
+     "share": 0.061
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.03
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.041
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 754,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.021,
+   "cpm": 47.8,
+   "checks": {
+    "maelstrom": 0.975,
+    "always_be_casting": 0.979,
+    "cooldowns": 0.964,
+    "flame_shock": 0.996,
+    "lava_surge": 0.99,
+    "purging_flames": 1
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 1527,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 157,
+     "early": 1
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.893,
+     "first": 1844,
+     "early": 1
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.277
+    },
+    "61882": {
+     "name": "Earthquake",
+     "share": 0.028
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.009
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.141
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.031
+    },
+    "188443": {
+     "name": "Chain Lightning",
+     "share": 0.312
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.028
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.038
+    },
+    "470057": {
+     "name": "Voltaic Blaze",
+     "share": 0.135
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 1074,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.016,
+   "cpm": 45.6,
+   "checks": {
+    "always_be_casting": 0.984,
+    "maelstrom": 0.968,
+    "cooldowns": 0.966,
+    "flame_shock": 0.994,
+    "lava_surge": 0.991
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 1438,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 528,
+     "early": 1
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.897,
+     "first": 1703,
+     "early": 1
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.243
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.009
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.149
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.328
+    },
+    "188389": {
+     "name": "Flame Shock",
+     "share": 0.08
+    },
+    "188443": {
+     "name": "Chain Lightning",
+     "share": 0.117
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.029
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.04
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 3904,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.046,
+   "cpm": 47,
+   "checks": {
+    "always_be_casting": 0.954,
+    "maelstrom": 0.981,
+    "flame_shock": 0.998,
+    "lava_surge": 1,
+    "cooldowns": 0.976
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 1228,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 846,
+     "early": 0.75
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.929,
+     "first": 1135,
+     "early": 1
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.244
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.011
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.152
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.248
+    },
+    "188389": {
+     "name": "Flame Shock",
+     "share": 0.098
+    },
+    "188443": {
+     "name": "Chain Lightning",
+     "share": 0.168
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.03
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.041
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.022,
+   "cpm": 46,
+   "checks": {
+    "always_be_casting": 0.978,
+    "maelstrom": 0.996,
+    "cooldowns": 0.964,
+    "lava_surge": 1,
+    "flame_shock": 0.987,
+    "purging_flames": 1
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 1237,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 38214,
+     "early": 0.25
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.893,
+     "first": 489,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.258
+    },
+    "61882": {
+     "name": "Earthquake",
+     "share": 0.086
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.011
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.105
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.252
+    },
+    "188443": {
+     "name": "Chain Lightning",
+     "share": 0.137
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.028
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.039
+    },
+    "470057": {
+     "name": "Voltaic Blaze",
+     "share": 0.106
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 191005,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.014,
+   "cpm": 49.9,
+   "checks": {
+    "maelstrom": 0.968,
+    "always_be_casting": 0.986,
+    "lava_surge": 0.986,
+    "flame_shock": 0.994,
+    "cooldowns": 0.99
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 2153,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 17081,
+     "early": 0.5
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.969,
+     "first": 2049,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.237
+    },
+    "61882": {
+     "name": "Earthquake",
+     "share": 0.01
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.011
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.154
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.303
+    },
+    "188389": {
+     "name": "Flame Shock",
+     "share": 0.056
+    },
+    "188443": {
+     "name": "Chain Lightning",
+     "share": 0.149
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.028
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.04
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 497,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.03,
+   "cpm": 43.5,
+   "checks": {
+    "maelstrom": 0.943,
+    "always_be_casting": 0.97,
+    "cooldowns": 0.958,
+    "lava_surge": 0.966,
+    "flame_shock": 1,
+    "purging_flames": 1
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 11776,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 442,
+     "early": 0.75
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.875,
+     "first": 12944,
+     "early": 1
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.242
+    },
+    "61882": {
+     "name": "Earthquake",
+     "share": 0.039
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.012
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.156
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.103
+    },
+    "188443": {
+     "name": "Chain Lightning",
+     "share": 0.234
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.029
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.039
+    },
+    "470057": {
+     "name": "Voltaic Blaze",
+     "share": 0.151
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 295619,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.013,
+   "cpm": 50.8,
+   "checks": {
+    "always_be_casting": 0.987,
+    "maelstrom": 0.983,
+    "flame_shock": 0.995,
+    "lava_surge": 1,
+    "cooldowns": 0.985,
+    "purging_flames": 1
+   },
+   "cooldowns": {
+    "114050": {
+     "name": "Ascendance",
+     "usage": 1,
+     "first": 3463,
+     "early": 1
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "usage": 1,
+     "first": 38207,
+     "early": 0.25
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "usage": 0.955,
+     "first": 3628,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "51505": {
+     "name": "Lava Burst",
+     "share": 0.293
+    },
+    "61882": {
+     "name": "Earthquake",
+     "share": 0
+    },
+    "114050": {
+     "name": "Ascendance",
+     "share": 0.012
+    },
+    "117014": {
+     "name": "Elemental Blast",
+     "share": 0.164
+    },
+    "188196": {
+     "name": "Lightning Bolt",
+     "share": 0.014
+    },
+    "188443": {
+     "name": "Chain Lightning",
+     "share": 0.304
+    },
+    "191634": {
+     "name": "Stormkeeper",
+     "share": 0.025
+    },
+    "443454": {
+     "name": "Ancestral Swiftness",
+     "share": 0.04
+    },
+    "470057": {
+     "name": "Voltaic Blaze",
+     "share": 0.142
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 3301,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

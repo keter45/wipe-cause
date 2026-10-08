@@ -1,0 +1,786 @@
+{
+ "spec": 258,
+ "name": "Shadow Priest",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.017,
+   "cpm": 46.7,
+   "checks": {
+    "insanity": 0.996,
+    "always_be_casting": 0.983,
+    "shadow_word_madness": 0.919,
+    "shadow_word_pain": 0.997,
+    "vampiric_touch": 0.997,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 9219,
+     "early": 0.75
+    },
+    "120644": {
+     "name": "Halo",
+     "usage": 1,
+     "first": 8017,
+     "early": 0.75
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 1,
+     "first": 8902,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.002
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.148
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.023
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.216
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.023
+    },
+    "120644": {
+     "name": "Halo",
+     "share": 0.022
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.013
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.207
+    },
+    "391403": {
+     "name": "Mind Flay: Insanity",
+     "share": 0.085
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.108
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.155
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 12463,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.009,
+   "cpm": 40.7,
+   "checks": {
+    "always_be_casting": 0.991,
+    "insanity": 0.999,
+    "cooldowns": 0.97,
+    "shadow_word_madness": 0.976,
+    "shadow_word_pain": 0.999,
+    "vampiric_touch": 0.999
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 3433,
+     "early": 1
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 1,
+     "first": 3044,
+     "early": 1
+    },
+    "263165": {
+     "name": "Void Torrent",
+     "usage": 0.916,
+     "first": 4508,
+     "early": 1
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.032
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.159
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.028
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.18
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.023
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.014
+    },
+    "263165": {
+     "name": "Void Torrent",
+     "share": 0.048
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.219
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.127
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.18
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 3658,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.004,
+   "cpm": 48,
+   "checks": {
+    "always_be_casting": 0.996,
+    "insanity": 1,
+    "shadow_word_madness": 0.959,
+    "shadow_word_pain": 0.999,
+    "vampiric_touch": 0.999,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 6376,
+     "early": 1
+    },
+    "120644": {
+     "name": "Halo",
+     "usage": 1,
+     "first": 4763,
+     "early": 1
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 1,
+     "first": 6061,
+     "early": 1
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.065
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.15
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.021
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.179
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.023
+    },
+    "120644": {
+     "name": "Halo",
+     "share": 0.022
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.011
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.191
+    },
+    "391403": {
+     "name": "Mind Flay: Insanity",
+     "share": 0.086
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.108
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.154
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 6019,
+    "second": 317659
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.017,
+   "cpm": 47,
+   "checks": {
+    "always_be_casting": 0.983,
+    "insanity": 0.998,
+    "cooldowns": 0.967,
+    "shadow_word_madness": 0.941,
+    "vampiric_touch": 0.996,
+    "shadow_word_pain": 0.996
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 6167,
+     "early": 1
+    },
+    "120644": {
+     "name": "Halo",
+     "usage": 1,
+     "first": 4377,
+     "early": 1
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 0.917,
+     "first": 6062,
+     "early": 1
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.065
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.143
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.021
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.178
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.042
+    },
+    "120644": {
+     "name": "Halo",
+     "share": 0.022
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.01
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.185
+    },
+    "391403": {
+     "name": "Mind Flay: Insanity",
+     "share": 0.086
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.106
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.147
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 6144,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.014,
+   "cpm": 48.4,
+   "checks": {
+    "always_be_casting": 0.986,
+    "insanity": 0.993,
+    "shadow_word_madness": 0.909,
+    "cooldowns": 0.972,
+    "shadow_word_pain": 1,
+    "vampiric_touch": 1
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 6069,
+     "early": 1
+    },
+    "120644": {
+     "name": "Halo",
+     "usage": 0.917,
+     "first": 4469,
+     "early": 0.75
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 1,
+     "first": 5749,
+     "early": 1
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.079
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.134
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.02
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.18
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.025
+    },
+    "120644": {
+     "name": "Halo",
+     "share": 0.02
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.012
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.195
+    },
+    "391403": {
+     "name": "Mind Flay: Insanity",
+     "share": 0.085
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.11
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.147
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 5997,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.028,
+   "cpm": 44.5,
+   "checks": {
+    "always_be_casting": 0.972,
+    "insanity": 0.999,
+    "cooldowns": 0.821,
+    "shadow_word_madness": 0.875,
+    "shadow_word_pain": 0.999,
+    "vampiric_touch": 1
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 21117,
+     "early": 0
+    },
+    "120644": {
+     "name": "Halo",
+     "usage": 0.714,
+     "first": 19723,
+     "early": 0
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 0.75,
+     "first": 20700,
+     "early": 0
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.062
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.138
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.021
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.212
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.024
+    },
+    "120644": {
+     "name": "Halo",
+     "share": 0.017
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.01
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.191
+    },
+    "391403": {
+     "name": "Mind Flay: Insanity",
+     "share": 0.069
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.111
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.151
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 18990,
+    "second": 24146
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.018,
+   "cpm": 46.1,
+   "checks": {
+    "always_be_casting": 0.982,
+    "insanity": 0.994,
+    "shadow_word_madness": 0.918,
+    "shadow_word_pain": 0.992,
+    "vampiric_touch": 0.994,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 5871,
+     "early": 1
+    },
+    "120644": {
+     "name": "Halo",
+     "usage": 1,
+     "first": 4478,
+     "early": 1
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 1,
+     "first": 5718,
+     "early": 1
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.047
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.146
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.024
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.172
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.031
+    },
+    "120644": {
+     "name": "Halo",
+     "share": 0.023
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.013
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.188
+    },
+    "391403": {
+     "name": "Mind Flay: Insanity",
+     "share": 0.09
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.108
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.151
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 5882,
+    "second": 157874
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.029,
+   "cpm": 41.6,
+   "checks": {
+    "always_be_casting": 0.971,
+    "insanity": 0.99,
+    "shadow_word_madness": 0.921,
+    "cooldowns": 0.95,
+    "shadow_word_pain": 0.998,
+    "vampiric_touch": 0.998
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 10121,
+     "early": 1
+    },
+    "120644": {
+     "name": "Halo",
+     "usage": 0.859,
+     "first": 6723,
+     "early": 1
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 1,
+     "first": 7910,
+     "early": 1
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.004
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.151
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.024
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.161
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.024
+    },
+    "120644": {
+     "name": "Halo",
+     "share": 0.022
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.012
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.193
+    },
+    "391403": {
+     "name": "Mind Flay: Insanity",
+     "share": 0.087
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.117
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.16
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 286572,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.002,
+   "cpm": 50.3,
+   "checks": {
+    "always_be_casting": 0.998,
+    "insanity": 1,
+    "shadow_word_pain": 0.996,
+    "vampiric_touch": 0.998,
+    "shadow_word_madness": 0.98,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "10060": {
+     "name": "Power Infusion",
+     "usage": 1,
+     "first": 8110,
+     "early": 1
+    },
+    "120644": {
+     "name": "Halo",
+     "usage": 1,
+     "first": 5603,
+     "early": 1
+    },
+    "228260": {
+     "name": "Voidform",
+     "usage": 1,
+     "first": 7975,
+     "early": 1
+    }
+   },
+   "mix": {
+    "589": {
+     "name": "Shadow Word: Pain",
+     "share": 0.052
+    },
+    "8092": {
+     "name": "Mind Blast",
+     "share": 0.148
+    },
+    "10060": {
+     "name": "Power Infusion",
+     "share": 0.018
+    },
+    "15407": {
+     "name": "Mind Flay",
+     "share": 0.186
+    },
+    "32379": {
+     "name": "Shadow Word: Death",
+     "share": 0.017
+    },
+    "120644": {
+     "name": "Halo",
+     "share": 0.021
+    },
+    "228260": {
+     "name": "Voidform",
+     "share": 0.013
+    },
+    "335467": {
+     "name": "Shadow Word: Madness",
+     "share": 0.203
+    },
+    "391403": {
+     "name": "Mind Flay: Insanity",
+     "share": 0.086
+    },
+    "1227280": {
+     "name": "Tentacle Slam",
+     "share": 0.107
+    },
+    "1242173": {
+     "name": "Void Volley",
+     "share": 0.146
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 8026,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

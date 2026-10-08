@@ -1,0 +1,150 @@
+# Fury Warrior — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 33 pulls nos logs; metas calibradas em 33 pulls dos tops.
+#
+# Removido na calibração:
+#   - Storm Bolt da checagem de cooldown (os tops usam 44% dos possíveis)
+#   - Hack and Slash perdido (os tops "perdem" 74%: o buff é gasto por outra coisa ou de propósito)
+spec: 72
+name: "Fury Warrior"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL warrior_fury (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/warrior_fury.simc
+  - title: "Wowhead — Fury Warrior Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/warrior/fury/rotation-cooldowns-pve-dps
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Recklessness, Avatar, Odyn's Fury, Bladestorm.", en: "Cooldowns on cooldown: Recklessness, Avatar, Odyn's Fury, Bladestorm." }
+  - { pt: "Gaste os procs antes de acabar: Sudden Death (Execute).", en: "Spend the procs before they expire: Sudden Death (Execute)." }
+  - { pt: "Não estoure Rage.", en: "Don't cap Rage." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: mountain_thane
+    name: "Mountain Thane"
+    markers: [435222, 435615]
+  - key: slayer
+    name: "Slayer"
+    markers: [456120, 445606]
+
+abilities:
+  recklessness: { id: 1719, name: "Recklessness", cooldown_ms: 90000 }
+  avatar: { id: 107574, name: "Avatar", cooldown_ms: 90000, optional: true }
+  bladestorm: { id: 446035, name: "Bladestorm", cooldown_ms: 90000, optional: true }
+  odyns_fury: { id: 385059, alt_ids: [385060, 385062], name: "Odyn's Fury", cooldown_ms: 45000 }
+  crushing_blow: { id: 335097, name: "Crushing Blow", cooldown_ms: 8000 }
+  raging_blow: { id: 85288, name: "Raging Blow", cooldown_ms: 8000 }
+  thunder_blast: { id: 435222, name: "Thunder Blast", cooldown_ms: 6000, tree: mountain_thane }
+  thunder_clap: { id: 6343, name: "Thunder Clap", cooldown_ms: 6000, optional: true }
+  execute: { id: 5308, alt_ids: [280735], name: "Execute", cooldown_ms: 6000 }
+  bloodbath: { id: 335096, name: "Bloodbath", cooldown_ms: 4500 }
+  bloodthirst: { id: 23881, name: "Bloodthirst", cooldown_ms: 4500 }
+  charge: { id: 100, alt_ids: [126664], name: "Charge", cooldown_ms: 1500 }
+  heroic_leap: { id: 52174, name: "Heroic Leap", optional: true }
+  rampage: { id: 184367, name: "Rampage" }
+  whirlwind: { id: 190411, name: "Whirlwind" }
+
+buffs:
+  sudden_death: { id: 52437, name: "Sudden Death" }
+  hack_and_slash: { id: 383873, name: "Hack and Slash" }
+
+priority:
+  mountain_thane:
+    st:
+      - { spell: charge }
+      - { spell: heroic_leap }
+      - { spell: recklessness }
+      - { spell: avatar }
+      - { spell: rampage }
+      - { spell: bloodbath, note: { pt: "com Recklessness", en: "with Recklessness" } }
+      - { spell: thunder_blast }
+      - { spell: crushing_blow, note: { pt: "com Hack and Slash", en: "with Hack and Slash" } }
+      - { spell: bloodbath }
+      - { spell: rampage, note: { pt: "com Recklessness", en: "with Recklessness" } }
+      - { spell: thunder_blast, note: { pt: "com Avatar", en: "with Avatar" } }
+      - { spell: crushing_blow }
+      - { spell: raging_blow, note: { pt: "com Hack and Slash", en: "with Hack and Slash" } }
+      - { spell: bloodthirst }
+    aoe:
+      - { spell: charge }
+      - { spell: heroic_leap }
+      - { spell: odyns_fury }
+      - { spell: recklessness }
+      - { spell: avatar }
+      - { spell: rampage, note: { pt: "sem Enrage", en: "without Enrage" } }
+      - { spell: thunder_blast }
+      - { spell: thunder_blast, note: { pt: "com 2 Thunder Blast", en: "with 2 Thunder Blast" } }
+      - { spell: thunder_clap }
+      - { spell: rampage }
+      - { spell: bloodbath }
+      - { spell: crushing_blow, note: { pt: "com Hack and Slash", en: "with Hack and Slash" } }
+      - { spell: thunder_clap, note: { pt: "com Avatar", en: "with Avatar" } }
+      - { spell: crushing_blow }
+  slayer:
+    st:
+      - { spell: charge }
+      - { spell: heroic_leap }
+      - { spell: recklessness }
+      - { spell: rampage }
+      - { spell: rampage, note: { pt: "com Recklessness, com 100+ Rage", en: "with Recklessness, with 100+ Rage" } }
+      - { spell: bladestorm }
+      - { spell: execute, note: { pt: "com Recklessness, com Sudden Death", en: "with Recklessness, with Sudden Death" } }
+      - { spell: crushing_blow }
+      - { spell: odyns_fury, note: { pt: "com Recklessness", en: "with Recklessness" } }
+      - { spell: execute, note: { pt: "com Recklessness", en: "with Recklessness" } }
+      - { spell: bloodbath }
+      - { spell: odyns_fury }
+      - { spell: raging_blow }
+      - { spell: bloodthirst }
+    aoe:
+      - { spell: charge }
+      - { spell: heroic_leap }
+      - { spell: whirlwind, note: { pt: "com 0 Whirlwind", en: "with 0 Whirlwind" } }
+      - { spell: recklessness }
+      - { spell: avatar }
+      - { spell: rampage }
+      - { spell: bladestorm }
+      - { spell: execute, note: { pt: "com Sudden Death", en: "with Sudden Death" } }
+      - { spell: odyns_fury }
+      - { spell: crushing_blow }
+      - { spell: bloodbath }
+      - { spell: execute }
+      - { spell: raging_blow }
+      - { spell: bloodthirst }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  mountain_thane: [recklessness, avatar]
+  slayer: [recklessness, bladestorm]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: resource_waste
+    id: rage
+    power_type: 1
+    resource: "Rage"
+    importance: high
+    title: { pt: "Rage desperdiçado", en: "Rage wasted" }
+    tip: { pt: "Gaste com Rampage / Thunder Clap antes de chegar ao máximo de Rage.", en: "Spend with Rampage / Thunder Clap before reaching max Rage." }
+  - kind: proc
+    id: sudden_death
+    buff: sudden_death
+    spenders: [execute]
+    importance: medium
+    title: { pt: "Sudden Death perdido", en: "Sudden Death lost" }
+    tip: { pt: "Sudden Death melhora o próximo Execute: use antes de acabar.", en: "Sudden Death empowers the next Execute: use it before it expires." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [recklessness, avatar, odyns_fury, bladestorm]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Recklessness, Avatar, Odyn's Fury, Bladestorm no cooldown.", en: "Recklessness, Avatar, Odyn's Fury, Bladestorm on cooldown." }

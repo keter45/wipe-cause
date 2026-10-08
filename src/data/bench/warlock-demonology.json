@@ -1,0 +1,655 @@
+{
+ "spec": 266,
+ "name": "Demonology Warlock",
+ "pulls": 34,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.028,
+   "cpm": 48,
+   "checks": {
+    "always_be_casting": 0.972,
+    "soul_shards": 0.993,
+    "cooldowns": 0.982,
+    "demonic_core": 1,
+    "demonbolt_without_core": 1,
+    "ruination": 1,
+    "infernal_bolt": 1,
+    "tyrant_dreadstalkers": 1
+   },
+   "cooldowns": {
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "usage": 0.946,
+     "first": 1255,
+     "early": 1
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "usage": 1,
+     "first": 5129,
+     "early": 1
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "usage": 1,
+     "first": 1540,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.206
+    },
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "share": 0.062
+    },
+    "105174": {
+     "name": "Hand of Gul'dan",
+     "share": 0.32
+    },
+    "196277": {
+     "name": "Implosion",
+     "share": 0.071
+    },
+    "264178": {
+     "name": "Demonbolt",
+     "share": 0.239
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "share": 0.023
+    },
+    "434506": {
+     "name": "Infernal Bolt",
+     "share": 0.034
+    },
+    "434635": {
+     "name": "Ruination",
+     "share": 0.034
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "share": 0.012
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 3984,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.031,
+   "cpm": 45.7,
+   "checks": {
+    "always_be_casting": 0.969,
+    "soul_shards": 0.991,
+    "tyrant_dreadstalkers": 1,
+    "cooldowns": 0.98,
+    "demonic_core": 1,
+    "demonbolt_without_core": 1,
+    "ruination": 1,
+    "infernal_bolt": 1
+   },
+   "cooldowns": {
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "usage": 0.971,
+     "first": 2253,
+     "early": 0.75
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "usage": 1,
+     "first": 4166,
+     "early": 1
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "usage": 1,
+     "first": 1023,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.192
+    },
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "share": 0.064
+    },
+    "105174": {
+     "name": "Hand of Gul'dan",
+     "share": 0.324
+    },
+    "196277": {
+     "name": "Implosion",
+     "share": 0.071
+    },
+    "264178": {
+     "name": "Demonbolt",
+     "share": 0.237
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "share": 0.022
+    },
+    "434506": {
+     "name": "Infernal Bolt",
+     "share": 0.034
+    },
+    "434635": {
+     "name": "Ruination",
+     "share": 0.034
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "share": 0.012
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 4200,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.007,
+   "cpm": 47.3,
+   "checks": {
+    "soul_shards": 0.985,
+    "always_be_casting": 0.993,
+    "tyrant_dreadstalkers": 0.938,
+    "cooldowns": 0.985,
+    "demonic_core": 1,
+    "demonbolt_without_core": 1,
+    "ruination": 1,
+    "infernal_bolt": 1
+   },
+   "cooldowns": {
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "usage": 0.954,
+     "first": 10260,
+     "early": 0.5
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "usage": 1,
+     "first": 4143,
+     "early": 1
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "usage": 1,
+     "first": 1812,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.208
+    },
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "share": 0.061
+    },
+    "105174": {
+     "name": "Hand of Gul'dan",
+     "share": 0.323
+    },
+    "196277": {
+     "name": "Implosion",
+     "share": 0.074
+    },
+    "264178": {
+     "name": "Demonbolt",
+     "share": 0.232
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "share": 0.022
+    },
+    "434506": {
+     "name": "Infernal Bolt",
+     "share": 0.036
+    },
+    "434635": {
+     "name": "Ruination",
+     "share": 0.033
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "share": 0.012
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 4404,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.032,
+   "cpm": 45.4,
+   "checks": {
+    "always_be_casting": 0.968,
+    "soul_shards": 0.986,
+    "cooldowns": 0.954,
+    "demonic_core": 0.992,
+    "demonbolt_without_core": 1,
+    "ruination": 1,
+    "infernal_bolt": 1,
+    "tyrant_dreadstalkers": 0.833
+   },
+   "cooldowns": {
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "usage": 0.92,
+     "first": 20156,
+     "early": 0.25
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "usage": 0.929,
+     "first": 2294,
+     "early": 1
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "usage": 1,
+     "first": 2161,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.217
+    },
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "share": 0.063
+    },
+    "105174": {
+     "name": "Hand of Gul'dan",
+     "share": 0.324
+    },
+    "196277": {
+     "name": "Implosion",
+     "share": 0.065
+    },
+    "264178": {
+     "name": "Demonbolt",
+     "share": 0.23
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "share": 0.022
+    },
+    "434506": {
+     "name": "Infernal Bolt",
+     "share": 0.034
+    },
+    "434635": {
+     "name": "Ruination",
+     "share": 0.034
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "share": 0.011
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 5168,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.026,
+   "cpm": 49.1,
+   "checks": {
+    "always_be_casting": 0.974,
+    "soul_shards": 0.998,
+    "cooldowns": 0.805,
+    "demonic_core": 1,
+    "demonbolt_without_core": 1,
+    "ruination": 1,
+    "infernal_bolt": 1,
+    "tyrant_dreadstalkers": 1
+   },
+   "cooldowns": {
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "usage": 0.95,
+     "first": 2092,
+     "early": 1
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "usage": 0.714,
+     "first": 9721,
+     "early": 0.5
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "usage": 0.75,
+     "first": 6748,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.243
+    },
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "share": 0.059
+    },
+    "105174": {
+     "name": "Hand of Gul'dan",
+     "share": 0.318
+    },
+    "196277": {
+     "name": "Implosion",
+     "share": 0.061
+    },
+    "264178": {
+     "name": "Demonbolt",
+     "share": 0.225
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "share": 0.016
+    },
+    "434506": {
+     "name": "Infernal Bolt",
+     "share": 0.032
+    },
+    "434635": {
+     "name": "Ruination",
+     "share": 0.032
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "share": 0.01
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 22671,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.015,
+   "cpm": 48.9,
+   "checks": {
+    "always_be_casting": 0.985,
+    "soul_shards": 0.997,
+    "demonic_core": 0.991,
+    "demonbolt_without_core": 1,
+    "ruination": 1,
+    "infernal_bolt": 1,
+    "tyrant_dreadstalkers": 1,
+    "cooldowns": 0.924
+   },
+   "cooldowns": {
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "usage": 0.927,
+     "first": 80,
+     "early": 0.75
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "usage": 0.944,
+     "first": 3043,
+     "early": 1
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "usage": 0.9,
+     "first": 1851,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.22
+    },
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "share": 0.059
+    },
+    "105174": {
+     "name": "Hand of Gul'dan",
+     "share": 0.325
+    },
+    "196277": {
+     "name": "Implosion",
+     "share": 0.072
+    },
+    "264178": {
+     "name": "Demonbolt",
+     "share": 0.227
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "share": 0.021
+    },
+    "434506": {
+     "name": "Infernal Bolt",
+     "share": 0.035
+    },
+    "434635": {
+     "name": "Ruination",
+     "share": 0.033
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "share": 0.011
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.066,
+   "cpm": 41.7,
+   "checks": {
+    "always_be_casting": 0.934,
+    "soul_shards": 0.996,
+    "cooldowns": 0.939,
+    "demonic_core": 1,
+    "demonbolt_without_core": 1,
+    "ruination": 1,
+    "infernal_bolt": 1,
+    "tyrant_dreadstalkers": 1
+   },
+   "cooldowns": {
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "usage": 0.934,
+     "first": 403,
+     "early": 0.75
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "usage": 0.9,
+     "first": 4361,
+     "early": 1
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "usage": 1,
+     "first": 1585,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.19
+    },
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "share": 0.068
+    },
+    "105174": {
+     "name": "Hand of Gul'dan",
+     "share": 0.316
+    },
+    "196277": {
+     "name": "Implosion",
+     "share": 0.078
+    },
+    "264178": {
+     "name": "Demonbolt",
+     "share": 0.243
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "share": 0.022
+    },
+    "434506": {
+     "name": "Infernal Bolt",
+     "share": 0.036
+    },
+    "434635": {
+     "name": "Ruination",
+     "share": 0.035
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "share": 0.012
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 588617,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.012,
+   "cpm": 51.8,
+   "checks": {
+    "always_be_casting": 0.988,
+    "soul_shards": 0.995,
+    "tyrant_dreadstalkers": 1,
+    "cooldowns": 0.989,
+    "demonic_core": 1,
+    "demonbolt_without_core": 1,
+    "ruination": 1,
+    "infernal_bolt": 1
+   },
+   "cooldowns": {
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "usage": 0.967,
+     "first": 1289,
+     "early": 0.75
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "usage": 1,
+     "first": 4144,
+     "early": 1
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "usage": 1,
+     "first": 1034,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.247
+    },
+    "104316": {
+     "name": "Call Dreadstalkers",
+     "share": 0.058
+    },
+    "105174": {
+     "name": "Hand of Gul'dan",
+     "share": 0.325
+    },
+    "196277": {
+     "name": "Implosion",
+     "share": 0.066
+    },
+    "264178": {
+     "name": "Demonbolt",
+     "share": 0.205
+    },
+    "265187": {
+     "name": "Summon Demonic Tyrant",
+     "share": 0.021
+    },
+    "434506": {
+     "name": "Infernal Bolt",
+     "share": 0.033
+    },
+    "434635": {
+     "name": "Ruination",
+     "share": 0.032
+    },
+    "1276452": {
+     "name": "Grimoire: Imp Lord",
+     "share": 0.013
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

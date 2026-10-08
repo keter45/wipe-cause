@@ -1,0 +1,156 @@
+# Frost Death Knight — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 32 pulls nos logs; metas calibradas em 32 pulls dos tops.
+#
+# Removido na calibração:
+#   - Anti-Magic Shell da checagem de cooldown (um quarto dos tops usa 50% ou menos)
+#   - Killing Machine perdido (os tops "perdem" 39%: o buff é gasto por outra coisa ou de propósito)
+spec: 251
+name: "Frost Death Knight"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL deathknight_frost (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/deathknight_frost.simc
+  - title: "Wowhead — Frost Death Knight Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/death-knight/frost/rotation-cooldowns-pve-dps
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Pillar of Frost, Breath of Sindragosa, Reaper's Mark, Frostwyrm's Fury, Empower Rune Weapon.", en: "Cooldowns on cooldown: Pillar of Frost, Breath of Sindragosa, Reaper's Mark, Frostwyrm's Fury, Empower Rune Weapon." }
+  - { pt: "Sempre no alvo: Frost Fever (renove no pandemic).", en: "Always on the target: Frost Fever (refresh in pandemic)." }
+  - { pt: "Gaste os procs antes de acabar: Rime (Howling Blast / Frost Strike).", en: "Spend the procs before they expire: Rime (Howling Blast / Frost Strike)." }
+  - { pt: "Não estoure Runic Power.", en: "Don't cap Runic Power." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: deathbringer
+    name: "Deathbringer"
+    markers: [439843, 441424]
+  - key: rider_of_the_apocalypse
+    name: "Rider of the Apocalypse"
+    markers: []
+
+abilities:
+  breath_of_sindragosa: { id: 1249658, name: "Breath of Sindragosa", cooldown_ms: 90000 }
+  frostwyrms_fury: { id: 279302, alt_ids: [1265384], name: "Frostwyrm's Fury", cooldown_ms: 90000 }
+  antimagic_shell: { id: 48707, name: "Anti-Magic Shell", cooldown_ms: 60000 }
+  pillar_of_frost: { id: 51271, name: "Pillar of Frost", cooldown_ms: 45000 }
+  reapers_mark: { id: 439843, name: "Reaper's Mark", cooldown_ms: 45000, tree: deathbringer }
+  empower_rune_weapon: { id: 47568, name: "Empower Rune Weapon", cooldown_ms: 30000, charges: 2 }
+  remorseless_winter: { id: 196770, name: "Remorseless Winter", cooldown_ms: 20000 }
+  obliterate: { id: 49020, name: "Obliterate" }
+  howling_blast: { id: 49184, name: "Howling Blast" }
+  frost_strike: { id: 49143, name: "Frost Strike" }
+  frostscythe: { id: 207230, name: "Frostscythe" }
+
+buffs:
+  frost_fever: { id: 55095, name: "Frost Fever" }
+  killing_machine: { id: 51124, name: "Killing Machine" }
+  rime: { id: 59052, name: "Rime" }
+  gathering_storm: { id: 211805, name: "Gathering Storm" }
+
+priority:
+  deathbringer:
+    st:
+      - { spell: antimagic_shell }
+      - { spell: pillar_of_frost }
+      - { spell: breath_of_sindragosa, note: { pt: "sem Breath of Sindragosa", en: "without Breath of Sindragosa" } }
+      - { spell: reapers_mark }
+      - { spell: frostwyrms_fury, note: { pt: "com Chosen Of Frostbrood Fwf", en: "with Chosen Of Frostbrood Fwf" } }
+      - { spell: empower_rune_weapon }
+      - { spell: empower_rune_weapon, note: { pt: "perto de encher as cargas", en: "close to capping charges" } }
+      - { spell: obliterate }
+      - { spell: howling_blast, note: { pt: "com Rime", en: "with Rime" } }
+      - { spell: frost_strike }
+      - { spell: frost_strike, note: { pt: "perto do máximo de Runic Power", en: "near max Runic Power" } }
+      - { spell: obliterate, note: { pt: "com Killing Machine", en: "with Killing Machine" } }
+      - { spell: howling_blast, note: { pt: "sem Killing Machine", en: "without Killing Machine" } }
+    aoe:
+      - { spell: antimagic_shell }
+      - { spell: remorseless_winter }
+      - { spell: pillar_of_frost }
+      - { spell: breath_of_sindragosa, note: { pt: "sem Breath of Sindragosa", en: "without Breath of Sindragosa" } }
+      - { spell: reapers_mark }
+      - { spell: frostwyrms_fury, note: { pt: "com Chosen Of Frostbrood Fwf", en: "with Chosen Of Frostbrood Fwf" } }
+      - { spell: empower_rune_weapon }
+      - { spell: empower_rune_weapon, note: { pt: "perto de encher as cargas", en: "close to capping charges" } }
+      - { spell: frostscythe, note: { pt: "com 2 Killing Machine", en: "with 2 Killing Machine" } }
+      - { spell: frost_strike, note: { pt: "com Frostbane", en: "with Frostbane" } }
+      - { spell: frostscythe, note: { pt: "com Killing Machine, com 3+ Runes", en: "with Killing Machine, with 3+ Runes" } }
+      - { spell: obliterate }
+      - { spell: howling_blast }
+      - { spell: frost_strike }
+  rider_of_the_apocalypse:
+    st:
+      - { spell: antimagic_shell }
+      - { spell: pillar_of_frost }
+      - { spell: breath_of_sindragosa, note: { pt: "sem Breath of Sindragosa", en: "without Breath of Sindragosa" } }
+      - { spell: reapers_mark }
+      - { spell: frostwyrms_fury }
+      - { spell: frostwyrms_fury, note: { pt: "com Chosen Of Frostbrood Fwf", en: "with Chosen Of Frostbrood Fwf" } }
+      - { spell: empower_rune_weapon }
+      - { spell: empower_rune_weapon, note: { pt: "perto de encher as cargas", en: "close to capping charges" } }
+      - { spell: obliterate }
+      - { spell: howling_blast, note: { pt: "com Rime", en: "with Rime" } }
+      - { spell: frost_strike }
+      - { spell: frost_strike, note: { pt: "perto do máximo de Runic Power", en: "near max Runic Power" } }
+      - { spell: obliterate, note: { pt: "com Killing Machine", en: "with Killing Machine" } }
+      - { spell: howling_blast, note: { pt: "sem Killing Machine", en: "without Killing Machine" } }
+    aoe:
+      - { spell: antimagic_shell }
+      - { spell: remorseless_winter }
+      - { spell: pillar_of_frost }
+      - { spell: breath_of_sindragosa, note: { pt: "sem Breath of Sindragosa", en: "without Breath of Sindragosa" } }
+      - { spell: reapers_mark }
+      - { spell: frostwyrms_fury }
+      - { spell: frostwyrms_fury, note: { pt: "com Chosen Of Frostbrood Fwf", en: "with Chosen Of Frostbrood Fwf" } }
+      - { spell: empower_rune_weapon }
+      - { spell: empower_rune_weapon, note: { pt: "perto de encher as cargas", en: "close to capping charges" } }
+      - { spell: frostscythe, note: { pt: "com 2 Killing Machine", en: "with 2 Killing Machine" } }
+      - { spell: frost_strike, note: { pt: "com Frostbane", en: "with Frostbane" } }
+      - { spell: frostscythe, note: { pt: "com Killing Machine, com 3+ Runes", en: "with Killing Machine, with 3+ Runes" } }
+      - { spell: obliterate }
+      - { spell: howling_blast }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  deathbringer: [empower_rune_weapon, reapers_mark, pillar_of_frost, breath_of_sindragosa, frostwyrms_fury]
+  rider_of_the_apocalypse: [pillar_of_frost, breath_of_sindragosa, reapers_mark, frostwyrms_fury]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: resource_waste
+    id: runic_power
+    power_type: 6
+    resource: "Runic Power"
+    importance: high
+    title: { pt: "Runic Power desperdiçado", en: "Runic Power wasted" }
+    tip: { pt: "Gaste com Breath of Sindragosa / Frost Strike antes de chegar ao máximo de Runic Power.", en: "Spend with Breath of Sindragosa / Frost Strike before reaching max Runic Power." }
+    from: [obliterate, antimagic_shell, howling_blast, frostscythe, reapers_mark]
+  - kind: dot_uptime
+    id: frost_fever
+    debuff: frost_fever
+    min_uptime: 0.95
+    importance: medium
+    title: { pt: "Frost Fever fora do alvo", en: "Frost Fever off the target" }
+    tip: { pt: "Frost Fever sempre no alvo: renove no pandemic.", en: "Frost Fever always on the target: refresh in pandemic." }
+  - kind: proc
+    id: rime
+    buff: rime
+    spenders: [howling_blast, frost_strike]
+    importance: medium
+    title: { pt: "Rime perdido", en: "Rime lost" }
+    tip: { pt: "Rime melhora o próximo Howling Blast / Frost Strike: use antes de acabar.", en: "Rime empowers the next Howling Blast / Frost Strike: use it before it expires." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [pillar_of_frost, breath_of_sindragosa, reapers_mark, frostwyrms_fury, empower_rune_weapon]
+    min_usage: 0.85
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Anti-Magic Shell, Pillar of Frost, Breath of Sindragosa, Reaper's Mark no cooldown.", en: "Anti-Magic Shell, Pillar of Frost, Breath of Sindragosa, Reaper's Mark on cooldown." }

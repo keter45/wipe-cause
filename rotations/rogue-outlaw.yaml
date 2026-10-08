@@ -1,0 +1,133 @@
+# Outlaw Rogue — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 30 pulls nos logs; metas calibradas em 30 pulls dos tops.
+#
+# Removido na calibração:
+#   - Blade Rush da checagem de cooldown (os tops usam 42% dos possíveis)
+spec: 260
+name: "Outlaw Rogue"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL rogue_outlaw (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/rogue_outlaw.simc
+  - title: "Wowhead — Outlaw Rogue Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/rogue/outlaw/rotation-cooldowns-pve-dps
+
+# casts no log que não são o player apertando um botão
+ignore_casts: [426586]
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Adrenaline Rush, Preparation, Keep It Rolling, Roll the Bones, Between the Eyes, Killing Spree, Blade Flurry.", en: "Cooldowns on cooldown: Adrenaline Rush, Preparation, Keep It Rolling, Roll the Bones, Between the Eyes, Killing Spree, Blade Flurry." }
+  - { pt: "Gaste os procs antes de acabar: Opportunity (Pistol Shot).", en: "Spend the procs before they expire: Opportunity (Pistol Shot)." }
+  - { pt: "Não estoure Energy.", en: "Don't cap Energy." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: trickster
+    name: "Trickster"
+    markers: [441776, 441326]
+  - key: fatebound
+    name: "Fatebound"
+    markers: []
+
+abilities:
+  keep_it_rolling: { id: 381989, name: "Keep It Rolling", cooldown_ms: 360000 }
+  preparation: { id: 1277933, name: "Preparation", cooldown_ms: 240000 }
+  adrenaline_rush: { id: 13750, name: "Adrenaline Rush", cooldown_ms: 180000 }
+  killing_spree: { id: 51690, name: "Killing Spree", cooldown_ms: 180000 }
+  blade_rush: { id: 271877, name: "Blade Rush", cooldown_ms: 60000 }
+  roll_the_bones: { id: 1214909, name: "Roll the Bones", cooldown_ms: 45000 }
+  between_the_eyes: { id: 315341, name: "Between the Eyes", cooldown_ms: 45000 }
+  blade_flurry: { id: 13877, name: "Blade Flurry", cooldown_ms: 30000 }
+  vanish: { id: 1856, name: "Vanish", cooldown_ms: 1000 }
+  coup_de_grace: { id: 441776, name: "Coup de Grace", tree: trickster }
+  dispatch: { id: 2098, name: "Dispatch" }
+  pistol_shot: { id: 185763, name: "Pistol Shot" }
+
+buffs:
+  opportunity: { id: 195627, name: "Opportunity" }
+
+priority:
+  trickster:
+    st:
+      - { spell: adrenaline_rush, note: { pt: "sem Adrenaline Rush", en: "without Adrenaline Rush" } }
+      - { spell: preparation }
+      - { spell: keep_it_rolling }
+      - { spell: roll_the_bones }
+      - { spell: vanish, note: { pt: "sem Audacity, sem Opportunity", en: "without Audacity, without Opportunity" } }
+      - { spell: between_the_eyes }
+      - { spell: killing_spree }
+      - { spell: coup_de_grace }
+      - { spell: dispatch }
+    aoe:
+      - { spell: adrenaline_rush, note: { pt: "sem Adrenaline Rush", en: "without Adrenaline Rush" } }
+      - { spell: blade_flurry, note: { pt: "2+ alvos", en: "2+ targets" } }
+      - { spell: preparation }
+      - { spell: keep_it_rolling }
+      - { spell: roll_the_bones }
+      - { spell: blade_rush }
+      - { spell: vanish, note: { pt: "sem Audacity, sem Opportunity", en: "without Audacity, without Opportunity" } }
+      - { spell: between_the_eyes }
+      - { spell: killing_spree }
+      - { spell: coup_de_grace }
+      - { spell: dispatch }
+  fatebound:
+    st:
+      - { spell: adrenaline_rush, note: { pt: "sem Adrenaline Rush", en: "without Adrenaline Rush" } }
+      - { spell: preparation }
+      - { spell: keep_it_rolling }
+      - { spell: roll_the_bones }
+      - { spell: vanish, note: { pt: "sem Audacity, sem Opportunity", en: "without Audacity, without Opportunity" } }
+      - { spell: between_the_eyes }
+      - { spell: killing_spree }
+      - { spell: coup_de_grace }
+      - { spell: dispatch }
+    aoe:
+      - { spell: adrenaline_rush, note: { pt: "sem Adrenaline Rush", en: "without Adrenaline Rush" } }
+      - { spell: blade_flurry, note: { pt: "2+ alvos", en: "2+ targets" } }
+      - { spell: preparation }
+      - { spell: keep_it_rolling }
+      - { spell: roll_the_bones }
+      - { spell: blade_rush }
+      - { spell: vanish, note: { pt: "sem Audacity, sem Opportunity", en: "without Audacity, without Opportunity" } }
+      - { spell: between_the_eyes }
+      - { spell: killing_spree }
+      - { spell: coup_de_grace }
+      - { spell: dispatch }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  trickster: [roll_the_bones, between_the_eyes, killing_spree]
+  fatebound: [adrenaline_rush, preparation, keep_it_rolling, roll_the_bones]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: resource_waste
+    id: energy
+    power_type: 3
+    resource: "Energy"
+    importance: high
+    title: { pt: "Energy desperdiçado", en: "Energy wasted" }
+    tip: { pt: "Gaste com Roll the Bones / Between the Eyes antes de chegar ao máximo de Energy.", en: "Spend with Roll the Bones / Between the Eyes before reaching max Energy." }
+    from: [blade_rush]
+  - kind: proc
+    id: opportunity
+    buff: opportunity
+    spenders: [pistol_shot]
+    importance: medium
+    title: { pt: "Opportunity perdido", en: "Opportunity lost" }
+    tip: { pt: "Opportunity melhora o próximo Pistol Shot: use antes de acabar.", en: "Opportunity empowers the next Pistol Shot: use it before it expires." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [adrenaline_rush, preparation, keep_it_rolling, roll_the_bones, between_the_eyes, killing_spree, blade_flurry]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Adrenaline Rush, Preparation, Keep It Rolling, Roll the Bones no cooldown.", en: "Adrenaline Rush, Preparation, Keep It Rolling, Roll the Bones on cooldown." }

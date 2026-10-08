@@ -1,0 +1,773 @@
+{
+ "spec": 252,
+ "name": "Unholy Death Knight",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.004,
+   "cpm": 36.1,
+   "checks": {
+    "always_be_casting": 0.996,
+    "sudden_doom": 1,
+    "runic_power": 0.971,
+    "virulent_plague": 0.966,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 1,
+     "first": 3925,
+     "early": 1
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 1,
+     "first": 3903,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 4713,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.022
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.228
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.222
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.003
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.097
+    },
+    "207317": {
+     "name": "Epidemic",
+     "share": 0.078
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.059
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.093
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.038
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.113
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.038
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 2487,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 37.5,
+   "checks": {
+    "always_be_casting": 1,
+    "sudden_doom": 1,
+    "runic_power": 0.941,
+    "virulent_plague": 0.96,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 1,
+     "first": 3490,
+     "early": 1
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 1,
+     "first": 3896,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 4432,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.02
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.344
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.22
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.005
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.088
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.062
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.086
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.038
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.086
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.038
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 3067,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.005,
+   "cpm": 38.2,
+   "checks": {
+    "always_be_casting": 0.995,
+    "sudden_doom": 1,
+    "cooldowns": 1,
+    "runic_power": 0.991,
+    "virulent_plague": 1
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 1,
+     "first": 3449,
+     "early": 1
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 1,
+     "first": 3544,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 4399,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.02
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.331
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.229
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.004
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.089
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.067
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.089
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.036
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.102
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.037
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 3531,
+    "second": 368147
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.04,
+   "cpm": 36.2,
+   "checks": {
+    "always_be_casting": 0.96,
+    "sudden_doom": 1,
+    "cooldowns": 0.976,
+    "runic_power": 0.949,
+    "virulent_plague": 0.961
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 1,
+     "first": 3375,
+     "early": 1
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 0.929,
+     "first": 3757,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 4594,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.019
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.345
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.22
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.01
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.092
+    },
+    "207317": {
+     "name": "Epidemic",
+     "share": 0
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.065
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.088
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.035
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.096
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.035
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 1721,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.011,
+   "cpm": 36.9,
+   "checks": {
+    "sudden_doom": 1,
+    "always_be_casting": 0.989,
+    "runic_power": 0.914,
+    "virulent_plague": 0.976,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 1,
+     "first": 3483,
+     "early": 1
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 1,
+     "first": 3830,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 4457,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.019
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.319
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.22
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.019
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.095
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.056
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.092
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.038
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.097
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.038
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.002,
+   "cpm": 38,
+   "checks": {
+    "always_be_casting": 0.998,
+    "sudden_doom": 1,
+    "virulent_plague": 0.957,
+    "runic_power": 0.968,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 1,
+     "first": 3298,
+     "early": 1
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 1,
+     "first": 3496,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 4259,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.021
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.322
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.209
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.004
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.096
+    },
+    "207317": {
+     "name": "Epidemic",
+     "share": 0.004
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.062
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.091
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.037
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.103
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.037
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 3027,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 36.2,
+   "checks": {
+    "always_be_casting": 1,
+    "sudden_doom": 1,
+    "runic_power": 0.931,
+    "cooldowns": 0.958,
+    "virulent_plague": 0.965
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 1,
+     "first": 3290,
+     "early": 1
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 0.875,
+     "first": 3891,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 4503,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.021
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.314
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.217
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.013
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.092
+    },
+    "207317": {
+     "name": "Epidemic",
+     "share": 0.008
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.057
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.089
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.037
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.105
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.037
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.021,
+   "cpm": 34.3,
+   "checks": {
+    "sudden_doom": 0.985,
+    "always_be_casting": 0.979,
+    "runic_power": 0.894,
+    "cooldowns": 0.929,
+    "virulent_plague": 0.992
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 0.857,
+     "first": 45995,
+     "early": 0.25
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 0.929,
+     "first": 2621,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 3061,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.017
+    },
+    "43265": {
+     "name": "Death and Decay",
+     "share": 0.017
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.237
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.183
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.019
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.1
+    },
+    "207317": {
+     "name": "Epidemic",
+     "share": 0.081
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.071
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.092
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.038
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.105
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.038
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 289939,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 38.9,
+   "checks": {
+    "always_be_casting": 1,
+    "sudden_doom": 1,
+    "virulent_plague": 0.968,
+    "runic_power": 0.944,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "42650": {
+     "name": "Army of the Dead",
+     "usage": 1,
+     "first": 3430,
+     "early": 1
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "usage": 1,
+     "first": 3737,
+     "early": 1
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "usage": 1,
+     "first": 4336,
+     "early": 1
+    }
+   },
+   "mix": {
+    "42650": {
+     "name": "Army of the Dead",
+     "share": 0.02
+    },
+    "47541": {
+     "name": "Death Coil",
+     "share": 0.318
+    },
+    "55090": {
+     "name": "Scourge Strike",
+     "share": 0.225
+    },
+    "77575": {
+     "name": "Outbreak",
+     "share": 0.011
+    },
+    "85948": {
+     "name": "Festering Strike",
+     "share": 0.097
+    },
+    "207317": {
+     "name": "Epidemic",
+     "share": 0
+    },
+    "343294": {
+     "name": "Soul Reaper",
+     "share": 0.059
+    },
+    "458128": {
+     "name": "Festering Scythe",
+     "share": 0.096
+    },
+    "1233448": {
+     "name": "Dark Transformation",
+     "share": 0.036
+    },
+    "1247378": {
+     "name": "Putrefy",
+     "share": 0.108
+    },
+    "1271967": {
+     "name": "Blightfall",
+     "share": 0.036
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 3640,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

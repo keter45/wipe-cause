@@ -1,0 +1,577 @@
+{
+ "spec": 64,
+ "name": "Frost Mage",
+ "pulls": 38,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.002,
+   "cpm": 45.6,
+   "checks": {
+    "always_be_casting": 0.998,
+    "brain_freeze": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 573,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 1,
+     "first": 1816,
+     "early": 1
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "usage": 1,
+     "first": 2080,
+     "early": 1
+    }
+   },
+   "mix": {
+    "116": {
+     "name": "Frostbolt",
+     "share": 0.111
+    },
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.528
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.17
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.045
+    },
+    "190356": {
+     "name": "Blizzard",
+     "share": 0
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.093
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "share": 0.036
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 1220,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.005,
+   "cpm": 46.1,
+   "checks": {
+    "always_be_casting": 0.995,
+    "brain_freeze": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 231,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 1,
+     "first": 1600,
+     "early": 1
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "usage": 1,
+     "first": 2264,
+     "early": 1
+    }
+   },
+   "mix": {
+    "116": {
+     "name": "Frostbolt",
+     "share": 0.114
+    },
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.54
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.165
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.048
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.096
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "share": 0.033
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 823,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 5,
+   "downtimePct": 0.011,
+   "cpm": 35,
+   "checks": {
+    "always_be_casting": 0.989,
+    "brain_freeze": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 24,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 1,
+     "first": 1192,
+     "early": 0.8
+    }
+   },
+   "mix": {
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.508
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.294
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.031
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.156
+    }
+   },
+   "potion": {
+    "used": 0.4,
+    "first": 718,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 5,
+   "downtimePct": 0.002,
+   "cpm": 40.5,
+   "checks": {
+    "always_be_casting": 0.998,
+    "brain_freeze": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 486,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 1,
+     "first": 1474,
+     "early": 1
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "usage": 1,
+     "first": 2122,
+     "early": 1
+    }
+   },
+   "mix": {
+    "116": {
+     "name": "Frostbolt",
+     "share": 0.07
+    },
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.572
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.161
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.047
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.11
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "share": 0.038
+    }
+   },
+   "potion": {
+    "used": 0.8,
+    "first": 1257,
+    "second": 393590
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.009,
+   "cpm": 44.2,
+   "checks": {
+    "always_be_casting": 0.991,
+    "brain_freeze": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 405,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 1,
+     "first": 4967,
+     "early": 1
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "usage": 1,
+     "first": 1633,
+     "early": 1
+    }
+   },
+   "mix": {
+    "116": {
+     "name": "Frostbolt",
+     "share": 0.091
+    },
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.556
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.154
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.046
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.111
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "share": 0.041
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.004,
+   "cpm": 33.1,
+   "checks": {
+    "always_be_casting": 0.996,
+    "brain_freeze": 1,
+    "cooldowns": 0.976
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 534,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 0.929,
+     "first": 3145,
+     "early": 1
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "usage": 1,
+     "first": 2240,
+     "early": 1
+    }
+   },
+   "mix": {
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.455
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.285
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.03
+    },
+    "153595": {
+     "name": "Comet Storm",
+     "share": 0.035
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.159
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "share": 0.035
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 2350,
+    "second": 310909
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 47,
+   "checks": {
+    "always_be_casting": 1,
+    "brain_freeze": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 3452,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 1,
+     "first": 4923,
+     "early": 1
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "usage": 1,
+     "first": 1287,
+     "early": 1
+    }
+   },
+   "mix": {
+    "116": {
+     "name": "Frostbolt",
+     "share": 0.106
+    },
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.559
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.165
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.043
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.093
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "share": 0.035
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 560,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.032,
+   "cpm": 39.3,
+   "checks": {
+    "always_be_casting": 0.968,
+    "brain_freeze": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 171,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 1,
+     "first": 5453,
+     "early": 1
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "usage": 1,
+     "first": 1439,
+     "early": 1
+    }
+   },
+   "mix": {
+    "116": {
+     "name": "Frostbolt",
+     "share": 0.111
+    },
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.516
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.174
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.048
+    },
+    "190356": {
+     "name": "Blizzard",
+     "share": 0.003
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.106
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "share": 0.04
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 128145,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 38.6,
+   "checks": {
+    "always_be_casting": 1,
+    "brain_freeze": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "44614": {
+     "name": "Flurry",
+     "usage": 1,
+     "first": 249,
+     "early": 1
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "usage": 1,
+     "first": 1411,
+     "early": 1
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "usage": 1,
+     "first": 2342,
+     "early": 1
+    }
+   },
+   "mix": {
+    "116": {
+     "name": "Frostbolt",
+     "share": 0
+    },
+    "30455": {
+     "name": "Ice Lance",
+     "share": 0.503
+    },
+    "44614": {
+     "name": "Flurry",
+     "share": 0.295
+    },
+    "84714": {
+     "name": "Frozen Orb",
+     "share": 0.029
+    },
+    "199786": {
+     "name": "Glacial Spike",
+     "share": 0.164
+    },
+    "205021": {
+     "name": "Ray of Frost",
+     "share": 0
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 110,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

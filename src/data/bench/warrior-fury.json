@@ -1,0 +1,822 @@
+{
+ "spec": 72,
+ "name": "Fury Warrior",
+ "pulls": 33,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.006,
+   "cpm": 65.5,
+   "checks": {
+    "rage": 0.855,
+    "always_be_casting": 0.994,
+    "sudden_death": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 767,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 31379,
+     "early": 0
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 2033,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.028
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.023
+    },
+    "5308": {
+     "name": "Execute",
+     "share": 0
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.026
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0.007
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.166
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.383
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.078
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.076
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.155
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.016
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.023
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 754,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 3,
+   "downtimePct": 0,
+   "cpm": 66.9,
+   "checks": {
+    "rage": 0.958,
+    "always_be_casting": 1,
+    "sudden_death": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 1040,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 1185,
+     "early": 1
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 3798,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.016
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.024
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.057
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0.005
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.149
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.417
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.01
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.076
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.189
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.02
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.027
+    }
+   },
+   "potion": {
+    "used": 0.67,
+    "first": 153079,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.011,
+   "cpm": 70.4,
+   "checks": {
+    "rage": 0.92,
+    "always_be_casting": 0.989,
+    "sudden_death": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 1050,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 4386,
+     "early": 0.75
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 2536,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.025
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.02
+    },
+    "5308": {
+     "name": "Execute",
+     "share": 0.097
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.023
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0.01
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.16
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.325
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.156
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.07
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.102
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.016
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.02
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 189889,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.002,
+   "cpm": 68,
+   "checks": {
+    "rage": 0.938,
+    "always_be_casting": 0.998,
+    "sudden_death": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 1004,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 17899,
+     "early": 0.5
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 4496,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.01
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.022
+    },
+    "5308": {
+     "name": "Execute",
+     "share": 0.048
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.037
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0.003
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.155
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.369
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.091
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.075
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.14
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.018
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.022
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 860,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.018,
+   "cpm": 71.3,
+   "checks": {
+    "rage": 0.949,
+    "always_be_casting": 0.982,
+    "sudden_death": 0.99,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 1527,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 1578,
+     "early": 0.75
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 3994,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.007
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.019
+    },
+    "5308": {
+     "name": "Execute",
+     "share": 0.108
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.039
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0.001
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.167
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.355
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.06
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.071
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.138
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.017
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.022
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 6984,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 3,
+   "downtimePct": 0,
+   "cpm": 69.8,
+   "checks": {
+    "rage": 0.926,
+    "always_be_casting": 1,
+    "sudden_death": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 10341,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 27769,
+     "early": 0.33
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 25037,
+     "early": 0
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.006
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.019
+    },
+    "5308": {
+     "name": "Execute",
+     "share": 0.101
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.071
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.171
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.345
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.09
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.071
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.096
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.013
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.02
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.008,
+   "cpm": 68.1,
+   "checks": {
+    "rage": 0.924,
+    "always_be_casting": 0.992,
+    "sudden_death": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 935,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 19218,
+     "early": 0.25
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 2053,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.013
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.022
+    },
+    "5308": {
+     "name": "Execute",
+     "share": 0.049
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.024
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0.009
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.155
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.379
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.042
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.094
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.179
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.015
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.024
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.043,
+   "cpm": 60.8,
+   "checks": {
+    "rage": 0.917,
+    "always_be_casting": 0.957,
+    "sudden_death": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 551,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 9303,
+     "early": 1
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 1996,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.023
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.021
+    },
+    "5308": {
+     "name": "Execute",
+     "share": 0.112
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.033
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0.007
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.134
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.338
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.115
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.076
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.111
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.019
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.021
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 118259,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 3,
+   "downtimePct": 0,
+   "cpm": 62.9,
+   "checks": {
+    "rage": 0.906,
+    "always_be_casting": 1,
+    "sudden_death": 0.97,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1719": {
+     "name": "Recklessness",
+     "usage": 1,
+     "first": 1986,
+     "early": 1
+    },
+    "107574": {
+     "name": "Avatar",
+     "usage": 1,
+     "first": 3486,
+     "early": 1
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "usage": 1,
+     "first": 11891,
+     "early": 0.5
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "usage": 1,
+     "first": 4830,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100": {
+     "name": "Charge",
+     "share": 0.018
+    },
+    "1719": {
+     "name": "Recklessness",
+     "share": 0.021
+    },
+    "5308": {
+     "name": "Execute",
+     "share": 0
+    },
+    "6343": {
+     "name": "Thunder Clap",
+     "share": 0
+    },
+    "23881": {
+     "name": "Bloodthirst",
+     "share": 0.024
+    },
+    "52174": {
+     "name": "Heroic Leap",
+     "share": 0.003
+    },
+    "85288": {
+     "name": "Raging Blow",
+     "share": 0.133
+    },
+    "107574": {
+     "name": "Avatar",
+     "share": 0
+    },
+    "184367": {
+     "name": "Rampage",
+     "share": 0.325
+    },
+    "190411": {
+     "name": "Whirlwind",
+     "share": 0.151
+    },
+    "335096": {
+     "name": "Bloodbath",
+     "share": 0.082
+    },
+    "335097": {
+     "name": "Crushing Blow",
+     "share": 0.096
+    },
+    "385059": {
+     "name": "Odyn's Fury",
+     "share": 0.015
+    },
+    "435222": {
+     "name": "Thunder Blast",
+     "share": 0
+    },
+    "446035": {
+     "name": "Bladestorm",
+     "share": 0.021
+    }
+   },
+   "potion": {
+    "used": 0.67,
+    "first": 2538,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

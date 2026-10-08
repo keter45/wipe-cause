@@ -1,0 +1,137 @@
+# Frost Mage — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 38 pulls nos logs; metas calibradas em 38 pulls dos tops.
+#
+# Removido na calibração:
+#   - Ray of Frost vira opcional na checagem de cooldown (21% dos tops não usam)
+#   - Freezing Rain perdido (os tops "perdem" 91%: o buff é gasto por outra coisa ou de propósito)
+spec: 64
+name: "Frost Mage"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL mage_frost (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/mage_frost.simc
+  - title: "Wowhead — Frost Mage Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/mage/frost/rotation-cooldowns-pve-dps
+
+# casts no log que não são o player apertando um botão
+ignore_casts: [110960]
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Ray of Frost, Flurry, Frozen Orb.", en: "Cooldowns on cooldown: Ray of Frost, Flurry, Frozen Orb." }
+  - { pt: "Gaste os procs antes de acabar: Brain Freeze (Flurry).", en: "Spend the procs before they expire: Brain Freeze (Flurry)." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: frostfire
+    name: "Frostfire"
+    markers: [431044, 431177]
+  - key: spellslinger
+    name: "Spellslinger"
+    markers: [1247908, 444754]
+
+abilities:
+  ray_of_frost: { id: 205021, name: "Ray of Frost", channel_ms: 4000, cooldown_ms: 60000, optional: true }
+  frozen_orb: { id: 84714, name: "Frozen Orb", cooldown_ms: 60000 }
+  flurry: { id: 44614, name: "Flurry", cooldown_ms: 30000, charges: 2 }
+  ice_nova: { id: 157997, name: "Ice Nova", cooldown_ms: 25000, optional: true }
+  cone_of_cold: { id: 120, name: "Cone of Cold", cooldown_ms: 25000 }
+  blizzard: { id: 190356, name: "Blizzard", cast_ms: 2000, cooldown_ms: 12000, optional: true }
+  comet_storm: { id: 153595, name: "Comet Storm" }
+  glacial_spike: { id: 199786, name: "Glacial Spike", cast_ms: 1750 }
+  ice_lance: { id: 30455, name: "Ice Lance" }
+  frostbolt: { id: 116, name: "Frostbolt", cast_ms: 1750 }
+
+buffs:
+  brain_freeze: { id: 190446, name: "Brain Freeze" }
+  freezing_rain: { id: 270232, name: "Freezing Rain" }
+
+priority:
+  frostfire:
+    st:
+      - { spell: ray_of_frost }
+      - { spell: flurry }
+      - { spell: frozen_orb }
+      - { spell: comet_storm }
+      - { spell: glacial_spike }
+      - { spell: flurry, note: { pt: "com Brain Freeze, sem Thermal Void", en: "with Brain Freeze, without Thermal Void" } }
+      - { spell: ice_lance, note: { pt: "com 2 Fingers of Frost", en: "with 2 Fingers of Frost" } }
+      - { spell: ice_lance, note: { pt: "com Fingers of Frost, com Thermal Void", en: "with Fingers of Frost, with Thermal Void" } }
+      - { spell: frostbolt }
+      - { spell: blizzard, note: { pt: "com Freezing Rain", en: "with Freezing Rain" } }
+      - { spell: ice_nova }
+      - { spell: cone_of_cold }
+    aoe:
+      - { spell: ray_of_frost }
+      - { spell: flurry }
+      - { spell: frozen_orb }
+      - { spell: comet_storm }
+      - { spell: glacial_spike }
+      - { spell: flurry, note: { pt: "com Brain Freeze, sem Thermal Void", en: "with Brain Freeze, without Thermal Void" } }
+      - { spell: ice_lance, note: { pt: "com 2 Fingers of Frost", en: "with 2 Fingers of Frost" } }
+      - { spell: blizzard }
+      - { spell: ice_lance, note: { pt: "com Fingers of Frost, com Thermal Void", en: "with Fingers of Frost, with Thermal Void" } }
+      - { spell: ice_nova, note: { pt: "5+ alvos, sem Frostfire Empowerment", en: "5+ targets, without Frostfire Empowerment" } }
+      - { spell: cone_of_cold, note: { pt: "5+ alvos, sem Frostfire Empowerment", en: "5+ targets, without Frostfire Empowerment" } }
+      - { spell: frostbolt }
+      - { spell: blizzard, note: { pt: "com Freezing Rain", en: "with Freezing Rain" } }
+      - { spell: ice_nova }
+  spellslinger:
+    st:
+      - { spell: flurry }
+      - { spell: frozen_orb }
+      - { spell: ray_of_frost }
+      - { spell: comet_storm }
+      - { spell: flurry, note: { pt: "com Brain Freeze, sem Thermal Void", en: "with Brain Freeze, without Thermal Void" } }
+      - { spell: ice_lance, note: { pt: "com 2 Fingers of Frost", en: "with 2 Fingers of Frost" } }
+      - { spell: glacial_spike }
+      - { spell: blizzard, note: { pt: "com Freezing Rain", en: "with Freezing Rain" } }
+      - { spell: ice_lance, note: { pt: "com Fingers of Frost", en: "with Fingers of Frost" } }
+      - { spell: blizzard }
+      - { spell: frostbolt }
+      - { spell: ice_nova }
+      - { spell: cone_of_cold }
+    aoe:
+      - { spell: flurry }
+      - { spell: frozen_orb }
+      - { spell: ray_of_frost }
+      - { spell: comet_storm }
+      - { spell: flurry, note: { pt: "com Brain Freeze, sem Thermal Void", en: "with Brain Freeze, without Thermal Void" } }
+      - { spell: ice_lance, note: { pt: "com 2 Fingers of Frost", en: "with 2 Fingers of Frost" } }
+      - { spell: glacial_spike }
+      - { spell: blizzard, note: { pt: "com Freezing Rain", en: "with Freezing Rain" } }
+      - { spell: ice_lance, note: { pt: "com Fingers of Frost", en: "with Fingers of Frost" } }
+      - { spell: ice_nova, note: { pt: "4+ alvos", en: "4+ targets" } }
+      - { spell: cone_of_cold, note: { pt: "4+ alvos", en: "4+ targets" } }
+      - { spell: blizzard }
+      - { spell: frostbolt }
+      - { spell: ice_nova }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  frostfire: [flurry, frozen_orb]
+  spellslinger: [flurry, ray_of_frost, frozen_orb]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: proc
+    id: brain_freeze
+    buff: brain_freeze
+    spenders: [flurry]
+    importance: medium
+    title: { pt: "Brain Freeze perdido", en: "Brain Freeze lost" }
+    tip: { pt: "Brain Freeze melhora o próximo Flurry: use antes de acabar.", en: "Brain Freeze empowers the next Flurry: use it before it expires." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [ray_of_frost, flurry, frozen_orb]
+    min_usage: 0.85
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Ray of Frost, Flurry, Frozen Orb no cooldown.", en: "Ray of Frost, Flurry, Frozen Orb on cooldown." }

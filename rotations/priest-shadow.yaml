@@ -107,11 +107,13 @@ priority:
       - { spell: void_volley }
       - { spell: mind_flay }
 
-# Abertura: DoTs e os cooldowns nos primeiros segundos
+# Abertura: Tentacle Slam e os cooldowns nos primeiros segundos. Pelos tops (36 lutas, 32 Archon):
+# 81% abrem assim; os outros 19% seguram Halo, Voidform e Power Infusion juntos para mais tarde, e o
+# Shadow Word: Pain fica fora da janela em 34% deles
 opener:
   window_ms: 12000
   ordered: false
-  archon: [tentacle_slam, shadow_word_pain, halo, voidform, power_infusion]
+  archon: [tentacle_slam, halo, voidform, power_infusion]
   voidweaver: [tentacle_slam, shadow_word_pain, voidform, power_infusion, void_torrent]
 
 checks:

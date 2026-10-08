@@ -47,6 +47,7 @@ abilities:
 
 buffs:
   backdraft: { id: 117828, name: Backdraft }
+  fiendish_cruelty: { id: 1245664, name: Fiendish Cruelty }
   wither: { id: 445474, name: Wither }
   immolate: { id: 157736, name: Immolate }
 
@@ -125,6 +126,14 @@ checks:
     importance: low
     title: { pt: "Backdraft perdido", en: "Backdraft lost" }
     tip: { pt: "O Backdraft do Conflagrate acelera o próximo Chaos Bolt: não deixe expirar.", en: "Conflagrate's Backdraft speeds up the next Chaos Bolt: don't let it expire." }
+  # pelos tops (29 lutas): gastam o Fiendish Cruelty em 100% das vezes
+  - kind: proc
+    id: fiendish_cruelty
+    buff: fiendish_cruelty
+    spenders: [shadowburn]
+    importance: medium
+    title: { pt: "Fiendish Cruelty perdido", en: "Fiendish Cruelty lost" }
+    tip: { pt: "Com Fiendish Cruelty, o próximo Shadowburn sai mais forte: gaste antes dos 30s acabarem.", en: "With Fiendish Cruelty, the next Shadowburn hits harder: spend it before the 30s run out." }
   - kind: cooldown
     id: cooldowns
     spells: [summon_infernal, malevolence, soul_fire, conflagrate]

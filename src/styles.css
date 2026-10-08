@@ -4550,6 +4550,11 @@ svg.wcl-mark {
 .rot-cd-bar {
   width: 40%;
 }
+.bench-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .rot-cd-bar .rot-rate {
   margin-top: 0;
 }

@@ -95,10 +95,12 @@ priority:
 
 # Abertura: pré-cast (Demonbolt / Power Siphon) e depois Grimoire, Dreadstalkers e o Tyrant logo de
 # cara (Grimoire e Dreadstalkers em qualquer ordem)
+# Pelos tops (34 lutas, todos Diabolist): Grimoire e Tyrant em até 12s em 91%; os Dreadstalkers
+# ficam fora dessa janela em muitos deles, então não entram na conta
 opener:
-  window_ms: 10000
+  window_ms: 12000
   ordered: false
-  diabolist: [grimoire, call_dreadstalkers, summon_demonic_tyrant, hand_of_guldan]
+  diabolist: [grimoire, summon_demonic_tyrant]
   soul_harvester: [grimoire, call_dreadstalkers, summon_demonic_tyrant, hand_of_guldan]
 
 checks:

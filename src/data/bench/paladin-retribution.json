@@ -1,0 +1,771 @@
+{
+ "spec": 70,
+ "name": "Retribution Paladin",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.005,
+   "cpm": 55.4,
+   "checks": {
+    "always_be_casting": 0.995,
+    "holy_power": 0.881,
+    "cooldowns": 1,
+    "expurgation": 0.922,
+    "divine_purpose": 1
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 1458,
+     "early": 1
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 1,
+     "first": 2618,
+     "early": 1
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 1,
+     "first": 1776,
+     "early": 1
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 1,
+     "first": 5433,
+     "early": 1
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.113
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.113
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.019
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.195
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.121
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.038
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.019
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.019
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.379
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 1434,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 57.3,
+   "checks": {
+    "always_be_casting": 1,
+    "holy_power": 0.872,
+    "cooldowns": 0.955,
+    "divine_purpose": 1,
+    "expurgation": 1
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 949,
+     "early": 1
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 0.962,
+     "first": 3082,
+     "early": 1
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 0.929,
+     "first": 1598,
+     "early": 1
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 0.929,
+     "first": 5787,
+     "early": 1
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.097
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.123
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.018
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.132
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.115
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.035
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.018
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.018
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.441
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 391,
+    "second": 313088
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.001,
+   "cpm": 56,
+   "checks": {
+    "always_be_casting": 0.999,
+    "holy_power": 0.874,
+    "cooldowns": 0.991,
+    "divine_purpose": 1,
+    "expurgation": 0.999
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 1297,
+     "early": 1
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 0.964,
+     "first": 2069,
+     "early": 1
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 1,
+     "first": 3313,
+     "early": 1
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 1,
+     "first": 5425,
+     "early": 1
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.089
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.095
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.019
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.405
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.124
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.035
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.019
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.019
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.188
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 918,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.035,
+   "cpm": 53.9,
+   "checks": {
+    "always_be_casting": 0.965,
+    "holy_power": 0.863,
+    "cooldowns": 0.919,
+    "expurgation": 0.961,
+    "divine_purpose": 1
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 859,
+     "early": 1
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 0.859,
+     "first": 1616,
+     "early": 1
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 0.909,
+     "first": 881,
+     "early": 1
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 0.909,
+     "first": 5230,
+     "early": 1
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.106
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.106
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.018
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.203
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.115
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.034
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.018
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.018
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.377
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 198722,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.001,
+   "cpm": 55.7,
+   "checks": {
+    "always_be_casting": 0.999,
+    "holy_power": 0.852,
+    "expurgation": 0.98,
+    "divine_purpose": 1,
+    "cooldowns": 0.955
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 1943,
+     "early": 1
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 0.962,
+     "first": 2565,
+     "early": 1
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 0.929,
+     "first": 2012,
+     "early": 1
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 0.929,
+     "first": 5998,
+     "early": 1
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.101
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.104
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.018
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.215
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.112
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.035
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.018
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.019
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.369
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 1438,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.023,
+   "cpm": 55,
+   "checks": {
+    "always_be_casting": 0.977,
+    "cooldowns": 0.839,
+    "holy_power": 0.887,
+    "expurgation": 0.971,
+    "divine_purpose": 1
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 13794,
+     "early": 0.5
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 0.786,
+     "first": 14059,
+     "early": 0.5
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 0.786,
+     "first": 13795,
+     "early": 0.5
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 0.786,
+     "first": 18041,
+     "early": 0.5
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.122
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.104
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.015
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.235
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.133
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.029
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.015
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.015
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.306
+    },
+    "427453": {
+     "name": "Hammer of Light",
+     "share": 0
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 13527,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.003,
+   "cpm": 58.5,
+   "checks": {
+    "always_be_casting": 0.997,
+    "holy_power": 0.909,
+    "expurgation": 0.963,
+    "divine_purpose": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 1650,
+     "early": 1
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 1,
+     "first": 2062,
+     "early": 1
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 1,
+     "first": 2347,
+     "early": 1
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 1,
+     "first": 6234,
+     "early": 1
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.092
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.108
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.018
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.165
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.133
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.034
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.018
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.018
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.397
+    },
+    "427453": {
+     "name": "Hammer of Light",
+     "share": 0
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 1822,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.02,
+   "cpm": 48.1,
+   "checks": {
+    "always_be_casting": 0.98,
+    "holy_power": 0.841,
+    "cooldowns": 0.867,
+    "expurgation": 0.996,
+    "divine_purpose": 1
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 1323,
+     "early": 1
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 0.833,
+     "first": 2558,
+     "early": 1
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 0.818,
+     "first": 1796,
+     "early": 1
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 0.818,
+     "first": 6321,
+     "early": 1
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.104
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.101
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.019
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.292
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.123
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.037
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.019
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.019
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.283
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 287853,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.004,
+   "cpm": 57.4,
+   "checks": {
+    "always_be_casting": 0.996,
+    "holy_power": 0.883,
+    "cooldowns": 1,
+    "expurgation": 0.988,
+    "divine_purpose": 1
+   },
+   "cooldowns": {
+    "31884": {
+     "name": "Avenging Wrath",
+     "usage": 1,
+     "first": 4249,
+     "early": 1
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "usage": 1,
+     "first": 5872,
+     "early": 1
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "usage": 1,
+     "first": 4317,
+     "early": 1
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "usage": 1,
+     "first": 9130,
+     "early": 1
+    }
+   },
+   "mix": {
+    "20271": {
+     "name": "Judgment",
+     "share": 0.094
+    },
+    "24275": {
+     "name": "Hammer of Wrath",
+     "share": 0.105
+    },
+    "31884": {
+     "name": "Avenging Wrath",
+     "share": 0.018
+    },
+    "53385": {
+     "name": "Divine Storm",
+     "share": 0.399
+    },
+    "184575": {
+     "name": "Blade of Justice",
+     "share": 0.133
+    },
+    "255937": {
+     "name": "Wake of Ashes",
+     "share": 0.035
+    },
+    "343527": {
+     "name": "Execution Sentence",
+     "share": 0.018
+    },
+    "375576": {
+     "name": "Divine Toll",
+     "share": 0.018
+    },
+    "383328": {
+     "name": "Final Verdict",
+     "share": 0.188
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 3788,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

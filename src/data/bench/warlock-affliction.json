@@ -1,0 +1,715 @@
+{
+ "spec": 265,
+ "name": "Affliction Warlock",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.016,
+   "cpm": 33.4,
+   "checks": {
+    "soul_shards": 0.841,
+    "always_be_casting": 0.984,
+    "agony": 0.996,
+    "corruption": 0.998,
+    "shard_instability": 1,
+    "cooldowns": 1,
+    "nightfall": 0.986
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 1,
+     "first": 2572,
+     "early": 1
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 1,
+     "first": 4338,
+     "early": 1
+    }
+   },
+   "mix": {
+    "172": {
+     "name": "Corruption",
+     "share": 0.009
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.221
+    },
+    "27243": {
+     "name": "Seed of Corruption",
+     "share": 0.394
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.104
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.018
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.038
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.213
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.066,
+   "cpm": 36.6,
+   "checks": {
+    "always_be_casting": 0.934,
+    "soul_shards": 0.994,
+    "cooldowns": 0.976,
+    "wither": 0.996,
+    "agony": 0.997,
+    "shard_instability": 1,
+    "nightfall": 1,
+    "corruption": 0.999
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 1,
+     "first": 4017,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 1,
+     "first": 4008,
+     "early": 1
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 1,
+     "first": 4850,
+     "early": 1
+    }
+   },
+   "mix": {
+    "172": {
+     "name": "Corruption",
+     "share": 0.003
+    },
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.151
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.132
+    },
+    "27243": {
+     "name": "Seed of Corruption",
+     "share": 0
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.095
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.016
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.012
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.002
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.035
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.378
+    },
+    "1261153": {
+     "name": "Malefic Grasp",
+     "share": 0.08
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 2817,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.047,
+   "cpm": 49,
+   "checks": {
+    "soul_shards": 0.967,
+    "always_be_casting": 0.953,
+    "cooldowns": 0.952,
+    "agony": 1,
+    "wither": 1,
+    "shard_instability": 1,
+    "nightfall": 1,
+    "corruption": 1
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 1,
+     "first": 4375,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 1,
+     "first": 3235,
+     "early": 1
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 0.929,
+     "first": 20519,
+     "early": 0.5
+    }
+   },
+   "mix": {
+    "172": {
+     "name": "Corruption",
+     "share": 0
+    },
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.212
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.233
+    },
+    "27243": {
+     "name": "Seed of Corruption",
+     "share": 0.016
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.069
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.011
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.019
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.006
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.019
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.336
+    },
+    "1261153": {
+     "name": "Malefic Grasp",
+     "share": 0.058
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 6161,
+    "second": 311931
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.045,
+   "cpm": 48.6,
+   "checks": {
+    "always_be_casting": 0.955,
+    "soul_shards": 0.953,
+    "agony": 0.999,
+    "wither": 0.998,
+    "shard_instability": 1,
+    "cooldowns": 0.909,
+    "nightfall": 1
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 0.917,
+     "first": 5014,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 0.955,
+     "first": 2462,
+     "early": 1
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 0.855,
+     "first": 6632,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.271
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.134
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.07
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.01
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.02
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.033
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.018
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.367
+    },
+    "1261153": {
+     "name": "Malefic Grasp",
+     "share": 0.072
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 4195,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.075,
+   "cpm": 48.8,
+   "checks": {
+    "always_be_casting": 0.925,
+    "soul_shards": 0.956,
+    "cooldowns": 0.861,
+    "agony": 0.999,
+    "wither": 0.997,
+    "shard_instability": 1,
+    "nightfall": 0.986
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 1,
+     "first": 7196,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 0.929,
+     "first": 5006,
+     "early": 1
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 0.762,
+     "first": 15377,
+     "early": 0.5
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.245
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.173
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.068
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.011
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.02
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.029
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.018
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.379
+    },
+    "1261153": {
+     "name": "Malefic Grasp",
+     "share": 0.067
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 6930,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.034,
+   "cpm": 31.9,
+   "checks": {
+    "soul_shards": 0.937,
+    "always_be_casting": 0.966,
+    "cooldowns": 0.875,
+    "shard_instability": 1,
+    "nightfall": 1,
+    "agony": 0.992,
+    "corruption": 0.995
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 0.75,
+     "first": 20507,
+     "early": 0.25
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 1,
+     "first": 23608,
+     "early": 0.25
+    }
+   },
+   "mix": {
+    "172": {
+     "name": "Corruption",
+     "share": 0.057
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.199
+    },
+    "27243": {
+     "name": "Seed of Corruption",
+     "share": 0.352
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.102
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.013
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.041
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.223
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.053,
+   "cpm": 48.8,
+   "checks": {
+    "soul_shards": 0.974,
+    "always_be_casting": 0.947,
+    "cooldowns": 1,
+    "agony": 0.999,
+    "wither": 1,
+    "shard_instability": 1,
+    "nightfall": 0.988
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 1,
+     "first": 6087,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 1,
+     "first": 5372,
+     "early": 1
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 1,
+     "first": 2563,
+     "early": 1
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.236
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.154
+    },
+    "27243": {
+     "name": "Seed of Corruption",
+     "share": 0.006
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.07
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.012
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.021
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.064
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.021
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.337
+    },
+    "1261153": {
+     "name": "Malefic Grasp",
+     "share": 0.073
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 5849,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.066,
+   "cpm": 34.4,
+   "checks": {
+    "soul_shards": 0.875,
+    "always_be_casting": 0.934,
+    "agony": 0.985,
+    "corruption": 0.999,
+    "shard_instability": 1,
+    "cooldowns": 1,
+    "nightfall": 0.942
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 1,
+     "first": 8279,
+     "early": 1
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 1,
+     "first": 9158,
+     "early": 1
+    }
+   },
+   "mix": {
+    "172": {
+     "name": "Corruption",
+     "share": 0.04
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.241
+    },
+    "27243": {
+     "name": "Seed of Corruption",
+     "share": 0.273
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.094
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.014
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.036
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.255
+    },
+    "1261153": {
+     "name": "Malefic Grasp",
+     "share": 0.059
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.028,
+   "cpm": 53.6,
+   "checks": {
+    "always_be_casting": 0.972,
+    "soul_shards": 1,
+    "wither": 0.998,
+    "agony": 0.997,
+    "shard_instability": 1,
+    "cooldowns": 1,
+    "nightfall": 1
+   },
+   "cooldowns": {
+    "205180": {
+     "name": "Summon Darkglare",
+     "usage": 1,
+     "first": 9161,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 1,
+     "first": 7594,
+     "early": 1
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "usage": 1,
+     "first": 6853,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "686": {
+     "name": "Shadow Bolt",
+     "share": 0.237
+    },
+    "980": {
+     "name": "Agony",
+     "share": 0.165
+    },
+    "27243": {
+     "name": "Seed of Corruption",
+     "share": 0
+    },
+    "48181": {
+     "name": "Haunt",
+     "share": 0.065
+    },
+    "205180": {
+     "name": "Summon Darkglare",
+     "share": 0.012
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.019
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.012
+    },
+    "1257052": {
+     "name": "Dark Harvest",
+     "share": 0.019
+    },
+    "1259790": {
+     "name": "Unstable Affliction",
+     "share": 0.398
+    },
+    "1261153": {
+     "name": "Malefic Grasp",
+     "share": 0.072
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}
