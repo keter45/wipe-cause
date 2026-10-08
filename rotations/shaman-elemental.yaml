@@ -48,6 +48,7 @@ buffs:
   stormkeeper: { id: 191634, name: Stormkeeper }
   call_of_the_ancestors: { id: 447244, name: Call of the Ancestors }
   flame_shock: { id: 188389, name: Flame Shock }
+  purging_flames: { id: 1259491, name: Purging Flames }
 
 priority:
   farseer:
@@ -93,10 +94,12 @@ priority:
 
 # Abertura: empilhar os cooldowns nos primeiros segundos (a ordem entre eles varia: o guia e a
 # dica avançada dão ordens diferentes)
+# Pelos tops (36 lutas, todos Farseer): Ancestral Swiftness e Ascendance em até 12s em 83%; o Stormkeeper
+# e o Lava Burst ficam fora dessa janela em muitos deles, então não entram na conta
 opener:
-  window_ms: 8000
+  window_ms: 12000
   ordered: false
-  farseer: [stormkeeper, ascendance, ancestral_swiftness, lava_burst]
+  farseer: [ancestral_swiftness, ascendance]
   stormbringer: [stormkeeper, ascendance, lava_burst]
 
 checks:
@@ -121,6 +124,14 @@ checks:
     importance: medium
     title: { pt: "Lava Surge perdido", en: "Lava Surge lost" }
     tip: { pt: "Lava Surge deixa o próximo Lava Burst instantâneo: use antes de acabar.", en: "Lava Surge makes the next Lava Burst instant: use it before it expires." }
+  # tops: nunca perdem (mediana e p25 100%)
+  - kind: proc
+    id: purging_flames
+    buff: purging_flames
+    spenders: [lava_burst]
+    importance: low
+    title: { pt: "Purging Flames perdido", en: "Purging Flames lost" }
+    tip: { pt: "Purging Flames fortalece o próximo Lava Burst: gaste antes de acabar.", en: "Purging Flames empowers the next Lava Burst: spend it before it expires." }
   - kind: dot_uptime
     id: flame_shock
     debuff: flame_shock

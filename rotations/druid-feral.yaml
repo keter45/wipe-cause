@@ -1,0 +1,187 @@
+# Feral Druid — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 41 pulls nos logs; metas calibradas em 41 pulls dos tops.
+#
+# Removido na calibração:
+#   - Predatory Swiftness perdido (os tops "perdem" 38%: o buff é gasto por outra coisa ou de propósito)
+#   - Energy desperdiçado (os tops desperdiçam 21%)
+spec: 103
+name: "Feral Druid"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL druid_feral (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/druid_feral.simc
+  - title: "Wowhead — Feral Druid Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/druid/feral/rotation-cooldowns-pve-dps
+
+# casts no log que não são o player apertando um botão
+ignore_casts: [106839]
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Tiger's Fury, Berserk, Feral Frenzy, Convoke the Spirits.", en: "Cooldowns on cooldown: Tiger's Fury, Berserk, Feral Frenzy, Convoke the Spirits." }
+  - { pt: "Sempre no alvo: Rip, Bloodseeker Vines, Rake (renove no pandemic).", en: "Always on the target: Rip, Bloodseeker Vines, Rake (refresh in pandemic)." }
+  - { pt: "Gaste os procs antes de acabar: Apex Predator's Craving (Ferocious Bite / Ravage); Clearcasting (Shred / Regrowth / Swipe); Sudden Ambush (Shred / Rake / Swipe).", en: "Spend the procs before they expire: Apex Predator's Craving (Ferocious Bite / Ravage); Clearcasting (Shred / Regrowth / Swipe); Sudden Ambush (Shred / Rake / Swipe)." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: wildstalker
+    name: "Wildstalker"
+    markers: [439891, 439887]
+  - key: druid_of_the_claw
+    name: "Druid of the Claw"
+    markers: [441591, 441585]
+
+abilities:
+  berserk: { id: 106951, name: "Berserk", cooldown_ms: 180000 }
+  convoke_the_spirits: { id: 391528, name: "Convoke the Spirits", channel_ms: 4000, cooldown_ms: 120000, optional: true }
+  feral_frenzy: { id: 274837, name: "Feral Frenzy", cooldown_ms: 45000 }
+  frantic_frenzy: { id: 1243807, name: "Frantic Frenzy", cooldown_ms: 45000, optional: true }
+  tigers_fury: { id: 5217, name: "Tiger's Fury", cooldown_ms: 30000 }
+  chomp: { id: 1244258, name: "Chomp", cooldown_ms: 20000, optional: true }
+  prowl: { id: 102547, alt_ids: [5215], name: "Prowl", cooldown_ms: 6000 }
+  cat_form: { id: 768, name: "Cat Form" }
+  rake: { id: 1822, name: "Rake", optional: true }
+  ferocious_bite: { id: 22568, name: "Ferocious Bite" }
+  rip: { id: 1079, name: "Rip", optional: true }
+  shred: { id: 5221, name: "Shred" }
+  regrowth: { id: 8936, name: "Regrowth", cast_ms: 1500 }
+  primal_wrath: { id: 285381, name: "Primal Wrath" }
+  ravage: { id: 441591, name: "Ravage", tree: druid_of_the_claw }
+  swipe: { id: 106785, name: "Swipe", optional: true }
+
+buffs:
+  rip: { id: 1079, name: "Rip" }
+  bloodseeker_vines: { id: 439531, name: "Bloodseeker Vines" }
+  rake: { id: 155722, name: "Rake" }
+  apex_predators_craving: { id: 391882, name: "Apex Predator's Craving" }
+  predatory_swiftness: { id: 69369, name: "Predatory Swiftness" }
+  clearcasting: { id: 135700, name: "Clearcasting" }
+  sudden_ambush: { id: 1244483, name: "Sudden Ambush" }
+
+priority:
+  wildstalker:
+    st:
+      - { spell: prowl, note: { pt: "sem Bs Inc, sem Prowl, sem Shadowmeld", en: "without Bs Inc, without Prowl, without Shadowmeld" } }
+      - { spell: cat_form, note: { pt: "sem Cat Form", en: "without Cat Form" } }
+      - { spell: tigers_fury }
+      - { spell: rake }
+      - { spell: chomp, note: { pt: "com Chomp Enabler", en: "with Chomp Enabler" } }
+      - { spell: berserk, note: { pt: "com Tiger's Fury", en: "with Tiger's Fury" } }
+      - { spell: feral_frenzy }
+      - { spell: convoke_the_spirits }
+      - { spell: ferocious_bite, note: { pt: "com Apex Predator's Craving", en: "with Apex Predator's Craving" } }
+      - { spell: rip, note: { pt: "com 5+ combo points, renovar no pandemic", en: "with 5+ combo points, refresh in pandemic" } }
+      - { spell: ferocious_bite, note: { pt: "com 5+ combo points", en: "with 5+ combo points" } }
+      - { spell: prowl, note: { pt: "sem Shadowmeld", en: "without Shadowmeld" } }
+      - { spell: shred }
+      - { spell: regrowth, note: { pt: "com Predatory Swiftness", en: "with Predatory Swiftness" } }
+    aoe:
+      - { spell: prowl, note: { pt: "sem Bs Inc, sem Prowl, sem Shadowmeld", en: "without Bs Inc, without Prowl, without Shadowmeld" } }
+      - { spell: cat_form, note: { pt: "sem Cat Form", en: "without Cat Form" } }
+      - { spell: rake }
+      - { spell: chomp, note: { pt: "com Chomp Enabler", en: "with Chomp Enabler" } }
+      - { spell: berserk, note: { pt: "com Tiger's Fury", en: "with Tiger's Fury" } }
+      - { spell: feral_frenzy }
+      - { spell: frantic_frenzy }
+      - { spell: convoke_the_spirits }
+      - { spell: ferocious_bite, note: { pt: "com Apex Predator's Craving", en: "with Apex Predator's Craving" } }
+      - { spell: primal_wrath, note: { pt: "com 5+ combo points, 2+ alvos", en: "with 5+ combo points, 2+ targets" } }
+      - { spell: ferocious_bite, note: { pt: "com Ravage, com 5+ combo points", en: "with Ravage, with 5+ combo points" } }
+      - { spell: rip, note: { pt: "com 5+ combo points, renovar no pandemic", en: "with 5+ combo points, refresh in pandemic" } }
+      - { spell: primal_wrath, note: { pt: "com 5+ combo points", en: "with 5+ combo points" } }
+      - { spell: prowl, note: { pt: "sem Shadowmeld", en: "without Shadowmeld" } }
+  druid_of_the_claw:
+    st:
+      - { spell: prowl, note: { pt: "sem Bs Inc, sem Prowl, sem Shadowmeld", en: "without Bs Inc, without Prowl, without Shadowmeld" } }
+      - { spell: cat_form, note: { pt: "sem Cat Form", en: "without Cat Form" } }
+      - { spell: tigers_fury }
+      - { spell: rake }
+      - { spell: chomp, note: { pt: "com Chomp Enabler", en: "with Chomp Enabler" } }
+      - { spell: berserk, note: { pt: "com Tiger's Fury", en: "with Tiger's Fury" } }
+      - { spell: feral_frenzy }
+      - { spell: convoke_the_spirits }
+      - { spell: ferocious_bite, note: { pt: "com Apex Predator's Craving", en: "with Apex Predator's Craving" } }
+      - { spell: rip, note: { pt: "com 5+ combo points, renovar no pandemic", en: "with 5+ combo points, refresh in pandemic" } }
+      - { spell: ferocious_bite, note: { pt: "com 5+ combo points", en: "with 5+ combo points" } }
+      - { spell: prowl, note: { pt: "sem Shadowmeld", en: "without Shadowmeld" } }
+      - { spell: shred, note: { pt: "com Sudden Ambush", en: "with Sudden Ambush" } }
+      - { spell: shred }
+    aoe:
+      - { spell: prowl, note: { pt: "sem Bs Inc, sem Prowl, sem Shadowmeld", en: "without Bs Inc, without Prowl, without Shadowmeld" } }
+      - { spell: cat_form, note: { pt: "sem Cat Form", en: "without Cat Form" } }
+      - { spell: rake }
+      - { spell: chomp, note: { pt: "com Chomp Enabler", en: "with Chomp Enabler" } }
+      - { spell: berserk, note: { pt: "com Tiger's Fury", en: "with Tiger's Fury" } }
+      - { spell: feral_frenzy }
+      - { spell: frantic_frenzy }
+      - { spell: convoke_the_spirits }
+      - { spell: ferocious_bite, note: { pt: "com Apex Predator's Craving", en: "with Apex Predator's Craving" } }
+      - { spell: primal_wrath, note: { pt: "com 5+ combo points, 2+ alvos", en: "with 5+ combo points, 2+ targets" } }
+      - { spell: ferocious_bite, note: { pt: "com Ravage, com 5+ combo points", en: "with Ravage, with 5+ combo points" } }
+      - { spell: rip, note: { pt: "com 5+ combo points, renovar no pandemic", en: "with 5+ combo points, refresh in pandemic" } }
+      - { spell: primal_wrath, note: { pt: "com 5+ combo points", en: "with 5+ combo points" } }
+      - { spell: prowl, note: { pt: "sem Shadowmeld", en: "without Shadowmeld" } }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  wildstalker: [rake, tigers_fury, berserk, feral_frenzy]
+  druid_of_the_claw: [tigers_fury, berserk, feral_frenzy, convoke_the_spirits]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: dot_uptime
+    id: rip
+    debuff: rip
+    min_uptime: 0.95
+    importance: medium
+    title: { pt: "Rip fora do alvo", en: "Rip off the target" }
+    tip: { pt: "Rip sempre no alvo: renove no pandemic.", en: "Rip always on the target: refresh in pandemic." }
+  - kind: dot_uptime
+    id: bloodseeker_vines
+    debuff: bloodseeker_vines
+    min_uptime: 0.9
+    importance: medium
+    title: { pt: "Bloodseeker Vines fora do alvo", en: "Bloodseeker Vines off the target" }
+    tip: { pt: "Bloodseeker Vines sempre no alvo: renove no pandemic.", en: "Bloodseeker Vines always on the target: refresh in pandemic." }
+  - kind: dot_uptime
+    id: rake
+    debuff: rake
+    min_uptime: 0.9
+    importance: medium
+    title: { pt: "Rake fora do alvo", en: "Rake off the target" }
+    tip: { pt: "Rake sempre no alvo: renove no pandemic.", en: "Rake always on the target: refresh in pandemic." }
+  - kind: proc
+    id: apex_predators_craving
+    buff: apex_predators_craving
+    spenders: [ferocious_bite, ravage]
+    importance: medium
+    title: { pt: "Apex Predator's Craving perdido", en: "Apex Predator's Craving lost" }
+    tip: { pt: "Apex Predator's Craving melhora o próximo Ferocious Bite / Ravage: use antes de acabar.", en: "Apex Predator's Craving empowers the next Ferocious Bite / Ravage: use it before it expires." }
+  - kind: proc
+    id: clearcasting
+    buff: clearcasting
+    spenders: [shred, regrowth, swipe]
+    importance: medium
+    title: { pt: "Clearcasting perdido", en: "Clearcasting lost" }
+    tip: { pt: "Clearcasting melhora o próximo Shred / Regrowth / Swipe: use antes de acabar.", en: "Clearcasting empowers the next Shred / Regrowth / Swipe: use it before it expires." }
+  - kind: proc
+    id: sudden_ambush
+    buff: sudden_ambush
+    spenders: [shred, rake, swipe]
+    importance: medium
+    title: { pt: "Sudden Ambush perdido", en: "Sudden Ambush lost" }
+    tip: { pt: "Sudden Ambush melhora o próximo Shred / Rake / Swipe: use antes de acabar.", en: "Sudden Ambush empowers the next Shred / Rake / Swipe: use it before it expires." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [tigers_fury, berserk, feral_frenzy, convoke_the_spirits]
+    min_usage: 0.85
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Tiger's Fury, Berserk, Feral Frenzy, Convoke the Spirits no cooldown.", en: "Tiger's Fury, Berserk, Feral Frenzy, Convoke the Spirits on cooldown." }

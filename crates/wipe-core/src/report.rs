@@ -513,6 +513,9 @@ pub struct EnemySpell {
     pub name: String,
     pub sources: Vec<String>,
     pub casts: u32,
+    /// ms desde o início do pull de cada cast (para alinhar pulls pelas mecânicas do boss)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub cast_times: Vec<i64>,
     pub hits_on_players: u32,
     pub damage_to_players: i64,
     /// vezes que foi interrompido neste pull

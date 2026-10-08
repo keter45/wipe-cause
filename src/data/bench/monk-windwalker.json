@@ -1,0 +1,1033 @@
+{
+ "spec": 269,
+ "name": "Windwalker Monk",
+ "pulls": 34,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.026,
+   "cpm": 44.9,
+   "checks": {
+    "chi": 0.985,
+    "always_be_casting": 0.974,
+    "cooldowns": 0.964
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 2627,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.75,
+     "first": 27119,
+     "early": 0.5
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 1843,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 5663,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 1,
+     "first": 70929,
+     "early": 0
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 1,
+     "first": 13521,
+     "early": 0.75
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 2424,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.241
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.13
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.141
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.16
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.14
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.012
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.016
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.049
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.009
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.016
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.058
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.02
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 1236,
+    "second": 307448
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.004,
+   "cpm": 50.5,
+   "checks": {
+    "always_be_casting": 0.996,
+    "chi": 1,
+    "cooldowns": 0.893
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 2824,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.75,
+     "first": 26901,
+     "early": 0.25
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 1926,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 5183,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 0.5,
+     "first": 285647,
+     "early": 0
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 1,
+     "first": 13103,
+     "early": 1
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 2660,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.243
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.139
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.134
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.167
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.137
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.011
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.014
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.051
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.004
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.014
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.065
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.018
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 2105,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.006,
+   "cpm": 49,
+   "checks": {
+    "chi": 0.974,
+    "always_be_casting": 0.994,
+    "cooldowns": 0.929
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 2520,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.7,
+     "first": 66172,
+     "early": 0
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 1752,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 5719,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 1,
+     "first": 46727,
+     "early": 0
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 0.8,
+     "first": 12846,
+     "early": 1
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 2256,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.238
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.106
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.251
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.097
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.134
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.011
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.012
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.046
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.009
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.012
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.051
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.018
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 1589,
+    "second": 312921
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.052,
+   "cpm": 43.5,
+   "checks": {
+    "always_be_casting": 0.948,
+    "chi": 0.983,
+    "cooldowns": 0.934
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 2239,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.786,
+     "first": 22816,
+     "early": 0.25
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 1426,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 5215,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 0.75,
+     "first": 141366,
+     "early": 0
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 1,
+     "first": 11759,
+     "early": 1
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 1928,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.223
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.134
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.165
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.166
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.138
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.012
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.016
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.05
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.007
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.016
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.056
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.018
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 899,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 3,
+   "downtimePct": 0.056,
+   "cpm": 48.4,
+   "checks": {
+    "always_be_casting": 0.944,
+    "chi": 1,
+    "cooldowns": 0.929
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 2708,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.75,
+     "first": 75853,
+     "early": 0
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 1966,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 4959,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 1,
+     "first": 30460,
+     "early": 0
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 0.75,
+     "first": 14379,
+     "early": 1
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 2309,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.212
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.142
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.184
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.155
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.143
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.012
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.018
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.049
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.009
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.013
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.049
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.022
+    }
+   },
+   "potion": {
+    "used": 0.67,
+    "first": 1322,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 3,
+   "downtimePct": 0.071,
+   "cpm": 45.5,
+   "checks": {
+    "chi": 0.949,
+    "always_be_casting": 0.929,
+    "cooldowns": 0.914
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 2565,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.6,
+     "first": 56781,
+     "early": 0
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 1805,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 4736,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 1,
+     "first": 127931,
+     "early": 0
+    },
+    "392983": {
+     "name": "Strike of the Windlord",
+     "usage": 1,
+     "first": 2795,
+     "early": 1
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 1,
+     "first": 12666,
+     "early": 1
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 2503,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.238
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.138
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.185
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.098
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.141
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.01
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.017
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.044
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.009
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.016
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.054
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.02
+    },
+    "1272696": {
+     "name": "Zenith Stomp",
+     "share": 0.041
+    }
+   },
+   "potion": {
+    "used": 0.33,
+    "first": 2305,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.012,
+   "cpm": 48.5,
+   "checks": {
+    "always_be_casting": 0.988,
+    "chi": 0.984,
+    "cooldowns": 0.964
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 2612,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.75,
+     "first": 16082,
+     "early": 0.5
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 1848,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 6309,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 1,
+     "first": 151791,
+     "early": 0
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 1,
+     "first": 13594,
+     "early": 0.5
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 2282,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.237
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.132
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.165
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.16
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.138
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.012
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.015
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.049
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.008
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.015
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.054
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.019
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 1162,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.055,
+   "cpm": 41.3,
+   "checks": {
+    "always_be_casting": 0.945,
+    "chi": 0.958,
+    "cooldowns": 0.888
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 2780,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.571,
+     "first": 39882,
+     "early": 0
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 1840,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 5416,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 1,
+     "first": 13959,
+     "early": 0.75
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 0.714,
+     "first": 14141,
+     "early": 0.75
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 2476,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.226
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.088
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.225
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.119
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.143
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.009
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.012
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.047
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.009
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.012
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.043
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.019
+    },
+    "1272696": {
+     "name": "Zenith Stomp",
+     "share": 0.037
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 285104,
+    "second": 586139
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.009,
+   "cpm": 48.9,
+   "checks": {
+    "always_be_casting": 0.991,
+    "chi": 0.996,
+    "cooldowns": 0.905
+   },
+   "cooldowns": {
+    "113656": {
+     "name": "Fists of Fury",
+     "usage": 1,
+     "first": 3501,
+     "early": 1
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "usage": 0.708,
+     "first": 46986,
+     "early": 0.25
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "usage": 1,
+     "first": 2709,
+     "early": 1
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "usage": 1,
+     "first": 7224,
+     "early": 1
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "usage": 0.5,
+     "first": 198493,
+     "early": 0
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "usage": 1,
+     "first": 14325,
+     "early": 0.75
+    },
+    "1249625": {
+     "name": "Zenith",
+     "usage": 1,
+     "first": 3257,
+     "early": 1
+    }
+   },
+   "mix": {
+    "100780": {
+     "name": "Tiger Palm",
+     "share": 0.234
+    },
+    "100784": {
+     "name": "Blackout Kick",
+     "share": 0.095
+    },
+    "101546": {
+     "name": "Spinning Crane Kick",
+     "share": 0.237
+    },
+    "107428": {
+     "name": "Rising Sun Kick",
+     "share": 0.136
+    },
+    "113656": {
+     "name": "Fists of Fury",
+     "share": 0.141
+    },
+    "122470": {
+     "name": "Touch of Karma",
+     "share": 0.011
+    },
+    "123904": {
+     "name": "Invoke Xuen, the White Tiger",
+     "share": 0.014
+    },
+    "152175": {
+     "name": "Whirling Dragon Punch",
+     "share": 0.048
+    },
+    "322109": {
+     "name": "Touch of Death",
+     "share": 0.005
+    },
+    "443028": {
+     "name": "Celestial Conduit",
+     "share": 0.014
+    },
+    "467307": {
+     "name": "Rushing Wind Kick",
+     "share": 0.048
+    },
+    "1249625": {
+     "name": "Zenith",
+     "share": 0.019
+    },
+    "1272696": {
+     "name": "Zenith Stomp",
+     "share": 0
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 3283,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

@@ -93,11 +93,13 @@ priority:
       - { spell: living_flame, note: { pt: "com Burnout", en: "with Burnout" } }
       - { spell: azure_strike, note: { pt: "preenche", en: "filler" } }
 
-# Abertura: Living Flame pré-cast e os cooldowns em sequência
+# Abertura: Living Flame pré-cast e os cooldowns em sequência. Pelos tops (36 lutas, todos
+# Scalecommander): Dragonrage, Tip the Scales e os dois empowers em até 12s em 83%; o Deep Breath fica
+# fora da janela em 36% deles
 opener:
-  window_ms: 10000
+  window_ms: 12000
   ordered: false
-  scalecommander: [deep_breath, dragonrage, tip_the_scales, eternity_surge, fire_breath]
+  scalecommander: [dragonrage, tip_the_scales, eternity_surge, fire_breath]
   flameshaper: [dragonrage, tip_the_scales, eternity_surge, fire_breath]
 
 checks:

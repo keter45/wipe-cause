@@ -1,0 +1,140 @@
+# Windwalker Monk — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 34 pulls nos logs; metas calibradas em 34 pulls dos tops.
+#
+# Removido na calibração:
+#   - Heart of the Jade Serpent perdido (os tops "perdem" 74%: o buff é gasto por outra coisa ou de propósito)
+spec: 269
+name: "Windwalker Monk"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL monk_windwalker (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/monk_windwalker.simc
+  - title: "Wowhead — Windwalker Monk Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/monk/windwalker/rotation-cooldowns-pve-dps
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Touch of Karma, Whirling Dragon Punch, Zenith, Fists of Fury, Touch of Death, Invoke Xuen, the White Tiger, Celestial Conduit, Strike of the Windlord.", en: "Cooldowns on cooldown: Touch of Karma, Whirling Dragon Punch, Zenith, Fists of Fury, Touch of Death, Invoke Xuen, the White Tiger, Celestial Conduit, Strike of the Windlord." }
+  - { pt: "Não estoure Chi.", en: "Don't cap Chi." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: conduit_of_the_celestials
+    name: "Conduit of the Celestials"
+    markers: [123904, 443028]
+  - key: shado_pan
+    name: "Shado-Pan"
+    markers: [392983]
+
+abilities:
+  touch_of_death: { id: 322109, name: "Touch of Death", cooldown_ms: 180000 }
+  invoke_xuen_the_white_tiger: { id: 123904, name: "Invoke Xuen, the White Tiger", cooldown_ms: 120000, tree: conduit_of_the_celestials }
+  touch_of_karma: { id: 122470, name: "Touch of Karma", cooldown_ms: 90000 }
+  zenith: { id: 1249625, name: "Zenith", cooldown_ms: 90000, charges: 2 }
+  celestial_conduit: { id: 443028, name: "Celestial Conduit", cooldown_ms: 90000, tree: conduit_of_the_celestials }
+  whirling_dragon_punch: { id: 152175, name: "Whirling Dragon Punch", cooldown_ms: 35000, optional: true }
+  strike_of_the_windlord: { id: 392983, name: "Strike of the Windlord", cooldown_ms: 35000, optional: true }
+  fists_of_fury: { id: 113656, name: "Fists of Fury", channel_ms: 4000, cooldown_ms: 24000 }
+  rushing_wind_kick: { id: 467307, name: "Rushing Wind Kick", cooldown_ms: 10000, optional: true }
+  rising_sun_kick: { id: 107428, name: "Rising Sun Kick", cooldown_ms: 10000, optional: true }
+  blackout_kick: { id: 100784, name: "Blackout Kick", cooldown_ms: 3000 }
+  zenith_stomp: { id: 1272696, name: "Zenith Stomp", cooldown_ms: 1000, optional: true }
+  tiger_palm: { id: 100780, name: "Tiger Palm" }
+  spinning_crane_kick: { id: 101546, name: "Spinning Crane Kick", channel_ms: 1500 }
+
+buffs:
+  heart_of_the_jade_serpent: { id: 443421, name: "Heart of the Jade Serpent" }
+
+priority:
+  conduit_of_the_celestials:
+    st:
+      - { spell: touch_of_karma }
+      - { spell: tiger_palm, note: { pt: "com menos de 4 Chi", en: "with fewer than 4 Chi" } }
+      - { spell: zenith_stomp, note: { pt: "com menos de 5 Chi", en: "with fewer than 5 Chi" } }
+      - { spell: zenith_stomp }
+      - { spell: tiger_palm, note: { pt: "com Zenith, alvo único, com menos de 2 Chi", en: "with Zenith, single target, with fewer than 2 Chi" } }
+      - { spell: whirling_dragon_punch, note: { pt: "com Power Infusion", en: "with Power Infusion" } }
+      - { spell: zenith, note: { pt: "Potion a mais de 295s", en: "Potion more than 295s away" } }
+      - { spell: fists_of_fury }
+      - { spell: touch_of_death }
+      - { spell: blackout_kick, note: { pt: "com menos de 1 Chi, com Combo Breaker", en: "with fewer than 1 Chi, with Combo Breaker" } }
+      - { spell: blackout_kick, note: { pt: "com menos de 2 Chi, com Combo Breaker", en: "with fewer than 2 Chi, with Combo Breaker" } }
+      - { spell: rushing_wind_kick }
+      - { spell: spinning_crane_kick, note: { pt: "com Dance Of Chiji, com Unbroken Rhythm", en: "with Dance Of Chiji, with Unbroken Rhythm" } }
+      - { spell: rising_sun_kick }
+    aoe:
+      - { spell: touch_of_karma }
+      - { spell: tiger_palm, note: { pt: "com menos de 4 Chi", en: "with fewer than 4 Chi" } }
+      - { spell: invoke_xuen_the_white_tiger }
+      - { spell: zenith_stomp, note: { pt: "com menos de 5 Chi", en: "with fewer than 5 Chi" } }
+      - { spell: zenith_stomp }
+      - { spell: celestial_conduit }
+      - { spell: whirling_dragon_punch, note: { pt: "com Power Infusion", en: "with Power Infusion" } }
+      - { spell: zenith, note: { pt: "sem Heart of the Jade Serpent", en: "without Heart of the Jade Serpent" } }
+      - { spell: zenith, note: { pt: "sem Zenith", en: "without Zenith" } }
+      - { spell: fists_of_fury, note: { pt: "com Heart of the Jade Serpent", en: "with Heart of the Jade Serpent" } }
+      - { spell: touch_of_death }
+      - { spell: fists_of_fury }
+      - { spell: spinning_crane_kick, note: { pt: "com Dance Of Chiji", en: "with Dance Of Chiji" } }
+      - { spell: tiger_palm }
+  shado_pan:
+    st:
+      - { spell: touch_of_karma }
+      - { spell: tiger_palm, note: { pt: "com menos de 4 Chi", en: "with fewer than 4 Chi" } }
+      - { spell: zenith }
+      - { spell: zenith, note: { pt: "sem Zenith", en: "without Zenith" } }
+      - { spell: whirling_dragon_punch }
+      - { spell: zenith_stomp }
+      - { spell: fists_of_fury }
+      - { spell: tiger_palm, note: { pt: "sem Zenith", en: "without Zenith" } }
+      - { spell: strike_of_the_windlord }
+      - { spell: touch_of_death }
+      - { spell: blackout_kick, note: { pt: "com menos de 1 Chi, com Combo Breaker", en: "with fewer than 1 Chi, with Combo Breaker" } }
+      - { spell: blackout_kick, note: { pt: "com menos de 2 Chi, com Combo Breaker", en: "with fewer than 2 Chi, with Combo Breaker" } }
+      - { spell: rushing_wind_kick }
+      - { spell: spinning_crane_kick, note: { pt: "com Dance Of Chiji, com Unbroken Rhythm", en: "with Dance Of Chiji, with Unbroken Rhythm" } }
+    aoe:
+      - { spell: touch_of_karma }
+      - { spell: tiger_palm, note: { pt: "com menos de 4 Chi", en: "with fewer than 4 Chi" } }
+      - { spell: zenith }
+      - { spell: zenith, note: { pt: "sem Heart of the Jade Serpent", en: "without Heart of the Jade Serpent" } }
+      - { spell: fists_of_fury, note: { pt: "com Heart of the Jade Serpent", en: "with Heart of the Jade Serpent" } }
+      - { spell: touch_of_death }
+      - { spell: whirling_dragon_punch }
+      - { spell: fists_of_fury }
+      - { spell: spinning_crane_kick, note: { pt: "com Dance Of Chiji", en: "with Dance Of Chiji" } }
+      - { spell: rising_sun_kick, note: { pt: "Whirling Dragon Punch volta em 2s, sem Unbroken Rhythm, sem Whirling Dragon Punch", en: "Whirling Dragon Punch back in 2s, without Unbroken Rhythm, without Whirling Dragon Punch" } }
+      - { spell: spinning_crane_kick, note: { pt: "com Unbroken Rhythm", en: "with Unbroken Rhythm" } }
+      - { spell: tiger_palm }
+      - { spell: rushing_wind_kick, note: { pt: "sem Unbroken Rhythm", en: "without Unbroken Rhythm" } }
+      - { spell: zenith_stomp }
+
+opener:
+  window_ms: 12000
+  ordered: false
+  conduit_of_the_celestials: [invoke_xuen_the_white_tiger, zenith, fists_of_fury, whirling_dragon_punch]
+  shado_pan: [touch_of_karma, zenith, whirling_dragon_punch, fists_of_fury]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: resource_waste
+    id: chi
+    power_type: 12
+    resource: "Chi"
+    importance: high
+    title: { pt: "Chi desperdiçado", en: "Chi wasted" }
+    tip: { pt: "Gaste com Fists of Fury / Blackout Kick antes de chegar ao máximo de Chi.", en: "Spend with Fists of Fury / Blackout Kick before reaching max Chi." }
+    from: [tiger_palm, zenith_stomp]
+  - kind: cooldown
+    id: cooldowns
+    spells: [touch_of_karma, whirling_dragon_punch, zenith, fists_of_fury, touch_of_death, invoke_xuen_the_white_tiger, celestial_conduit, strike_of_the_windlord]
+    min_usage: 0.85
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Touch of Karma, Whirling Dragon Punch, Zenith, Fists of Fury no cooldown.", en: "Touch of Karma, Whirling Dragon Punch, Zenith, Fists of Fury on cooldown." }

@@ -86,12 +86,14 @@ priority:
       - { spell: seed_of_corruption, note: { pt: "o máximo possível", en: "as much as possible" } }
       - { spell: malefic_grasp }
 
-# Abertura: Haunt pré-cast, DoTs e os cooldowns antes de encadear os Unstable Affliction
+# Abertura: Haunt pré-cast, DoTs e os cooldowns antes de encadear os Unstable Affliction. Pelos tops
+# (36 lutas): o Haunt sai antes do pull e o Dark Harvest fica fora da janela em ~1/3; Hellcaller solta
+# Malevolence e Darkglare em até 12s (95%), Soul Harvester segura o Darkglare em 20%
 opener:
   window_ms: 12000
   ordered: false
-  hellcaller: [haunt, agony, wither, dark_harvest, summon_darkglare, malevolence]
-  soul_harvester: [haunt, agony, corruption, summon_darkglare, dark_harvest]
+  hellcaller: [agony, wither, malevolence, summon_darkglare]
+  soul_harvester: [agony, corruption]
 
 checks:
   - kind: downtime
@@ -145,8 +147,9 @@ checks:
     tip: { pt: "Shard Instability deixa o próximo Unstable Affliction / Seed de graça: use antes de acabar.", en: "Shard Instability makes the next Unstable Affliction / Seed free: use it before it expires." }
   - kind: cooldown
     id: cooldowns
-    spells: [summon_darkglare, dark_harvest, malevolence, haunt]
+    # Haunt fica de fora: os tops usam 82% (p25 79%); ele aparece no tempo parado
+    spells: [summon_darkglare, dark_harvest, malevolence]
     min_usage: 0.8
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
-    tip: { pt: "Summon Darkglare, Dark Harvest e Haunt no cooldown; Malevolence a cada minuto.", en: "Summon Darkglare, Dark Harvest and Haunt on cooldown; Malevolence every minute." }
+    tip: { pt: "Summon Darkglare e Dark Harvest no cooldown; Malevolence a cada minuto.", en: "Summon Darkglare and Dark Harvest on cooldown; Malevolence every minute." }

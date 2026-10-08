@@ -2,12 +2,14 @@
 // renderizado fora da tela, e copia, salva ou envia ao Discord.
 
 import { createElement, type ReactElement } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { toPng } from 'html-to-image';
 import { invoke } from '@tauri-apps/api/core';
 import { inTauri } from './api';
 import { EagerIcons } from '../components/SpellIcon';
-import { getLocale } from '../i18n';
+import { getLocale, messagesOf } from '../i18n';
+import { shareLibMsg } from './share.i18n';
 
 /** Renderiza `node` fora da tela e devolve o elemento pronto (e como desmontar). */
 async function mount(node: ReactElement): Promise<{ el: HTMLElement; done: () => void }> {
@@ -15,18 +17,26 @@ async function mount(node: ReactElement): Promise<{ el: HTMLElement; done: () =>
   host.style.cssText = 'position:fixed;left:-10000px;top:0;pointer-events:none;';
   document.body.appendChild(host);
   const root = createRoot(host);
-  root.render(createElement(EagerIcons.Provider, { value: true }, node));
-  // dois frames: o React monta e o navegador faz o layout
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  const el = host.firstElementChild as HTMLElement;
-  await iconsLoaded(el);
-  return {
-    el,
-    done: () => {
-      root.unmount();
-      host.remove();
-    },
+  const done = () => {
+    root.unmount();
+    host.remove();
   };
+  // monta na hora: no ao vivo a janela costuma estar na bandeja, e aí os frames de animação (e o
+  // agendador do React) quase não rodam
+  flushSync(() => root.render(createElement(EagerIcons.Provider, { value: true }, node)));
+  let el = host.firstElementChild as HTMLElement | null;
+  for (let i = 0; !el && i < 50; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    el = host.firstElementChild as HTMLElement | null;
+  }
+  if (!el) {
+    done();
+    throw new Error(messagesOf(shareLibMsg).notDrawn);
+  }
+  // um instante para o layout antes de medir/fotografar
+  await new Promise((r) => setTimeout(r, 50));
+  await iconsLoaded(el);
+  return { el, done };
 }
 
 /**
@@ -45,11 +55,37 @@ async function iconsLoaded(el: HTMLElement) {
   }
 }
 
+/**
+ * O html-to-image espera um frame de animação por imagem; com a janela na bandeja os frames podem
+ * não vir e o envio ao Discord ficaria parado. Enquanto `fn` roda, cada frame pedido também tem
+ * um temporizador de reserva (vale o que vier primeiro).
+ */
+async function withFrameFallback<T>(fn: () => Promise<T>): Promise<T> {
+  const raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = (cb) => {
+    let fired = false;
+    const once = (t: number) => {
+      if (!fired) {
+        fired = true;
+        cb(t);
+      }
+    };
+    const id = raf.call(window, once);
+    setTimeout(() => once(performance.now()), 50);
+    return id;
+  };
+  try {
+    return await fn();
+  } finally {
+    window.requestAnimationFrame = raf;
+  }
+}
+
 /** PNG (data URL) do cartão, em 2x para ficar nítido no Discord. */
 export async function cardPng(node: ReactElement): Promise<string> {
   const { el, done } = await mount(node);
   try {
-    return await toPng(el, { pixelRatio: 2, cacheBust: true });
+    return await withFrameFallback(() => toPng(el, { pixelRatio: 2, cacheBust: true }));
   } finally {
     done();
   }

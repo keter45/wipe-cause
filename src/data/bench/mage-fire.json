@@ -1,0 +1,571 @@
+{
+ "spec": 63,
+ "name": "Fire Mage",
+ "pulls": 40,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.027,
+   "cpm": 70.7,
+   "checks": {
+    "always_be_casting": 0.973,
+    "pyroclasm": 1,
+    "hot_streak": 1,
+    "heat_shimmer": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 13419,
+     "early": 0.5
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 14758,
+     "early": 0.5
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.115
+    },
+    "2120": {
+     "name": "Flamestrike",
+     "share": 0.117
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.079
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.343
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.298
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.027
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.014
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 10217,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 5,
+   "downtimePct": 0.02,
+   "cpm": 69.7,
+   "checks": {
+    "always_be_casting": 0.98,
+    "heat_shimmer": 0.952,
+    "pyroclasm": 1,
+    "hot_streak": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 19751,
+     "early": 0
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 21210,
+     "early": 0
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.088
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.1
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.48
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.296
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.025
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.014
+    }
+   },
+   "potion": {
+    "used": 0.6,
+    "first": 10201,
+    "second": 312708
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 5,
+   "downtimePct": 0.029,
+   "cpm": 68.8,
+   "checks": {
+    "always_be_casting": 0.971,
+    "heat_shimmer": 0.938,
+    "pyroclasm": 1,
+    "hot_streak": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 18833,
+     "early": 0.4
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 18893,
+     "early": 0.2
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.087
+    },
+    "2120": {
+     "name": "Flamestrike",
+     "share": 0.017
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.109
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.441
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.302
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.027
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.015
+    }
+   },
+   "potion": {
+    "used": 0.4,
+    "first": 9368,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.015,
+   "cpm": 71.2,
+   "checks": {
+    "always_be_casting": 0.985,
+    "pyroclasm": 1,
+    "hot_streak": 1,
+    "heat_shimmer": 0.969,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 11090,
+     "early": 1
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 12686,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.077
+    },
+    "2120": {
+     "name": "Flamestrike",
+     "share": 0.002
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.1
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.467
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.303
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.026
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.014
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 200204,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 5,
+   "downtimePct": 0.02,
+   "cpm": 69.2,
+   "checks": {
+    "always_be_casting": 0.98,
+    "pyroclasm": 1,
+    "hot_streak": 1,
+    "heat_shimmer": 0.909,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 5990,
+     "early": 1
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 9551,
+     "early": 0.8
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.109
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.091
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.466
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.299
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.027
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.013
+    }
+   },
+   "potion": {
+    "used": 0.4,
+    "first": 7158,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.037,
+   "cpm": 68.1,
+   "checks": {
+    "always_be_casting": 0.963,
+    "cooldowns": 1,
+    "heat_shimmer": 0.894,
+    "pyroclasm": 1,
+    "hot_streak": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 23464,
+     "early": 0
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 24762,
+     "early": 0
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.116
+    },
+    "2120": {
+     "name": "Flamestrike",
+     "share": 0.12
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.13
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.301
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.283
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.021
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.011
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 23100,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.016,
+   "cpm": 70.5,
+   "checks": {
+    "always_be_casting": 0.984,
+    "heat_shimmer": 1,
+    "pyroclasm": 1,
+    "hot_streak": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 3939,
+     "early": 0.75
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 5701,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.112
+    },
+    "2120": {
+     "name": "Flamestrike",
+     "share": 0.039
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.081
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.434
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.308
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.026
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.014
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 19027,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 5,
+   "downtimePct": 0.021,
+   "cpm": 62.5,
+   "checks": {
+    "always_be_casting": 0.979,
+    "pyroclasm": 0.976,
+    "hot_streak": 1,
+    "heat_shimmer": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 13343,
+     "early": 0.6
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 10778,
+     "early": 1
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.078
+    },
+    "2120": {
+     "name": "Flamestrike",
+     "share": 0.062
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.113
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.41
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.31
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.029
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.015
+    }
+   },
+   "potion": {
+    "used": 0.4,
+    "first": 127164,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.008,
+   "cpm": 73.4,
+   "checks": {
+    "always_be_casting": 0.992,
+    "heat_shimmer": 1,
+    "pyroclasm": 1,
+    "hot_streak": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "153561": {
+     "name": "Meteor",
+     "usage": 1,
+     "first": 11797,
+     "early": 0.75
+    },
+    "190319": {
+     "name": "Combustion",
+     "usage": 1,
+     "first": 13204,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "133": {
+     "name": "Fireball",
+     "share": 0.079
+    },
+    "2948": {
+     "name": "Scorch",
+     "share": 0.101
+    },
+    "11366": {
+     "name": "Pyroblast",
+     "share": 0.48
+    },
+    "108853": {
+     "name": "Fire Blast",
+     "share": 0.296
+    },
+    "153561": {
+     "name": "Meteor",
+     "share": 0.027
+    },
+    "190319": {
+     "name": "Combustion",
+     "share": 0.014
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 11456,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

@@ -99,10 +99,12 @@ priority:
 
 # Abertura: DoTs e os cooldowns empilhados nos primeiros segundos (o Incarnation já entra em
 # Eclipse; a ordem fina varia por luta, o guia manda olhar logs da luta)
+# Pelos tops (36 lutas): Elune's Chosen faz DoTs, Fury of Elune e Incarnation em até 12s (81%);
+# Keeper of the Grove abre com os DoTs e quase nunca usa Incarnation ou Force of Nature na abertura
 opener:
-  window_ms: 10000
+  window_ms: 12000
   ordered: false
-  keeper_of_the_grove: [moonfire, sunfire, force_of_nature, incarnation]
+  keeper_of_the_grove: [moonfire, sunfire]
   elunes_chosen: [moonfire, sunfire, fury_of_elune, incarnation]
 
 checks:

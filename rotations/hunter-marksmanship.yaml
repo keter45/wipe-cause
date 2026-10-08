@@ -102,11 +102,14 @@ priority:
       - { spell: black_arrow }
       - { spell: steady_shot }
 
-# Abertura: os cooldowns que devem sair primeiro, nesta ordem (o Aimed Shot é pré-cast, ~2,5 s antes do pull)
+# Abertura: o Aimed Shot é pré-cast (~2,5 s antes do pull) e os cooldowns logo em seguida.
+# Pelos tops (36 lutas, todos Sentinel): Aimed Shot, Explosive Shot, Trueshot e Rapid Fire em até 12s
+# em 100%, em ordens variadas; o Volley e o segundo Explosive Shot nem sempre saem nessa janela
 opener:
-  window_ms: 15000
-  sentinel: [explosive_shot, explosive_shot, volley, trueshot, rapid_fire]
-  dark_ranger: [black_arrow, explosive_shot, explosive_shot, volley, trueshot]
+  window_ms: 12000
+  ordered: false
+  sentinel: [aimed_shot, explosive_shot, trueshot, rapid_fire]
+  dark_ranger: [black_arrow, explosive_shot, volley, trueshot]
 
 checks:
   - kind: proc
@@ -148,7 +151,8 @@ checks:
     # Aimed Shot e Rapid Fire ficam de fora: haste, Trueshot e Lock and Load mudam o cooldown deles
     # (o "no cooldown" deles aparece no tempo parado e nos procs)
     spells: [trueshot, volley, explosive_shot]
-    min_usage: 0.8
+    # tops: Volley com mediana 86% e p25 79%
+    min_usage: 0.75
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Use no cooldown: cada uso a menos é dano que não volta.", en: "Use it on cooldown: every missed use is damage you don't get back." }

@@ -100,7 +100,7 @@ export const TOPS_SHOWN = 8;
  * Tops comparáveis: ilvl parecido com o do player e, se o pull foi kill, tempo de kill parecido
  * (na progressão não há tempo de kill: só o ilvl filtra). Do maior para o menor parse.
  */
-export function pickTops(list: TopRanking[], myIlvl: number | null, myKillMs: number | null): TopRanking[] {
+export function pickTops(list: TopRanking[], myIlvl: number | null, myKillMs: number | null, n = TOPS_SHOWN): TopRanking[] {
   let pool = list;
   if (myIlvl != null) {
     for (const step of ILVL_STEPS) {
@@ -111,14 +111,14 @@ export function pickTops(list: TopRanking[], myIlvl: number | null, myKillMs: nu
       }
     }
   }
-  if (myKillMs != null) pool = [...pool].sort((a, b) => Math.abs(a.durationMs - myKillMs) - Math.abs(b.durationMs - myKillMs)).slice(0, TOPS_SHOWN * 2);
-  return [...pool].sort((a, b) => b.amount - a.amount).slice(0, TOPS_SHOWN);
+  if (myKillMs != null) pool = [...pool].sort((a, b) => Math.abs(a.durationMs - myKillMs) - Math.abs(b.durationMs - myKillMs)).slice(0, n * 2);
+  return [...pool].sort((a, b) => b.amount - a.amount).slice(0, n);
 }
 
-// externalBuffs: Exclude = só parses sem buffs externos (Power Infusion e afins): a referência
-// precisa ser o que o player faz sozinho, como o seu pull
+// Todos os parses: o filtro de buffs externos do WCL tira também quem jogou com Augmentation, e toda
+// raid de topo tem um. Só o Power Infusion de outra pessoa tira um top da lista (withoutExternalPI).
 const RANKINGS_QUERY = `query Rankings($id: Int!, $difficulty: Int!, $className: String!, $specName: String!, $metric: CharacterRankingMetricType, $page: Int) {
-  worldData { encounter(id: $id) { characterRankings(difficulty: $difficulty, className: $className, specName: $specName, metric: $metric, page: $page, includeCombatantInfo: true, externalBuffs: Exclude) } }
+  worldData { encounter(id: $id) { characterRankings(difficulty: $difficulty, className: $className, specName: $specName, metric: $metric, page: $page, includeCombatantInfo: true) } }
 }`;
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -132,7 +132,7 @@ export async function fetchRankings(pull: Pull, specId: number, healer: boolean)
   // rankings mudam ao longo do dia: cache diário, 2 páginas (200 parses)
   const pages = await Promise.all(
     [1, 2].map((page) =>
-      query<any>(RANKINGS_QUERY, { ...vars, page }, `rank-noext-${pull.encounterId}-${difficulty}-${specId}-${metric}-p${page}-${today()}`).catch((e) => {
+      query<any>(RANKINGS_QUERY, { ...vars, page }, `rank-all-${pull.encounterId}-${difficulty}-${specId}-${metric}-p${page}-${today()}`).catch((e) => {
         if (page === 1) throw e;
         return null;
       }),
@@ -157,6 +157,35 @@ const CASTS_QUERY = `query Casts($code: String!, $fight: Int!, $source: Int!, $s
     events(fightIDs: [$fight], sourceID: $source, dataType: Casts, startTime: $start, endTime: $end, limit: 10000) { data nextPageTimestamp }
   } }
 }`;
+
+const POWER_INFUSION = 10060;
+const PI_QUERY = `query PI($code: String!, $fight: Int!, $target: Int!, $start: Float!, $end: Float!) {
+  reportData { report(code: $code) {
+    events(fightIDs: [$fight], targetID: $target, dataType: Buffs, abilityID: ${POWER_INFUSION}, startTime: $start, endTime: $end, limit: 1000) { data }
+  } }
+}`;
+
+/** O top recebeu Power Infusion de outra pessoa nessa luta? (o Priest dando PI em si mesmo vale) */
+async function externalPI(top: TopRanking): Promise<boolean> {
+  const key = `${top.code}-${top.fightId}`;
+  const report = (await query<any>(FIGHT_QUERY, { code: top.code, fight: top.fightId }, `fight-${key}`))?.reportData?.report;
+  const fight = report?.fights?.[0];
+  const actors: any[] = report?.masterData?.actors ?? [];
+  const actor = actors.find((a) => a.name === top.name && (!top.server || !a.server || a.server === top.server)) ?? actors.find((a) => a.name === top.name);
+  if (!fight || !actor) return false; // sem como conferir: o loadTop avisa depois
+  const d = await query<any>(PI_QUERY, { code: top.code, fight: top.fightId, target: actor.id, start: fight.startTime, end: fight.endTime }, `pi-${key}-${actor.id}`);
+  return (d?.reportData?.report?.events?.data ?? []).some((e: any) => e.type === 'applybuff' && Number(e.abilityGameID) === POWER_INFUSION && e.sourceID !== actor.id);
+}
+
+/** Até `n` tops sem Power Infusion de outra pessoa, na ordem em que vieram. */
+export async function withoutExternalPI(tops: TopRanking[], n = TOPS_SHOWN): Promise<TopRanking[]> {
+  const out: TopRanking[] = [];
+  for (const t of tops) {
+    if (out.length >= n) break;
+    if (!(await externalPI(t).catch(() => false))) out.push(t);
+  }
+  return out;
+}
 
 const TABLE_QUERY = `query Table($code: String!, $fight: Int!, $source: Int!, $type: TableDataType!, $start: Float!, $end: Float!) {
   reportData { report(code: $code) { table(fightIDs: [$fight], sourceID: $source, dataType: $type, startTime: $start, endTime: $end) } }

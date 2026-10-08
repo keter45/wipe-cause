@@ -1,0 +1,583 @@
+{
+ "spec": 62,
+ "name": "Arcane Mage",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.006,
+   "cpm": 42.6,
+   "checks": {
+    "always_be_casting": 0.994,
+    "prismatic_bolt": 1,
+    "clearcasting": 1,
+    "cooldowns": 0.944,
+    "touch_after_barrage": 0.929
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 0.95,
+     "first": 4352,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 1,
+     "first": 6743,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.375
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.108
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.326
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.016
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.031
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.017
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.131
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 39,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.001,
+   "cpm": 43.3,
+   "checks": {
+    "always_be_casting": 0.999,
+    "prismatic_bolt": 1,
+    "cooldowns": 0.969,
+    "clearcasting": 1,
+    "touch_after_barrage": 1
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 0.938,
+     "first": 3664,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 1,
+     "first": 1931,
+     "early": 1
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.361
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.113
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.315
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.017
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.03
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.017
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.142
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 1186,
+    "second": 5968
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.005,
+   "cpm": 42.4,
+   "checks": {
+    "always_be_casting": 0.995,
+    "prismatic_bolt": 1,
+    "clearcasting": 1,
+    "cooldowns": 0.95,
+    "touch_after_barrage": 1
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 0.944,
+     "first": 3650,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 1,
+     "first": 1738,
+     "early": 1
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.388
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.083
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.341
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.015
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.032
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.017
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.135
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 154725,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.02,
+   "cpm": 40.1,
+   "checks": {
+    "always_be_casting": 0.98,
+    "prismatic_bolt": 1,
+    "cooldowns": 0.964,
+    "clearcasting": 1,
+    "touch_after_barrage": 0.923
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 0.929,
+     "first": 2749,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 1,
+     "first": 621,
+     "early": 1
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.383
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.081
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.331
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.019
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.033
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.018
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.134
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 708,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.006,
+   "cpm": 41.7,
+   "checks": {
+    "always_be_casting": 0.994,
+    "prismatic_bolt": 1,
+    "clearcasting": 1,
+    "cooldowns": 0.969,
+    "touch_after_barrage": 0.938
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 0.938,
+     "first": 3163,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 1,
+     "first": 1355,
+     "early": 1
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.395
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.061
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.352
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.009
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.032
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.018
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.137
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 150048,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 43.6,
+   "checks": {
+    "always_be_casting": 1,
+    "prismatic_bolt": 1,
+    "clearcasting": 1,
+    "cooldowns": 1,
+    "touch_after_barrage": 1
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 1,
+     "first": 3135,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 1,
+     "first": 1667,
+     "early": 1
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.394
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.076
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.335
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.005
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.031
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.017
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.157
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 1907,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.004,
+   "cpm": 44.4,
+   "checks": {
+    "always_be_casting": 0.996,
+    "prismatic_bolt": 1,
+    "cooldowns": 1,
+    "clearcasting": 1,
+    "touch_after_barrage": 1
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 1,
+     "first": 4750,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 1,
+     "first": 3599,
+     "early": 1
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.381
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.094
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.32
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.015
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.03
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.016
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.146
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 1186,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.008,
+   "cpm": 38.9,
+   "checks": {
+    "always_be_casting": 0.992,
+    "prismatic_bolt": 1,
+    "cooldowns": 0.857,
+    "clearcasting": 1,
+    "touch_after_barrage": 1
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 0.857,
+     "first": 2414,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 0.857,
+     "first": 503,
+     "early": 1
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.386
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.08
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.337
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.021
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.032
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.016
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.142
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 440858,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.002,
+   "cpm": 43.8,
+   "checks": {
+    "always_be_casting": 0.998,
+    "prismatic_bolt": 1,
+    "clearcasting": 1,
+    "cooldowns": 0.969,
+    "touch_after_barrage": 1
+   },
+   "cooldowns": {
+    "321507": {
+     "name": "Touch of the Magi",
+     "usage": 0.938,
+     "first": 2435,
+     "early": 1
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "usage": 1,
+     "first": 415,
+     "early": 1
+    }
+   },
+   "mix": {
+    "5143": {
+     "name": "Arcane Missiles",
+     "share": 0.401
+    },
+    "30451": {
+     "name": "Arcane Blast",
+     "share": 0.041
+    },
+    "44425": {
+     "name": "Arcane Barrage",
+     "share": 0.342
+    },
+    "153626": {
+     "name": "Arcane Orb",
+     "share": 0.01
+    },
+    "321507": {
+     "name": "Touch of the Magi",
+     "share": 0.03
+    },
+    "365350": {
+     "name": "Arcane Surge",
+     "share": 0.017
+    },
+    "1295924": {
+     "name": "Prismatic Bolt",
+     "share": 0.146
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 694,
+    "second": 694
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

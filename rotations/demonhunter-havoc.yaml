@@ -131,19 +131,13 @@ checks:
     importance: medium
     title: { pt: "Empowered Eye Beam perdido", en: "Empowered Eye Beam lost" }
     tip: { pt: "A The Hunt dobra o próximo Eye Beam: use a Hunt com o Eye Beam a menos de 10s.", en: "The Hunt doubles the next Eye Beam: use The Hunt with Eye Beam less than 10s away." }
-  - kind: after_cast
-    id: retreat_before_eye_beam
-    casts: [eye_beam]
-    after: [vengeful_retreat, metamorphosis]
-    within_ms: 3000
-    only_with: [exergy]
-    importance: low
-    title: { pt: "Eye Beam sem Vengeful Retreat", en: "Eye Beam without Vengeful Retreat" }
-    tip: { pt: "Com Exergy, Vengeful Retreat 1 GCD antes do Eye Beam: o Initiative/Inertia entra no dano dele. Se dessincronizar, segure o Retreat para o próximo Eye Beam.", en: "With Exergy, Vengeful Retreat 1 GCD before Eye Beam: Initiative/Inertia goes into its damage. If they desync, hold Retreat for the next Eye Beam." }
+  # tirado pelos tops (36 lutas): "Eye Beam sem Vengeful Retreat" — mesmo com Exergy, os tops só
+  # combinam os dois em 40% dos Eye Beams (o quarto de baixo, 21%)
   - kind: cooldown
     id: cooldowns
-    spells: [metamorphosis, the_hunt, eye_beam, essence_break, blade_dance, immolation_aura]
+    # Immolation Aura fora: um quarto dos tops usa 62% ou menos (36 lutas)
+    spells: [metamorphosis, the_hunt, eye_beam, essence_break, blade_dance]
     min_usage: 0.8
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
-    tip: { pt: "Eye Beam, Blade Dance, Essence Break e Immolation Aura no cooldown; The Hunt e Meta sem segurar.", en: "Eye Beam, Blade Dance, Essence Break and Immolation Aura on cooldown; The Hunt and Meta without holding." }
+    tip: { pt: "Eye Beam, Blade Dance e Essence Break no cooldown; The Hunt e Meta sem segurar.", en: "Eye Beam, Blade Dance and Essence Break on cooldown; The Hunt and Meta without holding." }

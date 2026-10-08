@@ -168,6 +168,7 @@ struct EnemySpellAcc {
     name: String,
     sources: HashSet<String>,
     casts: u32,
+    cast_times: Vec<i64>,
     hits: u32,
     damage: i64,
     interrupted: u32,
@@ -800,6 +801,7 @@ impl PullBuilder {
             e.name = spell_name;
             e.sources.insert(src_name.to_string());
             e.casts += 1;
+            e.cast_times.push(rel);
             return;
         }
         if counting && data.interrupts.contains_key(&spell_id) {
@@ -1138,6 +1140,7 @@ impl PullBuilder {
                     name: e.name,
                     sources,
                     casts: e.casts,
+                    cast_times: e.cast_times,
                     hits_on_players: e.hits,
                     damage_to_players: e.damage,
                     interrupted: e.interrupted,

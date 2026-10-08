@@ -10,7 +10,7 @@
 //       à mão, a menos que --force)
 //   node scripts/rotation.mjs gen <spec> [--dirs a,b] [--force]
 //       só o rascunho (usa a calibração anterior, se houver)
-//   node scripts/rotation.mjs check <spec> [--dirs a,b]
+//   node scripts/rotation.mjs check <spec> [--dirs a,b] [--opener]
 //       roda a rotação atual (rotations/) nos tops e mostra como eles se saem em cada checagem
 //
 // <spec>: "unholy", "deathknight-unholy" ou o id (252). --dirs: pastas no formato do
@@ -21,7 +21,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { findSpec, token } from './rotation/specs.mjs';
 import { loadApl, loadDump, parseDump } from './rotation/simc.mjs';
-import { readLogs } from './rotation/logs.mjs';
+import { englishNames, readLogs } from './rotation/logs.mjs';
 import { generate } from './rotation/generate.mjs';
 import { toYaml } from './rotation/yaml.mjs';
 
@@ -112,13 +112,33 @@ function printTable(cal) {
   console.log(`  tempo parado: mediana ${pct(median(cal.downtimePct))}`);
 }
 
+/** --opener: por árvore, o que falta na abertura e o que os pulls castam na janela. */
+function printOpener(results) {
+  const byTree = {};
+  for (const { rotation: r } of results) {
+    if (!r.opener) continue;
+    const t = (byTree[r.tree ?? '?'] ??= { n: 0, missing: {}, seen: {} });
+    t.n++;
+    for (const m of r.opener.missing) t.missing[m.name] = (t.missing[m.name] ?? 0) + 1;
+    for (const name of new Set(r.opener.actual.map((a) => a.name))) t.seen[name] = (t.seen[name] ?? 0) + 1;
+  }
+  const list = (o, n) => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${pct(v / n)}`).join(', ');
+  for (const [tree, t] of Object.entries(byTree)) {
+    console.log(`
+abertura ${tree} (${t.n} pulls)`);
+    console.log(`  falta: ${list(t.missing, t.n) || '-'}`);
+    console.log(`  na janela (10 primeiros casts): ${list(t.seen, t.n)}`);
+  }
+}
+
 // ---------------------------------------------------------------- comandos
 
 async function build(calibration) {
   const [aplText, dumpText] = await Promise.all([loadApl(spec), loadDump(spec)]);
-  const logs = readLogs(dataDirs(), spec);
+  const dump = parseDump(dumpText);
+  const logs = englishNames(readLogs(dataDirs(), spec), dump);
   if (!logs.players.length) throw new Error(`nenhum player ${spec.name} nos logs`);
-  const out = await generate({ spec, aplText, dump: parseDump(dumpText), logs, calibration });
+  const out = await generate({ spec, aplText, dump, logs, calibration });
   const header = [
     `${spec.name} — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).`,
     'Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);',
@@ -141,9 +161,12 @@ async function main() {
   if (cmd === 'tops') return (await import('./rotation/tops.mjs')).downloadTops(spec, TOPS, { difficulty: +opt('difficulty', 5), perBoss: +opt('per-boss', 2) });
 
   if (cmd === 'check') {
-    const cal = aggregate(runEngine(dataDirs(), null));
+    const results = runEngine(dataDirs(), null);
+    const cal = aggregate(results);
     if (!cal.n) throw new Error(`nenhuma leitura de rotação para ${spec.name} (a spec tem YAML em rotations/?)`);
-    return printTable(cal);
+    printTable(cal);
+    if (flag('opener')) printOpener(results);
+    return;
   }
 
   const calPath = path.join(WORK, 'calibration.json');

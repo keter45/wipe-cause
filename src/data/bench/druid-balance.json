@@ -1,0 +1,702 @@
+{
+ "spec": 102,
+ "name": "Balance Druid",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.023,
+   "cpm": 55.4,
+   "checks": {
+    "astral_power": 0.967,
+    "always_be_casting": 0.977,
+    "cooldowns": 0.974,
+    "sunfire": 0.992,
+    "moonfire": 0.996,
+    "touch_the_cosmos": 1
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 1,
+     "first": 34967,
+     "early": 0
+    },
+    "205636": {
+     "name": "Force of Nature",
+     "usage": 1,
+     "first": 34565,
+     "early": 0
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 0.921,
+     "first": 3143,
+     "early": 1
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.111
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.069
+    },
+    "88747": {
+     "name": "Wild Mushroom",
+     "share": 0.042
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.129
+    },
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "share": 0.013
+    },
+    "190984": {
+     "name": "Wrath",
+     "share": 0.357
+    },
+    "191034": {
+     "name": "Starfall",
+     "share": 0.205
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.007
+    },
+    "205636": {
+     "name": "Force of Nature",
+     "share": 0.021
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "share": 0.036
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 34477,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.039,
+   "cpm": 54,
+   "checks": {
+    "always_be_casting": 0.961,
+    "astral_power": 0.998,
+    "cooldowns": 0.639,
+    "moonfire": 0.997,
+    "sunfire": 0.997,
+    "touch_the_cosmos": 1
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 0,
+     "first": null,
+     "early": null
+    },
+    "205636": {
+     "name": "Force of Nature",
+     "usage": 1,
+     "first": 2709,
+     "early": 1
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 0.916,
+     "first": 19476,
+     "early": 0
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.043
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.339
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.073
+    },
+    "190984": {
+     "name": "Wrath",
+     "share": 0.466
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.017
+    },
+    "205636": {
+     "name": "Force of Nature",
+     "share": 0.023
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "share": 0.038
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 3041,
+    "second": 3165
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.02,
+   "cpm": 47.8,
+   "checks": {
+    "astral_power": 0.967,
+    "always_be_casting": 0.98,
+    "sunfire": 0.995,
+    "moonfire": 0.996,
+    "touch_the_cosmos": 1,
+    "starweavers_weft": 1,
+    "starweavers_warp": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 1,
+     "first": 7419,
+     "early": 0.75
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "usage": 1,
+     "first": 4494,
+     "early": 1
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 1,
+     "first": null,
+     "early": null
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.077
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.164
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.066
+    },
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "share": 0.015
+    },
+    "191034": {
+     "name": "Starfall",
+     "share": 0.271
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.351
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "share": 0.053
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 7898,
+    "second": 7898
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.025,
+   "cpm": 44.4,
+   "checks": {
+    "astral_power": 0.976,
+    "always_be_casting": 0.975,
+    "cooldowns": 0.975,
+    "moonfire": 0.995,
+    "sunfire": 0.992,
+    "touch_the_cosmos": 1,
+    "starweavers_weft": 1,
+    "starweavers_warp": 1
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 1,
+     "first": 8667,
+     "early": 0.75
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "usage": 1,
+     "first": 8354,
+     "early": 0.75
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 0.926,
+     "first": null,
+     "early": null
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.076
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.236
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.082
+    },
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "share": 0.014
+    },
+    "191034": {
+     "name": "Starfall",
+     "share": 0.18
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.359
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "share": 0.052
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 9426,
+    "second": 394049
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.01,
+   "cpm": 50.2,
+   "checks": {
+    "astral_power": 0.966,
+    "always_be_casting": 0.99,
+    "moonfire": 0.997,
+    "sunfire": 1,
+    "touch_the_cosmos": 1,
+    "starweavers_weft": 1,
+    "starweavers_warp": 1,
+    "cooldowns": 0.972
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 1,
+     "first": 5259,
+     "early": 1
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "usage": 1,
+     "first": 4662,
+     "early": 1
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 0.917,
+     "first": null,
+     "early": null
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.105
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.158
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.077
+    },
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "share": 0.015
+    },
+    "191034": {
+     "name": "Starfall",
+     "share": 0.274
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.332
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "share": 0.051
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 4929,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.043,
+   "cpm": 56,
+   "checks": {
+    "always_be_casting": 0.957,
+    "astral_power": 0.984,
+    "sunfire": 0.984,
+    "moonfire": 0.998,
+    "touch_the_cosmos": 1,
+    "cooldowns": 0.988
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 1,
+     "first": 22988,
+     "early": 0
+    },
+    "205636": {
+     "name": "Force of Nature",
+     "usage": 1,
+     "first": 22712,
+     "early": 0
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 0.964,
+     "first": 3829,
+     "early": 1
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.081
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.13
+    },
+    "88747": {
+     "name": "Wild Mushroom",
+     "share": 0.038
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.099
+    },
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "share": 0.013
+    },
+    "190984": {
+     "name": "Wrath",
+     "share": 0.399
+    },
+    "191034": {
+     "name": "Starfall",
+     "share": 0.159
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.022
+    },
+    "205636": {
+     "name": "Force of Nature",
+     "share": 0.024
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "share": 0.036
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 25466,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.016,
+   "cpm": 51.1,
+   "checks": {
+    "astral_power": 0.969,
+    "always_be_casting": 0.984,
+    "sunfire": 0.994,
+    "moonfire": 0.996,
+    "touch_the_cosmos": 1,
+    "starweavers_weft": 1,
+    "starweavers_warp": 1,
+    "cooldowns": 0.983
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 1,
+     "first": 5532,
+     "early": 1
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "usage": 1,
+     "first": 5441,
+     "early": 1
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 0.95,
+     "first": null,
+     "early": null
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.126
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.246
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.128
+    },
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "share": 0.016
+    },
+    "191034": {
+     "name": "Starfall",
+     "share": 0.138
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.29
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "share": 0.05
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 4438,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.026,
+   "cpm": 52.6,
+   "checks": {
+    "astral_power": 0.985,
+    "always_be_casting": 0.974,
+    "cooldowns": 0.983,
+    "sunfire": 0.998,
+    "moonfire": 0.998,
+    "touch_the_cosmos": 1
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 1,
+     "first": 9799,
+     "early": 1
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "usage": 1,
+     "first": 9614,
+     "early": 1
+    },
+    "205636": {
+     "name": "Force of Nature",
+     "usage": 1,
+     "first": 9277,
+     "early": 1
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 0.95,
+     "first": 3112,
+     "early": 1
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.105
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.055
+    },
+    "88747": {
+     "name": "Wild Mushroom",
+     "share": 0.04
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.107
+    },
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "share": 0.012
+    },
+    "190984": {
+     "name": "Wrath",
+     "share": 0.281
+    },
+    "191034": {
+     "name": "Starfall",
+     "share": 0.254
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.076
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "share": 0.017
+    },
+    "205636": {
+     "name": "Force of Nature",
+     "share": 0.024
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "share": 0.027
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 292133,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.006,
+   "cpm": 51.6,
+   "checks": {
+    "astral_power": 0.982,
+    "always_be_casting": 0.994,
+    "sunfire": 0.996,
+    "moonfire": 0.996,
+    "touch_the_cosmos": 1,
+    "starweavers_weft": 1,
+    "starweavers_warp": 1,
+    "cooldowns": 0.983
+   },
+   "cooldowns": {
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "usage": 1,
+     "first": 7854,
+     "early": 0.75
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "usage": 1,
+     "first": 6267,
+     "early": 1
+    },
+    "1233346": {
+     "name": "Eclipse",
+     "usage": 0.95,
+     "first": null,
+     "early": null
+    }
+   },
+   "mix": {
+    "8921": {
+     "name": "Moonfire",
+     "share": 0.035
+    },
+    "78674": {
+     "name": "Starsurge",
+     "share": 0.162
+    },
+    "93402": {
+     "name": "Sunfire",
+     "share": 0.038
+    },
+    "102560": {
+     "name": "Incarnation: Chosen of Elune",
+     "share": 0.017
+    },
+    "191034": {
+     "name": "Starfall",
+     "share": 0.313
+    },
+    "194153": {
+     "name": "Starfire",
+     "share": 0.377
+    },
+    "202770": {
+     "name": "Fury of Elune",
+     "share": 0.054
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 14401,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

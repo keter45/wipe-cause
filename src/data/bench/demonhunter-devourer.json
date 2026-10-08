@@ -1,0 +1,599 @@
+{
+ "spec": 1480,
+ "name": "Devourer Demon Hunter",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.054,
+   "cpm": 20.5,
+   "checks": {
+    "always_be_casting": 0.946,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 20721,
+     "early": 0.5
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "usage": 1,
+     "first": 5570,
+     "early": 1
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 6736,
+     "early": 1
+    }
+   },
+   "mix": {
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0
+    },
+    "473662": {
+     "name": "Consume",
+     "share": 0.356
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.349
+    },
+    "1221150": {
+     "name": "Collapsing Star",
+     "share": 0.165
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.053
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.076
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "share": 0
+    },
+    "1245470": {
+     "name": "Reaper's Toll",
+     "share": 0
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "share": 0
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 14510,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.01,
+   "cpm": 28.2,
+   "checks": {
+    "always_be_casting": 0.99,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 41212,
+     "early": 0
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "usage": 1,
+     "first": 6880,
+     "early": 1
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 8501,
+     "early": 1
+    }
+   },
+   "mix": {
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.05
+    },
+    "473662": {
+     "name": "Consume",
+     "share": 0.218
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.209
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.198
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.083
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "share": 0.052
+    },
+    "1245470": {
+     "name": "Reaper's Toll",
+     "share": 0.154
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "share": 0.024
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 7966,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.055,
+   "cpm": 20.6,
+   "checks": {
+    "always_be_casting": 0.945,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 6151,
+     "early": 1
+    }
+   },
+   "mix": {
+    "473662": {
+     "name": "Consume",
+     "share": 0.377
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.342
+    },
+    "1221150": {
+     "name": "Collapsing Star",
+     "share": 0.172
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.013
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.085
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 14157,
+    "second": 315360
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.074,
+   "cpm": 20.9,
+   "checks": {
+    "always_be_casting": 0.926,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 3516,
+     "early": 0.75
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "usage": 1,
+     "first": 9551,
+     "early": 1
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 11069,
+     "early": 1
+    }
+   },
+   "mix": {
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0
+    },
+    "473662": {
+     "name": "Consume",
+     "share": 0.425
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.283
+    },
+    "1221150": {
+     "name": "Collapsing Star",
+     "share": 0.141
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.067
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.079
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "share": 0
+    },
+    "1245470": {
+     "name": "Reaper's Toll",
+     "share": 0
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "share": 0
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 17247,
+    "second": 391498
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.04,
+   "cpm": 20.3,
+   "checks": {
+    "always_be_casting": 0.96,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 4370,
+     "early": 1
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "usage": 1,
+     "first": 8253,
+     "early": 1
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 9283,
+     "early": 1
+    }
+   },
+   "mix": {
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0
+    },
+    "473662": {
+     "name": "Consume",
+     "share": 0.349
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.358
+    },
+    "1221150": {
+     "name": "Collapsing Star",
+     "share": 0.164
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.031
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.076
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "share": 0
+    },
+    "1245470": {
+     "name": "Reaper's Toll",
+     "share": 0
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "share": 0
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 13134,
+    "second": 316552
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.029,
+   "cpm": 22.1,
+   "checks": {
+    "always_be_casting": 0.971,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 3983,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "473662": {
+     "name": "Consume",
+     "share": 0.408
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.318
+    },
+    "1221150": {
+     "name": "Collapsing Star",
+     "share": 0.168
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.034
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.07
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 16727,
+    "second": 65880
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.053,
+   "cpm": 21.3,
+   "checks": {
+    "always_be_casting": 0.947,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 3723,
+     "early": 1
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "usage": 1,
+     "first": 8670,
+     "early": 1
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 32846,
+     "early": 0.5
+    }
+   },
+   "mix": {
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0
+    },
+    "473662": {
+     "name": "Consume",
+     "share": 0.282
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.328
+    },
+    "1221150": {
+     "name": "Collapsing Star",
+     "share": 0.085
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.064
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.107
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "share": 0.028
+    },
+    "1245470": {
+     "name": "Reaper's Toll",
+     "share": 0.084
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "share": 0.011
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 15125,
+    "second": 15125
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.046,
+   "cpm": 23.2,
+   "checks": {
+    "always_be_casting": 0.954,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 3470,
+     "early": 0.75
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "usage": 1,
+     "first": 6721,
+     "early": 1
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 8747,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.017
+    },
+    "473662": {
+     "name": "Consume",
+     "share": 0.339
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.234
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.092
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.101
+    },
+    "1245412": {
+     "name": "Voidblade",
+     "share": 0.052
+    },
+    "1245470": {
+     "name": "Reaper's Toll",
+     "share": 0.145
+    },
+    "1246167": {
+     "name": "The Hunt",
+     "share": 0.024
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 8104,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.034,
+   "cpm": 20.9,
+   "checks": {
+    "always_be_casting": 0.966,
+    "soulburst": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1241937": {
+     "name": "Soul Immolation",
+     "usage": 1,
+     "first": 6359,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "473662": {
+     "name": "Consume",
+     "share": 0.364
+    },
+    "473728": {
+     "name": "Void Ray",
+     "share": 0.349
+    },
+    "1221150": {
+     "name": "Collapsing Star",
+     "share": 0.185
+    },
+    "1226019": {
+     "name": "Reap",
+     "share": 0.031
+    },
+    "1241937": {
+     "name": "Soul Immolation",
+     "share": 0.076
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 15303,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

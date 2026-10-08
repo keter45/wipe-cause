@@ -35,7 +35,7 @@ hero_trees:
     markers: [] # quem não usa os golpes do Void-Scarred
 
 abilities:
-  the_hunt: { id: 1246167, alt_ids: [1259431], name: The Hunt, cast_ms: 1000, cooldown_ms: 90000 }
+  the_hunt: { id: 1246167, alt_ids: [1259431], name: The Hunt, cast_ms: 1000, cooldown_ms: 90000, tree: void_scarred } # os tops Annihilator não pegam a The Hunt
   soul_immolation: { id: 1241937, name: Soul Immolation, cooldown_ms: 60000 }
   voidblade: { id: 1245412, alt_ids: [1245414, 1245483], name: Voidblade, cooldown_ms: 30000, tree: void_scarred }
   reap: { id: 1226019, alt_ids: [1245453], name: Reap }
@@ -85,11 +85,13 @@ priority:
       - { spell: consume }
 
 # Abertura: Soul Immolation e Consume pré-pull, depois Reap / Void Ray até a Meta
+# Pelos tops (36 lutas): Void-Scarred com Reap, Void Ray, Voidblade e The Hunt em até 15s (85%);
+# Annihilator com Consume, Void Ray e Soul Immolation (87%); o Reap falta em 43% deles
 opener:
   window_ms: 15000
   ordered: false
   void_scarred: [reap, void_ray, voidblade, the_hunt]
-  annihilator: [reap, void_ray]
+  annihilator: [consume, void_ray, soul_immolation]
 
 checks:
   - kind: downtime

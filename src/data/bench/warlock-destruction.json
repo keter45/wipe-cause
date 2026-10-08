@@ -1,0 +1,767 @@
+{
+ "spec": 267,
+ "name": "Destruction Warlock",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.033,
+   "cpm": 47.6,
+   "checks": {
+    "always_be_casting": 0.967,
+    "cooldowns": 0.954,
+    "wither": 0.994,
+    "fiendish_cruelty": 1,
+    "backdraft": 0.981
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 1637,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.888,
+     "first": 5961,
+     "early": 0.75
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 2498,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 0.929,
+     "first": 3658,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.015
+    },
+    "5740": {
+     "name": "Rain of Fire",
+     "share": 0.024
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.026
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.241
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.174
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.237
+    },
+    "80240": {
+     "name": "Havoc",
+     "share": 0.021
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.122
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.02
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.105
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 2007,
+    "second": 3541
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.024,
+   "cpm": 52.1,
+   "checks": {
+    "always_be_casting": 0.976,
+    "cooldowns": 0.969,
+    "wither": 0.997,
+    "fiendish_cruelty": 1,
+    "backdraft": 1
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 1319,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.882,
+     "first": 294,
+     "early": 1
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 1206,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 1,
+     "first": 2303,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.014
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.024
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.149
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.174
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.379
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.179
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.02
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.061
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 182,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.02,
+   "cpm": 51.1,
+   "checks": {
+    "always_be_casting": 0.98,
+    "cooldowns": 0.958,
+    "wither": 1,
+    "fiendish_cruelty": 1,
+    "backdraft": 1
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 1338,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.889,
+     "first": 167,
+     "early": 0.75
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 1365,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 1,
+     "first": 2549,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.015
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.024
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.24
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.175
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.225
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.227
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.021
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.072
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 1521,
+    "second": 2927
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.011,
+   "cpm": 57.2,
+   "checks": {
+    "always_be_casting": 0.989,
+    "cooldowns": 0.948,
+    "wither": 0.997,
+    "fiendish_cruelty": 1,
+    "backdraft": 0.981
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 2371,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.938,
+     "first": 516,
+     "early": 1
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 572,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 0.854,
+     "first": 3541,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.012
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.023
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.296
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.162
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.304
+    },
+    "80240": {
+     "name": "Havoc",
+     "share": 0.01
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.132
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.017
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.044
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 1659,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.034,
+   "cpm": 50.7,
+   "checks": {
+    "always_be_casting": 0.966,
+    "cooldowns": 0.951,
+    "wither": 0.997,
+    "fiendish_cruelty": 1,
+    "backdraft": 1
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 1082,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.804,
+     "first": 525,
+     "early": 0.75
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 3668,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 1,
+     "first": 1648,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.015
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.023
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.219
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.166
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.205
+    },
+    "80240": {
+     "name": "Havoc",
+     "share": 0.034
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.215
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.022
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.082
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 1435,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.018,
+   "cpm": 49.2,
+   "checks": {
+    "always_be_casting": 0.982,
+    "cooldowns": 0.949,
+    "wither": 0.998,
+    "fiendish_cruelty": 1,
+    "backdraft": 0.983
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 811,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.859,
+     "first": 700,
+     "early": 0.75
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 2044,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 0.938,
+     "first": 1917,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.015
+    },
+    "5740": {
+     "name": "Rain of Fire",
+     "share": 0.025
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.026
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.202
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.17
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.275
+    },
+    "80240": {
+     "name": "Havoc",
+     "share": 0.025
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.16
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.021
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.078
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 841,
+    "second": 53727
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.029,
+   "cpm": 53.5,
+   "checks": {
+    "always_be_casting": 0.971,
+    "cooldowns": 0.937,
+    "wither": 1,
+    "fiendish_cruelty": 1,
+    "backdraft": 1
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 415,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.882,
+     "first": 486,
+     "early": 0.75
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 2415,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 0.929,
+     "first": 1650,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.015
+    },
+    "5740": {
+     "name": "Rain of Fire",
+     "share": 0
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.023
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.172
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.168
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.289
+    },
+    "80240": {
+     "name": "Havoc",
+     "share": 0.02
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.206
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.019
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.098
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 613,
+    "second": 1853
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.026,
+   "cpm": 46.4,
+   "checks": {
+    "always_be_casting": 0.974,
+    "cooldowns": 0.921,
+    "wither": 0.999,
+    "fiendish_cruelty": 1,
+    "backdraft": 0.974
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 5338,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.786,
+     "first": 458,
+     "early": 0.75
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 458,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 0.9,
+     "first": 8140,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.013
+    },
+    "5740": {
+     "name": "Rain of Fire",
+     "share": 0.025
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.024
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.231
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.175
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.203
+    },
+    "80240": {
+     "name": "Havoc",
+     "share": 0.03
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.185
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.02
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.097
+    }
+   },
+   "potion": {
+    "used": 0,
+    "first": null,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.017,
+   "cpm": 54.8,
+   "checks": {
+    "always_be_casting": 0.983,
+    "cooldowns": 0.964,
+    "wither": 1,
+    "fiendish_cruelty": 1,
+    "backdraft": 1
+   },
+   "cooldowns": {
+    "1122": {
+     "name": "Summon Infernal",
+     "usage": 1,
+     "first": 3047,
+     "early": 1
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "usage": 0.857,
+     "first": 383,
+     "early": 1
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "usage": 1,
+     "first": 3148,
+     "early": 1
+    },
+    "442726": {
+     "name": "Malevolence",
+     "usage": 1,
+     "first": 5101,
+     "early": 1
+    }
+   },
+   "mix": {
+    "1122": {
+     "name": "Summon Infernal",
+     "share": 0.014
+    },
+    "6353": {
+     "name": "Soul Fire",
+     "share": 0.024
+    },
+    "17877": {
+     "name": "Shadowburn",
+     "share": 0.252
+    },
+    "17962": {
+     "name": "Conflagrate",
+     "share": 0.167
+    },
+    "29722": {
+     "name": "Incinerate",
+     "share": 0.19
+    },
+    "116858": {
+     "name": "Chaos Bolt",
+     "share": 0.239
+    },
+    "442726": {
+     "name": "Malevolence",
+     "share": 0.019
+    },
+    "445468": {
+     "name": "Wither",
+     "share": 0.095
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 2819,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

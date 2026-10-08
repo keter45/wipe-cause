@@ -101,11 +101,12 @@ priority:
       - { spell: scourge_strike }
       - { spell: epidemic }
 
-# Abertura: Outbreak, Festering Strike / Scythe e os cooldowns empilhados
+# Abertura: Outbreak, Festering Strike / Scythe e os cooldowns empilhados. Pelos tops (36 lutas, todos
+# San'layn): o Outbreak fica fora da janela em 17% deles, então não entra na conta do San'layn
 opener:
   window_ms: 12000
   ordered: false
-  sanlayn: [outbreak, festering_strike, army_of_the_dead, dark_transformation, putrefy]
+  sanlayn: [festering_strike, army_of_the_dead, dark_transformation, putrefy]
   rider_of_the_apocalypse: [outbreak, festering_strike, army_of_the_dead, dark_transformation, putrefy]
 
 checks:

@@ -3,7 +3,7 @@ import { ExternalLink, Settings2, Trophy } from 'lucide-react';
 import type { Pull } from '../types';
 import { inTauri, openExternal } from '../lib/api';
 import { shortName } from '../lib/format';
-import { fetchRankings, ownFight, pickTops, wclFightUrl, wowAnalyzerUrl, type TopRanking } from '../lib/wclApi';
+import { fetchRankings, ownFight, pickTops, TOPS_SHOWN, withoutExternalPI, wclFightUrl, wowAnalyzerUrl, type TopRanking } from '../lib/wclApi';
 import { useSetup } from '../lib/setup';
 import type { Sample } from '../lib/performance';
 import { messagesOf, useMessages } from '../i18n';
@@ -49,7 +49,8 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
     setMsg(null);
     try {
       const all = await fetchRankings(me.pull, me.player.specId!, me.player.role === 'healer');
-      const tops = pickTops(all, me.player.setup?.itemLevel ?? null, me.pull.success ? me.pull.durationMs : null);
+      // o dobro de candidatos: os que receberam Power Infusion de outra pessoa saem
+      const tops = await withoutExternalPI(pickTops(all, me.player.setup?.itemLevel ?? null, me.pull.success ? me.pull.durationMs : null, TOPS_SHOWN * 2), TOPS_SHOWN);
       if (tops.length === 0) setMsg(t.noParses);
       onTops(tops);
     } catch (e) {

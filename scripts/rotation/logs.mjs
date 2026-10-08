@@ -56,6 +56,24 @@ export function readLogs(dirs, spec) {
   return out;
 }
 
+/**
+ * Nomes em inglês pelo id (dump do SimC): o Warcraft Logs grava os nomes no idioma do cliente de
+ * quem subiu o log (russo, chinês...), e o gerador casa buffs e textos pelo nome.
+ */
+export function englishNames(logs, dump) {
+  const fix = (map) => {
+    for (const [id, e] of Object.entries(map ?? {})) {
+      const en = dump.byId.get(+id)?.name;
+      if (en) e.name = en;
+    }
+  };
+  fix(logs.casts);
+  fix(logs.auras);
+  fix(logs.debuffs);
+  for (const t of Object.values(logs.energize ?? {})) fix(t.sources);
+  return logs;
+}
+
 /** Ids cast que repetem outro de mesmo nome no mesmo instante (ex.: The Hunt 370965 + 370966). */
 export function echoIds(logs) {
   const byName = new Map();

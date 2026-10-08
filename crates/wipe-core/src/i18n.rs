@@ -150,8 +150,14 @@ mod tests {
         assert!(missing.is_empty(), "{} textos sem pt e en:\n{}", missing.len(), missing.iter().take(40).cloned().collect::<Vec<_>>().join("\n"));
     }
 
+    /// Nomes do jogo (em inglês) com palavra que parece português.
+    const GAME_NAMES: &[&str] = &["Coup de Grace"];
+
     /// Acento ou palavra que só existe em português.
     fn looks_portuguese(s: &str) -> bool {
+        if GAME_NAMES.contains(&s) {
+            return false;
+        }
         const WORDS: &[&str] = &[
             "não", "você", "com", "para", "pelo", "pela", "quem", "cada", "ainda", "aqui", "até", "dos", "das", "uma", "morte", "mortes", "nenhum",
             "mais", "depois", "isso", "esta", "sua", "seu", "que", "por", "mas", "ou", "em", "na", "ao", "os", "da", "de", "perto", "duplo",

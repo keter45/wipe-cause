@@ -131,11 +131,13 @@ checks:
     importance: medium
     title: { pt: "Sudden Death perdido", en: "Sudden Death lost" }
     tip: { pt: "Sudden Death libera o Execute: use antes de acumular a terceira ou expirar.", en: "Sudden Death unlocks Execute: use it before the third charge or before it expires." }
+  # pelos tops (36 lutas): 80% dos Bladestorms saem até 10s depois do Colossus Smash, 85% até 13s;
+  # no Slayer o Bladestorm volta antes do Smash, então parte sai fora de propósito
   - kind: after_cast
     id: bladestorm_in_smash
     casts: [bladestorm, demolish]
     after: [colossus_smash]
-    within_ms: 10000
+    within_ms: 13000
     importance: low
     title: { pt: "Bladestorm fora do Colossus Smash", en: "Bladestorm outside Colossus Smash" }
     tip: { pt: "Bladestorm (ou Demolish) dentro do Colossus Smash.", en: "Bladestorm (or Demolish) inside Colossus Smash." }

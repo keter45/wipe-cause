@@ -1,0 +1,669 @@
+{
+ "spec": 261,
+ "name": "Subtlety Rogue",
+ "pulls": 32,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.06,
+   "cpm": 59.9,
+   "checks": {
+    "always_be_casting": 0.94,
+    "cooldowns": 0.975,
+    "ancient_arts": 1
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 1,
+     "first": 4428,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 0.95,
+     "first": 4547,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.151
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.008
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.012
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.053
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.121
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.35
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.112
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.085
+    },
+    "319175": {
+     "name": "Black Powder",
+     "share": 0.083
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.022
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 5493,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.03,
+   "cpm": 61.8,
+   "checks": {
+    "always_be_casting": 0.97,
+    "ancient_arts": 1,
+    "cooldowns": 0.938
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 1,
+     "first": 4074,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 0.882,
+     "first": 4534,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.233
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.008
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.012
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.052
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.154
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.414
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.025
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.082
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.021
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 2353,
+    "second": 309127
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.068,
+   "cpm": 57.7,
+   "checks": {
+    "always_be_casting": 0.932,
+    "cooldowns": 0.844,
+    "ancient_arts": 1
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 0.8,
+     "first": 5069,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 0.889,
+     "first": 4842,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.047
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.008
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.011
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.055
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.018
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.154
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.318
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.087
+    },
+    "319175": {
+     "name": "Black Powder",
+     "share": 0.28
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.022
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 4338,
+    "second": 315610
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.06,
+   "cpm": 52.3,
+   "checks": {
+    "always_be_casting": 0.94,
+    "cooldowns": 0.929,
+    "ancient_arts": 1
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 1,
+     "first": 2514,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 0.857,
+     "first": 2627,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.144
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.006
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.013
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.058
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.117
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.334
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.131
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.089
+    },
+    "319175": {
+     "name": "Black Powder",
+     "share": 0.091
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.023
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 2142,
+    "second": 390195
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 3,
+   "downtimePct": 0.076,
+   "cpm": 54.1,
+   "checks": {
+    "always_be_casting": 0.924,
+    "cooldowns": 0.938,
+    "ancient_arts": 1
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 1,
+     "first": 2837,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 0.875,
+     "first": 2801,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.144
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.009
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.013
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.06
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.15
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.361
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.094
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.087
+    },
+    "319175": {
+     "name": "Black Powder",
+     "share": 0.06
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.021
+    }
+   },
+   "potion": {
+    "used": 0.33,
+    "first": 1862,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.095,
+   "cpm": 55.1,
+   "checks": {
+    "always_be_casting": 0.905,
+    "ancient_arts": 1,
+    "cooldowns": 0.944
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 1,
+     "first": 4463,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 0.889,
+     "first": 3822,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.145
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.005
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.014
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.055
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.077
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.304
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.154
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.087
+    },
+    "319175": {
+     "name": "Black Powder",
+     "share": 0.141
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.023
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 3249,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 3,
+   "downtimePct": 0.025,
+   "cpm": 62.7,
+   "checks": {
+    "always_be_casting": 0.975,
+    "cooldowns": 0.844,
+    "ancient_arts": 1
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 0.8,
+     "first": 5138,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 0.889,
+     "first": 4335,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.191
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.009
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.011
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.051
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.137
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.347
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.085
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.085
+    },
+    "319175": {
+     "name": "Black Powder",
+     "share": 0.054
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.021
+    }
+   },
+   "potion": {
+    "used": 0.33,
+    "first": 2594,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 3,
+   "downtimePct": 0.034,
+   "cpm": 52.3,
+   "checks": {
+    "always_be_casting": 0.966,
+    "cooldowns": 0.852,
+    "ancient_arts": 1
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 0.857,
+     "first": 4364,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 0.846,
+     "first": 4391,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.088
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.008
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.011
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.059
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.128
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.276
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.14
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.09
+    },
+    "319175": {
+     "name": "Black Powder",
+     "share": 0.165
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.023
+    }
+   },
+   "potion": {
+    "used": 0.33,
+    "first": 123099,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 3,
+   "downtimePct": 0.083,
+   "cpm": 58.8,
+   "checks": {
+    "always_be_casting": 0.917,
+    "cooldowns": 1,
+    "ancient_arts": 1
+   },
+   "cooldowns": {
+    "121471": {
+     "name": "Shadow Blades",
+     "usage": 1,
+     "first": 4757,
+     "early": 1
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "usage": 1,
+     "first": 4930,
+     "early": 1
+    }
+   },
+   "mix": {
+    "53": {
+     "name": "Backstab",
+     "share": 0.038
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.01
+    },
+    "121471": {
+     "name": "Shadow Blades",
+     "share": 0.013
+    },
+    "185313": {
+     "name": "Shadow Dance",
+     "share": 0.056
+    },
+    "185438": {
+     "name": "Shadowstrike",
+     "share": 0.022
+    },
+    "196819": {
+     "name": "Eviscerate",
+     "share": 0.158
+    },
+    "197835": {
+     "name": "Shuriken Storm",
+     "share": 0.318
+    },
+    "282449": {
+     "name": "Secret Technique",
+     "share": 0.092
+    },
+    "319175": {
+     "name": "Black Powder",
+     "share": 0.274
+    },
+    "426591": {
+     "name": "Goremaw's Bite",
+     "share": 0.023
+    }
+   },
+   "potion": {
+    "used": 0.67,
+    "first": 5157,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

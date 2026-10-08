@@ -1,0 +1,875 @@
+{
+ "spec": 577,
+ "name": "Havoc Demon Hunter",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0.016,
+   "cpm": 29.5,
+   "checks": {
+    "always_be_casting": 0.984,
+    "empowered_eye_beam": 0.929,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 66503,
+     "early": 0
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 2999,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 1,
+     "first": 8638,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 4343,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 953,
+     "early": 1
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.275
+    },
+    "185123": {
+     "name": "Throw Glaive",
+     "share": 0
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.071
+    },
+    "195072": {
+     "name": "Fel Rush",
+     "share": 0.019
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.098
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.088
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.02
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.129
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.061
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.054
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.034
+    },
+    "442294": {
+     "name": "Reaver's Glaive",
+     "share": 0.164
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 979,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0.005,
+   "cpm": 30.5,
+   "checks": {
+    "always_be_casting": 0.995,
+    "empowered_eye_beam": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 76414,
+     "early": 0
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 4125,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 1,
+     "first": 10053,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 5965,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 981,
+     "early": 1
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.249
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.058
+    },
+    "195072": {
+     "name": "Fel Rush",
+     "share": 0.018
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.104
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.085
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.019
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.145
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.065
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.058
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.034
+    },
+    "442294": {
+     "name": "Reaver's Glaive",
+     "share": 0.161
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 1240,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0.024,
+   "cpm": 31.4,
+   "checks": {
+    "always_be_casting": 0.976,
+    "empowered_eye_beam": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 70067,
+     "early": 0
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 4881,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 1,
+     "first": 10344,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 6196,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 1034,
+     "early": 1
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.278
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.065
+    },
+    "195072": {
+     "name": "Fel Rush",
+     "share": 0.046
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.095
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.081
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.016
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.135
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.06
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.044
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.033
+    },
+    "442294": {
+     "name": "Reaver's Glaive",
+     "share": 0.153
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 965,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0.052,
+   "cpm": 28.7,
+   "checks": {
+    "always_be_casting": 0.948,
+    "empowered_eye_beam": 0.778,
+    "cooldowns": 0.96
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 59036,
+     "early": 0
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 5027,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 0.8,
+     "first": 11703,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 6665,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 938,
+     "early": 1
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.268
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.067
+    },
+    "195072": {
+     "name": "Fel Rush",
+     "share": 0.034
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.103
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.085
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.015
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.119
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.061
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.062
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.035
+    },
+    "442294": {
+     "name": "Reaver's Glaive",
+     "share": 0.152
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 1523,
+    "second": 360952
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0.014,
+   "cpm": 30.1,
+   "checks": {
+    "always_be_casting": 0.986,
+    "empowered_eye_beam": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 76463,
+     "early": 0
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 5011,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 1,
+     "first": 10370,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 6300,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 1032,
+     "early": 1
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.291
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.056
+    },
+    "195072": {
+     "name": "Fel Rush",
+     "share": 0.032
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.101
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.08
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.018
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.111
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.062
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.045
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.034
+    },
+    "442294": {
+     "name": "Reaver's Glaive",
+     "share": 0.164
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 731,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0.015,
+   "cpm": 30.2,
+   "checks": {
+    "always_be_casting": 0.985,
+    "empowered_eye_beam": 0.875,
+    "cooldowns": 0.975
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 56299,
+     "early": 0
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 3409,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 0.875,
+     "first": 8950,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 4737,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 1987,
+     "early": 1
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.308
+    },
+    "185123": {
+     "name": "Throw Glaive",
+     "share": 0
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.069
+    },
+    "195072": {
+     "name": "Fel Rush",
+     "share": 0.008
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.088
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.078
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.018
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.148
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.053
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.054
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.034
+    },
+    "442294": {
+     "name": "Reaver's Glaive",
+     "share": 0.149
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 620,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0.006,
+   "cpm": 31.7,
+   "checks": {
+    "always_be_casting": 0.994,
+    "empowered_eye_beam": 1,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 74085,
+     "early": 0
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 4213,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 1,
+     "first": 9639,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 5920,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 949,
+     "early": 1
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.255
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.054
+    },
+    "195072": {
+     "name": "Fel Rush",
+     "share": 0.054
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.099
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.08
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.018
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.133
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.06
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.053
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.034
+    },
+    "442294": {
+     "name": "Reaver's Glaive",
+     "share": 0.149
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 1042,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0.062,
+   "cpm": 26.6,
+   "checks": {
+    "always_be_casting": 0.938,
+    "empowered_eye_beam": 1,
+    "cooldowns": 0.983
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 45172,
+     "early": 0
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 1932,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 0.917,
+     "first": 9716,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 5011,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 4203,
+     "early": 0.75
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.442
+    },
+    "185123": {
+     "name": "Throw Glaive",
+     "share": 0.05
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.088
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.081
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.087
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.019
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.079
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.059
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.069
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.033
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 288892,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0.012,
+   "cpm": 32.2,
+   "checks": {
+    "always_be_casting": 0.988,
+    "empowered_eye_beam": 0.9,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "188499": {
+     "name": "Blade Dance",
+     "usage": 1,
+     "first": 40666,
+     "early": 0.5
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "usage": 1,
+     "first": 4762,
+     "early": 1
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "usage": 1,
+     "first": 11226,
+     "early": 1
+    },
+    "258860": {
+     "name": "Essence Break",
+     "usage": 1,
+     "first": 7483,
+     "early": 1
+    },
+    "370965": {
+     "name": "The Hunt",
+     "usage": 1,
+     "first": 1047,
+     "early": 1
+    }
+   },
+   "mix": {
+    "162794": {
+     "name": "Chaos Strike",
+     "share": 0.237
+    },
+    "188499": {
+     "name": "Blade Dance",
+     "share": 0.055
+    },
+    "195072": {
+     "name": "Fel Rush",
+     "share": 0.032
+    },
+    "198013": {
+     "name": "Eye Beam",
+     "share": 0.098
+    },
+    "198793": {
+     "name": "Vengeful Retreat",
+     "share": 0.085
+    },
+    "200166": {
+     "name": "Metamorphosis",
+     "share": 0.019
+    },
+    "232893": {
+     "name": "Felblade",
+     "share": 0.141
+    },
+    "258860": {
+     "name": "Essence Break",
+     "share": 0.058
+    },
+    "258920": {
+     "name": "Immolation Aura",
+     "share": 0.075
+    },
+    "370965": {
+     "name": "The Hunt",
+     "share": 0.033
+    },
+    "442294": {
+     "name": "Reaver's Glaive",
+     "share": 0.162
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 1757,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

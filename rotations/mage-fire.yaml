@@ -1,0 +1,140 @@
+# Fire Mage — rotação base GERADA por scripts/rotation.mjs (revise os textos antes de publicar).
+# Prioridade e checagens a partir da APL e dos dados de spell do SimulationCraft (branch midnight);
+# ids pelos casts de 40 pulls nos logs; metas calibradas em 40 pulls dos tops.
+#
+# Removido na calibração:
+#   - Hyperthermia perdido (os tops "perdem" 84%: o buff é gasto por outra coisa ou de propósito)
+spec: 63
+name: "Fire Mage"
+patch: "12.1"
+sources:
+  - title: "SimulationCraft — APL mage_fire (midnight)"
+    url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/mage_fire.simc
+  - title: "Wowhead — Fire Mage Rotation Guide"
+    url: https://www.wowhead.com/guide/classes/mage/fire/rotation-cooldowns-pve-dps
+
+# casts no log que não são o player apertando um botão
+ignore_casts: [110960]
+
+key_points:
+  - { pt: "Cooldowns no cooldown: Combustion, Meteor.", en: "Cooldowns on cooldown: Combustion, Meteor." }
+  - { pt: "Gaste os procs antes de acabar: Pyroclasm (Flamestrike / Pyroblast); Hot Streak! (Flamestrike / Pyroblast); Heat Shimmer (Scorch).", en: "Spend the procs before they expire: Pyroclasm (Flamestrike / Pyroblast); Hot Streak! (Flamestrike / Pyroblast); Heat Shimmer (Scorch)." }
+  - { pt: "Sempre com um GCD rodando; no movimento, as habilidades instantâneas.", en: "Always have a GCD rolling; while moving, the instant abilities." }
+
+hero_trees:
+  - key: frostfire
+    name: "Frostfire"
+    markers: []
+  - key: sunfury
+    name: "Sunfury"
+    markers: [449314, 451073]
+
+abilities:
+  combustion: { id: 190319, name: "Combustion", cooldown_ms: 120000 }
+  meteor: { id: 153561, name: "Meteor", cooldown_ms: 45000 }
+  flamestrike: { id: 2120, alt_ids: [1254851], name: "Flamestrike", cast_ms: 3500, optional: true }
+  pyroblast: { id: 11366, name: "Pyroblast", cast_ms: 4000 }
+  fireball: { id: 133, name: "Fireball", cast_ms: 1750 }
+  scorch: { id: 2948, name: "Scorch", cast_ms: 1500 }
+  fire_blast: { id: 108853, name: "Fire Blast" }
+
+buffs:
+  pyroclasm: { id: 269651, name: "Pyroclasm" }
+  hot_streak: { id: 48108, name: "Hot Streak!" }
+  heat_shimmer: { id: 458964, name: "Heat Shimmer" }
+  hyperthermia: { id: 1242220, name: "Hyperthermia" }
+
+priority:
+  frostfire:
+    st:
+      - { spell: combustion }
+      - { spell: flamestrike, note: { pt: "com Pyroclasm, sem Hot Streak!, sem Combustion", en: "with Pyroclasm, without Hot Streak!, without Combustion" } }
+      - { spell: pyroblast, note: { pt: "com Pyroclasm, sem Hot Streak!, sem Combustion", en: "with Pyroclasm, without Hot Streak!, without Combustion" } }
+      - { spell: fireball, note: { pt: "sem Combustion", en: "without Combustion" } }
+      - { spell: meteor }
+      - { spell: flamestrike, note: { pt: "com Hot Streak!", en: "with Hot Streak!" } }
+      - { spell: pyroblast, note: { pt: "com Hot Streak!", en: "with Hot Streak!" } }
+      - { spell: scorch }
+      - { spell: fireball }
+      - { spell: fire_blast }
+      - { spell: fire_blast, note: { pt: "sem Hot Streak!", en: "without Hot Streak!" } }
+    aoe:
+      - { spell: combustion }
+      - { spell: flamestrike, note: { pt: "com Pyroclasm, sem Hot Streak!, sem Combustion", en: "with Pyroclasm, without Hot Streak!, without Combustion" } }
+      - { spell: pyroblast, note: { pt: "com Pyroclasm, sem Hot Streak!, sem Combustion", en: "with Pyroclasm, without Hot Streak!, without Combustion" } }
+      - { spell: fireball, note: { pt: "sem Combustion", en: "without Combustion" } }
+      - { spell: meteor }
+      - { spell: flamestrike, note: { pt: "com Hot Streak!", en: "with Hot Streak!" } }
+      - { spell: pyroblast, note: { pt: "com Hot Streak!", en: "with Hot Streak!" } }
+      - { spell: scorch }
+      - { spell: fireball }
+      - { spell: fire_blast }
+      - { spell: fire_blast, note: { pt: "sem Hot Streak!", en: "without Hot Streak!" } }
+  sunfury:
+    st:
+      - { spell: combustion }
+      - { spell: flamestrike, note: { pt: "com Pyroclasm, sem Hot Streak!, sem Combustion", en: "with Pyroclasm, without Hot Streak!, without Combustion" } }
+      - { spell: pyroblast, note: { pt: "com Pyroclasm, sem Hot Streak!, sem Combustion", en: "with Pyroclasm, without Hot Streak!, without Combustion" } }
+      - { spell: fireball, note: { pt: "sem Combustion", en: "without Combustion" } }
+      - { spell: meteor }
+      - { spell: flamestrike, note: { pt: "com Hot Streak!", en: "with Hot Streak!" } }
+      - { spell: pyroblast, note: { pt: "com Hot Streak!", en: "with Hot Streak!" } }
+      - { spell: scorch }
+      - { spell: fireball }
+      - { spell: fire_blast }
+      - { spell: fire_blast, note: { pt: "sem Hot Streak!", en: "without Hot Streak!" } }
+    aoe:
+      - { spell: combustion }
+      - { spell: flamestrike, note: { pt: "com Pyroclasm, sem Hot Streak!, sem Combustion", en: "with Pyroclasm, without Hot Streak!, without Combustion" } }
+      - { spell: pyroblast, note: { pt: "com Pyroclasm, sem Hot Streak!, sem Combustion", en: "with Pyroclasm, without Hot Streak!, without Combustion" } }
+      - { spell: fireball, note: { pt: "sem Combustion", en: "without Combustion" } }
+      - { spell: meteor }
+      - { spell: flamestrike, note: { pt: "com Hot Streak!", en: "with Hot Streak!" } }
+      - { spell: pyroblast, note: { pt: "com Hot Streak!", en: "with Hot Streak!" } }
+      - { spell: scorch }
+      - { spell: fireball }
+      - { spell: fire_blast }
+      - { spell: fire_blast, note: { pt: "sem Hot Streak!", en: "without Hot Streak!" } }
+
+opener:
+  window_ms: 30000
+  ordered: false
+  frostfire: [combustion, meteor]
+  sunfury: [combustion, meteor]
+
+checks:
+  - kind: downtime
+    id: always_be_casting
+    gcd_ms: 1200
+    min_gap_ms: 800
+    importance: high
+    title: { pt: "Tempo sem castar", en: "Time not casting" }
+    tip: { pt: "Sempre com um GCD rodando: no movimento, use as habilidades instantâneas.", en: "Always have a GCD rolling: while moving, use the instant abilities." }
+  - kind: proc
+    id: pyroclasm
+    buff: pyroclasm
+    spenders: [flamestrike, pyroblast]
+    importance: medium
+    title: { pt: "Pyroclasm perdido", en: "Pyroclasm lost" }
+    tip: { pt: "Pyroclasm melhora o próximo Flamestrike / Pyroblast: use antes de acabar.", en: "Pyroclasm empowers the next Flamestrike / Pyroblast: use it before it expires." }
+  - kind: proc
+    id: hot_streak
+    buff: hot_streak
+    spenders: [flamestrike, pyroblast]
+    importance: medium
+    title: { pt: "Hot Streak! perdido", en: "Hot Streak! lost" }
+    tip: { pt: "Hot Streak! melhora o próximo Flamestrike / Pyroblast: use antes de acabar.", en: "Hot Streak! empowers the next Flamestrike / Pyroblast: use it before it expires." }
+  - kind: proc
+    id: heat_shimmer
+    buff: heat_shimmer
+    spenders: [scorch]
+    importance: medium
+    title: { pt: "Heat Shimmer perdido", en: "Heat Shimmer lost" }
+    tip: { pt: "Heat Shimmer melhora o próximo Scorch: use antes de acabar.", en: "Heat Shimmer empowers the next Scorch: use it before it expires." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [combustion, meteor]
+    min_usage: 0.85
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Combustion, Meteor no cooldown.", en: "Combustion, Meteor on cooldown." }

@@ -1,0 +1,713 @@
+{
+ "spec": 259,
+ "name": "Assassination Rogue",
+ "pulls": 36,
+ "bosses": {
+  "3379": {
+   "name": "Nymrissa Wavecaller",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 46.4,
+   "checks": {
+    "garrote": 0.986,
+    "rupture": 0.996,
+    "cooldowns": 0.903,
+    "combo_points": 0.955,
+    "vanish_garrote": 1
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 0.75,
+     "first": 77116,
+     "early": 0.25
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 1,
+     "first": 6489,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 0.938,
+     "first": 7948,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.064
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.329
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.009
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.047
+    },
+    "5938": {
+     "name": "Shiv",
+     "share": 0.008
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.278
+    },
+    "51723": {
+     "name": "Fan of Knives",
+     "share": 0.119
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.012
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.022
+    },
+    "1247227": {
+     "name": "Crimson Tempest",
+     "share": 0.11
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 5502,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3420": {
+   "name": "Sszorak",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 46,
+   "checks": {
+    "garrote": 0.994,
+    "rupture": 0.997,
+    "cooldowns": 1,
+    "combo_points": 0.957,
+    "vanish_garrote": 0.875
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 1,
+     "first": 8869,
+     "early": 0.75
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 1,
+     "first": 6894,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 1,
+     "first": 7892,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.063
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.538
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.012
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.05
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.301
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.013
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.023
+    }
+   },
+   "potion": {
+    "used": 0.5,
+    "first": 6264,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3421": {
+   "name": "The Twin Fangs",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 50.1,
+   "checks": {
+    "garrote": 1,
+    "rupture": 0.996,
+    "combo_points": 0.96,
+    "vanish_garrote": 0.875,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 1,
+     "first": 8998,
+     "early": 0.75
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 1,
+     "first": 7791,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 1,
+     "first": 8796,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.062
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.075
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.011
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.048
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.264
+    },
+    "51723": {
+     "name": "Fan of Knives",
+     "share": 0.414
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.011
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.021
+    },
+    "1247227": {
+     "name": "Crimson Tempest",
+     "share": 0.09
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 7132,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3429": {
+   "name": "The Coiled Altar",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 44.4,
+   "checks": {
+    "garrote": 0.989,
+    "rupture": 0.988,
+    "cooldowns": 0.859,
+    "combo_points": 0.953,
+    "vanish_garrote": 1
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 0.833,
+     "first": 8427,
+     "early": 0.75
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 0.833,
+     "first": 6207,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 0.909,
+     "first": 7196,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.066
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.341
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.011
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.049
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.279
+    },
+    "51723": {
+     "name": "Fan of Knives",
+     "share": 0.189
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.011
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.022
+    },
+    "1247227": {
+     "name": "Crimson Tempest",
+     "share": 0.036
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 5735,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3445": {
+   "name": "Entombed Sentinels",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 45,
+   "checks": {
+    "garrote": 0.974,
+    "rupture": 0.995,
+    "combo_points": 0.956,
+    "vanish_garrote": 1,
+    "cooldowns": 0.972
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 1,
+     "first": 9048,
+     "early": 1
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 1,
+     "first": 6915,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 0.917,
+     "first": 7921,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.067
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.393
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.013
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.05
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.293
+    },
+    "51723": {
+     "name": "Fan of Knives",
+     "share": 0.119
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.013
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.022
+    },
+    "1247227": {
+     "name": "Crimson Tempest",
+     "share": 0.034
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 10542,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3455": {
+   "name": "Vashnik the Malignant",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 46.7,
+   "checks": {
+    "rupture": 0.993,
+    "garrote": 0.995,
+    "vanish_garrote": 1,
+    "combo_points": 0.927,
+    "cooldowns": 1
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 1,
+     "first": 19664,
+     "early": 0.25
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 1,
+     "first": 7018,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 1,
+     "first": 8022,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.063
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.266
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.012
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.045
+    },
+    "5938": {
+     "name": "Shiv",
+     "share": 0
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.313
+    },
+    "51723": {
+     "name": "Fan of Knives",
+     "share": 0.148
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.012
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.022
+    },
+    "1247227": {
+     "name": "Crimson Tempest",
+     "share": 0.123
+    }
+   },
+   "potion": {
+    "used": 1,
+    "first": 4744,
+    "second": 359917
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3470": {
+   "name": "Nek'zali the Soulcoiler",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 46.7,
+   "checks": {
+    "rupture": 0.979,
+    "garrote": 0.989,
+    "cooldowns": 0.861,
+    "combo_points": 0.952,
+    "vanish_garrote": 1
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 0.667,
+     "first": 138857,
+     "early": 0
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 1,
+     "first": 6167,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 0.938,
+     "first": 7169,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.067
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.407
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.009
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.05
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.294
+    },
+    "51723": {
+     "name": "Fan of Knives",
+     "share": 0.066
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.013
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.022
+    },
+    "1247227": {
+     "name": "Crimson Tempest",
+     "share": 0.066
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 4479,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3492": {
+   "name": "Ula'tek",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 45.1,
+   "checks": {
+    "rupture": 0.999,
+    "garrote": 1,
+    "combo_points": 0.921,
+    "cooldowns": 0.967,
+    "vanish_garrote": 1
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 1,
+     "first": 15615,
+     "early": 0.25
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 1,
+     "first": 6732,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 0.9,
+     "first": 7740,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.068
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.122
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.011
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.052
+    },
+    "5938": {
+     "name": "Shiv",
+     "share": 0
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.286
+    },
+    "51723": {
+     "name": "Fan of Knives",
+     "share": 0.272
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.011
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.02
+    },
+    "1247227": {
+     "name": "Crimson Tempest",
+     "share": 0.162
+    }
+   },
+   "potion": {
+    "used": 0.75,
+    "first": 588641,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  },
+  "3497": {
+   "name": "The Lost Explorers",
+   "n": 4,
+   "downtimePct": 0,
+   "cpm": 50.6,
+   "checks": {
+    "garrote": 0.994,
+    "rupture": 0.996,
+    "cooldowns": 1,
+    "combo_points": 0.97,
+    "vanish_garrote": 1
+   },
+   "cooldowns": {
+    "1856": {
+     "name": "Vanish",
+     "usage": 1,
+     "first": 12327,
+     "early": 0.5
+    },
+    "360194": {
+     "name": "Deathmark",
+     "usage": 1,
+     "first": 7847,
+     "early": 1
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "usage": 1,
+     "first": 8844,
+     "early": 1
+    }
+   },
+   "mix": {
+    "703": {
+     "name": "Garrote",
+     "share": 0.058
+    },
+    "1329": {
+     "name": "Mutilate",
+     "share": 0.037
+    },
+    "1856": {
+     "name": "Vanish",
+     "share": 0.011
+    },
+    "1943": {
+     "name": "Rupture",
+     "share": 0.043
+    },
+    "32645": {
+     "name": "Envenom",
+     "share": 0.256
+    },
+    "51723": {
+     "name": "Fan of Knives",
+     "share": 0.48
+    },
+    "360194": {
+     "name": "Deathmark",
+     "share": 0.011
+    },
+    "385627": {
+     "name": "Kingsbane",
+     "share": 0.021
+    },
+    "1247227": {
+     "name": "Crimson Tempest",
+     "share": 0.081
+    }
+   },
+   "potion": {
+    "used": 0.25,
+    "first": 10958,
+    "second": null
+   },
+   "anchors": [],
+   "defensives": []
+  }
+ }
+}

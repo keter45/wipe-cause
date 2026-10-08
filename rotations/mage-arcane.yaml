@@ -82,10 +82,13 @@ priority:
       - { spell: arcane_blast }
 
 # Abertura: Arcane Surge, um Missiles e um Barrage, e o Touch of the Magi com o Barrage no ar
+# abertura pelos tops (36 lutas): todos usam Arcane Surge (mediana 1,2s) e Touch of the Magi (90% até
+# 5,5s), mas a ordem e o que vem no meio variam (alguns abrem com Arcane Blast e Arcane Orb)
 opener:
   window_ms: 10000
-  sunfury: [arcane_surge, arcane_missiles, arcane_barrage, touch_of_the_magi]
-  spellslinger: [arcane_surge, arcane_missiles, arcane_barrage, touch_of_the_magi]
+  ordered: false
+  sunfury: [arcane_surge, touch_of_the_magi]
+  spellslinger: [arcane_surge, touch_of_the_magi]
 
 checks:
   - kind: downtime

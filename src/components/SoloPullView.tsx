@@ -1,28 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ShieldAlert, Skull, Target, TrendingDown } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ChevronDown, ShieldAlert, Skull, Target } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { mmss, num, shortName } from '../lib/format';
 import { candidates, defaultReference, detectCooldowns, isHealer, outputPerSec, type Sample } from '../lib/performance';
-import { advantageWindows, castDiff, fairReference, losses, relevantSpells, myDeaths, myMechanicFailures, takenMoreThan, timelineOf, type AdvantageWindow, type Loss } from '../lib/solo';
+import { fairReference, losses, myDeaths, myMechanicFailures, type Loss } from '../lib/solo';
 import { meIn, setSoloCharacter, useSoloCharacter } from '../lib/mode';
-import { loadTop, type TopRanking, type TopSample } from '../lib/wclApi';
 import { useSeek } from '../lib/wcr';
 import { specLabel } from '../lib/specs';
 import { scoreTone } from '../lib/score';
 import { PlayAt } from './VideoPanel';
-import { SpellIcon, SpellName } from './SpellIcon';
+import { SpellIcon } from './SpellIcon';
 import { PlayerName } from './Names';
 import { RotationPanel, uniqueSeconds } from './RotationPanel';
-import { WclTopsButton } from './WclTops';
+import { compareWithTops, type BenchView } from '../lib/bench';
 import { ErrorBoundary } from './ErrorBoundary';
-import { OutputChart } from './SoloCharts';
-import { CooldownCompare } from './perf/CooldownCompare';
 import { ShareMenu } from './share/ShareMenu';
 import { SoloShareCard } from './share/SoloCard';
 import { messagesOf, tr as trLoc, useMessages } from '../i18n';
 import { soloPullMsg } from './SoloPullView.i18n';
-import { inTauri } from '../lib/api';
-import { useSetup } from '../lib/setup';
 
 /** Modo solo: o pull do ponto de vista de um player só, com o que ele pode corrigir. */
 export function SoloPullView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }) {
@@ -75,51 +70,14 @@ function WhoAreYou({ pull }: { pull: Pull }) {
   );
 }
 
-// ---- com quem comparar
+// ---- referência do resumo
 
-type RefGroup = 'top' | 'spec' | 'self' | 'other';
-interface RefOption {
-  key: string;
-  group: RefGroup;
-  label: string;
-  sample?: Sample;
-}
-
-const GROUPS: RefGroup[] = ['top', 'spec', 'self', 'other'];
-
-const sampleKey = (s: Sample) => `s:${s.pull.id}:${s.player.guid}`;
-const topId = (t: TopRanking) => `${t.code}:${t.fightId}`;
 const pullLabel = (p: Pull) => messagesOf(soloPullMsg).pullLabel(p.pullNumber, p.success);
 
 /** "Fulano", "Fulano · pull 6 (kill)", "Você no pull 6 (kill)" */
 function sampleLabel(me: Sample, s: Sample): string {
   if (s.player.guid === me.player.guid) return messagesOf(soloPullMsg).youIn(pullLabel(s.pull));
   return s.pull.id === me.pull.id ? shortName(s.player.name) : `${shortName(s.player.name)} · ${pullLabel(s.pull)}`;
-}
-
-/**
- * Quem dá para escolher como referência: os tops da spec no Warcraft Logs, a mesma spec na noite
- * (neste boss), você nos outros pulls e, neste pull, quem tem a mesma função em outra spec (só
- * para o dano ao longo do pull e o dano tomado).
- */
-function refOptions(me: Sample, list: Sample[], tops: TopRanking[] | null, wclReady: boolean, unit: string): RefOption[] {
-  const out: RefOption[] = [];
-  if (tops?.length)
-    tops.forEach((t, i) =>
-      out.push({ key: `top:${i}`, group: 'top', label: `#${i + 1} ${t.name} — ${num(t.amount)} ${unit}${t.itemLevel ? ` · ilvl ${t.itemLevel.toFixed(0)}` : ''}` }),
-    );
-  else if (tops == null) out.push({ key: 'top:0', group: 'top', label: wclReady ? messagesOf(soloPullMsg).topSearching : messagesOf(soloPullMsg).topConnect });
-  const tag = (s: Sample) => `${num(outputPerSec(s))} ${unit}${fairReference(me, s) ? '' : messagesOf(soloPullMsg).diedEarly}`;
-  for (const s of list) {
-    const self = s.player.guid === me.player.guid;
-    out.push({ key: sampleKey(s), group: self ? 'self' : 'spec', label: `${sampleLabel(me, s)} — ${tag(s)}`, sample: s });
-  }
-  const others = me.pull.players
-    .filter((p) => p.guid !== me.player.guid && p.specId !== me.player.specId && p.role === me.player.role && (p.aliveMs ?? me.pull.analyzedMs) >= 30_000)
-    .map((player) => ({ pull: me.pull, player }))
-    .sort((a, b) => outputPerSec(b) - outputPerSec(a));
-  for (const s of others) out.push({ key: sampleKey(s), group: 'other', label: `${shortName(s.player.name)} (${specLabel(s.player.specId)}) — ${tag(s)}`, sample: s });
-  return out;
 }
 
 function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
@@ -130,43 +88,22 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
   const ls = useMemo(() => losses(me), [me]);
   const out = outputPerSec(me);
 
-  // ---- referência: escolhida pelo player (top do Warcraft Logs, alguém da raid, você em outro
-  // pull ou outra spec); sem escolha, o top #1 ou o melhor da raid
-  const wclReady = inTauri && !!useSetup().status?.wcl?.configured;
+  // referência do resumo e do cartão: o melhor da mesma spec na noite (ou você num pull melhor);
+  // escolher outra, inclusive os tops do Warcraft Logs, fica na aba Comparação detalhada
   const list = useMemo(() => candidates(me, nightPulls), [me, nightPulls]);
   const fair = useMemo(() => list.filter((s) => fairReference(me, s)), [me, list]);
-  const raidRef = defaultReference(
-    me,
-    fair.filter((s) => s.player.guid !== me.player.guid),
-  );
-  const selfBest = fair.find((s) => s.player.guid === me.player.guid && outputPerSec(s) > out) ?? null;
-  const [tops, setTops] = useState<TopRanking[] | null>(null);
-  const [loaded, setLoaded] = useState<Map<string, TopSample>>(new Map());
-  const [topError, setTopError] = useState<string | null>(null);
-  const options = useMemo(() => refOptions(me, list, tops, wclReady, unit), [me, list, tops, wclReady, unit]);
-  const fallback = tops?.length || (wclReady && tops == null) ? 'top:0' : raidRef ? sampleKey(raidRef) : selfBest ? sampleKey(selfBest) : null;
-  const [choice, setChoice] = useState<string | null>(null);
-  const key = choice != null && options.some((o) => o.key === choice) ? choice : fallback;
-  const opt = options.find((o) => o.key === key) ?? null;
-  const wantTop = key?.startsWith('top:') ? tops?.[Number(key.slice(4))] ?? null : null;
-  const top = wantTop ? loaded.get(topId(wantTop)) ?? null : null;
-  useEffect(() => {
-    if (!wantTop || loaded.has(topId(wantTop))) return;
-    let alive = true;
-    setTopError(null);
-    loadTop(wantTop, me, tops?.indexOf(wantTop) ?? 0)
-      .then((s) => alive && setLoaded((m) => new Map(m).set(topId(wantTop), s)))
-      .catch((e) => alive && setTopError(String(e)));
-    return () => {
-      alive = false;
-    };
-  }, [wantTop, loaded, me, tops]);
-  const ref: Sample | null = key?.startsWith('top:') ? top : (opt?.sample ?? null);
-  const refLabel = !ref ? t.reference : wantTop ? t.topRef(wantTop.name, Number(key!.slice(4)) + 1) : sampleLabel(me, ref);
-  const sameSpec = ref != null && ref.player.specId === me.player.specId;
+  const ref: Sample | null =
+    defaultReference(
+      me,
+      fair.filter((s) => s.player.guid !== me.player.guid),
+    ) ??
+    fair.find((s) => s.player.guid === me.player.guid && outputPerSec(s) > out) ??
+    null;
+  const refLabel = ref ? sampleLabel(me, ref) : t.reference;
   const refOut = ref ? outputPerSec(ref) : 0;
   const diff = refOut > 0 ? ((out - refOut) / refOut) * 100 : null;
-  const cds = useMemo(() => detectCooldowns([me, ...list, ...loaded.values()]), [me, list, loaded]);
+  const cds = useMemo(() => detectCooldowns([me, ...list]), [me, list]);
+  const bench = useMemo(() => compareWithTops(me.pull, me.player), [me]);
 
   const deaths = myDeaths(me);
   const mechs = myMechanicFailures(me);
@@ -213,46 +150,14 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
         </div>
       </div>
 
+      <p className="muted small solo-more">{t.moreInComparison}</p>
+
       <NextPull losses={ls} unit={unit} seek={seek} />
 
-      <section className="perf-section">
-        <h4>
-          <TrendingDown size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.advantage}
-        </h4>
-        <label className="perf-field solo-ref">
-          <span className="muted small">{t.compareWith}</span>
-          <select className="select" value={key ?? ''} onChange={(e) => setChoice(e.target.value)}>
-            {key == null && <option value="">—</option>}
-            {GROUPS.map((g) => {
-              const label = t.groups[g];
-              const os = options.filter((o) => o.group === g);
-              return (
-                os.length > 0 && (
-                  <optgroup key={g} label={label}>
-                    {os.map((o) => (
-                      <option key={o.key} value={o.key}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                )
-              );
-            })}
-          </select>
-        </label>
-        {(wclReady || key?.startsWith('top:')) && <WclTopsButton me={me} onTops={setTops} />}
-        {wantTop && !top && <p className={`small ${topError ? 'bad' : 'muted'}`}>{topError ?? t.downloading(wantTop.name)}</p>}
-        {key == null && <p className="muted small">{t.nobodyElse(specLabel(me.player.specId))}</p>}
-        {ref && !sameSpec && <p className="muted small">{t.otherSpec}</p>}
-        {ref && <Advantage me={me} ref_={ref} refLabel={refLabel} unit={unit} casts={sameSpec} />}
-      </section>
-
-      {ref && sameSpec && <CooldownCompare me={me} ref_={ref} cds={cds} refName={refLabel} />}
-
-      <Mechanics me={me} ref_={ref} refLabel={refLabel} seek={seek} />
+      <Mechanics me={me} bench={bench} seek={seek} />
 
       {r ? (
-        <RotationPanel rotation={r} />
+        <RotationPanel rotation={r} bench={bench} boss={me.pull.encounterName} />
       ) : (
         <p className="rot-wip small">
           <span className="chip">{t.wipChip}</span> {t.wipText(specLabel(me.player.specId))}
@@ -272,7 +177,7 @@ function At({ t, seek }: { t: number; seek: ((t: number) => void) | null }) {
   );
 }
 
-// ---- o que corrigir primeiro
+// ---- o que corrigir primeiro: o resumo (o que fazer e quando); o detalhe fica na seção de cada assunto
 
 const LOSS_ICON: Partial<Record<Loss['kind'], typeof Skull>> = { death: Skull, mechanic: ShieldAlert, avoidable: ShieldAlert };
 
@@ -304,7 +209,6 @@ function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; se
                   <strong>{l.title}</strong>
                   <span className="muted small">{l.lost != null ? t.lost(num(l.lost), unit === 'HPS', Math.round(l.weightSec), unit) : costLabel(l)}</span>
                 </div>
-                {l.detail && <p className="small">{l.detail}</p>}
                 {l.tip && <p className="muted small">{l.tip}</p>}
                 {l.times.length > 0 && (
                   <span className="chips solo-times">
@@ -336,116 +240,20 @@ const costLabel = (l: Loss) => {
   return l.weightSec >= 25 ? t.costHigh : l.weightSec >= 8 ? t.costMid : t.costLow;
 };
 
-// ---- vantagem da referência
+// ---- sobrevivência e mecânicas
 
-/** `casts`: mostrar os casts dos trechos (só faz sentido com a mesma spec). */
-function Advantage({ me, ref_, refLabel, unit, casts }: { me: Sample; ref_: Sample; refLabel: string; unit: string; casts: boolean }) {
-  const [mine, ref] = [timelineOf(me.player), timelineOf(ref_.player)];
-  const windows = useMemo(() => advantageWindows(me, ref_), [me, ref_]);
-  const relevant = useMemo(() => relevantSpells(me.player, ref_.player), [me, ref_]);
-  const t = messagesOf(soloPullMsg);
-  if (!mine.length) return <p className="muted small">{t.oldAnalysis}</p>;
-  if (!ref.length) return <p className="muted small">{t.refNoTimeline}</p>;
-  return (
-    <>
-      <OutputChart mine={mine} ref={ref} windows={windows} unit={unit} refLabel={refLabel} />
-      <p className="muted small">{t.alignedHint}</p>
-      {windows.length === 0 ? (
-        <p className="muted small">{t.neverAhead}</p>
-      ) : (
-        <div className="solo-windows">
-          {windows.map((w, i) => (
-            <WindowCard key={w.startMs} n={i + 1} w={w} unit={unit} relevant={relevant} casts={casts} />
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
-const LANE_MS = 15_000;
-const ICON_GAP_PCT = 4.5;
-
-function WindowCard({ n, w, unit, relevant, casts }: { n: number; w: AdvantageWindow; unit: string; relevant: Set<string>; casts: boolean }) {
-  const seek = useSeek();
-  const t = useMessages(soloPullMsg);
-  const diff = casts ? castDiff(w, relevant) : [];
-  const sec = (w.endMs - w.startMs) / 1000;
-  return (
-    <div className="solo-window">
-      <div className="solo-window-head">
-        <span className="out-band-n small">{n}</span>
-        <strong>
-          {mmss(w.startMs)}–{mmss(w.endMs)}
-        </strong>
-        <span className="muted small">{t.windowLine(num(w.ref / sec), num(w.mine / sec), unit)}</span>
-        <At t={w.startMs} seek={seek} />
-      </div>
-      {w.deadAt != null && <p className="small bad">{t.youDied(mmss(w.deadAt))}</p>}
-      {diff.length > 0 && (
-        <p className="small">
-          {t.refUsedMore}{' '}
-          {diff.map((d, i) => (
-            <span key={d.name} className="solo-diff">
-              {i > 0 && ', '}
-              <SpellName spellId={d.spellId} name={d.name} size={14} />{' '}
-              <span className="muted">{t.timesVsYou(d.ref, d.mine)}</span>
-            </span>
-          ))}
-        </p>
-      )}
-      {casts && (
-        <>
-          <Lane label={t.you} casts={w.myCasts} />
-          <Lane label={t.reference} casts={w.refCasts} />
-        </>
-      )}
-    </div>
-  );
-}
-
-function Lane({ label, casts }: { label: string; casts: AdvantageWindow['myCasts'] }) {
-  const rows: number[] = [];
-  const placed = casts.map((c) => {
-    const pos = (c.t / LANE_MS) * 100;
-    let row = rows.findIndex((last) => pos - last >= ICON_GAP_PCT);
-    if (row < 0) row = rows.push(pos) - 1;
-    else rows[row] = pos;
-    return { c, pos, row };
-  });
-  return (
-    <div className="burst-lane">
-      <span className="muted small burst-who">{label}</span>
-      {casts.length ? (
-        <ol className="burst-track" style={{ height: Math.max(1, rows.length) * 26 + 4 }} aria-label={`${label}: ${casts.map((c) => c.name).join(', ')}`}>
-          {placed.map(({ c, pos, row }, i) => (
-            <li key={i} style={{ left: `${pos}%`, top: row * 26 + 2 }} title={`${c.name} · +${(c.t / 1000).toFixed(1)}s`}>
-              <SpellIcon spellId={c.spellId} size={22} />
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <span className="small warn">{messagesOf(soloPullMsg).noCasts}</span>
-      )}
-    </div>
-  );
-}
-
-// ---- mecânicas
-
-function Mechanics({ me, ref_, refLabel, seek }: { me: Sample; ref_: Sample | null; refLabel: string; seek: ((t: number) => void) | null }) {
+/** Mortes, erros nas mecânicas cadastradas e os defensivos que os tops da spec usam nas mecânicas do boss. */
+function Mechanics({ me, bench, seek }: { me: Sample; bench: BenchView | null; seek: ((t: number) => void) | null }) {
   const t = useMessages(soloPullMsg);
   const fails = myMechanicFailures(me);
   const deaths = myDeaths(me);
-  const taken = ref_ ? takenMoreThan(me, ref_) : [];
+  const defs = bench?.defensives ?? [];
   return (
     <section className="perf-section">
       <h4>
         <ShieldAlert size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.mechanics}
       </h4>
-      {fails.length === 0 && deaths.length === 0 && taken.length === 0 && (
-        <p className="muted small">{me.pull.rulesFile ? t.noMistakes : t.bossNoRules}</p>
-      )}
+      {fails.length === 0 && deaths.length === 0 && <p className="muted small">{me.pull.rulesFile ? t.noMistakes : t.bossNoRules}</p>}
       {deaths.map(({ death: d }) => (
         <div key={d.t} className="solo-mech">
           <Skull size={16} strokeWidth={1.5} className="bad" aria-hidden />
@@ -475,34 +283,17 @@ function Mechanics({ me, ref_, refLabel, seek }: { me: Sample; ref_: Sample | nu
           {(times[0] ?? p.firstT) != null && <At t={(times[0] ?? p.firstT)!} seek={seek} />}
         </div>
       ))}
-      {taken.length > 0 && (
+      {defs.length > 0 && (
         <>
-          <h5 className="muted small">{t.takenMore(refLabel)}</h5>
-          <div className="table-scroll">
-            <table className="perf-table">
-              <thead>
-                <tr>
-                  <th>{t.ability}</th>
-                  <th className="num">{t.you}</th>
-                  <th className="num">{t.refShort}</th>
-                  <th className="num">{t.shareOfTaken}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {taken.slice(0, 6).map((row) => (
-                  <tr key={row.name}>
-                    <td>
-                      <SpellName spellId={row.spellId} name={row.name} size={16} />
-                    </td>
-                    <td className="num">{num(row.minePerMin)}</td>
-                    <td className="num muted">{num(row.refPerMin)}</td>
-                    <td className="num">{(row.share * 100).toFixed(0)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="muted small">{t.avoidableHint}</p>
+          <h5 className="muted small">{t.defensives}</h5>
+          <ul className="plain bench-list small">
+            {defs.map((d) => (
+              <li key={d.spellId}>
+                <SpellIcon spellId={d.spellId} size={16} /> {t.defensive(d.name, Math.round(d.share * 100))} ({d.spells.map((x) => x.name).join(', ')}).{' '}
+                <span className={d.used < d.of / 2 ? 'warn' : 'muted'}>{t.defYou(d.used, d.of)}</span>
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </section>

@@ -321,11 +321,16 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
   }
 
   // cooldowns: da APL, com 20s+ (ou cargas com 15s+)
-  const cds = castable.filter((a) => a.cast && (a.cooldown_ms >= 20000 || (a.charges > 1 && a.cooldown_ms >= 15000)) && allActions.some((x) => x.action === a.key));
+  // buffs de raid (lust): combinados entre a raid, não se cobra de cada um
+  const RAID_BUFFS = new Set([2825, 32182, 80353, 264667, 390386]);
+  const isRaidBuff = (a) => a && [a.id, ...(a.alt_ids ?? [])].some((id) => RAID_BUFFS.has(id));
+  const cds = castable.filter((a) => a.cast && !isRaidBuff(a) && (a.cooldown_ms >= 20000 || (a.charges > 1 && a.cooldown_ms >= 15000)) && allActions.some((x) => x.action === a.key));
   if (cds.length) checks.push({ kind: 'cooldown', id: 'cooldowns', spells: cds.map((a) => a.key), min_usage: 0.8, importance: 'medium', title: { pt: 'Cooldown parado', en: 'Cooldown sitting' }, tip: { pt: `${cds.slice(0, 4).map((a) => a.name).join(', ')} no cooldown.`, en: `${cds.slice(0, 4).map((a) => a.name).join(', ')} on cooldown.` } });
 
   // ---- calibração pelos tops
   const removed = [];
+  /** Cooldowns tirados da checagem: também não entram na abertura do plano B. */
+  const droppedCds = new Set();
   if (calibration) {
     const cal = calibration.checks ?? {};
     for (let i = checks.length - 1; i >= 0; i--) {
@@ -362,7 +367,21 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
           if (!u?.length) return true;
           if (median(u) < 0.6) {
             removed.push(`${abilities.get(sp).name} da checagem de cooldown (os tops usam ${pct(median(u))} dos possíveis)`);
+            droppedCds.add(sp);
             return false;
+          }
+          // um quarto dos tops usa pouco (defensivo que também dá recurso, como o Anti-Magic Shell)
+          const low = quantile(u, 0.25);
+          if (low < 0.55 && !u.some((x) => x === 0)) {
+            removed.push(`${abilities.get(sp).name} da checagem de cooldown (um quarto dos tops usa ${pct(low)} ou menos)`);
+            droppedCds.add(sp);
+            return false;
+          }
+          // parte dos tops nem usa (talento que não pegaram, botão só de AoE): só conta para quem usa
+          const never = u.filter((x) => x === 0).length / u.length;
+          if (never >= 0.15 && !abilities.get(sp).optional) {
+            abilities.get(sp).optional = true;
+            removed.push(`${abilities.get(sp).name} vira opcional na checagem de cooldown (${pct(never)} dos tops não usam)`);
           }
           return true;
         });
@@ -376,13 +395,15 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
   }
 
   // ---- abertura: o que ≥70% dos tops castam nos primeiros 12s (sem dados: pré-combate + cooldowns)
+  const OPENER_MAX_MS = 30_000;
+  const OPENER_SLACK_MS = 3_000;
   const opener = { window_ms: 12000, ordered: false };
   const treeOfPlayer = (p) => {
     const ids = new Set([...p.casts.map(([, id]) => id), ...p.auras]);
     return heroTreesOut.find((t) => t.markers.some((m) => ids.has(m)))?.key ?? heroTreesOut.find((t) => !t.markers.length)?.key ?? heroTreesOut[0].key;
   };
   // abertura medida em 9s nos tops e cobrada em 12s: folga para o começo do fight no WCL vs. o do encontro
-  const relevant = (a) => a && (a.cooldown_ms >= 15000 || buffs[a.key]);
+  const relevant = (a) => a && !isRaidBuff(a) && (a.cooldown_ms >= 15000 || buffs[a.key]);
   for (const t of heroTreesOut) {
     const ps = logs.players.filter((p) => treeOfPlayer(p) === t.key);
     let seq = [];
@@ -398,11 +419,44 @@ export async function generate({ spec, aplText, dump, logs, calibration }) {
           first.get(a.key).push(ms);
         }
       }
-      seq = [...first.entries()].filter(([, v]) => v.length >= ps.length * 0.7).sort((a, b) => median(a[1]) - median(b[1])).map(([k]) => k).slice(0, 6);
+      // em conjunto: cada uma sozinha pode passar de 70% e todas juntas não (Outlaw: 43%). Entram as
+      // mais comuns enquanto ≥80% dos tops ainda fizerem todas as escolhidas
+      const usedBy = (k) => {
+        const a = castable.find((x) => x.key === k);
+        return new Set(ps.filter((p) => p.casts.some(([ms, id]) => ms <= 9000 && (id === a?.id || a?.alt_ids.includes(id)))));
+      };
+      const kept = [];
+      let together = new Set(ps);
+      for (const [k] of [...first.entries()].filter(([, v]) => v.length >= ps.length * 0.7).sort((a, b) => b[1].length - a[1].length)) {
+        const next = new Set([...together].filter((p) => usedBy(k).has(p)));
+        if (next.size >= ps.length * 0.8 && kept.length < 6) {
+          kept.push(k);
+          together = next;
+        }
+      }
+      seq = kept.sort((a, b) => median(first.get(a)) - median(first.get(b)));
     }
     if (!seq.length) {
-      // sem tops dessa árvore: os cooldowns na ordem da prioridade
-      seq = [...new Set(priority[t.key].st.map((i) => i.spell).filter((k) => abilities.get(k)?.cooldown_ms >= 15000 && abilities.get(k)?.cast))].slice(0, 4);
+      // nada em comum nos 9s: os cooldowns na ordem da prioridade
+      seq = [...new Set(priority[t.key].st.map((i) => i.spell).filter((k) => abilities.get(k)?.cooldown_ms >= 15000 && abilities.get(k)?.cast && !isRaidBuff(abilities.get(k)) && !droppedCds.has(k)))].slice(0, 4);
+      if (ps.length >= 3) {
+        // com tops dessa árvore: só o que 90% deles usam, numa janela que cobre esses 90% (os tops
+        // às vezes seguram o cooldown para um momento de mais dano: Combustion aos 20s)
+        const firstUse = (p, k) => {
+          const a = castable.find((x) => x.key === k);
+          return p.casts.find(([, id]) => id === a?.id || a?.alt_ids.includes(id))?.[0] ?? null;
+        };
+        const keep = [];
+        for (const k of seq) {
+          const times = ps.map((p) => firstUse(p, k)).filter((x) => x != null).sort((a, b) => a - b);
+          if (times.length < ps.length * 0.9) continue;
+          const p90 = times[Math.min(times.length - 1, Math.ceil(times.length * 0.9) - 1)];
+          if (p90 <= OPENER_MAX_MS - OPENER_SLACK_MS) keep.push([k, p90]);
+        }
+        seq = keep.map(([k]) => k);
+        const need = Math.max(0, ...keep.map(([, ms]) => ms));
+        opener.window_ms = Math.max(opener.window_ms, Math.min(OPENER_MAX_MS, Math.ceil((need + OPENER_SLACK_MS) / 5000) * 5000));
+      }
     }
     opener[t.key] = seq;
   }
