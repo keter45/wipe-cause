@@ -17,7 +17,7 @@ use data::GameData;
 use rules::RuleBook;
 pub use report::*;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Seek, SeekFrom};
 use std::path::Path;
 use std::time::Instant;
 use timestamp::{parse_timestamp, tz_offset_hours};
@@ -31,7 +31,8 @@ pub struct AnalyzeOptions {
     /// ajustes do usuário por boss (`<encounter_id>.json`)
     pub tuning_dir: Option<std::path::PathBuf>,
     /// "Ignorar eventos após N mortes": depois da N-ésima morte de cada pull as estatísticas
-    /// param de contar (0 = conta tudo).
+    /// param de contar (0 = conta tudo). Pull que termina em kill não tem corte: a raid seguiu e
+    /// matou o boss, então o resto da luta conta.
     pub death_cutoff: u32,
 }
 
@@ -51,7 +52,31 @@ pub fn analyze_file(path: &Path, opts: &AnalyzeOptions, progress: impl FnMut(u64
     Ok(report)
 }
 
-pub fn analyze_reader<R: BufRead>(
+/** Relê um pull desde o `ENCOUNTER_START` em `offset` sem o corte de mortes, até o `ENCOUNTER_END` (sem consumi-lo). */
+fn reread_pull<R: BufRead + Seek>(reader: &mut R, offset: u64, default_year: i32, book: &RuleBook, data: &GameData) -> io::Result<Option<PullBuilder>> {
+    reader.seek(SeekFrom::Start(offset))?;
+    let mut buf = Vec::with_capacity(4096);
+    let mut current: Option<PullBuilder> = None;
+    loop {
+        buf.clear();
+        if reader.read_until(b'\n', &mut buf)? == 0 {
+            return Ok(current);
+        }
+        let line = String::from_utf8_lossy(&buf);
+        let Some((ts, rest)) = split_timestamp(&line) else { continue };
+        let Some(t) = parse_timestamp(ts, default_year) else { continue };
+        let mut f = Vec::with_capacity(48);
+        split_fields(rest, &mut f);
+        match (f[0], current.as_mut()) {
+            ("ENCOUNTER_START", None) => current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book, 0)),
+            ("ENCOUNTER_END", _) => return Ok(current),
+            (_, Some(b)) => b.feed(&f, t, data),
+            _ => {}
+        }
+    }
+}
+
+pub fn analyze_reader<R: BufRead + Seek>(
     mut reader: R,
     total: u64,
     book: &RuleBook,
@@ -71,6 +96,8 @@ pub fn analyze_reader<R: BufRead>(
     let mut advanced_logging = false;
     let mut current: Option<PullBuilder> = None;
     let mut finished = Vec::new();
+    // onde começou o pull atual: um kill que bateu o corte de mortes é relido daqui sem o corte
+    let mut pull_offset = 0u64;
 
     loop {
         buf.clear();
@@ -78,6 +105,7 @@ pub fn analyze_reader<R: BufRead>(
         if n == 0 {
             break;
         }
+        let line_start = bytes_read;
         bytes_read += n as u64;
         lines += 1;
         if bytes_read - last_progress >= step {
@@ -109,8 +137,17 @@ pub fn analyze_reader<R: BufRead>(
                 finished.push(prev.finish(None, finished.len(), &data));
             }
             current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book, death_cutoff));
+            pull_offset = line_start;
         } else if f[0] == "ENCOUNTER_END" {
             if let Some(b) = current.take() {
+                let kill = f.get(5) == Some(&"1");
+                let b = if kill && b.cut_by_deaths() {
+                    let again = reread_pull(&mut reader, pull_offset, default_year, book, &data)?;
+                    reader.seek(SeekFrom::Start(bytes_read))?;
+                    again.unwrap_or(b)
+                } else {
+                    b
+                };
                 finished.push(b.finish(Some((f.as_slice(), t)), finished.len(), &data));
             }
         } else if let Some(b) = current.as_mut() {

@@ -238,7 +238,9 @@ impl WclAnalyzer {
             fight.size.to_string(),
         ];
         let f: Vec<&str> = start.iter().map(String::as_str).collect();
-        let mut b = PullBuilder::start(&f, t, &format_timestamp(t, self.tz_hours), self.tz_hours, &self.book, self.death_cutoff);
+        // kill: sem corte de mortes (a raid seguiu e matou o boss, o resto da luta conta)
+        let cutoff = if fight.kill { 0 } else { self.death_cutoff };
+        let mut b = PullBuilder::start(&f, t, &format_timestamp(t, self.tz_hours), self.tz_hours, &self.book, cutoff);
         for a in src.actors.values().filter(|a| a.kind == ActorKind::Pet) {
             if let Some(owner) = a.pet_owner.and_then(|o| src.actors.get(&o)).filter(|o| o.kind == ActorKind::Player) {
                 b.set_pet_owner(&a.guid, &owner.guid);
