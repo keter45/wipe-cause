@@ -237,6 +237,27 @@ fn death_cutoff_freezes_every_stat() {
 }
 
 #[test]
+fn kill_ignores_the_death_cutoff() {
+    // o mage morre aos 0:30 do pull 3 (kill): a raid seguiu e matou o boss, então não há corte
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/twin-fangs.txt");
+    let text = std::fs::read_to_string(path).unwrap();
+    let died = "9/28/2026 21:15:30.0000-3  UNIT_DIED,0000000000000000,nil,0x80000000,0x80000000,Player-3209-0A1B2C3D,\"Magozin-Azralon\",0x511,0x0,0
+";
+    let at = text.find("9/28/2026 21:15:30").expect("linha do pull 3 aos 0:30");
+    let log = format!("{}{}{}", &text[..at], died, &text[at..]);
+    let book = wipe_core::rules::RuleBook::embedded();
+    let r = wipe_core::analyze_reader(std::io::Cursor::new(log.into_bytes()), 0, &book, 1, |_, _| {}).unwrap();
+
+    let kill = &r.pulls[2];
+    assert!(kill.success);
+    assert_eq!(kill.deaths.len(), 1);
+    assert_eq!(kill.cutoff_t, None, "kill não tem corte de mortes");
+    assert_eq!(kill.analyzed_ms, kill.duration_ms);
+    // os wipes continuam com o corte
+    assert_eq!(r.pulls[0].cutoff_t, Some(90_010));
+}
+
+#[test]
 fn deaths_carry_positions_until_the_cutoff() {
     let r = report_with(1);
     let p = r.pulls.iter().find(|p| p.deaths.len() >= 2).expect("pull com 2+ mortes");

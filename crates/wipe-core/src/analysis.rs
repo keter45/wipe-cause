@@ -292,6 +292,11 @@ impl PullBuilder {
     }
 
     /// Ainda antes do corte: estatísticas contam.
+    /// O pull bateu o corte de mortes (as estatísticas pararam numa morte).
+    pub fn cut_by_deaths(&self) -> bool {
+        self.cutoff_t.is_some()
+    }
+
     fn counting(&self) -> bool {
         self.cutoff_t.is_none()
     }
