@@ -111,3 +111,17 @@ describe('compareWithTops', () => {
     expect(compareWithTops(fight, def, bench())!.defensives[0]).toMatchObject({ used: 1, of: 2 });
   });
 });
+
+describe('paradas sem repetição', () => {
+  it('duas mecânicas quase juntas: a mesma parada aparece uma vez', () => {
+    const b = bench({
+      anchors: [
+        { spellId: 999, name: 'Big Slam', k: 0, t: 19000, idle: 500, use: [] },
+        { spellId: 998, name: 'Small Slam', k: 0, t: 21000, idle: 0, use: [] },
+      ],
+    });
+    const f = { ...fight, enemySpells: [...fight.enemySpells, { spellId: 998, name: 'Small Slam', sources: ['Boss'], casts: 1, castTimes: [21000], hitsOnPlayers: 0, damageToPlayers: 0, interrupted: 0, interruptible: false }] };
+    const v = compareWithTops(f, me, b)!;
+    expect(v.windows.map((w) => w.name)).toEqual(['Big Slam']);
+  });
+});

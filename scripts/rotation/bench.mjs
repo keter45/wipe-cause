@@ -109,8 +109,11 @@ function boss(list) {
   const mixIds = new Map(mixes.flatMap((m) => [...m].map(([id, v]) => [id, v.name])));
   const mixShare = (id) => median(mixes.map((m) => m.get(id)?.share ?? 0)) ?? 0;
 
+  // só as lutas com os casts do boss (as baixadas antes deles não têm): sem o bastante, sem marcos
+  const timed = list.filter((x) => x.pull.enemySpells.some((e) => e.castTimes?.length));
+  if (timed.length < MIN_PULLS) timed.length = 0;
   // marcos: o k-ésimo cast de cada habilidade do boss que aparece em ANCHOR_SHARE dos pulls
-  const perPull = list.map((x) => anchorTimes(x.pull));
+  const perPull = timed.map((x) => anchorTimes(x.pull));
   const spells = new Map();
   for (const m of perPull) for (const [id, a] of m) spells.set(id, en(id, a.name));
   const anchors = [];
@@ -118,8 +121,8 @@ function boss(list) {
   for (const [spellId, name] of spells) {
     const times = perPull.map((m) => m.get(spellId)?.times ?? []);
     for (let k = 0; ; k++) {
-      const have = list.map((x, i) => ({ x, t: times[i][k] })).filter((h) => h.t != null && h.t < aliveUntil(h.x));
-      if (have.length < list.length * ANCHOR_SHARE) break;
+      const have = timed.map((x, i) => ({ x, t: times[i][k] })).filter((h) => h.t != null && h.t < aliveUntil(h.x));
+      if (have.length < timed.length * ANCHOR_SHARE) break;
       // o que eles castam ali mais do que no resto da luta (instantâneas no movimento, AoE nos adds)
       const use = {};
       let inWindow = 0;
@@ -148,7 +151,7 @@ function boss(list) {
     let seen = 0;
     let withDef = 0;
     const used = {};
-    list.forEach((x, i) => {
+    timed.forEach((x, i) => {
       for (const t of times[i].filter((t) => t < aliveUntil(x))) {
         seen++;
         const near = defensivesNear(x.player, t);
@@ -157,7 +160,7 @@ function boss(list) {
       }
     });
     const pullsWith = times.filter((ts) => ts.length).length;
-    if (seen && pullsWith >= list.length * ANCHOR_SHARE && withDef / seen >= DEF_MIN_SHARE)
+    if (seen && pullsWith >= timed.length * ANCHOR_SHARE && withDef / seen >= DEF_MIN_SHARE)
       defensives.push({
         spellId,
         name,
@@ -188,7 +191,8 @@ function boss(list) {
       second: potions.filter((p) => p.length > 1).length >= MIN_PULLS ? Math.round(median(potions.map((p) => p[1]))) : null,
     },
     anchors: dedupe(anchors.sort((a, b) => a.t - b.t)),
-    defensives: defensives.sort((a, b) => b.share - a.share),
+    // versões da mesma magia (mesmo nome): fica a de maior fatia
+    defensives: defensives.sort((a, b) => b.share - a.share).filter((d, i, all) => all.findIndex((x) => x.name === d.name) === i),
   };
 }
 
@@ -224,7 +228,8 @@ for (const spec of specs) {
   const bosses = {};
   for (const [id, list] of Object.entries(byBoss)) if (list.length >= MIN_PULLS) bosses[id] = { name: list[0].pull.encounterName, ...boss(list) };
   const file = path.join(OUT, `${spec.file}.json`);
-  fs.writeFileSync(file, JSON.stringify({ spec: spec.id, name: spec.name, pulls: pulls.length, bosses }, null, 1));
+  // compacto: vai embutido no app
+  fs.writeFileSync(file, JSON.stringify({ spec: spec.id, name: spec.name, pulls: pulls.length, bosses }));
   const anchors = Object.values(bosses).reduce((s, b) => s + b.anchors.length, 0);
   console.log(`${spec.name}: ${pulls.length} pulls, ${Object.keys(bosses).length} bosses, ${anchors} marcos de mecânica -> ${path.relative(ROOT, file)}`);
 }

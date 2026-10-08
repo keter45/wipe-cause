@@ -295,8 +295,8 @@ export async function downloadTops(spec, outDir, { difficulty = 5, perBoss = 2 }
   for (const code of fs.readdirSync(outDir).filter((d) => fs.existsSync(path.join(outDir, d, 'report.json')))) {
     const dir = path.join(outDir, code);
     const done = enemyCastsDone(dir);
-    for (const name of fs.readdirSync(dir).filter((n) => /^fight-d+.json$/.test(n))) {
-      const fightId = +name.match(/d+/)[0];
+    for (const name of fs.readdirSync(dir).filter((n) => /^fight-\d+\.json$/.test(n))) {
+      const fightId = +name.match(/\d+/)[0];
       if (done.has(fightId)) continue;
       const report = JSON.parse(fs.readFileSync(path.join(dir, 'report.json'), 'utf8'));
       const fight = report.fights.find((f) => f.id === fightId);

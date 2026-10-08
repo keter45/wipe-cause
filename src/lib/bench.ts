@@ -114,6 +114,8 @@ export function compareWithTops(pull: Pull, p: PlayerStats, b = benchFor(p.specI
     if (you - a.idle >= WINDOW_MIN_EXTRA_MS) windows.push({ spellId: a.spellId, name: anchors.get(a.spellId)!.name, k: a.k, t, you, tops: a.idle, use: a.use.filter((u) => u.share >= 0.5) });
   }
   windows.sort((x, y) => y.you - y.tops - (x.you - x.tops));
+  // a mesma parada depois de duas mecânicas quase juntas aparece uma vez (a de maior diferença)
+  const distinct = windows.filter((w, i) => !windows.slice(0, i).some((o) => Math.abs(o.t - w.t) < ANCHOR_WINDOW_MS));
 
   const defensives: BenchView['defensives'] = [];
   for (const d of b.defensives) {
@@ -130,5 +132,5 @@ export function compareWithTops(pull: Pull, p: PlayerStats, b = benchFor(p.specI
     });
   }
 
-  return { n: b.n, checks, cdUsage, mix, cooldowns, potion, windows: windows.slice(0, 5), defensives };
+  return { n: b.n, checks, cdUsage, mix, cooldowns, potion, windows: distinct.slice(0, 5), defensives };
 }
