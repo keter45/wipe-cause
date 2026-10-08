@@ -7,6 +7,7 @@
 
 import type { LogFile } from './api';
 import { uniquePulls, LIVE_MS, type GuildNight } from './guildNights';
+import { coreRoster, isGuildGroup, nightKind, type NightKind } from './roster';
 
 /** Wipes mais curtos que isso a análise descarta (pull falso / reset). */
 const MIN_PULL_MS = 30_000;
@@ -31,6 +32,8 @@ export interface NightBossRow {
   /** pulls que só existem no Warcraft Logs */
   missing: number;
   missingKills: number;
+  /** raid da guilda (true), pug (false) ou não dá para saber (null): ver roster.ts */
+  guild: boolean | null;
 }
 
 export interface Night {
@@ -48,6 +51,8 @@ export interface Night {
   missingPulls: number;
   missingMs: number;
   live: boolean;
+  /** guilda, pug, os dois na mesma noite; null = não dá para saber */
+  kind: NightKind | null;
 }
 
 /** Estimativa do download dos pulls que faltam, em minutos (pelo menos 1). */
@@ -76,7 +81,38 @@ export function buildNights(files: LogFile[], guild: GuildNight[], now = Date.no
   for (const f of locals.filter((f) => !used.has(f))) nights.push(night([f], null, now));
   // arquivos sem encontros lidos ainda: entram sozinhos (a UI mostra "lendo")
   for (const f of files.filter((f) => f.peek?.firstMs == null && !f.peek)) nights.push(night([f], null, now));
-  return nights.sort((a, b) => b.startMs - a.startMs);
+  classify(nights);
+  // o app é para raid: noite já lida sem nenhum boss de raid (só M+) não tem o que analisar; a que
+  // está sendo gravada agora fica (a raid pode ainda não ter começado)
+  return nights.filter((n) => n.bosses.length > 0 || n.live || n.files.some((f) => !f.peek)).sort((a, b) => b.startMs - a.startMs);
+}
+
+/**
+ * Logs do PC das noites ainda não analisadas: o que "Analisar todos" lê. Fica de fora a noite que está
+ * sendo gravada agora (incompleta) e a que ainda não foi lida.
+ */
+export function pendingLogs(nights: Night[], analyzed: (path: string) => boolean): string[] {
+  return nights.flatMap((n) => {
+    const local = n.files[0];
+    if (!local?.peek || n.live || n.bosses.every((b) => b.local === 0)) return [];
+    const full = completePath(n);
+    return analyzed(local.path) || (full != null && analyzed(full)) ? [] : [local.path];
+  });
+}
+
+/**
+ * Guilda ou pug, boss a boss (o mesmo log pode ter os dois): pelos players dos pulls contra o núcleo
+ * que se repete nas noites. Boss que só existe no Warcraft Logs veio de um report da guilda.
+ */
+function classify(nights: Night[]) {
+  const roster = coreRoster(nights.map((n) => n.files.flatMap((f) => f.peek?.players ?? [])));
+  for (const n of nights) {
+    for (const b of n.bosses) {
+      const players = n.files.flatMap((f) => (f.peek?.encounters ?? []).filter((e) => e.encounterId === b.encounterId && e.difficultyId === b.difficultyId).flatMap((e) => e.players ?? []));
+      b.guild = players.length ? isGuildGroup(players, roster) : b.missing > 0 ? true : null;
+    }
+    n.kind = nightKind(n.bosses.map((b) => b.guild));
+  }
 }
 
 function range(f: LogFile): [number, number] {
@@ -91,7 +127,7 @@ function night(files: LogFile[], wcl: GuildNight | null, now: number): Night {
   const bosses: NightBossRow[] = [];
   const row = (encounterId: number, name: string, difficultyId: number) => {
     let b = bosses.find((x) => x.encounterId === encounterId && x.difficultyId === difficultyId);
-    if (!b) bosses.push((b = { encounterId, name, difficultyId, local: 0, localKills: 0, missing: 0, missingKills: 0 }));
+    if (!b) bosses.push((b = { encounterId, name, difficultyId, local: 0, localKills: 0, missing: 0, missingKills: 0, guild: null }));
     return b;
   };
   let dungeonBosses = 0;
@@ -141,6 +177,7 @@ function night(files: LogFile[], wcl: GuildNight | null, now: number): Night {
     missingPulls,
     missingMs,
     live: (wcl?.live ?? false) || files.some((f) => now - f.modifiedMs < LIVE_MS),
+    kind: null,
   };
 }
 

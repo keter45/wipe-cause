@@ -3,7 +3,7 @@ import { ExternalLink, Settings2, Trophy } from 'lucide-react';
 import type { Pull } from '../types';
 import { inTauri, openExternal } from '../lib/api';
 import { shortName } from '../lib/format';
-import { fetchRankings, ownFight, pickTops, TOPS_SHOWN, withoutExternalPI, wclFightUrl, wowAnalyzerUrl, type TopRanking } from '../lib/wclApi';
+import { fetchRankings, ownFight, pickTops, TOPS_SHOWN, withoutExternalPI, profileUrls, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl, type TopRanking, type WclFightRef, type WclView } from '../lib/wclApi';
 import { useSetup } from '../lib/setup';
 import type { Sample } from '../lib/performance';
 import { messagesOf, useMessages } from '../i18n';
@@ -79,52 +79,62 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
   );
 }
 
-export interface OwnFightRef {
-  fightId: number;
-  actorId: number | null;
-}
-
-/** O fight deste pull no report do WCL (se o link da noite estiver cadastrado e o client configurado). */
-export function useOwnFight(pull: Pull, playerName: string, wclCode?: string): OwnFightRef | null {
-  const [own, setOwn] = useState<OwnFightRef | null>(null);
+/**
+ * Um player de um pull da noite no report do WCL (se o link da noite estiver cadastrado e o client
+ * configurado): para os links do fight dele. Sem `wclCode` (ou sem achar o player), null.
+ */
+export function useWclFight(pull: Pull, playerName: string, wclCode?: string): WclFightRef | null {
+  const [found, setFound] = useState<WclFightRef | null>(null);
   const configured = !!useSetup().status?.wcl?.configured;
-  const myName = shortName(playerName);
+  const name = shortName(playerName);
   useEffect(() => {
-    setOwn(null);
-    if (!inTauri || !wclCode) return;
+    setFound(null);
+    if (!inTauri || !wclCode || !name) return;
     let alive = true;
     Promise.resolve(configured ? ownFight(wclCode, pull) : null)
-      .then((f) => alive && f && setOwn({ fightId: f.fightId, actorId: f.actors.find((a) => a.name === myName)?.id ?? null }))
+      .then((f) => {
+        const actor = f?.actors.find((a) => a.name === name);
+        if (alive && f && actor) setFound({ code: wclCode, fightId: f.fightId, actorId: actor.id, fightStart: f.fightStart, name });
+      })
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [wclCode, pull, myName, configured]);
-  return own;
+  }, [wclCode, pull, name, configured]);
+  return found;
 }
 
 export interface PerfLink {
-  who: 'you' | 'ref';
+  /** de quem é o link; 'both' = a comparação dos dois no Warcraft Logs */
+  who: 'you' | 'ref' | 'both' | 'profile';
   label: string;
   url: string;
 }
 
-/** Links do fight: do próprio pull (se o report estiver no WCL) e do top. */
+/**
+ * Links do fight: o seu (se o report da noite estiver no WCL), o da referência (top ou alguém da raid)
+ * e, com os dois, a comparação lado a lado no próprio Warcraft Logs.
+ */
 export function perfLinks(
-  playerName: string,
-  own: OwnFightRef | null,
-  wclCode: string | undefined,
-  top: { code: string; fightId: number; actorId: number; name: string } | null | undefined,
+  you: WclFightRef | null,
+  ref: WclFightRef | null,
+  type: WclView = 'damage-done',
+  /** top do Warcraft Logs: o perfil dele no Raider.IO e no Warcraft Logs */
+  profile?: { name: string; server: string; region: string } | null,
 ): PerfLink[] {
   const out: PerfLink[] = [];
-  const myName = shortName(playerName);
-  if (own && wclCode) {
-    if (own.actorId != null) out.push({ who: 'you', label: 'Warcraft Logs', url: wclFightUrl({ code: wclCode, fightId: own.fightId, actorId: own.actorId }) });
-    out.push({ who: 'you', label: 'WoWAnalyzer', url: wowAnalyzerUrl({ code: wclCode, fightId: own.fightId, name: myName }) });
+  if (you) {
+    out.push({ who: 'you', label: 'Warcraft Logs', url: wclRangeUrl(you, type) });
+    out.push({ who: 'you', label: 'WoWAnalyzer', url: wowAnalyzerUrl(you) });
   }
-  if (top) {
-    out.push({ who: 'ref', label: `Warcraft Logs (${top.name})`, url: wclFightUrl(top) });
-    out.push({ who: 'ref', label: `WoWAnalyzer (${top.name})`, url: wowAnalyzerUrl(top) });
+  if (ref) {
+    out.push({ who: 'ref', label: `Warcraft Logs (${ref.name})`, url: wclRangeUrl(ref, type) });
+    out.push({ who: 'ref', label: `WoWAnalyzer (${ref.name})`, url: wowAnalyzerUrl(ref) });
+  }
+  if (you && ref) out.push({ who: 'both', label: 'Warcraft Logs', url: wclCompareUrl(you, ref, type) });
+  if (profile) {
+    const t = messagesOf(wclTopsMsg);
+    for (const p of profileUrls(profile)) out.push({ who: 'profile', label: t.site[p.site](profile.name), url: p.url });
   }
   return out;
 }

@@ -10,7 +10,11 @@ export const wclTopsMsg = defineMessages(
     searching: 'Buscando os tops da spec no Warcraft Logs…',
     searchAgain: 'buscar de novo',
     changeClient: 'trocar client',
-    who: { you: 'Você', ref: 'Referência' },
+    who: { you: 'Você', ref: 'Referência', both: 'Lado a lado', profile: 'Perfil' },
+    site: {
+      raiderio: (name: string) => `Raider.IO (${name})`,
+      wcl: (name: string) => `Warcraft Logs (${name})`,
+    },
   },
   {
     appOnly: 'Comparing with the top Warcraft Logs players works in the installed app.',
@@ -21,6 +25,10 @@ export const wclTopsMsg = defineMessages(
     searching: "Searching Warcraft Logs for the spec's tops…",
     searchAgain: 'search again',
     changeClient: 'change client',
-    who: { you: 'You', ref: 'Reference' },
+    who: { you: 'You', ref: 'Reference', both: 'Side by side', profile: 'Profile' },
+    site: {
+      raiderio: (name: string) => `Raider.IO (${name})`,
+      wcl: (name: string) => `Warcraft Logs (${name})`,
+    },
   },
 );

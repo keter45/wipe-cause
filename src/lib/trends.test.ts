@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { buildTrends, trendBosses, type NightInput } from './trends';
-import { death, pull } from './test-fixtures';
+import { describe, expect, it, vi } from 'vitest';
+import { buildTrends, playerMoves, trendBosses, type NightInput, type PlayerTrend } from './trends';
+import { death, player, pull } from './test-fixtures';
 
 const guillotine = { key: 'guillotine', name: 'Guillotine', amount: 1, pct: 100, failT: 1000 };
 const orb = { key: 'orb', name: 'Orb roxo', amount: 1, pct: 100, failT: 1000 };
@@ -64,5 +64,46 @@ describe('histórico enxuto', () => {
     }
     const t = buildTrends([n, night('n2', '24/09 · Boss Mythic', 2_000_000, 2, 0, 30)], 'Boss · Mythic');
     expect(t.nights).toHaveLength(2);
+  });
+});
+
+describe('quem melhora e quem piora', () => {
+  const trend = (guid: string, scores: (number | null)[], perfs: (number | null)[]): PlayerTrend => ({
+    guid, name: `${guid}-Realm`, class: null, deathsPerPull: [], scorePerNight: scores, perfPerNight: perfs, pulls: 10, deaths: 0,
+    deathsNoDefensive: 0, topKiller: null, topKillerSpellId: null, topKillerNights: 0, topKillerNoDefensive: 0, mechanicErrors: 0,
+  });
+  const m = playerMoves([
+    trend('A', [60, 70, 80, 90], [40, 50, 60, 70]), // nota 65 -> 85, parse 45 -> 65
+    trend('B', [90, null, 70], [90, null, 30]), // 2 noites: 90 -> 70
+    trend('C', [80, 82], [50, 50]), // mudou pouco
+    trend('D', [50], [50]), // uma noite só
+  ]);
+  it('compara o começo com o fim das noites em que jogou', () => {
+    expect(m.improving).toHaveLength(1);
+    expect(m.improving[0]).toMatchObject({ guid: 'A', nights: 4, scoreFrom: 65, scoreTo: 85 });
+    expect([m.improving[0].perfFrom, m.improving[0].perfTo]).toEqual([45, 65]);
+    expect(m.worsening.map((x) => [x.guid, x.scoreFrom, x.scoreTo, x.perfTo])).toEqual([['B', 90, 70, 30]]);
+  });
+});
+
+describe('progressão: melhor e pior nos wipes antes da kill', () => {
+  const store = new Map<string, string>();
+  vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
+  const dps = (guid: string) => player(guid, { role: 'dps', aliveMs: 100_000 });
+  // 6 wipes e a kill; E (que só entrou na kill) não conta; C morre cedo em todos os wipes
+  const wipe = (i: number) =>
+    pull(i, 1_000_000 + i * 300_000, 100_000, { analyzedMs: 100_000, players: [dps('A'), dps('B'), dps('C'), dps('D')], deaths: [death('C', 10_000)] });
+  const kill = pull(6, 3_000_000, 100_000, { success: true, players: [dps('E'), dps('A'), dps('B'), dps('C'), dps('D')] });
+  const parse = (percent: number) => ({ metric: 'dps', kind: 'kill', percent });
+  store.set(`wipe-cause:parses:${kill.encounterId}:${kill.startMs}`, JSON.stringify({ 'A-Realm': parse(60), 'B-Realm': parse(95), 'C-Realm': parse(40), 'D-Realm': parse(12), 'E-Realm': parse(99) }));
+  const t = buildTrends([{ id: 'n', title: '01/10 · Boss Mythic', raidStartMs: 1_000_000, pulls: [...Array.from({ length: 6 }, (_, i) => wipe(i)), kill] }], 'Boss · Mythic');
+  it('nota nos wipes antes da kill; parse na kill; só quem jogou o bastante', () => {
+    const pr = t.progression!;
+    expect(pr.pulls).toBe(6);
+    expect(pr.killedOn).toBe('01/10');
+    expect(pr.worst?.guid).toBe('C');
+    expect(pr.bestPerf).toMatchObject({ guid: 'B', killParse: 95 });
+    expect(pr.worstPerf).toMatchObject({ guid: 'D', killParse: 12 });
+    expect([pr.best, pr.worst, pr.bestPerf, pr.worstPerf].some((x) => x?.guid === 'E')).toBe(false);
   });
 });

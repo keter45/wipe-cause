@@ -73,6 +73,8 @@ export interface PlayerNight {
   heroScore: number;
   /** nota média (0-100) nos pulls em que jogou */
   avgScore: number;
+  /** parse médio do Warcraft Logs nos kills da noite (0-100); null = sem kill ou sem parse buscado */
+  avgPerf: number | null;
 }
 
 export interface NightSummary {
@@ -130,7 +132,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
   }
 
   // ---- players
-  const acc = new Map<string, PlayerNight & { dpsSum: number; hpsSum: number; scoreSum: number }>();
+  const acc = new Map<string, PlayerNight & { dpsSum: number; hpsSum: number; scoreSum: number; perfSum: number; perfPulls: number }>();
   for (const p of pulls) {
     const verdict = analyzePull(p);
     const scores = scorePull(p);
@@ -165,6 +167,11 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
       a.dpsSum += ps.dps;
       a.hpsSum += ps.hps;
       a.scoreSum += scores.get(ps.guid)?.score ?? 100;
+      const perf = scores.get(ps.guid)?.perf;
+      if (perf != null) {
+        a.perfSum += perf;
+        a.perfPulls++;
+      }
       if (passedInterruptible && ps.canInterrupt && ps.interrupts === 0) a.idleInterruptPulls++;
       const hadDecisive = p.deaths.some((d) => d.guid === ps.guid && decisive.has(`${d.guid}:${d.t}`));
       if (!hadDecisive && !errorsThisPull.get(ps.guid)) a.cleanPulls++;
@@ -184,7 +191,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
       a = {
         guid, name, class: null, role: null, pulls: 0, deaths: 0, decisiveDeaths: 0, mechanicErrors: 0,
         mechanicErrorsWeighted: 0, deathsNoDefensive: 0, interrupts: 0, idleInterruptPulls: 0, assists: 0,
-        cleanPulls: 0, avgDps: 0, avgHps: 0, villainScore: 0, heroScore: 0, avgScore: 0, dpsSum: 0, hpsSum: 0, scoreSum: 0,
+        cleanPulls: 0, avgDps: 0, avgHps: 0, villainScore: 0, heroScore: 0, avgScore: 0, avgPerf: null, dpsSum: 0, hpsSum: 0, scoreSum: 0, perfSum: 0, perfPulls: 0,
       };
       acc.set(guid, a);
     }
@@ -193,8 +200,8 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
 
   const players: PlayerNight[] = [...acc.values()]
     .filter((a) => a.pulls > 0)
-    .map(({ dpsSum, hpsSum, scoreSum, ...a }) => {
-      const out: PlayerNight = { ...a, avgDps: dpsSum / a.pulls, avgHps: hpsSum / a.pulls, avgScore: scoreSum / a.pulls };
+    .map(({ dpsSum, hpsSum, scoreSum, perfSum, perfPulls, ...a }) => {
+      const out: PlayerNight = { ...a, avgDps: dpsSum / a.pulls, avgHps: hpsSum / a.pulls, avgScore: scoreSum / a.pulls, avgPerf: perfPulls ? perfSum / perfPulls : null };
       out.villainScore = 3 * a.decisiveDeaths + a.mechanicErrorsWeighted + a.deathsNoDefensive + 0.5 * a.idleInterruptPulls;
       // pulls limpos decidem; interrupts e ajudas só desempatam
       out.heroScore = a.cleanPulls / a.pulls + (a.interrupts + a.assists) / 1e6;

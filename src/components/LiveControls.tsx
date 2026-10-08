@@ -17,8 +17,8 @@ export function LiveButton({ status, error, onStart, onStop }: { status: LiveSta
   if (!status.active) {
     return (
       <div className="live-off">
-        <button className="btn ghost" onClick={onStart} title={t.startTitle}>
-          <Radio {...ICON} /> {t.live}
+        <button className="btn ghost" onClick={onStart} title={t.startTitle} aria-label={t.live}>
+          <Radio {...ICON} /> <span className="topbar-label">{t.live}</span>
         </button>
         {error && (
           <span className="small bad live-error" title={error}>
@@ -37,9 +37,9 @@ export function LiveButton({ status, error, onStart, onStop }: { status: LiveSta
       onClose={() => setOpen(false)}
       label={t.liveMode}
       trigger={
-        <button className={`btn ghost live-on ${status.state} ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open}>
+        <button className={`btn ghost live-on ${status.state} ${open ? 'pressed' : ''}`} onClick={() => setOpen(!open)} aria-expanded={open} aria-label={`${t.live}: ${label}`}>
           <span className="live-dot" aria-hidden />
-          {t.live} <span className="small muted live-state">{label}</span>
+          <span className="topbar-label">{t.live}</span> <span className="small muted live-state">{label}</span>
         </button>
       }
     >

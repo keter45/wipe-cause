@@ -4,6 +4,7 @@ import { BossName, PlayerName } from '../Names';
 import { specLabel } from '../../lib/specs';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import type { PerfLink } from '../WclTops';
+import { wclTopsMsg } from '../WclTops.i18n';
 import { CooldownCompare } from '../perf/CooldownCompare';
 import { Brand, type CardDetail } from './common';
 
@@ -67,7 +68,7 @@ export function PerfShareCard({
         <p className="perf-card-links small">
           {links.map((l) => (
             <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer">
-              {l.who}: {l.label}
+              {messagesOf(wclTopsMsg).who[l.who]}: {l.label}
             </a>
           ))}
         </p>

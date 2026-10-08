@@ -182,12 +182,16 @@ export interface EncounterPeek {
   kills: number;
   /** início (epoch ms) de cada pull contado */
   starts?: number[];
+  /** GUID de quem esteve nos pulls deste boss (raid); índice antigo não tem */
+  players?: string[];
 }
 
 export interface LogPeek {
   firstMs: number | null;
   lastMs: number | null;
   encounters: EncounterPeek[];
+  /** GUID de quem esteve nos pulls de raid do log */
+  players?: string[];
 }
 
 export interface LogFile {

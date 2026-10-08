@@ -228,6 +228,11 @@ code,
   gap: 2px;
   flex: 0 1 auto; /* o chip do log encolhe (com reticências) antes de cortar as ações */
 }
+/* as ações do topo não encolhem abaixo do texto (senão os rótulos se sobrepõem): quem cede é o chip */
+.topbar > :not(.log-group):not(.topbar-spacer),
+.topbar-group:not(.log-group) > * {
+  flex-shrink: 0;
+}
 .log-chip {
   display: flex;
   align-items: center;
@@ -2633,6 +2638,64 @@ td.warn {
   background: color-mix(in srgb, var(--wipe) 22%, transparent);
   color: var(--wipe);
 }
+.trends-pug {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  cursor: pointer;
+}
+.log-tag.pug {
+  background: color-mix(in srgb, var(--minor) 18%, transparent);
+  color: var(--minor);
+}
+.log-pug {
+  color: var(--minor);
+}
+.parse-vs {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.parse-vs.up {
+  color: var(--kill);
+}
+.parse-vs.down {
+  color: var(--wipe);
+}
+.progression-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 8px 0;
+}
+.progression-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border-left: 3px solid var(--border);
+}
+.progression-card.good {
+  border-left-color: var(--kill);
+}
+.progression-card.bad {
+  border-left-color: var(--wipe);
+}
+.moves h3 {
+  margin-top: 0;
+}
+.moves .inline-icon.good {
+  color: var(--kill);
+}
+.moves-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .score-trail {
   white-space: nowrap;
 }
@@ -3531,9 +3594,15 @@ td.warn {
   color: var(--accent);
 }
 
-/* topo estreito: o contador de mortes fica só com o ícone e os números */
+/* topo estreito: primeiro somem os estados ("pausado", "seguindo…"); depois os rótulos, e os
+   botões ficam só com o ícone (o nome continua no aria-label / title) */
 .topbar .live-state {
   max-width: 160px;
+}
+@media (max-width: 1360px) {
+  .topbar .live-state {
+    display: none;
+  }
 }
 @media (max-width: 1180px) {
   .topbar .stepper-label {

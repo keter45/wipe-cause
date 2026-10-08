@@ -38,6 +38,14 @@ pub struct HistoryEntry {
     /// o log original ainda existe (preenchido na listagem)
     #[serde(default)]
     pub log_exists: bool,
+    /// tem pull de raid; entradas antigas não têm (a listagem confere uma vez)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raid: Option<bool>,
+}
+
+/// O app é para raid: log só de masmorra (M+) não entra no histórico.
+fn has_raid(report: &LogReport) -> bool {
+    report.pulls.iter().any(|p| !p.dungeon)
 }
 
 fn history_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -114,6 +122,15 @@ pub fn save(app: &AppHandle, report: &LogReport, log_path: &str) -> Result<(), S
 
 fn save_in(dir: &Path, report: &LogReport, log_path: &str) -> Result<(), String> {
     let id = entry_id(log_path);
+    if !has_raid(report) {
+        // só masmorra: não salva, e tira uma análise antiga do mesmo log
+        let mut index = load_index(dir);
+        if index.iter().any(|e| e.id == id) {
+            remove(dir, &mut index, &id);
+            save_index(dir, &index)?;
+        }
+        return Ok(());
+    }
     let json = serde_json::to_vec(report).map_err(|e| e.to_string())?;
     let mut gz = GzEncoder::new(Vec::new(), Compression::default());
     gz.write_all(&json).map_err(|e| e.to_string())?;
@@ -146,6 +163,7 @@ fn save_in(dir: &Path, report: &LogReport, log_path: &str) -> Result<(), String>
         pinned,
         size: bytes.len() as u64,
         log_exists: true,
+        raid: Some(true),
     });
     save_index(dir, &index)
 }
@@ -158,6 +176,20 @@ pub fn history_list(app: AppHandle) -> Result<Vec<HistoryEntry>, String> {
 
 fn list_in(dir: &Path) -> Vec<HistoryEntry> {
     let mut index = load_index(dir);
+    // entradas de antes da regra de raid: confere uma vez e tira as que são só de masmorra (M+)
+    let unknown: Vec<String> = index.iter().filter(|e| e.raid.is_none()).map(|e| e.id.clone()).collect();
+    if !unknown.is_empty() {
+        for id in &unknown {
+            let raid = load_in(dir, id).ok().map(|r| r["pulls"].as_array().is_some_and(|ps| ps.iter().any(|p| p["dungeon"] != true)));
+            match raid {
+                Some(false) => remove(dir, &mut index, id),
+                // sem conseguir ler, fica como está (não some do histórico por engano)
+                Some(true) => index.iter_mut().filter(|e| &e.id == id).for_each(|e| e.raid = Some(true)),
+                None => {}
+            }
+        }
+        let _ = save_index(dir, &index);
+    }
     for e in &mut index {
         // report do Warcraft Logs: dá para baixar de novo
         e.log_exists = e.log_path.starts_with(crate::wcl_source::PREFIX) || Path::new(&e.log_path).exists();
@@ -352,6 +384,38 @@ mod tests {
         delete_in(&dir, &a.id).unwrap();
         assert!(list_in(&dir).is_empty());
         assert!(load_in(&dir, &a.id).is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn dungeon_only_logs_stay_out_of_the_history() {
+        let dir = std::env::temp_dir().join(format!("wipe-history-mplus-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let raid = fixture_report();
+        let mut mplus = fixture_report();
+        mplus.pulls.iter_mut().for_each(|p| p.dungeon = true);
+
+        save_in(&dir, &mplus, "C:/logs/m.txt").unwrap();
+        assert!(list_in(&dir).is_empty(), "só masmorra não é salvo");
+
+        // análise antiga (de antes da regra) só de masmorra: some na listagem, com o arquivo
+        save_in(&dir, &raid, "C:/logs/old.txt").unwrap();
+        let id = entry_id("C:/logs/old.txt");
+        let mut index = load_index(&dir);
+        index.iter_mut().for_each(|e| e.raid = None);
+        save_index(&dir, &index).unwrap();
+        let json = serde_json::to_vec(&mplus).unwrap();
+        let mut gz = GzEncoder::new(Vec::new(), Compression::default());
+        gz.write_all(&json).unwrap();
+        std::fs::write(dir.join(format!("{id}.json.gz")), gz.finish().unwrap()).unwrap();
+        assert!(list_in(&dir).is_empty());
+        assert!(load_in(&dir, &id).is_err());
+
+        // com raid, entra (e a antiga com raid fica marcada)
+        save_in(&dir, &raid, "C:/logs/r.txt").unwrap();
+        let list = list_in(&dir);
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].raid, Some(true));
         std::fs::remove_dir_all(&dir).ok();
     }
 

@@ -309,7 +309,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
 /** Aba Jogadores: nota do app + parse do Warcraft Logs (DPS para dps, HPS para healers). */
 function PlayersTab({ pull, wclCode }: { pull: Pull; wclCode?: string }) {
   const parseState = useWclParses(pull, wclCode);
-  return <PlayersTable players={pull.players} scores={scorePull(pull)} parseState={parseState} />;
+  return <PlayersTable players={pull.players} scores={scorePull(pull)} parseState={parseState} pull={pull} />;
 }
 
 /** Anotação livre do pull (a mesma do aviso do modo ao vivo). */

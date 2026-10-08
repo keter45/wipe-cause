@@ -191,7 +191,8 @@ fn peek_cached(app: &AppHandle, path: &Path) -> Result<LogPeek, String> {
     let meta = std::fs::metadata(path).map_err(|e| e.to_string())?;
     let key = path.display().to_string();
     let (size, modified) = (meta.len(), modified_ms(&meta));
-    let fresh = |e: &&IndexEntry| e.size == size && e.modified_ms == modified && e.peek.encounters.iter().all(|x| x.starts.len() as u32 == x.pulls);
+    // leitura de uma versão anterior (sem os players, sem os inícios dos pulls) é refeita uma vez
+    let fresh = |e: &&IndexEntry| e.size == size && e.modified_ms == modified && e.peek.version >= wipe_core::peek::PEEK_VERSION;
     if let Some(p) = with_index(app, |index| index.get(&key).filter(fresh).map(|e| e.peek.clone())) {
         return Ok(p);
     }

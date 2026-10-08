@@ -8,6 +8,7 @@ import { ownFight } from './wclApi';
 import { WCL_DIFFICULTY } from './wcl';
 import { messagesOf } from '../i18n';
 import { wclMsg } from './wcl.i18n';
+import { noteKey } from './notes';
 
 export type ParseMetric = 'dps' | 'hps';
 
@@ -78,6 +79,92 @@ const keyOf = (p: PlayerStats) => {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+// ---- parses de kill salvos: o parse de um fight não muda o bastante para pedir de novo, e a nota do
+// player (score.ts) lê daqui sem esperar a API. Ficam no navegador do app, por boss + início do pull,
+// pelo nome do player (o guid muda entre o log do PC e o Warcraft Logs).
+
+type PullRef = Pick<Pull, 'encounterId' | 'startMs' | 'difficultyId'>;
+const PARSES_KEY = 'wipe-cause:parses:';
+
+/** O que fica salvo por kill: a dificuldade (para comparar com kills iguais) e o parse de cada player. */
+interface SavedKill {
+  difficultyId: number;
+  byName: Record<string, PlayerParse>;
+}
+
+/** Parse como o site mostra: inteiro. */
+export const wholeParse = (x: number | null | undefined) => (x == null ? null : Math.round(x));
+
+const rounded = (p: PlayerParse): PlayerParse => ({ ...p, percent: wholeParse(p.percent), bracketPercent: wholeParse(p.bracketPercent), best: wholeParse(p.best) });
+
+function readSaved(key: string): SavedKill | null {
+  try {
+    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(key);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as SavedKill | Record<string, PlayerParse>;
+    // formato antigo: só o parse de cada player, sem a dificuldade
+    const saved: { difficultyId?: number; byName: Record<string, PlayerParse> } = 'byName' in v && typeof v.byName === 'object' ? (v as SavedKill) : { byName: v as Record<string, PlayerParse> };
+    return { difficultyId: saved.difficultyId ?? -1, byName: Object.fromEntries(Object.entries(saved.byName).map(([k, p]) => [k, rounded(p)])) };
+  } catch {
+    return null;
+  }
+}
+
+/** Parses salvos do kill (nome do player -> parse); null = ainda não buscados. */
+export function storedKillParses(p: PullRef): Record<string, PlayerParse> | null {
+  return readSaved(PARSES_KEY + noteKey(p))?.byName ?? null;
+}
+
+function saveKillParses(p: PullRef, byName: Record<string, PlayerParse>) {
+  try {
+    localStorage.setItem(PARSES_KEY + noteKey(p), JSON.stringify({ difficultyId: p.difficultyId, byName } satisfies SavedKill));
+  } catch {
+    /* sem storage: vale só nesta sessão */
+  }
+}
+
+export interface OwnParses {
+  /** o kill anterior dele neste boss e dificuldade */
+  previous: { percent: number; startMs: number } | null;
+  /** média dos kills anteriores dele (com parse) */
+  avg: number | null;
+  kills: number;
+}
+
+/** O parse do player nos kills anteriores do mesmo boss e dificuldade (os que o app já salvou). */
+export function ownPreviousParses(p: PullRef, name: string): OwnParses {
+  const prefix = `${PARSES_KEY}${p.encounterId}:`;
+  const before: { percent: number; startMs: number }[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith(prefix)) continue;
+      const startMs = Number(key.slice(prefix.length));
+      if (!(startMs < p.startMs)) continue;
+      const saved = readSaved(key);
+      const percent = saved?.difficultyId === p.difficultyId ? saved.byName[name]?.percent : null;
+      if (percent != null) before.push({ percent, startMs });
+    }
+  } catch {
+    /* sem storage */
+  }
+  before.sort((a, b) => a.startMs - b.startMs);
+  return {
+    previous: before[before.length - 1] ?? null,
+    avg: before.length ? Math.round(before.reduce((s, x) => s + x.percent, 0) / before.length) : null,
+    kills: before.length,
+  };
+}
+
+/** Parse do player no kill, se já buscado (0-100). Wipe não tem parse. */
+export function killParseOf(p: Pull, player: PlayerStats): number | null {
+  if (!p.success) return null;
+  return storedKillParses(p)?.[player.name]?.percent ?? null;
+}
+
+const byGuid = (pull: Pull, byName: Record<string, PlayerParse>) =>
+  new Map(pull.players.flatMap((pl) => (byName[pl.name] ? [[pl.guid, byName[pl.name]] as const] : [])));
+
 function query<T>(q: string, variables: Record<string, unknown>, cacheKey: string): Promise<T> {
   return invoke<T>('wcl_query', { query: q, variables, cacheKey });
 }
@@ -91,6 +178,8 @@ const KILL_QUERY = `query Ranks($code: String!, $fight: Int!) {
 
 /** Parse de cada player no kill (guid -> parse), cada um no ranking do seu papel. */
 export async function fetchKillParses(code: string, pull: Pull): Promise<Map<string, PlayerParse>> {
+  const saved = storedKillParses(pull);
+  if (saved) return byGuid(pull, saved);
   const fight = await ownFight(code, pull);
   if (!fight) throw new Error(messagesOf(wclMsg).killMissing);
   const d = await query<any>(KILL_QUERY, { code, fight: fight.fightId }, `ranks-${code}-${fight.fightId}-${today()}`);
@@ -103,13 +192,28 @@ export async function fetchKillParses(code: string, pull: Pull): Promise<Map<str
     out.set(p.guid, {
       metric,
       kind: 'kill',
-      percent: c.rankPercent ?? null,
-      bracketPercent: c.bracketPercent ?? null,
+      percent: wholeParse(c.rankPercent),
+      bracketPercent: wholeParse(c.bracketPercent),
       rank: c.rank,
       total: c.totalParses,
     });
   }
+  saveKillParses(pull, Object.fromEntries(pull.players.flatMap((pl) => (out.has(pl.guid) ? [[pl.name, out.get(pl.guid)!]] : []))));
   return out;
+}
+
+/** Busca (e salva) o parse dos kills que ainda não têm; devolve quantos kills ganharam parse. */
+export async function fetchMissingKillParses(code: string, pulls: Pull[]): Promise<number> {
+  let n = 0;
+  for (const p of pulls.filter((p) => p.success && !storedKillParses(p))) {
+    try {
+      await fetchKillParses(code, p);
+      n++;
+    } catch {
+      /* fight não achado no report: fica para a próxima */
+    }
+  }
+  return n;
 }
 
 /** Consulta com um apelido por player (uma requisição para o raid inteiro). */
@@ -134,7 +238,7 @@ export async function fetchHistory(pull: Pull): Promise<Map<string, PlayerParse>
     if (!r || !r.totalKills) return;
     const ranks: { rankPercent?: number }[] = Array.isArray(r.ranks) ? r.ranks : [];
     const best = ranks.reduce<number | null>((m, x) => (x.rankPercent != null && (m == null || x.rankPercent > m) ? x.rankPercent : m), null);
-    out.set(p.guid, { metric: metricFor(p.role), kind: 'history', percent: r.medianPerformance ?? null, best, kills: r.totalKills });
+    out.set(p.guid, { metric: metricFor(p.role), kind: 'history', percent: wholeParse(r.medianPerformance), best: wholeParse(best), kills: r.totalKills });
   });
   return out;
 }

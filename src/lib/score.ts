@@ -1,6 +1,7 @@
 // Nota de 0 a 100 por player e pull (inspirada no Wipefest): parte de 100, perde pontos por
 // erros de mecânica (pela gravidade; dano evitável de tank pesa metade), por deixar passar a própria vez na escala de interrupts
-// e por morte decisiva; no fim, pesa o tempo vivo até a primeira morte. Mortes num "wipe geral"
+// e por morte decisiva; no fim, pesa o tempo vivo até a primeira morte e, no kill, o parse do Warcraft
+// Logs (o wipe não tem parse). Mortes num "wipe geral"
 // (mais de 5 juntas) não contam: são consequência do wipe, não erro de cada um.
 
 import type { Pull } from '../types';
@@ -12,6 +13,7 @@ import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
 import { getMarks } from './marks';
 import { messagesOf } from '../i18n';
 import { scoreMsg } from './score.i18n';
+import { killParseOf } from './wclParses';
 
 /** Desconto por erro, pela gravidade da regra. */
 const PENALTY: Record<string, number> = { wipe: 25, major: 12, minor: 4, none: 0 };
@@ -27,7 +29,13 @@ export interface PlayerScore {
   score: number;
   /** motivos dos descontos, para o tooltip */
   parts: string[];
+  /** parse do Warcraft Logs no kill (0-100); null = wipe ou parse ainda não buscado */
+  perf: number | null;
 }
+
+/** Peso do desempenho: parse 25 perde 15% da nota, parse 0 perde 30%; na mediana do Warcraft Logs (50) ou acima, nada. */
+const PERF_WEIGHT = 0.3;
+const PERF_MEDIAN = 50;
 
 export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p)): Map<string, PlayerScore> {
   const t = messagesOf(scoreMsg);
@@ -94,8 +102,11 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
     if (died != null) parts.push(t.alive(Math.round(alive * 100), factor));
     const note = massNote.get(x.guid);
     if (note && died == null) parts.push(note);
-    const score = Math.round(Math.max(0, 100 - (pen?.total ?? 0)) * factor);
-    out.set(x.guid, { score: Math.max(0, Math.min(100, score)), parts });
+    const perf = killParseOf(p, x);
+    const perfFactor = perf == null ? 1 : 1 - PERF_WEIGHT * (1 - Math.min(1, perf / PERF_MEDIAN));
+    if (perf != null && perfFactor < 1) parts.push(t.performance(Math.round(perf), perfFactor));
+    const score = Math.round(Math.max(0, 100 - (pen?.total ?? 0)) * factor * perfFactor);
+    out.set(x.guid, { score: Math.max(0, Math.min(100, score)), parts, perf });
   }
   return out;
 }
