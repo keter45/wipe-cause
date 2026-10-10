@@ -3,6 +3,7 @@
 
 import type { PlayerStats, Pull, RotationResult } from '../types';
 import { ANCHOR_WINDOW_MS, EARLY_MS, anchorTimes, castMix, defensivesNear, firstUse, idleIn, potionTimes } from './benchMetrics';
+import { compareDecisions, povOf, type CdRef, type DecisionFinding, type DecisionRef } from './decisions';
 import { isCombatPotion } from './performance';
 
 interface Named {
@@ -25,12 +26,16 @@ export interface BossBench {
   defensives: (Named & { share: number; spells: (Named & { share: number })[] })[];
   /** abertura dos tops neste boss, por árvore de herói (nome da árvore) */
   openers?: Record<string, { n: number; support: number; seq: Named[] }>;
+  /** cooldowns dos tops neste boss (segurados para uma fase, alinhados), por árvore de herói */
+  cds?: Record<string, Record<string, CdRef>>;
 }
 
 interface SpecBench {
   spec: number;
   name: string;
   pulls: number;
+  /** decisões dos tops (procs e cooldowns), por árvore de herói */
+  decisions?: Record<string, DecisionRef>;
   bosses: Record<string, BossBench>;
 }
 
@@ -78,6 +83,8 @@ export interface BenchView {
    * primeiros casts do player (null = o motor não leu a abertura dele, ou os tops variam demais no boss)
    */
   opener: { tree: string; n: number; support: number; seq: Named[]; missing: Named[] | null } | null;
+  /** procs perdidos, casts com o proc esperando, cooldowns segurados ou fora do alinhamento dos tops */
+  decisions: DecisionFinding[];
   /** mecânicas em que os tops usam defensivo, e quantas vezes o player usou */
   defensives: (Named & { share: number; spells: Named[]; used: number; of: number })[];
 }
@@ -150,7 +157,23 @@ export function compareWithTops(pull: Pull, p: PlayerStats, b = benchFor(p.specI
     });
   }
 
-  return { n: b.n, otherDifficulty: !sameDifficulty, checks, cdUsage, mix, cooldowns, potion, opener: sameDifficulty ? bossOpener(r, b) : null, windows: distinct.slice(0, 5), defensives };
+  const decisions = decisionsFor(pull, p, b, sameDifficulty);
+  return { n: b.n, otherDifficulty: !sameDifficulty, checks, cdUsage, mix, cooldowns, potion, opener: sameDifficulty ? bossOpener(r, b) : null, windows: distinct.slice(0, 5), decisions, defensives };
+}
+
+/** Árvore do player na referência (ou a única com dados, se a dele não foi lida). */
+function treeIn<T>(r: RotationResult, byTree: Record<string, T> | undefined): T | null {
+  const trees = Object.keys(byTree ?? {});
+  const tree = r.tree != null ? trees.find((t) => t === r.tree) : trees.length === 1 ? trees[0] : undefined;
+  return tree ? byTree![tree] : null;
+}
+
+/** Decisões do player contra as dos tops (os cooldowns do boss só na mesma dificuldade). */
+function decisionsFor(pull: Pull, p: PlayerStats, b: BossBench, sameDifficulty: boolean): DecisionFinding[] {
+  const ref = treeIn(p.rotation!, bySpec.get(p.specId ?? -1)?.decisions);
+  const pov = povOf(pull, p);
+  if (!ref || !pov) return [];
+  return compareDecisions(pov, ref, sameDifficulty ? (treeIn(p.rotation!, b.cds) ?? undefined) : undefined);
 }
 
 /** A abertura dos tops no boss na árvore do player (ou na única árvore com dados, se a dele não foi lida). */

@@ -508,6 +508,9 @@ impl PullBuilder {
         if is_player && self.counting() {
             if let Some(r) = self.players.get_mut(dst_guid).and_then(|p| p.rotation.as_mut()) {
                 r.on_aura(rel, spell_id, stacks);
+                if f[1] == dst_guid {
+                    r.on_self_aura(rel, spell_id, f[10], stacks);
+                }
             }
         }
         if self.counting() {

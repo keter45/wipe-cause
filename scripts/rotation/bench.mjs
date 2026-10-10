@@ -26,6 +26,7 @@ import {
   idleIn,
   potionTimes,
 } from '../../src/lib/benchMetrics.ts';
+import { buildDecisionRef, discoverConsumers, discoverCooldowns, povOf } from '../../src/lib/decisions.ts';
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 /** Pulls mínimos de um boss para ele ter referência. */
@@ -94,6 +95,7 @@ function learnNames(pulls) {
   for (const { pull, player: p } of pulls) {
     for (const c of p.casts) add(c.spellId, c.name);
     for (const d of p.defensivesUsed) add(d.spellId, d.name);
+    for (const b of p.rotation.buffs ?? []) add(b.id, b.name);
     for (const e of pull.enemySpells) add(e.spellId, e.name);
   }
 }
@@ -122,6 +124,32 @@ function topPulls(exe, spec) {
     for (const pull of JSON.parse(r.stdout).pulls) {
       if (pull.analyzedMs < 60000) continue;
       for (const player of pull.players) if (player.specId === spec.id && player.rotation && player.casts.length) out.push({ pull, player });
+    }
+  }
+  return out;
+}
+
+/** Pulls mínimos de uma árvore para a referência de decisões, e de um boss para os cooldowns dele. */
+const MIN_DECISION_PULLS = 8;
+const MIN_BOSS_CD_PULLS = 6;
+
+/**
+ * Decisões por árvore de herói: quem gasta cada proc e quanto os tops perdem, e os cooldowns
+ * (segurados ou alinhados). Os cooldowns também por boss, quando há tops suficientes nele: segurar
+ * para uma fase ou mecânica muda de boss para boss.
+ */
+function specDecisions(pulls, bosses) {
+  const out = {};
+  for (const [tree, group] of Object.entries(Object.groupBy(pulls, (x) => x.player.rotation.tree ?? '?'))) {
+    const povs = group.map((x) => ({ x, pov: povOf(x.pull, x.player) })).filter((g) => g.pov);
+    if (povs.length < MIN_DECISION_PULLS) continue;
+    const all = povs.map((g) => g.pov);
+    const consumers = discoverConsumers(all);
+    const cooldowns = discoverCooldowns(all);
+    out[tree] = buildDecisionRef(all, consumers, cooldowns, en);
+    for (const [id, list] of Object.entries(Object.groupBy(povs, (g) => g.x.pull.encounterId))) {
+      if (list.length < MIN_BOSS_CD_PULLS || !bosses[id]) continue;
+      (bosses[id].cds ??= {})[tree] = buildDecisionRef(list.map((g) => g.pov), consumers, cooldowns, en).cds;
     }
   }
   return out;
@@ -264,9 +292,10 @@ for (const spec of specs) {
   // a dificuldade dos tops (Mítico; Heroico só se não houve ranking): abertura e mecânicas mudam com ela
   const mostCommon = (xs) => Object.entries(Object.groupBy(xs, (x) => x)).sort((a, b) => b[1].length - a[1].length)[0]?.[0];
   for (const [id, list] of Object.entries(byBoss)) if (list.length >= MIN_PULLS) bosses[id] = { name: list[0].pull.encounterName, difficultyId: +mostCommon(list.map((x) => x.pull.difficultyId)), ...boss(list) };
+  const decisions = specDecisions(pulls, bosses);
   const file = path.join(OUT, `${spec.file}.json`);
   // compacto: vai embutido no app
-  fs.writeFileSync(file, JSON.stringify({ spec: spec.id, name: spec.name, pulls: pulls.length, bosses }));
+  fs.writeFileSync(file, JSON.stringify({ spec: spec.id, name: spec.name, pulls: pulls.length, decisions, bosses }));
   const anchors = Object.values(bosses).reduce((s, b) => s + b.anchors.length, 0);
   console.log(`${spec.name}: ${pulls.length} pulls, ${Object.keys(bosses).length} bosses, ${anchors} marcos de mecânica -> ${path.relative(ROOT, file)}`);
 }

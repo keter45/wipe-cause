@@ -418,7 +418,42 @@ pub struct RotationResult {
     pub priority_st: Vec<PrioView>,
     pub priority_aoe: Vec<PrioView>,
     pub sources: Vec<SpellSource>,
+    /// buffs curtos que o player pôs em si mesmo (procs, janelas de cooldown), para comparar com os
+    /// tops: quem gasta cada proc, quantos se perdem, o que sai junto de cada cooldown
+    pub buffs: Vec<BuffTrace>,
 }
+
+/// Um buff curto do player no pull.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuffTrace {
+    pub id: u32,
+    pub name: String,
+    pub max_stacks: u32,
+    /// cargas ganhas
+    pub gains: u32,
+    /// quando esteve ativo (ms do pull)
+    pub spans: Vec<[i64; 2]>,
+    /// cada carga perdida: [ms, spellId do cast do player logo antes (0 = nenhum: acabou sozinho)]
+    pub drops: Vec<[i64; 2]>,
+}
+
+#[derive(Default)]
+struct BuffAcc {
+    name: String,
+    stacks: u32,
+    since: Option<i64>,
+    max: u32,
+    gains: u32,
+    spans: Vec<[i64; 2]>,
+    drops: Vec<[i64; 2]>,
+}
+
+/// Carga perdida até isto depois de um cast = gasta por ele.
+const CONSUME_MS: i64 = 200;
+/// Buff ativo mais que esta fração do pull não é proc nem janela (buff de raid, postura...).
+const BUFF_MAX_UPTIME: f64 = 0.4;
+const MAX_BUFFS: usize = 40;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -481,6 +516,9 @@ pub(crate) struct RotationTracker {
     dot_spans: HashMap<String, Vec<(i64, i64)>>,
     swap_total: HashMap<usize, u32>,
     swap_miss: HashMap<usize, Vec<i64>>,
+    /// buffs que o player pôs em si mesmo, e os últimos casts dele (para saber quem gastou a carga)
+    self_buffs: HashMap<u32, BuffAcc>,
+    recent: Vec<(i64, u32)>,
 }
 
 impl RotationTracker {
@@ -515,6 +553,8 @@ impl RotationTracker {
             dot_spans: HashMap::new(),
             swap_total: HashMap::new(),
             swap_miss: HashMap::new(),
+            self_buffs: HashMap::new(),
+            recent: Vec::new(),
         }
     }
 
@@ -551,6 +591,10 @@ impl RotationTracker {
         if self.spec.ignore_casts.contains(&spell_id) {
             return;
         }
+        if self.recent.len() >= 8 {
+            self.recent.remove(0);
+        }
+        self.recent.push((t, spell_id));
         if self.markers.contains(&spell_id) {
             self.seen_markers.insert(spell_id);
         }
@@ -669,6 +713,27 @@ impl RotationTracker {
                 }
             }
         }
+    }
+
+    /// Buff que o próprio player se deu: `stacks` = cargas depois do evento (0 = removido).
+    pub fn on_self_aura(&mut self, t: i64, spell_id: u32, name: &str, stacks: u32) {
+        let by = self.recent.iter().rev().find(|(ct, _)| (0..=CONSUME_MS).contains(&(t - ct))).map_or(0, |&(_, id)| id as i64);
+        let b = self.self_buffs.entry(spell_id).or_insert_with(|| BuffAcc { name: name.to_string(), ..Default::default() });
+        if stacks > b.stacks {
+            b.gains += stacks - b.stacks;
+            b.since.get_or_insert(t);
+        } else if stacks < b.stacks {
+            for _ in 0..b.stacks - stacks {
+                b.drops.push([t, by]);
+            }
+        }
+        if stacks == 0 {
+            if let Some(s) = b.since.take() {
+                b.spans.push([s, t]);
+            }
+        }
+        b.max = b.max.max(stacks);
+        b.stacks = stacks;
     }
 
     /// Dano do player num inimigo (conta os alvos ativos para AoE).
@@ -1067,6 +1132,25 @@ impl RotationTracker {
             _ => 1.0,
         };
         let (sum, w) = findings.iter().fold((0.0, 0.0), |(s, w), f| (s + f.rate * weight(&f.importance), w + weight(&f.importance)));
+        // buffs curtos: fecha os ativos no fim; as cargas que caíram na morte não contam
+        let deaths: Vec<i64> = self.dead_spans.iter().map(|&(d, _)| d).collect();
+        let mut buffs: Vec<BuffTrace> = std::mem::take(&mut self.self_buffs)
+            .into_iter()
+            .filter_map(|(id, mut b)| {
+                if let Some(s) = b.since.take() {
+                    b.spans.push([s, end_ms]);
+                }
+                let up: i64 = b.spans.iter().map(|[a, z]| z - a).sum();
+                if b.gains == 0 || up as f64 > end_ms as f64 * BUFF_MAX_UPTIME {
+                    return None;
+                }
+                b.drops.retain(|[t, _]| !deaths.iter().any(|&d| (d - 500..=d + 1000).contains(t)));
+                Some(BuffTrace { id, name: b.name, max_stacks: b.max, gains: b.gains, spans: b.spans, drops: b.drops })
+            })
+            .collect();
+        buffs.sort_by(|a, b| b.gains.cmp(&a.gains).then(a.id.cmp(&b.id)));
+        buffs.truncate(MAX_BUFFS);
+
         let score = if w > 0.0 { (sum / w * 100.0).round() as u32 } else { 100 };
         // o que mais pesa primeiro: importância, depois o pior aproveitamento
         findings.sort_by(|a, b| weight(&b.importance).partial_cmp(&weight(&a.importance)).unwrap().then(a.rate.partial_cmp(&b.rate).unwrap()));
@@ -1086,6 +1170,7 @@ impl RotationTracker {
             priority_st: prio.map(|p| view(&p.st)).unwrap_or_default(),
             priority_aoe: prio.map(|p| view(&p.aoe)).unwrap_or_default(),
             sources: spec.sources.iter().map(|s| SpellSource { title: s.title.clone(), url: s.url.clone() }).collect(),
+            buffs,
         }
     }
 }
@@ -1303,5 +1388,28 @@ mod tests {
         let mut r = RotationTracker::new(arcane);
         r.on_cast(3000, 44425);
         assert_eq!(r.finish(10000, &[true; 20]).tree.as_deref(), Some("Spellslinger"));
+    }
+
+    #[test]
+    fn self_buffs_keep_who_spent_each_charge() {
+        let mut r = RotationTracker::new(mm());
+        // proc de 2 cargas: uma gasta pelo cast logo antes, a outra acaba sozinha
+        r.on_self_aura(3000, 900, "Proc", 2);
+        r.on_cast(4000, 185358);
+        r.on_self_aura(4100, 900, "Proc", 1);
+        r.on_self_aura(9000, 900, "Proc", 0);
+        // buff que fica a luta toda não é proc nem janela
+        r.on_self_aura(0, 901, "Long", 1);
+        // carga que cai na morte não conta
+        r.on_self_aura(12000, 902, "Other", 1);
+        r.on_death(15000);
+        r.on_self_aura(15000, 902, "Other", 0);
+        let buffs = r.finish(20000, &[true; 20]).buffs;
+        let proc = buffs.iter().find(|b| b.id == 900).unwrap();
+        assert_eq!((proc.gains, proc.max_stacks), (2, 2));
+        assert_eq!(proc.spans, vec![[3000, 9000]]);
+        assert_eq!(proc.drops, vec![[4100, 185358], [9000, 0]]);
+        assert!(buffs.iter().all(|b| b.id != 901));
+        assert!(buffs.iter().find(|b| b.id == 902).unwrap().drops.is_empty());
     }
 }

@@ -3,7 +3,7 @@ members = ["crates/wipe-core", "src-tauri"]
 resolver = "2"
 
 [workspace.package]
-version = "0.17.2"
+version = "0.18.0"
 edition = "2021"
 license = "UNLICENSED"
 

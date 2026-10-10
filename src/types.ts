@@ -416,4 +416,18 @@ export interface RotationResult {
   prioritySt: (RotationSpellRef & { note: Loc | null })[];
   priorityAoe: (RotationSpellRef & { note: Loc | null })[];
   sources: { title: string; url: string }[];
+  /** buffs curtos que o player pôs em si mesmo (procs, janelas de cooldown) */
+  buffs?: BuffTrace[];
+}
+
+export interface BuffTrace {
+  id: number;
+  name: string;
+  maxStacks: number;
+  /** cargas ganhas no pull */
+  gains: number;
+  /** quando esteve ativo (ms do pull) */
+  spans: [number, number][];
+  /** cada carga perdida: [ms, spellId do cast do player logo antes (0 = acabou sozinho)] */
+  drops: [number, number][];
 }
