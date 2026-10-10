@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BuffTrace, RotationResult } from '../types';
-import { buildDecisionRef, compareDecisions, discoverConsumers, discoverCooldowns, povOf, type Pov } from './decisions';
+import { buffTraces, buildDecisionRef, compareDecisions, compareWithLog, discoverConsumers, discoverCooldowns, povOf, type Pov } from './decisions';
 import { death, player, pull } from './test-fixtures';
 
 const PROC = 900; // buff: o próximo Hammer of Wrath
@@ -127,5 +127,44 @@ describe('o player contra os tops', () => {
     const me = fight((i) => i < 3);
     const dead = { ...me.pull, deaths: [death('A', 30000)] };
     expect(compareDecisions(povOf(dead, me.p)!, ref)).toEqual([]);
+  });
+});
+
+describe('contra um log só (Y)', () => {
+  const tops = povs(10, () => fight(() => true));
+  const ref = buildDecisionRef(tops, discoverConsumers(tops), discoverCooldowns(tops), name);
+  const pov = (x: ReturnType<typeof fight>) => povOf(x.pull, x.p)!;
+
+  it('proc que você deixa acabar e o Y gasta: o "tops" da dica é o número do Y', () => {
+    const f = compareWithLog(pov(fight((i) => i % 2 === 0)), pov(fight(() => true)), ref).find((x) => x.kind === 'proc_lost');
+    expect(f).toMatchObject({ kind: 'proc_lost', tops: 0 });
+    expect(f!.kind === 'proc_lost' && f!.you).toBeCloseTo(0.5);
+  });
+
+  it('cooldown alinhado no Y e não em você', () => {
+    expect(compareWithLog(pov(fight(() => true, { aligned: false })), pov(fight(() => true)), ref)).toContainEqual(expect.objectContaining({ kind: 'cd_align', spellId: WAKE, partner: `c${WRATH}`, tops: 1, you: 0 }));
+  });
+
+  it('os dois jogando igual: nada', () => {
+    expect(compareWithLog(pov(fight(() => true)), pov(fight(() => true)), ref)).toEqual([]);
+  });
+
+  it('o Y também perde o proc: não cobra', () => {
+    expect(compareWithLog(pov(fight((i) => i % 2 === 0)), pov(fight((i) => i % 3 !== 0)), ref).filter((x) => x.kind === 'proc_lost')).toEqual([]);
+  });
+});
+
+describe('buffs do top do Warcraft Logs', () => {
+  it('cargas ganhas, gastas pelo cast logo antes e as que acabaram sozinhas', () => {
+    const changes = [
+      { t: 1000, id: PROC, name: 'Divine Resonance', stacks: 2 },
+      { t: 2100, id: PROC, name: 'Divine Resonance', stacks: 1 },
+      { t: 9000, id: PROC, name: 'Divine Resonance', stacks: 0 },
+      // ativo a luta toda: não é proc nem janela
+      { t: 0, id: 1, name: 'Aura', stacks: 1 },
+    ];
+    const [b, ...rest] = buffTraces(changes, [{ t: 2000, id: HOW }], 20000);
+    expect(rest).toEqual([]);
+    expect(b).toEqual({ id: PROC, name: 'Divine Resonance', maxStacks: 2, gains: 2, spans: [[1000, 9000]], drops: [[2100, HOW], [9000, 0]] });
   });
 });

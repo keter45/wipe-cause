@@ -4,7 +4,7 @@
 // (scripts/rotation/bench.mjs) e compara o pull do player no app. Só funções puras e imports de
 // tipo: o script carrega este arquivo direto no Node (--experimental-strip-types).
 
-import type { BuffTrace, PlayerStats, Pull } from '../types';
+import type { BuffTrace, PlayerStats, Pull, RotationResult } from '../types';
 
 /** Casts antes disso não contam (pré-pull, abertura). */
 export const START_MS = 2000;
@@ -39,9 +39,11 @@ export interface Pov {
   names: Map<number, string>;
 }
 
-/** Os casts da rotação (prioridades e cooldowns) e os buffs do player, até a morte. */
-export function povOf(pull: Pull, p: PlayerStats): Pov | null {
-  const r = p.rotation;
+/**
+ * Os casts da rotação (prioridades e cooldowns) e os buffs do player, até a morte. `r`/`buffs`:
+ * de outro lugar, para o top do Warcraft Logs (sem leitura de rotação: usa a do player comparado).
+ */
+export function povOf(pull: Pull, p: PlayerStats, r: RotationResult | undefined = p.rotation, buffs: BuffTrace[] | undefined = r?.buffs): Pov | null {
   if (!r) return null;
   const rot = new Set([...r.prioritySt, ...r.priorityAoe].map((x) => x.spellId).concat(r.cooldowns.map((c) => c.spellId)));
   const death = pull.deaths.find((d) => d.guid === p.guid && !d.ignored)?.t;
@@ -51,7 +53,7 @@ export function povOf(pull: Pull, p: PlayerStats): Pov | null {
     .flatMap((c) => c.times.filter((t) => t >= START_MS && t <= until).map((t) => ({ t, id: c.spellId })))
     .sort((a, b) => a.t - b.t);
   const names = new Map((p.casts ?? []).map((c) => [c.spellId, c.name]));
-  return { casts, buffs: r.buffs ?? [], until, names };
+  return { casts, buffs: buffs ?? [], until, names };
 }
 
 const activeAt = (b: BuffTrace, t: number, before = 0) => b.spans.some(([a, z]) => t - a >= before && t <= z);
@@ -373,4 +375,138 @@ export function compareDecisions(p: Pov, ref: DecisionRef, bossCds?: Record<stri
     if (best) out.push(best);
   }
   return out;
+}
+
+// ---------------------------------------------------------------- contra um log só (Y)
+
+/** Amostras mínimas de cada lado numa comparação com um log só. */
+const Y_MIN_PROCS = 6;
+const Y_MIN_GAINS = 5;
+const Y_MIN_USES = 4;
+
+/**
+ * O pull do player (X) contra um log só (Y): os mesmos tipos de dica, mas sem a faixa de vários
+ * pulls dos tops para dizer o que é normal, então só diferenças grandes entre os dois. Quem gasta
+ * cada proc e o cooldown efetivo vêm da referência dos tops (`base`) quando a spec tem; o "tops"
+ * de cada dica é o número do Y.
+ */
+export function compareWithLog(x: Pov, y: Pov, base: DecisionRef | null): DecisionFinding[] {
+  const out: DecisionFinding[] = [];
+  const spell = (id: number, fallback?: string): Spell => ({ spellId: id, name: x.names.get(id) ?? y.names.get(id) ?? fallback ?? base?.cds[id]?.name ?? `#${id}` });
+  // procs: os da referência dos tops; sem ela, os que os dois logs mostram
+  const procs: [number, ProcRef | null, Set<number>][] = base
+    ? Object.entries(base.procs).map(([b, pr]) => [+b, pr, new Set(pr.consumers)])
+    : [...discoverConsumers([x, y])].map(([b, set]) => [b, null, set]);
+  for (const [bid, pr, set] of procs) {
+    const bx = x.buffs.find((b) => b.id === bid);
+    const by = y.buffs.find((b) => b.id === bid);
+    if (!bx || !by) continue;
+    const sx = procStat(x, bx, set);
+    const sy = procStat(y, by, set);
+    const tx = sx.used + sx.lost;
+    const ty = sy.used + sy.lost;
+    if (tx < Y_MIN_PROCS || ty < Y_MIN_PROCS || sx.used < 1) continue;
+    const rx = sx.lost / tx;
+    const ry = sy.lost / ty;
+    // proc que se perde por natureza (nos tops, ou no próprio Y) não é cobrado
+    if ((pr?.lost?.med ?? ry) > LOST_MAX_TOPS) continue;
+    const name = pr?.name ?? bx.name;
+    const consumers = [...set].map((c, i) => spell(c, pr?.consumerNames[i]));
+    // e você fora do normal dos tops: diferença que dois tops também teriam entre si é estilo, não erro
+    const pastTops = (v: number, band: { p90: number } | null | undefined, margin: number) => !band || v > band.p90 + margin;
+    if (rx - ry >= 0.25 && rx >= 0.3 && pastTops(rx, pr?.lost, 0.1)) out.push({ kind: 'proc_lost', buff: bid, name, consumers, you: rx, tops: ry, n: tx, times: sx.lostAt });
+    // casts com o proc esperando: só procs que os tops gastam quase na hora
+    if (pr?.wait && pr.wait.med <= 0.5 && sx.gains >= Y_MIN_GAINS && sy.gains >= Y_MIN_GAINS) {
+      const wx = sx.others / sx.gains;
+      const wy = sy.others / sy.gains;
+      if (wx - wy >= 1 && wx >= 2 * wy + 0.5 && pastTops(wx, pr.wait, 0.3)) {
+        const instead = +Object.entries(sx.wrong).sort((a, b) => b[1] - a[1])[0][0];
+        out.push({ kind: 'proc_wait', buff: bid, name, consumers, you: wx, tops: wy, instead: spell(instead), times: sx.wrongAt });
+      }
+    }
+  }
+  // cooldowns: os da referência dos tops (com o cooldown efetivo deles)
+  const cds = base ? Object.entries(base.cds).map(([id, c]) => [+id, c] as const) : [];
+  const ids = new Set(cds.map(([id]) => id));
+  for (const [id, cr] of cds) {
+    const sx = cdStat(x, id, cr.cd, ids);
+    const sy = cdStat(y, id, cr.cd, ids);
+    const hx = summarizeHeld(sx);
+    const hy = summarizeHeld(sy);
+    // segurado: só cooldown que os tops usam assim que fica pronto, com usos suficientes dos dois lados
+    if (cr.held && cr.held.med <= READY_SLACK_MS && hx && hy && hx.n >= Y_MIN_USES && hy.n >= Y_MIN_USES && hy.med <= READY_SLACK_MS + 500 && hx.med >= hy.med + 4000 && hx.med >= cr.held.p90 + 1000)
+      out.push({ kind: 'cd_held', spellId: id, name: cr.name, you: hx.med, tops: hy.med, times: sx.held.filter((h) => h.held > READY_SLACK_MS).map((h) => h.t) });
+    if (sx.n < Y_MIN_USES || sy.n < Y_MIN_USES) continue;
+    // o que os tops soltam junto (alinhamento confirmado neles), o Y também e o player não: num pull
+    // só, 3 ou 4 usos "sempre juntos" de outra coisa acontecem por acaso
+    let best: Extract<DecisionFinding, { kind: 'cd_align' }> | null = null;
+    for (const pt of cr.partners) {
+      const k = pt.key;
+      const share = (sy.with[k] ?? 0) / sy.n;
+      const you = (sx.with[k] ?? 0) / sx.n;
+      if (share < 0.75 || share < 2.5 * chance(y, k) || share - you < 0.4 || you >= pt.p10) continue;
+      if (best && share - you <= best.tops - best.you) continue;
+      const pid = +k.slice(1);
+      const partnerName = k[0] === 'c' ? spell(pid).name : (y.buffs.find((b) => b.id === pid)?.name ?? x.buffs.find((b) => b.id === pid)?.name ?? `#${pid}`);
+      best = { kind: 'cd_align', spellId: id, name: cr.name, partner: k, partnerName, partnerKind: k[0] === 'c' ? 'cast' : 'buff', you, tops: share, n: sx.n, times: sx.missing[k] ?? [] };
+    }
+    if (best) out.push(best);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- buffs de quem não passou pelo motor
+
+/** Buff ativo mais que essa fração do pull não é proc nem janela (as mesmas regras do motor). */
+const BUFF_MAX_UPTIME = 0.4;
+const MAX_BUFFS = 40;
+
+/** Mudança de cargas de um buff que o player se deu: `stacks` = cargas depois (0 = acabou). */
+export interface AuraChange {
+  t: number;
+  id: number;
+  name: string;
+  stacks: number;
+}
+
+/**
+ * Os buffs curtos no formato do motor (`RotationResult.buffs`) a partir das mudanças de cargas e dos
+ * casts: para o top baixado do Warcraft Logs, que não passa pelo motor. Cada carga perdida leva o
+ * cast de até CONSUME_MS antes.
+ */
+export function buffTraces(changes: AuraChange[], casts: Cast[], until: number): BuffTrace[] {
+  const sorted = [...casts].sort((a, b) => a.t - b.t);
+  const by = (t: number) => {
+    let id = 0;
+    for (const c of sorted) {
+      if (c.t > t) break;
+      if (t - c.t <= CONSUME_MS) id = c.id;
+    }
+    return id;
+  };
+  const acc = new Map<number, BuffTrace & { stacks: number; since: number | null }>();
+  for (const e of [...changes].sort((a, b) => a.t - b.t)) {
+    if (e.t > until) break;
+    const b = acc.get(e.id) ?? acc.set(e.id, { id: e.id, name: e.name, maxStacks: 0, gains: 0, spans: [], drops: [], stacks: 0, since: null }).get(e.id)!;
+    if (e.stacks > b.stacks) {
+      b.gains += e.stacks - b.stacks;
+      b.since ??= e.t;
+    } else if (e.stacks < b.stacks) {
+      const cast = by(e.t);
+      for (let i = 0; i < b.stacks - e.stacks; i++) b.drops.push([e.t, cast]);
+    }
+    if (e.stacks === 0 && b.since != null) {
+      b.spans.push([b.since, e.t]);
+      b.since = null;
+    }
+    b.maxStacks = Math.max(b.maxStacks, e.stacks);
+    b.stacks = e.stacks;
+  }
+  const out: BuffTrace[] = [];
+  for (const { stacks: _s, since, ...b } of acc.values()) {
+    if (since != null) b.spans.push([since, until]);
+    const up = b.spans.reduce((s, [a, z]) => s + z - a, 0);
+    if (b.gains > 0 && up <= until * BUFF_MAX_UPTIME) out.push(b);
+  }
+  return out.sort((a, b) => b.gains - a.gains || a.id - b.id).slice(0, MAX_BUFFS);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupCasts, matchFight, parseCombatantInfo, parseRankings, pickTops, profileUrls, realmSlug, tableAmounts, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl } from './wclApi';
+import { auraChanges, groupCasts, matchFight, parseCombatantInfo, parseRankings, pickTops, profileUrls, realmSlug, tableAmounts, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl } from './wclApi';
 import { pull } from './test-fixtures';
 
 // formato real de `characterRankings` (gear e talents direto na entrada; números às vezes como texto)
@@ -98,5 +98,26 @@ describe('perfil da referência', () => {
   });
   it('China: sem perfil (Raider.IO e o perfil do WCL não cobrem)', () => {
     expect(profileUrls({ name: '奥丶小丁', server: '凤凰之神', region: 'CN' })).toEqual([]);
+  });
+});
+
+describe('auraChanges', () => {
+  it('só os buffs que o player se deu, em cargas, desde o início do fight', () => {
+    const names = new Map([[900, 'Divine Resonance']]);
+    const ev = [
+      { timestamp: 1100, type: 'applybuff', sourceID: 7, targetID: 7, abilityGameID: 900 },
+      { timestamp: 1200, type: 'applybuffstack', sourceID: 7, targetID: 7, abilityGameID: 900, stack: 2 },
+      { timestamp: 1300, type: 'refreshbuff', sourceID: 7, targetID: 7, abilityGameID: 900 },
+      { timestamp: 1400, type: 'removebuffstack', sourceID: 7, targetID: 7, abilityGameID: 900, stack: 1 },
+      { timestamp: 1500, type: 'removebuff', sourceID: 7, targetID: 7, abilityGameID: 900 },
+      // de outro player (Power Infusion): fora
+      { timestamp: 1600, type: 'applybuff', sourceID: 3, targetID: 7, abilityGameID: 10060 },
+    ];
+    expect(auraChanges(ev, 7, 1000, names).map((c) => [c.t, c.stacks])).toEqual([
+      [100, 1],
+      [200, 2],
+      [400, 1],
+      [500, 0],
+    ]);
   });
 });

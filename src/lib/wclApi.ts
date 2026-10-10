@@ -6,7 +6,8 @@
 // monta um "player" no mesmo formato do nosso log, para a mesma comparação da aba.
 
 import { invoke } from '@tauri-apps/api/core';
-import type { GearItem, PlayerStats, Pull, Setup, SpellAmount, SpellCasts } from '../types';
+import type { BuffTrace, GearItem, PlayerStats, Pull, Setup, SpellAmount, SpellCasts } from '../types';
+import { buffTraces, type AuraChange } from './decisions';
 import type { Sample } from './performance';
 import { SPEC_NAMES } from './specs';
 import { WCL_DIFFICULTY } from './wcl';
@@ -152,6 +153,13 @@ const FIGHT_QUERY = `query Fight($code: String!, $fight: Int!) {
 }`;
 
 // startTime sem endTime devolve lista vazia: os dois vão sempre juntos
+// nas auras o WCL inverte: Buffs com sourceID = quem TEM a aura (o evento traz quem lançou em sourceID)
+const BUFFS_QUERY = `query Buffs($code: String!, $fight: Int!, $source: Int!, $start: Float!, $end: Float!) {
+  reportData { report(code: $code) {
+    events(fightIDs: [$fight], sourceID: $source, dataType: Buffs, startTime: $start, endTime: $end, limit: 10000) { data nextPageTimestamp }
+  } }
+}`;
+
 const CASTS_QUERY = `query Casts($code: String!, $fight: Int!, $source: Int!, $start: Float!, $end: Float!) {
   reportData { report(code: $code) {
     events(fightIDs: [$fight], sourceID: $source, dataType: Casts, startTime: $start, endTime: $end, limit: 10000) { data nextPageTimestamp }
@@ -284,7 +292,24 @@ export interface TopSource extends WclFightRef {
   amount: number;
 }
 
-export type TopSample = Sample & { source: TopSource };
+/** `buffs`: os buffs curtos que o top se deu (para comparar as decisões; o top não tem leitura de rotação). */
+export type TopSample = Sample & { source: TopSource; buffs: BuffTrace[] };
+
+/**
+ * Buffs que o próprio player se deu, em mudanças de cargas (ms desde o início do fight). O
+ * `refreshbuff` não muda cargas.
+ */
+export function auraChanges(events: any[], actorId: number, startTime: number, names: Map<number, string>): AuraChange[] {
+  const out: AuraChange[] = [];
+  for (const e of events) {
+    if (Number(e?.sourceID) !== actorId || Number(e?.targetID) !== actorId || !e.abilityGameID) continue;
+    const stacks = e.type === 'applybuff' ? Number(e.stack ?? 1) : e.type === 'applybuffstack' || e.type === 'removebuffstack' ? Number(e.stack ?? 0) : e.type === 'removebuff' ? 0 : null;
+    if (stacks == null) continue;
+    const id = Number(e.abilityGameID);
+    out.push({ t: Number(e.timestamp) - startTime, id, name: names.get(id) ?? `Spell ${id}`, stacks });
+  }
+  return out;
+}
 
 /** Um player num fight do Warcraft Logs: o bastante para os links (o fight, o filtro dele e trechos). */
 export interface WclFightRef {
@@ -388,6 +413,15 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
     events.push(...(ev?.data ?? []));
     start = ev?.nextPageTimestamp ?? null;
   }
+  // buffs que ele se deu (procs, janelas de cooldown): sem eles, só não dá para comparar as decisões
+  const buffEvents: any[] = [];
+  let bstart: number | null = fight.startTime;
+  for (let page = 0; bstart != null && page < 10; page++) {
+    const d = await query<any>(BUFFS_QUERY, { code: top.code, fight: top.fightId, source: actor.id, start: bstart, end: fight.endTime }, `buffs-${key}-${actor.id}-${page}`).catch(() => null);
+    const ev = d?.reportData?.report?.events;
+    buffEvents.push(...(ev?.data ?? []));
+    bstart = ev?.nextPageTimestamp ?? null;
+  }
   const healer = me.player.role === 'healer';
   const fullMs = Number(fight.endTime) - Number(fight.startTime);
   // mesma janela do nosso tempo vivo (arredondada a 5s, para o cache servir a pulls parecidos):
@@ -450,7 +484,9 @@ export async function loadTop(top: TopRanking, me: Sample, index: number): Promi
     players: [player],
     deaths: [],
   };
-  return { pull, player, source: { code: top.code, fightId: top.fightId, actorId: Number(actor.id), fightStart: Number(fight.startTime), name: top.name, server: top.server, region: top.region, amount: top.amount } };
+  const castList = casts.flatMap((c) => c.times.map((t) => ({ t, id: c.spellId })));
+  const buffs = buffTraces(auraChanges(buffEvents, Number(actor.id), Number(fight.startTime), names), castList, durationMs);
+  return { pull, player, buffs, source: { code: top.code, fightId: top.fightId, actorId: Number(actor.id), fightStart: Number(fight.startTime), name: top.name, server: top.server, region: top.region, amount: top.amount } };
 }
 
 // ---- o próprio pull no WCL (links do WoWAnalyzer)
