@@ -187,7 +187,26 @@ export function RotationPanel({ rotation: r, bench, boss }: { rotation: Rotation
             </ul>
           )}
 
-          {bench && bench.mix.length > 0 && (
+          {bench && bench.context && bench.context.length > 0 && (
+            <>
+              <h4>{t.context}</h4>
+              <ul className="plain bench-list small">
+                {bench.context.slice(0, 6).map((c) => (
+                  <li key={`${c.kind}-${c.kind === 'mix' ? `${c.ctx}-${c.spellId}` : c.id}`}>
+                    <SpellIcon spellId={c.kind === 'mix' ? c.spellId : c.id} size={16} />{' '}
+                    <span className="warn">
+                      {c.kind === 'mix'
+                        ? t.ctxMix(c.ctx === 'aoe' ? 'AoE' : t.single, c.name, pctOf(c.tops), pctOf(c.you))
+                        : t.ctxUptime(c.name, c.auraKind === 'debuff', pctOf(c.tops), pctOf(c.you))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="muted small">{t.contextHint}</p>
+            </>
+          )}
+
+          {bench && bench.context == null && bench.mix.length > 0 && (
             <>
               <h4>{t.mix}</h4>
               <ul className="plain bench-list small">

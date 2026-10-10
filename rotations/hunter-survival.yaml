@@ -111,7 +111,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [boomstick, takedown]
-    min_usage: 0.7
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Aspect of the Eagle, Boomstick, Takedown no cooldown.", en: "Aspect of the Eagle, Boomstick, Takedown on cooldown." }

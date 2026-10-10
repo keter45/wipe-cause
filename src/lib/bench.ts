@@ -4,6 +4,7 @@
 import type { PlayerStats, Pull, RotationResult } from '../types';
 import { ANCHOR_WINDOW_MS, EARLY_MS, anchorTimes, castMix, defensivesNear, firstUse, idleIn, potionTimes } from './benchMetrics';
 import { compareDecisions, povOf, type CdRef, type DecisionFinding, type DecisionRef } from './decisions';
+import { buildKeyOf, compareContext, type BuildRef, type ContextFinding, type ContextRef } from './context';
 import { isCombatPotion } from './performance';
 
 interface Named {
@@ -28,6 +29,8 @@ export interface BossBench {
   openers?: Record<string, { n: number; support: number; seq: Named[] }>;
   /** cooldowns dos tops neste boss (segurados para uma fase, alinhados), por árvore de herói */
   cds?: Record<string, Record<string, CdRef>>;
+  /** contexto dos tops neste boss (alvo único x AoE, auras mantidas), por árvore de herói */
+  context?: Record<string, ContextRef>;
 }
 
 interface SpecBench {
@@ -36,6 +39,10 @@ interface SpecBench {
   pulls: number;
   /** decisões dos tops (procs e cooldowns), por árvore de herói */
   decisions?: Record<string, DecisionRef>;
+  /** contexto dos tops na spec inteira, por árvore (quando o boss não tem tops suficientes) */
+  contexts?: Record<string, ContextRef>;
+  /** talentos que mudam a rotação dos tops, por árvore, com o contexto de cada build */
+  builds?: Record<string, BuildRef>;
   bosses: Record<string, BossBench>;
 }
 
@@ -85,6 +92,8 @@ export interface BenchView {
   opener: { tree: string; n: number; support: number; seq: Named[]; missing: Named[] | null } | null;
   /** procs perdidos, casts com o proc esperando, cooldowns segurados ou fora do alinhamento dos tops */
   decisions: DecisionFinding[];
+  /** mistura em alvo único e em AoE e auras mantidas, contra os tops (null = sem referência de contexto) */
+  context: ContextFinding[] | null;
   /** mecânicas em que os tops usam defensivo, e quantas vezes o player usou */
   defensives: (Named & { share: number; spells: Named[]; used: number; of: number })[];
 }
@@ -158,7 +167,15 @@ export function compareWithTops(pull: Pull, p: PlayerStats, b = benchFor(p.specI
   }
 
   const decisions = decisionsFor(pull, p, b, sameDifficulty);
-  return { n: b.n, otherDifficulty: !sameDifficulty, checks, cdUsage, mix, cooldowns, potion, opener: sameDifficulty ? bossOpener(r, b) : null, windows: distinct.slice(0, 5), decisions, defensives };
+  // contexto do boss (o AoE de cada luta é diferente) na mesma dificuldade; senão o da spec
+  // quem joga um build diferente do da maioria dos tops é comparado com os tops do mesmo build
+  const build = treeIn(r, bySpec.get(p.specId ?? -1)?.builds);
+  const key = build ? buildKeyOf(p, build.talents.map((x) => x.entry)) : null;
+  const ownBuild = build && key !== build.majority ? (build.contexts[key!] ?? null) : null;
+  const ctxRef = ownBuild ?? (sameDifficulty ? treeIn(r, b.context) : null) ?? treeIn(r, bySpec.get(p.specId ?? -1)?.contexts);
+  const covered = new Set(r.findings.map((f) => f.spellId).filter((x): x is number => x != null));
+  const context = ctxRef ? compareContext(pull, p, ctxRef, covered) : null;
+  return { n: b.n, otherDifficulty: !sameDifficulty, checks, cdUsage, mix, cooldowns, potion, opener: sameDifficulty ? bossOpener(r, b) : null, windows: distinct.slice(0, 5), decisions, context, defensives };
 }
 
 /** Árvore do player na referência (ou a única com dados, se a dele não foi lida). */

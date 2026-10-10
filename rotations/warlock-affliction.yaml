@@ -120,14 +120,14 @@ checks:
   - kind: dot_uptime
     id: corruption
     debuff: corruption
-    min_uptime: 0.9
+    min_uptime: 0.95
     importance: medium
     title: { pt: "Corruption fora do alvo", en: "Corruption off the target" }
     tip: { pt: "Corruption sempre no alvo: renove no pandemic.", en: "Corruption always on the target: refresh in pandemic." }
   - kind: dot_uptime
     id: wither
     debuff: wither
-    min_uptime: 0.9
+    min_uptime: 0.95
     importance: medium
     title: { pt: "Wither fora do alvo", en: "Wither off the target" }
     tip: { pt: "Wither sempre no alvo: renove no pandemic.", en: "Wither always on the target: refresh in pandemic." }
@@ -149,7 +149,7 @@ checks:
     id: cooldowns
     # Haunt fica de fora: os tops usam 82% (p25 79%); ele aparece no tempo parado
     spells: [summon_darkglare, dark_harvest, malevolence]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Summon Darkglare e Dark Harvest no cooldown; Malevolence a cada minuto.", en: "Summon Darkglare and Dark Harvest on cooldown; Malevolence every minute." }

@@ -152,7 +152,7 @@ checks:
     # (o "no cooldown" deles aparece no tempo parado e nos procs)
     spells: [trueshot, volley, explosive_shot]
     # tops: Volley com mediana 86% e p25 79%
-    min_usage: 0.75
+    min_usage: 0.8
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Use no cooldown: cada uso a menos é dano que não volta.", en: "Use it on cooldown: every missed use is damage you don't get back." }

@@ -136,7 +136,7 @@ checks:
   - kind: dot_uptime
     id: virulent_plague
     debuff: virulent_plague
-    min_uptime: 0.8
+    min_uptime: 0.95
     importance: medium
     title: { pt: "Virulent Plague fora do alvo", en: "Virulent Plague off the target" }
     tip: { pt: "Outbreak para manter as pragas (o Blightfall consome: reaplique depois).", en: "Outbreak to keep the plagues up (Blightfall consumes them: reapply afterwards)." }
@@ -144,7 +144,7 @@ checks:
     id: cooldowns
     # Soul Reaper fica de fora: só abaixo de 35% ou uns 7s depois do Dark Transformation
     spells: [army_of_the_dead, dark_transformation, putrefy]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Army of the Dead, Dark Transformation e Putrefy no cooldown: o dano do Unholy vem deles.", en: "Army of the Dead, Dark Transformation and Putrefy on cooldown: Unholy's damage comes from them." }

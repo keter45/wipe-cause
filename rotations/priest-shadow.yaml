@@ -35,7 +35,7 @@ abilities:
   power_infusion: { id: 10060, name: Power Infusion, cooldown_ms: 120000 }
   halo: { id: 120644, name: Halo, cast_ms: 1500, cooldown_ms: 60000, tree: archon }
   void_torrent: { id: 263165, name: Void Torrent, channel_ms: 3000, cooldown_ms: 30000, tree: voidweaver }
-  void_blast: { id: 450405, name: Void Blast, cast_ms: 1500, tree: voidweaver }
+  void_blast: { id: 450405, alt_ids: [450983], name: Void Blast, cast_ms: 1500, tree: voidweaver }
   void_volley: { id: 1242173, name: Void Volley }
   tentacle_slam: { id: 1227280, name: Tentacle Slam }
   shadow_word_madness: { id: 335467, name: "Shadow Word: Madness" }
@@ -134,14 +134,14 @@ checks:
   - kind: dot_uptime
     id: shadow_word_pain
     debuff: shadow_word_pain
-    min_uptime: 0.9
+    min_uptime: 0.95
     importance: medium
     title: { pt: "Shadow Word: Pain fora do alvo", en: "Shadow Word: Pain off the target" }
     tip: { pt: "Shadow Word: Pain sempre no alvo.", en: "Shadow Word: Pain always on the target." }
   - kind: dot_uptime
     id: vampiric_touch
     debuff: vampiric_touch
-    min_uptime: 0.9
+    min_uptime: 0.95
     importance: medium
     title: { pt: "Vampiric Touch fora do alvo", en: "Vampiric Touch off the target" }
     tip: { pt: "Vampiric Touch sempre no alvo: Tentacle Slam aplica, ou na mão.", en: "Vampiric Touch always on the target: Tentacle Slam applies it, or hard-cast it." }
@@ -155,7 +155,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [voidform, power_infusion, halo, void_torrent]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Voidform e Power Infusion juntos, no cooldown; Halo / Void Torrent no cooldown.", en: "Voidform and Power Infusion together, on cooldown; Halo / Void Torrent on cooldown." }

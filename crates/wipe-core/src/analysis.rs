@@ -501,6 +501,7 @@ impl PullBuilder {
             if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
                 if let Some(r) = self.players.get_mut(&owner).and_then(|p| p.rotation.as_mut()) {
                     r.on_target_aura(rel, dst_guid, spell_id, f[0] == "SPELL_AURA_APPLIED");
+                    r.on_enemy_debuff(rel, dst_guid, spell_id, f[10], f[0] == "SPELL_AURA_APPLIED");
                 }
             }
         }

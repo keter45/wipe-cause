@@ -27,6 +27,18 @@ import {
   potionTimes,
 } from '../../src/lib/benchMetrics.ts';
 import { buildDecisionRef, discoverConsumers, discoverCooldowns, povOf } from '../../src/lib/decisions.ts';
+import { buildContextRef, discoverBuild } from '../../src/lib/context.ts';
+
+/** Nome de cada entrada de talento (árvore do Raidbots, baixada pelo npm run refresh). */
+const TALENTS = (() => {
+  const f = path.join(import.meta.dirname, '..', '..', 'samples', 'rotation', 'talents.json');
+  const out = new Map();
+  if (!fs.existsSync(f)) return out;
+  for (const spec of JSON.parse(fs.readFileSync(f, 'utf8')))
+    for (const n of [...(spec.classNodes ?? []), ...(spec.specNodes ?? []), ...(spec.heroNodes ?? [])]) for (const e of n.entries ?? []) if (e.id && e.name) out.set(e.id, e.name);
+  return out;
+})();
+const talentName = (entry) => TALENTS.get(entry) ?? `talento ${entry}`;
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 /** Pulls mínimos de um boss para ele ter referência. */
@@ -96,6 +108,7 @@ function learnNames(pulls) {
     for (const c of p.casts) add(c.spellId, c.name);
     for (const d of p.defensivesUsed) add(d.spellId, d.name);
     for (const b of p.rotation.buffs ?? []) add(b.id, b.name);
+    for (const u of p.rotation.uptimes ?? []) add(u.id, u.name);
     for (const e of pull.enemySpells) add(e.spellId, e.name);
   }
 }
@@ -138,7 +151,7 @@ const MIN_BOSS_CD_PULLS = 6;
  * (segurados ou alinhados). Os cooldowns também por boss, quando há tops suficientes nele: segurar
  * para uma fase ou mecânica muda de boss para boss.
  */
-function specDecisions(pulls, bosses) {
+function specDecisions(pulls, bosses, contexts, builds) {
   const out = {};
   for (const [tree, group] of Object.entries(Object.groupBy(pulls, (x) => x.player.rotation.tree ?? '?'))) {
     const povs = group.map((x) => ({ x, pov: povOf(x.pull, x.player) })).filter((g) => g.pov);
@@ -147,6 +160,16 @@ function specDecisions(pulls, bosses) {
     const consumers = discoverConsumers(all);
     const cooldowns = discoverCooldowns(all);
     out[tree] = buildDecisionRef(all, consumers, cooldowns, en);
+    // contexto (alvo único x AoE, auras mantidas): da spec, e do boss com tops suficientes
+    const ctx = buildContextRef(group, en);
+    if (ctx) contexts[tree] = ctx;
+    // talentos que mudam a rotação: quem joga outro build é comparado com os tops desse build
+    const build = discoverBuild(group, talentName, en);
+    if (build) builds[tree] = build;
+    for (const [id, list] of Object.entries(Object.groupBy(group, (x) => x.pull.encounterId))) {
+      const c = bosses[id] && list.length >= MIN_BOSS_CD_PULLS ? buildContextRef(list, en) : null;
+      if (c) (bosses[id].context ??= {})[tree] = c;
+    }
     for (const [id, list] of Object.entries(Object.groupBy(povs, (g) => g.x.pull.encounterId))) {
       if (list.length < MIN_BOSS_CD_PULLS || !bosses[id]) continue;
       (bosses[id].cds ??= {})[tree] = buildDecisionRef(list.map((g) => g.pov), consumers, cooldowns, en).cds;
@@ -292,10 +315,12 @@ for (const spec of specs) {
   // a dificuldade dos tops (Mítico; Heroico só se não houve ranking): abertura e mecânicas mudam com ela
   const mostCommon = (xs) => Object.entries(Object.groupBy(xs, (x) => x)).sort((a, b) => b[1].length - a[1].length)[0]?.[0];
   for (const [id, list] of Object.entries(byBoss)) if (list.length >= MIN_PULLS) bosses[id] = { name: list[0].pull.encounterName, difficultyId: +mostCommon(list.map((x) => x.pull.difficultyId)), ...boss(list) };
-  const decisions = specDecisions(pulls, bosses);
+  const contexts = {};
+  const builds = {};
+  const decisions = specDecisions(pulls, bosses, contexts, builds);
   const file = path.join(OUT, `${spec.file}.json`);
   // compacto: vai embutido no app
-  fs.writeFileSync(file, JSON.stringify({ spec: spec.id, name: spec.name, pulls: pulls.length, decisions, bosses }));
+  fs.writeFileSync(file, JSON.stringify({ spec: spec.id, name: spec.name, pulls: pulls.length, decisions, contexts, builds, bosses }));
   const anchors = Object.values(bosses).reduce((s, b) => s + b.anchors.length, 0);
   console.log(`${spec.name}: ${pulls.length} pulls, ${Object.keys(bosses).length} bosses, ${anchors} marcos de mecânica -> ${path.relative(ROOT, file)}`);
 }

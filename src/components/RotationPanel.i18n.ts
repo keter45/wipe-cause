@@ -46,6 +46,10 @@ export const rotationMsg = defineMessages(
     bossOpenerVaries: 'Os tops abrem este boss de jeitos bem diferentes: a sequência abaixo é a mais comum, sem cobrança.',
     bossOpenerNote: (pct: number, n: number, tree: string) => `Abertura de um top real, a mais parecida com a dos outros: ${pct}% de ${n} tops (${tree}) abrem assim ou com até 2 casts de diferença. Muda de boss para boss e com os talentos.`,
     decisions: 'Procs e cooldowns',
+    context: 'Alvo único, AoE e auras mantidas',
+    ctxMix: (ctx: string, name: string, tops: number, you: number) => `${ctx}: os tops usam ${name} em ${tops}% dos casts; você em ${you}%.`,
+    ctxUptime: (name: string, onTarget: boolean, tops: number, you: number) => `${name}: os tops mantêm ${onTarget ? 'no alvo ' : ''}${tops}% da luta; você ${you}%.`,
+    contextHint: 'Alvo único = trechos em que você acertava 1 inimigo; AoE = 3 ou mais. Comparado com os tops deste boss (ou da spec, sem tops suficientes nele).',
     decisionsHint: 'Comparado com os tops da sua spec e árvore. Quem gasta cada proc e os cooldowns que andam juntos foram tirados dos logs deles.',
   },
   {
@@ -93,6 +97,10 @@ export const rotationMsg = defineMessages(
     bossOpenerVaries: 'The tops open this boss in quite different ways: the sequence below is the most common one, not a requirement.',
     bossOpenerNote: (pct: number, n: number, tree: string) => `A real top's opener, the closest to everyone else's: ${pct}% of ${n} tops (${tree}) open this way or within 2 casts of it. It changes from boss to boss and with talents.`,
     decisions: 'Procs and cooldowns',
+    context: 'Single target, AoE and maintained auras',
+    ctxMix: (ctx: string, name: string, tops: number, you: number) => `${ctx}: the tops use ${name} for ${tops}% of casts; you ${you}%.`,
+    ctxUptime: (name: string, onTarget: boolean, tops: number, you: number) => `${name}: the tops keep it ${onTarget ? 'on the target ' : ''}${tops}% of the fight; you ${you}%.`,
+    contextHint: "Single target = stretches where you hit 1 enemy; AoE = 3 or more. Compared with this boss's tops (or the spec's, without enough tops on it).",
     decisionsHint: "Compared with your spec and hero tree's tops. What spends each proc and which cooldowns go together were taken from their logs.",
   },
 );

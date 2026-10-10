@@ -12,7 +12,7 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/demonhunter_havoc.simc
 
 # Shattered Souls (pegar alma), o pulso do Consuming Fire e o segundo evento da The Hunt não são botões
-ignore_casts: [228537, 456640, 370966]
+ignore_casts: [228537, 456640, 370966, 213243]
 
 key_points:
   - { pt: "Cooldowns curtos no cooldown: Eye Beam, Blade Dance / Death Sweep, Essence Break e Immolation Aura. Estourar Fury de vez em quando não é problema se a prioridade está certa.", en: "Short cooldowns on cooldown: Eye Beam, Blade Dance / Death Sweep, Essence Break and Immolation Aura. Capping Fury now and then is fine if the priority is right." }
@@ -137,7 +137,7 @@ checks:
     id: cooldowns
     # Immolation Aura fora: um quarto dos tops usa 62% ou menos (36 lutas)
     spells: [metamorphosis, the_hunt, eye_beam, essence_break, blade_dance]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Eye Beam, Blade Dance e Essence Break no cooldown; The Hunt e Meta sem segurar.", en: "Eye Beam, Blade Dance and Essence Break on cooldown; The Hunt and Meta without holding." }

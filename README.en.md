@@ -193,6 +193,8 @@ Each spec can have a **written base rotation** in `rotations/<class>-<spec>.yaml
 
 **Procs and cooldowns, how the tops decide:** the app finds in the tops' logs what spends each proc (Art of War → Blade of Justice, Divine Resonance → Hammer of Wrath...) and which cooldowns they fire together, and points out where you decide differently: the proc you let expire much more than they do ("Divine Resonance: you let 51% expire (tops 0%)"), the other abilities you cast with the proc waiting, the cooldown they use as soon as it's ready and you hold, and what they line up (Avenging Wrath with Wake of Ashes) and you don't, with the ▶ for each moment. Holding for a phase changes from boss to boss: with enough tops on the boss, the cooldown comparison is that boss's. Only what goes well beyond what the tops themselves do shows up, and a proc you never spent (another build) isn't flagged.
 
+**The fight's context:** your rotation is compared separately in the stretches where you were hitting 1 enemy and in the AoE ones (3 or more), with that boss's tops: "AoE: the tops use Divine Storm for 80% of casts; you 20%". A pull much shorter than the tops' fight (a wipe in an early phase) doesn't compare the mix. Buffs and debuffs the tops keep up all the time through their rotation (not gear ones) become uptime checks on their own. And when a talent changes the tops' rotation on every boss (not just the AoE ones, where the fight is what changes it), whoever plays that build is compared with the tops of the same build.
+
 In the **Performance** tab's comparison, the same decisions are also compared with the chosen reference, someone from the raid or a Warcraft Logs top (the app also downloads their buffs): "Explosive Shot: once ready, you take 8.8s to use it on average (Bettaozor 1.3s)". With a single log there's no way to tell what's normal, so only a big difference between the two that also goes beyond what the tops do shows up: what two good players do differently from each other is style, not a mistake.
 
 Specs with a rotation: every damage spec — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) and **Warrior** (Arms, Fury).
@@ -297,6 +299,19 @@ Every new text goes in Portuguese and English in the same change.
 - **Interface:** texts live in dictionaries (`*.i18n.ts`, with `defineMessages(pt, en)`); English is typed against Portuguese, so a missing phrase doesn't compile. One test fails if Portuguese shows up outside the dictionaries, and another if a dictionary's English side has Portuguese in it.
 - **Boss rules and rotations (YAML):** tips, messages, titles and notes are `{ pt: "...", en: "..." }`; names stay in English. The `wipe-core` test checks both.
 - **Release notes:** a `## Português` section and a `## English` section (the app shows the one for the chosen language).
+
+<details>
+<summary><b>Updating everything after a patch, a new raid or a nerf</b></summary>
+
+`npm run refresh` redoes, without AI, everything that changes with the game: it downloads SimulationCraft's APL (and flags the specs where it changed), runs each spec's tops through the engine, adjusts only the rotations' numbers (uptime and cooldown usage targets from the tops' lower quartile; a new id for the same ability in `alt_ids`; a repeated event of the same button in `ignore_casts`), generates the tops' per-boss reference and writes a report to `samples/refresh/<date>.md` with each spec **OK**, **ATENÇÃO** (attention) or **REVISAR** (review).
+
+- `npm run refresh -- --tops`: downloads the tops first (credentials from environment variables, `samples/wcl-credentials.env`, kept out of git, or the app's vault; with more than one client in the file, it switches when the hourly points run out).
+- `npm run refresh -- --tops --zone latest --fresh`: a new raid; the bosses come from Warcraft Logs' newest zone (no written rules needed) and the previous raid's tops leave the reference.
+- `npm run refresh -- --dry <spec>`: just the report, changing nothing.
+
+REVISAR is what changes what the spec is (an ability the tops stopped using, a new ability, a new APL, a check not even the tops meet): Claude Code's `rotation-refresh` skill handles it.
+
+</details>
 
 <details>
 <summary><b>Generating a spec's rotation</b></summary>

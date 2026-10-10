@@ -100,7 +100,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [ebon_might, tip_the_scales, breath_of_eons, fire_breath, upheaval, time_skip]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Ebon Might, Tip the Scales, Breath of Eons, Fire Breath no cooldown.", en: "Ebon Might, Tip the Scales, Breath of Eons, Fire Breath on cooldown." }
