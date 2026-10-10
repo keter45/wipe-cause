@@ -104,14 +104,14 @@ checks:
   - kind: dot_uptime
     id: garrote
     debuff: garrote
-    min_uptime: 0.9
+    min_uptime: 0.95
     importance: high
     title: { pt: "Garrote fora do alvo", en: "Garrote off the target" }
     tip: { pt: "Garrote sempre no alvo: renove no pandemic.", en: "Garrote always on the target: refresh in pandemic." }
   - kind: dot_uptime
     id: rupture
     debuff: rupture
-    min_uptime: 0.9
+    min_uptime: 0.95
     importance: high
     title: { pt: "Rupture fora do alvo", en: "Rupture off the target" }
     tip: { pt: "Rupture sempre no alvo, renovando com 5+ combo points no pandemic.", en: "Rupture always on the target, refreshing at 5+ combo points in pandemic." }
@@ -128,7 +128,10 @@ checks:
     id: cooldowns
     spells: [deathmark, kingsbane, vanish]
     # tops: Vanish com mediana 100% e p25 75%
-    min_usage: 0.75
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Deathmark e Kingsbane no cooldown, com o Vanish junto do Deathmark.", en: "Deathmark and Kingsbane on cooldown, with Vanish together with Deathmark." }
+
+# eventos a mais do mesmo botão (saem junto do cast da habilidade)
+ignore_casts: [27576]

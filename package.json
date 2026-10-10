@@ -1,7 +1,7 @@
 {
   "name": "wipe-cause",
   "private": true,
-  "version": "0.18.1",
+  "version": "0.19.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "tauri": "tauri",
     "fixture": "node crates/wipe-core/tests/fixtures/gen-fixture.mjs > crates/wipe-core/tests/fixtures/twin-fangs.txt",
     "test": "vitest run",
-    "release:build": "node scripts/release-build.mjs"
+    "release:build": "node scripts/release-build.mjs",
+    "refresh": "node --experimental-strip-types scripts/refresh.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.0",

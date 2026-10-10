@@ -111,7 +111,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [the_hunt, soul_immolation, voidblade]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "The Hunt, Soul Immolation e Voidblade no cooldown.", en: "The Hunt, Soul Immolation and Voidblade on cooldown." }

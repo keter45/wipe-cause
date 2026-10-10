@@ -14,7 +14,7 @@ sources:
     url: https://github.com/simulationcraft/simc/blob/midnight/ActionPriorityLists/default/evoker_devastation.simc
 
 # Charged Blast sai sozinho (stacks do Pyre)
-ignore_casts: [370454]
+ignore_casts: [370454, 361509]
 
 key_points:
   - { pt: "Gerar e gastar: Disintegrate (Pyre em 3+ alvos) gasta Essence e Essence Burst; Living Flame e Azure Strike preenchem e dão Essence Burst.", en: "Build and spend: Disintegrate (Pyre on 3+ targets) spends Essence and Essence Burst; Living Flame and Azure Strike fill and give Essence Burst." }
@@ -127,7 +127,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [dragonrage, deep_breath, tip_the_scales, eternity_surge, fire_breath]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Dragonrage, Deep Breath e os empowers (Fire Breath, Eternity Surge) no cooldown.", en: "Dragonrage, Deep Breath and the empowers (Fire Breath, Eternity Surge) on cooldown." }

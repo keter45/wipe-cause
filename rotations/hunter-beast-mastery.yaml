@@ -93,7 +93,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [bestial_wrath, kill_command, barbed_shot, black_arrow]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Bestial Wrath no cooldown; Kill Command e Barbed Shot nunca parados com 2 cargas.", en: "Bestial Wrath on cooldown; Kill Command and Barbed Shot never sitting at 2 charges." }

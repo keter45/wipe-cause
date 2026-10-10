@@ -145,7 +145,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [avenging_wrath, execution_sentence, wake_of_ashes, divine_toll]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Avenging Wrath, Execution Sentence, Wake of Ashes e Divine Toll no cooldown: eles se alinham sozinhos.", en: "Avenging Wrath, Execution Sentence, Wake of Ashes and Divine Toll on cooldown: they line up on their own." }

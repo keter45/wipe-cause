@@ -421,6 +421,10 @@ pub struct RotationResult {
     /// buffs curtos que o player pôs em si mesmo (procs, janelas de cooldown), para comparar com os
     /// tops: quem gasta cada proc, quantos se perdem, o que sai junto de cada cooldown
     pub buffs: Vec<BuffTrace>,
+    /// buffs no player e debuffs dele nos inimigos mantidos boa parte da luta: fração do tempo vivo
+    pub uptimes: Vec<Uptime>,
+    /// inimigos diferentes que o player acertou em cada trecho de TARGET_BUCKET_MS (alvo único x AoE)
+    pub targets: Vec<u8>,
 }
 
 /// Um buff curto do player no pull.
@@ -438,8 +442,42 @@ pub struct BuffTrace {
     pub drops: Vec<[i64; 2]>,
 }
 
+/** Buff ou debuff mantido: `kind` = "buff" (no player) ou "debuff" (dele, em algum inimigo). */
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Uptime {
+    pub id: u32,
+    pub name: String,
+    pub kind: &'static str,
+    pub uptime: f32,
+    /// fração das aplicações logo depois de um cast da rotação (o player controla pela rotação; o
+    /// resto é equipamento, encantamento, outro player)
+    pub by_rotation: f32,
+}
+
+/// Debuff do player em algum inimigo: em quantos está agora e o tempo com ele em pelo menos um.
+#[derive(Default)]
+struct DebuffAcc {
+    name: String,
+    on: HashSet<String>,
+    since: Option<i64>,
+    total: i64,
+    applied: u32,
+    by_rotation: u32,
+}
+
+/// Aplicação até isto depois de um cast da rotação = veio dele.
+const APPLIED_BY_MS: i64 = 300;
+
+/// Trecho da contagem de alvos.
+pub const TARGET_BUCKET_MS: i64 = 2000;
+/// Mantido "boa parte da luta": acima disso entra em `uptimes`.
+const UPTIME_MIN: f64 = 0.4;
+
 #[derive(Default)]
 struct BuffAcc {
+    applied: u32,
+    by_rotation: u32,
     name: String,
     stacks: u32,
     since: Option<i64>,
@@ -518,6 +556,9 @@ pub(crate) struct RotationTracker {
     swap_miss: HashMap<usize, Vec<i64>>,
     /// buffs que o player pôs em si mesmo, e os últimos casts dele (para saber quem gastou a carga)
     self_buffs: HashMap<u32, BuffAcc>,
+    /// todos os debuffs do player nos inimigos (não só os do YAML), e os alvos de cada trecho
+    debuffs: HashMap<u32, DebuffAcc>,
+    target_buckets: HashMap<i64, HashSet<String>>,
     recent: Vec<(i64, u32)>,
 }
 
@@ -554,6 +595,8 @@ impl RotationTracker {
             swap_total: HashMap::new(),
             swap_miss: HashMap::new(),
             self_buffs: HashMap::new(),
+            debuffs: HashMap::new(),
+            target_buckets: HashMap::new(),
             recent: Vec::new(),
         }
     }
@@ -652,6 +695,10 @@ impl RotationTracker {
 
     /// Inimigo morreu: os debuffs do player nele acabam aqui (não vem SPELL_AURA_REMOVED).
     pub fn on_enemy_died(&mut self, t: i64, enemy: &str) {
+        let ids: Vec<u32> = self.debuffs.iter().filter(|(_, d)| d.on.contains(enemy)).map(|(id, _)| *id).collect();
+        for id in ids {
+            self.on_enemy_debuff(t, enemy, id, "", false);
+        }
         let gone: Vec<(String, String)> = self.dots_on.keys().filter(|(_, e)| e == enemy).cloned().collect();
         for k in gone {
             if let Some(since) = self.dots_on.remove(&k) {
@@ -718,8 +765,11 @@ impl RotationTracker {
     /// Buff que o próprio player se deu: `stacks` = cargas depois do evento (0 = removido).
     pub fn on_self_aura(&mut self, t: i64, spell_id: u32, name: &str, stacks: u32) {
         let by = self.recent.iter().rev().find(|(ct, _)| (0..=CONSUME_MS).contains(&(t - ct))).map_or(0, |&(_, id)| id as i64);
+        let by_rot = stacks > 0 && self.after_rotation_cast(t);
         let b = self.self_buffs.entry(spell_id).or_insert_with(|| BuffAcc { name: name.to_string(), ..Default::default() });
         if stacks > b.stacks {
+            b.applied += 1;
+            b.by_rotation += by_rot as u32;
             b.gains += stacks - b.stacks;
             b.since.get_or_insert(t);
         } else if stacks < b.stacks {
@@ -739,6 +789,29 @@ impl RotationTracker {
     /// Dano do player num inimigo (conta os alvos ativos para AoE).
     pub fn on_damage(&mut self, t: i64, enemy: &str) {
         self.hits.insert(enemy.to_string(), t);
+        self.target_buckets.entry(t.max(0) / TARGET_BUCKET_MS).or_default().insert(enemy.to_string());
+    }
+
+    /// Algum cast de habilidade da rotação nos APPLIED_BY_MS antes de `t`?
+    fn after_rotation_cast(&self, t: i64) -> bool {
+        self.recent.iter().any(|&(ct, id)| (0..=APPLIED_BY_MS).contains(&(t - ct)) && self.ability_by_id.contains_key(&id))
+    }
+
+    /// Debuff do player num inimigo, qualquer um (para o uptime do que ele mantém).
+    pub fn on_enemy_debuff(&mut self, t: i64, enemy: &str, spell_id: u32, name: &str, applied: bool) {
+        let by_rot = applied && self.after_rotation_cast(t);
+        let d = self.debuffs.entry(spell_id).or_insert_with(|| DebuffAcc { name: name.to_string(), ..Default::default() });
+        if applied {
+            d.applied += 1;
+            d.by_rotation += by_rot as u32;
+            if d.on.insert(enemy.to_string()) && d.on.len() == 1 {
+                d.since = Some(t);
+            }
+        } else if d.on.remove(enemy) && d.on.is_empty() {
+            if let Some(s) = d.since.take() {
+                d.total += t - s;
+            }
+        }
     }
 
     pub fn on_death(&mut self, t: i64) {
@@ -1134,6 +1207,8 @@ impl RotationTracker {
         let (sum, w) = findings.iter().fold((0.0, 0.0), |(s, w), f| (s + f.rate * weight(&f.importance), w + weight(&f.importance)));
         // buffs curtos: fecha os ativos no fim; as cargas que caíram na morte não contam
         let deaths: Vec<i64> = self.dead_spans.iter().map(|&(d, _)| d).collect();
+        let alive = (end_ms - self.dead_ms).max(1) as f64;
+        let mut uptimes: Vec<Uptime> = Vec::new();
         let mut buffs: Vec<BuffTrace> = std::mem::take(&mut self.self_buffs)
             .into_iter()
             .filter_map(|(id, mut b)| {
@@ -1141,6 +1216,10 @@ impl RotationTracker {
                     b.spans.push([s, end_ms]);
                 }
                 let up: i64 = b.spans.iter().map(|[a, z]| z - a).sum();
+                if b.gains > 0 && up as f64 >= alive * UPTIME_MIN {
+                    let by_rotation = b.by_rotation as f32 / b.applied.max(1) as f32;
+                    uptimes.push(Uptime { id, name: b.name.clone(), kind: "buff", uptime: (up as f64 / alive).min(1.0) as f32, by_rotation });
+                }
                 if b.gains == 0 || up as f64 > end_ms as f64 * BUFF_MAX_UPTIME {
                     return None;
                 }
@@ -1150,6 +1229,23 @@ impl RotationTracker {
             .collect();
         buffs.sort_by(|a, b| b.gains.cmp(&a.gains).then(a.id.cmp(&b.id)));
         buffs.truncate(MAX_BUFFS);
+        for (id, mut d) in std::mem::take(&mut self.debuffs) {
+            if let Some(s) = d.since.take() {
+                d.total += end_ms - s;
+            }
+            if d.total as f64 >= alive * UPTIME_MIN {
+                let by_rotation = d.by_rotation as f32 / d.applied.max(1) as f32;
+                uptimes.push(Uptime { id, name: d.name, kind: "debuff", uptime: (d.total as f64 / alive).min(1.0) as f32, by_rotation });
+            }
+        }
+        uptimes.sort_by(|a, b| b.uptime.total_cmp(&a.uptime).then(a.id.cmp(&b.id)));
+        let buckets = (end_ms.max(0) / TARGET_BUCKET_MS + 1) as usize;
+        let mut targets = vec![0u8; buckets];
+        for (b, set) in std::mem::take(&mut self.target_buckets) {
+            if let Some(x) = targets.get_mut(b as usize) {
+                *x = set.len().min(255) as u8;
+            }
+        }
 
         let score = if w > 0.0 { (sum / w * 100.0).round() as u32 } else { 100 };
         // o que mais pesa primeiro: importância, depois o pior aproveitamento
@@ -1171,6 +1267,8 @@ impl RotationTracker {
             priority_aoe: prio.map(|p| view(&p.aoe)).unwrap_or_default(),
             sources: spec.sources.iter().map(|s| SpellSource { title: s.title.clone(), url: s.url.clone() }).collect(),
             buffs,
+            uptimes,
+            targets,
         }
     }
 }
@@ -1388,6 +1486,33 @@ mod tests {
         let mut r = RotationTracker::new(arcane);
         r.on_cast(3000, 44425);
         assert_eq!(r.finish(10000, &[true; 20]).tree.as_deref(), Some("Spellslinger"));
+    }
+
+    #[test]
+    fn maintained_auras_and_targets_per_bucket() {
+        let mut r = RotationTracker::new(mm());
+        // buff mantido 8s de 10s; debuff em dois inimigos que se sobrepõem conta uma vez
+        r.on_self_aura(1000, 700, "Kept", 1);
+        r.on_self_aura(9000, 700, "Kept", 0);
+        r.on_enemy_debuff(0, "e1", 800, "Dot", true);
+        r.on_enemy_debuff(3000, "e2", 800, "Dot", true);
+        r.on_enemy_debuff(5000, "e1", 800, "Dot", false);
+        r.on_enemy_died(7000, "e2");
+        // 3 alvos no primeiro trecho, 1 no terceiro
+        for e in ["a", "b", "c"] {
+            r.on_damage(500, e);
+        }
+        r.on_damage(4500, "a");
+        // debuff aplicado logo depois de um cast da rotação
+        r.on_cast(5500, 185358);
+        r.on_enemy_debuff(5600, "e3", 801, "Rot", true);
+        let res = r.finish(10000, &[true; 10]);
+        assert_eq!(res.uptimes.iter().find(|u| u.id == 801).map(|u| u.by_rotation), Some(1.0));
+        assert_eq!(res.uptimes.iter().find(|u| u.id == 800).map(|u| u.by_rotation), Some(0.0));
+        let up = |id: u32| res.uptimes.iter().find(|u| u.id == id).map(|u| (u.kind, (u.uptime * 100.0).round() as u32));
+        assert_eq!(up(700), Some(("buff", 80)));
+        assert_eq!(up(800), Some(("debuff", 70)));
+        assert_eq!(&res.targets[..3], &[3, 0, 1]);
     }
 
     #[test]

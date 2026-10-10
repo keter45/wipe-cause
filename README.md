@@ -193,6 +193,8 @@ Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.ya
 
 **Procs e cooldowns, como os tops decidem:** o app descobre nos logs dos tops quem gasta cada proc (Art of War → Blade of Justice, Divine Resonance → Hammer of Wrath...) e quais cooldowns eles soltam juntos, e aponta onde você decide diferente: o proc que você deixa acabar bem mais que eles ("Divine Resonance: você deixou acabar 51% (tops 0%)"), as outras habilidades que você casta com o proc esperando, o cooldown que eles usam assim que fica pronto e você segura, e o que eles alinham (Avenging Wrath junto do Wake of Ashes) e você não, com o ▶ de cada momento. Segurar para uma fase muda de boss para boss: com tops suficientes no boss, a comparação dos cooldowns é a daquele boss. Só aparece o que passa bem do que os próprios tops fazem, e proc que você nunca gastou (outro build) não é cobrado.
 
+**O contexto da luta:** a rotação é comparada separada nos trechos em que você acertava 1 inimigo e nos de AoE (3 ou mais), com os tops daquele boss: "AoE: os tops usam Divine Storm em 80% dos casts; você em 20%". Pull bem mais curto que a luta dos tops (wipe numa fase do começo) não compara a mistura. Buffs e debuffs que os tops mantêm o tempo todo pela rotação (não os de equipamento) viram checagem de uptime sozinhos. E quando um talento muda a rotação dos tops em todos os bosses (não só nos de AoE, onde quem muda é a luta), quem joga esse build é comparado com os tops do mesmo build.
+
 Na comparação da aba **Desempenho**, as mesmas decisões também são comparadas com a referência escolhida, alguém da raid ou um top do Warcraft Logs (o app baixa também os buffs dele): "Explosive Shot: depois de pronto, você leva 8.8s para usar, em média (Bettaozor 1.3s)". Com um log só não há como saber o que é normal, então aparece só diferença grande entre os dois e que também passa do que os tops fazem: o que dois bons players fazem diferente entre si é estilo, não erro.
 
 Specs com rotação: todas as de dano — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) e **Warrior** (Arms, Fury).
@@ -297,6 +299,19 @@ Todo texto novo entra em português e inglês na mesma mudança.
 - **Interface:** os textos ficam em dicionários (`*.i18n.ts`, com `defineMessages(pt, en)`); o inglês é tipado contra o português, então faltar uma frase não compila. Um teste falha se aparecer português fora dos dicionários, e outro se o lado inglês de um dicionário tiver português.
 - **Regras de boss e rotações (YAML):** dicas, mensagens, títulos e notas são `{ pt: "...", en: "..." }`; os nomes ficam em inglês. O teste do `wipe-core` confere as duas coisas.
 - **Notas de versão:** uma seção `## Português` e uma `## English` (o app mostra a do idioma escolhido).
+
+<details>
+<summary><b>Atualizar tudo depois de patch, raide nova ou nerf</b></summary>
+
+`npm run refresh` refaz sem IA tudo o que muda com o jogo: baixa a APL do SimulationCraft (e marca as specs em que ela mudou), roda os tops de cada spec pelo motor, ajusta só os números das rotações (metas de uptime e de uso de cooldown pelo quartil de baixo dos tops; id novo da mesma habilidade em `alt_ids`; evento repetido do mesmo botão em `ignore_casts`), gera a referência dos tops por boss e escreve um relatório em `samples/refresh/<data>.md` com cada spec **OK**, **ATENÇÃO** ou **REVISAR**.
+
+- `npm run refresh -- --tops`: baixa os tops antes (credenciais por variável de ambiente, `samples/wcl-credentials.env`, fora do git, ou o cofre do app; com mais de um cliente no arquivo, troca quando os pontos por hora acabam).
+- `npm run refresh -- --tops --zone latest --fresh`: raide nova; os chefes vêm da zona mais nova do Warcraft Logs (sem regras escritas) e os tops do raide anterior saem da referência.
+- `npm run refresh -- --dry <spec>`: só o relatório, sem mudar nada.
+
+REVISAR é o que muda o que a spec é (habilidade que os tops pararam de usar, habilidade nova, APL nova, checagem que nem os tops cumprem): a skill `rotation-refresh` do Claude Code cuida disso.
+
+</details>
 
 <details>
 <summary><b>Gerar a rotação de uma spec</b></summary>

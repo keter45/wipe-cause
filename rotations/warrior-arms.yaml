@@ -120,7 +120,7 @@ checks:
   - kind: dot_uptime
     id: rend
     debuff: rend
-    min_uptime: 0.85
+    min_uptime: 0.95
     importance: medium
     title: { pt: "Rend fora do alvo", en: "Rend off the target" }
     tip: { pt: "Rend sempre no alvo: Cleave para aplicar e renovar, antes do Colossus Smash.", en: "Rend always on the target: Cleave to apply and refresh it, before Colossus Smash." }
@@ -144,7 +144,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [colossus_smash, avatar, bladestorm, demolish, ravager]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Colossus Smash, Avatar e Bladestorm / Demolish no cooldown: atrasar um desalinha os outros.", en: "Colossus Smash, Avatar and Bladestorm / Demolish on cooldown: delaying one misaligns the others." }

@@ -23,6 +23,31 @@ export const aplUrl = (spec) => `${RAW}/ActionPriorityLists/default/${spec.simc}
 export const loadApl = (spec) => cached(aplUrl(spec), `${spec.simc}.simc`);
 export const loadDump = (spec) => cached(`${RAW}/SpellDataDump/${spec.cls}.txt`, `dump-${spec.cls}.txt`);
 
+/**
+ * Baixa de novo a APL e o dump (sem o cache) e diz se a APL mudou desde a última vez: as ações
+ * que entraram e saíram. A versão anterior fica em `<spec>.prev.simc`.
+ */
+export async function refreshSimc(spec) {
+  const file = path.join(CACHE, `${spec.simc}.simc`);
+  const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+  const r = await fetch(aplUrl(spec));
+  if (!r.ok) throw new Error(`${aplUrl(spec)}: ${r.status}`);
+  const text = await r.text();
+  fs.mkdirSync(CACHE, { recursive: true });
+  const dump = path.join(CACHE, `dump-${spec.cls}.txt`);
+  const d = await fetch(`${RAW}/SpellDataDump/${spec.cls}.txt`);
+  if (d.ok) fs.writeFileSync(dump, await d.text());
+  const actions = (t) => new Set([...parseApl(t).values()].flat().map((a) => a.action));
+  if (before == null || before === text) {
+    fs.writeFileSync(file, text);
+    return { changed: false, first: before == null, added: [], removed: [] };
+  }
+  fs.writeFileSync(path.join(CACHE, `${spec.simc}.prev.simc`), before);
+  fs.writeFileSync(file, text);
+  const [a, b] = [actions(before), actions(text)];
+  return { changed: true, first: false, added: [...b].filter((x) => !a.has(x)), removed: [...a].filter((x) => !b.has(x)) };
+}
+
 // ---------------------------------------------------------------- APL
 
 /**

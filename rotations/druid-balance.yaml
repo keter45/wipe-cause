@@ -125,14 +125,14 @@ checks:
   - kind: dot_uptime
     id: moonfire
     debuff: moonfire
-    min_uptime: 0.9
+    min_uptime: 0.95
     importance: medium
     title: { pt: "Moonfire fora do alvo", en: "Moonfire off the target" }
     tip: { pt: "Moonfire sempre no alvo: renove no pandemic, de preferência fora das janelas de Eclipse.", en: "Moonfire always on the target: refresh in pandemic, preferably outside Eclipse windows." }
   - kind: dot_uptime
     id: sunfire
     debuff: sunfire
-    min_uptime: 0.9
+    min_uptime: 0.95
     importance: medium
     title: { pt: "Sunfire fora do alvo", en: "Sunfire off the target" }
     tip: { pt: "Sunfire sempre no alvo: renove no pandemic, de preferência fora das janelas de Eclipse.", en: "Sunfire always on the target: refresh in pandemic, preferably outside Eclipse windows." }
@@ -160,7 +160,7 @@ checks:
   - kind: cooldown
     id: cooldowns
     spells: [eclipse, incarnation, force_of_nature, fury_of_elune]
-    min_usage: 0.8
+    min_usage: 0.85
     importance: medium
     title: { pt: "Cooldown parado", en: "Cooldown sitting" }
     tip: { pt: "Eclipse não pode ficar com 2 cargas; Force of Nature / Fury of Elune e Incarnation juntos, no cooldown.", en: "Eclipse can't sit at 2 charges; Force of Nature / Fury of Elune and Incarnation together, on cooldown." }

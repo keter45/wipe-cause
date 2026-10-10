@@ -3,9 +3,9 @@
 // rotação usa: o que o player (e os pets) fazem, o que cai nele, mortes e o dano de um colega
 // (para saber quando a raid estava batendo).
 //
-// Credenciais nunca em arquivo: das variáveis de ambiente (WCL_CLIENT_ID / WCL_CLIENT_SECRET) ou, no
-// Windows, do cofre de credenciais onde o app guarda o client da aba Desempenho. O valor fica só na
-// memória deste processo; nada é impresso.
+// Credenciais: das variáveis de ambiente (WCL_CLIENT_ID / WCL_CLIENT_SECRET), do arquivo de testes
+// samples/wcl-credentials.env (fora do git; aceita vários clientes: _2, _3...) ou, no Windows, do
+// cofre de credenciais onde o app guarda o client da aba Desempenho. Nada é impresso.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -38,9 +38,39 @@ if ([W.Cred]::CredReadW('${name}.wipe-cause', 1, 0, [ref]$p)) {
   return out ? Buffer.from(out, 'base64').toString('utf16le') : null;
 }
 
+/** Clientes do arquivo de testes (samples/wcl-credentials.env, fora do git), na ordem: 1, _2, _3... */
+function fileCredentials() {
+  const f = path.join(ROOT, 'samples', 'wcl-credentials.env');
+  if (!fs.existsSync(f)) return [];
+  const kv = Object.fromEntries(
+    fs
+      .readFileSync(f, 'utf8')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#') && l.includes('='))
+      .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
+  );
+  const out = [];
+  for (let n = 1; ; n++) {
+    const sfx = n === 1 ? '' : `_${n}`;
+    if (!kv[`WCL_CLIENT_ID${sfx}`] || !kv[`WCL_CLIENT_SECRET${sfx}`]) break;
+    out.push({ id: kv[`WCL_CLIENT_ID${sfx}`], secret: kv[`WCL_CLIENT_SECRET${sfx}`] });
+  }
+  return out;
+}
+
+/** Qual cliente do arquivo usar (troca quando os pontos por hora de um acabam). */
+let clientIndex = 0;
+export const clientCount = () => fileCredentials().length;
+export function useClient(i) {
+  clientIndex = i;
+}
+
 function credentials() {
   const { WCL_CLIENT_ID: envId, WCL_CLIENT_SECRET: envSecret } = process.env;
   if (envId && envSecret) return { id: envId, secret: envSecret };
+  const file = fileCredentials();
+  if (file.length) return file[clientIndex % file.length];
   const id = vault('wcl-client-id');
   const secret = id ? vault('wcl-client-secret') : null;
   if (id && secret) {
@@ -81,8 +111,8 @@ async function client() {
 /** Pasta de um report: códigos como "a:BD1Jk62rXAGwcFtq" têm ":", que o Windows não aceita. */
 export const reportDir = (code) => String(code).replace(/[:\\/]/g, '_');
 
-/** Chefes do raide atual: encounter_id das regras em encounters/<raide>/. */
-function raidEncounters() {
+/** Chefes com regras escritas em encounters/<raide mais nova>/ (o encounter_id de cada uma). */
+function ruleEncounters() {
   const base = path.join(ROOT, 'encounters');
   const raids = fs.readdirSync(base).filter((d) => !d.startsWith('_') && fs.statSync(path.join(base, d)).isDirectory());
   const raid = raids.sort().at(-1);
@@ -94,6 +124,32 @@ function raidEncounters() {
       return { id: +src.match(/^encounter_id:\s*(\d+)/m)?.[1], name: src.match(/^name:\s*"?([^"\n]+)/m)?.[1] ?? f };
     })
     .filter((e) => e.id);
+}
+
+const ZONE_OF = `query Z($id: Int!) { worldData { encounter(id: $id) { zone { id name encounters { id name } } } } }`;
+const ZONE = `query Z($id: Int!) { worldData { zone(id: $id) { id name encounters { id name } } } }`;
+const ZONES = `query { worldData { zones { id name frozen encounters { id } difficulties { id } } } }`;
+
+/**
+ * Chefes do raide pela zona do Warcraft Logs, para um raide novo entrar sem regras escritas:
+ * `zone` = id da zona, "latest" = a zona de raide mais nova (não congelada, com Mítico), ou nada =
+ * a zona do raide que já tem regras em encounters/ (pega também os chefes ainda sem regras).
+ */
+async function raidEncounters(gql, zone) {
+  let z = null;
+  if (zone === 'latest') {
+    const zones = (await gql(ZONES)).worldData.zones.filter((x) => !x.frozen && x.encounters.length >= 3 && x.difficulties.some((d) => d.id === 5));
+    const latest = zones.sort((a, b) => b.id - a.id)[0];
+    z = latest && (await gql(ZONE, { id: latest.id })).worldData.zone;
+  } else if (zone) z = (await gql(ZONE, { id: +zone })).worldData.zone;
+  else {
+    const known = ruleEncounters();
+    if (known.length) z = (await gql(ZONE_OF, { id: known[0].id })).worldData.encounter?.zone ?? null;
+    if (!z) return known;
+  }
+  if (!z?.encounters?.length) throw new Error(`zona ${zone ?? '(das regras)'} sem chefes no Warcraft Logs`);
+  console.log(`Raide: ${z.name} (zona ${z.id}, ${z.encounters.length} chefes)`);
+  return z.encounters.map((e) => ({ id: e.id, name: e.name }));
 }
 
 // Ranking com todos os parses: o filtro de buffs externos do WCL tira também quem jogou com
@@ -159,7 +215,7 @@ const markEnemyCasts = (dir, fightId) => {
 /** O cliente da API, para o diagnóstico (probe.mjs). */
 export const probeClient = client;
 
-export async function downloadTops(spec, outDir, { difficulty = 5, perBoss = 2 } = {}) {
+export async function downloadTops(spec, outDir, { difficulty = 5, perBoss = 2, zone } = {}) {
   const gql = await client();
   const before = (await gql(RATE)).rateLimitData;
   const reports = new Map();
@@ -182,7 +238,7 @@ export async function downloadTops(spec, outDir, { difficulty = 5, perBoss = 2 }
   };
 
   const picks = [];
-  for (const enc of raidEncounters()) {
+  for (const enc of await raidEncounters(gql, zone)) {
     let list = [];
     let diff = difficulty;
     for (const d of [difficulty, 4]) {

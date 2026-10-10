@@ -2,7 +2,10 @@
 // Warcraft Logs: antes de cada spec confere os pontos e, se estiverem acabando, espera o limite
 // zerar e continua. Rode uma vez e deixe; o que já foi baixado é pulado.
 //
-//   node scripts/rotation/tops-all.mjs [--per-boss 4] [spec1 spec2 ...]
+//   node scripts/rotation/tops-all.mjs [--per-boss 4] [--zone <id>|latest] [spec1 spec2 ...]
+//
+// --zone: chefes de outra zona do Warcraft Logs ("latest" = o raide mais novo); sem ela, os do raide
+// que já tem regras em encounters/.
 //
 // Sem specs, segue a lista padrão: primeiro as specs da raid que foram calibradas nos players da
 // guild (pela quantidade de players na última raid), depois as outras da raid, as que sobraram do
@@ -10,7 +13,7 @@
 
 import path from 'node:path';
 import { findSpec } from './specs.mjs';
-import { downloadTops, probeClient } from './tops.mjs';
+import { clientCount, downloadTops, probeClient, useClient } from './tops.mjs';
 
 const ROOT = path.join(import.meta.dirname, '..', '..');
 const DEFAULT = [
@@ -32,13 +35,16 @@ const MAX_TRIES = 3;
 const args = process.argv.slice(2);
 const i = args.indexOf('--per-boss');
 const perBoss = i >= 0 ? +args[i + 1] : 4;
-const specs = args.filter((a, k) => !a.startsWith('--') && k !== i + 1);
+const z = args.indexOf('--zone');
+const zone = z >= 0 ? args[z + 1] : undefined;
+const specs = args.filter((a, k) => !a.startsWith('--') && k !== i + 1 && k !== z + 1);
 const list = specs.length ? specs : DEFAULT;
 
 const clock = () => new Date().toLocaleTimeString();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const gql = await probeClient();
+let gql = await probeClient();
+let current = 0;
 /** Pontos da API; se a própria consulta falhar (queda, limite estourado), espera 5 min e tenta de novo. */
 async function rate() {
   for (;;) {
@@ -51,10 +57,21 @@ async function rate() {
   }
 }
 
-/** Espera o limite zerar se sobrar menos que `need` pontos nesta hora. */
+/**
+ * Espera o limite zerar se sobrar menos que `need` pontos nesta hora; com mais de um cliente no
+ * arquivo de testes, antes tenta os outros.
+ */
 async function waitFor(need) {
-  const r = await rate();
-  const left = r.limitPerHour - r.pointsSpentThisHour;
+  let r = await rate();
+  let left = r.limitPerHour - r.pointsSpentThisHour;
+  for (let k = 1; left < need && k < clientCount(); k++) {
+    current = (current + 1) % clientCount();
+    useClient(current);
+    gql = await probeClient();
+    r = await rate();
+    left = r.limitPerHour - r.pointsSpentThisHour;
+    console.log(`[${clock()}] trocando para o cliente ${current + 1} do arquivo de testes (${Math.round(left)} pontos)`);
+  }
   if (left >= need) return;
   const s = (r.pointsResetIn ?? 3600) + 15;
   console.log(`[${clock()}] ${Math.round(left)} pontos sobrando: esperando o limite zerar (${Math.ceil(s / 60)} min)…`);
@@ -68,7 +85,7 @@ for (const [n, key] of list.entries()) {
     await waitFor(BUDGET);
     console.log(`\n[${clock()}] (${n + 1}/${list.length}) ${spec.name}`);
     try {
-      await downloadTops(spec, out, { perBoss });
+      await downloadTops(spec, out, { perBoss, zone });
       break;
     } catch (e) {
       console.log(`[${clock()}] ${spec.name}: ${e.message}`);

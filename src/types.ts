@@ -418,6 +418,10 @@ export interface RotationResult {
   sources: { title: string; url: string }[];
   /** buffs curtos que o player pôs em si mesmo (procs, janelas de cooldown) */
   buffs?: BuffTrace[];
+  /** buffs no player e debuffs dele nos inimigos mantidos boa parte da luta (fração do tempo vivo) */
+  uptimes?: { id: number; name: string; kind: 'buff' | 'debuff'; uptime: number; byRotation: number }[];
+  /** inimigos diferentes acertados em cada trecho de 2s (alvo único x AoE) */
+  targets?: number[];
 }
 
 export interface BuffTrace {
