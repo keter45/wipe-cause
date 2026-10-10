@@ -2,41 +2,21 @@ import { useState } from 'react';
 import { BookOpen, ExternalLink } from 'lucide-react';
 import type { RotationResult } from '../types';
 import { OPENER_CASTS, OPENER_MIN_SUPPORT, type BenchView } from '../lib/bench';
-import type { DecisionFinding } from '../lib/decisions';
 import { ANCHOR_WINDOW_MS } from '../lib/benchMetrics';
-import { mmss } from '../lib/format';
+import { mmss, uniqueSeconds } from '../lib/format';
 import { openExternal } from '../lib/api';
 import { useSeek } from '../lib/wcr';
 import { scoreTone } from '../lib/score';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
+import { DecisionList } from './DecisionList';
 import { tr, useMessages } from '../i18n';
 import { rotationMsg } from './RotationPanel.i18n';
 
-/** Momentos em ordem, um por segundo (vários no mesmo segundo viram um ▶ só). */
-export const uniqueSeconds = (times: number[]) => {
-  const seen = new Set<number>();
-  return [...times].sort((a, b) => a - b).filter((t) => !seen.has(Math.floor(t / 1000)) && !!seen.add(Math.floor(t / 1000)));
-};
+export { uniqueSeconds };
 
 const pctOf = (x: number) => Math.round(x * 100);
 const secs = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
-
-type RotationMsg = (typeof rotationMsg)['pt'];
-
-/** Texto de uma decisão diferente da dos tops (proc perdido ou esperando, cooldown segurado ou fora do alinhamento). */
-function decisionText(d: DecisionFinding, t: RotationMsg): string {
-  switch (d.kind) {
-    case 'proc_lost':
-      return t.procLost(d.name, pctOf(d.you), pctOf(d.tops));
-    case 'proc_wait':
-      return t.procWait(d.name, d.you.toFixed(1), d.tops.toFixed(1), d.instead.name);
-    case 'cd_held':
-      return t.cdHeld(d.name, secs(d.you), secs(d.tops));
-    case 'cd_align':
-      return (d.partnerKind === 'cast' ? t.cdAlignCast : t.cdAlignBuff)(d.name, d.partnerName, pctOf(d.tops), pctOf(d.you));
-  }
-}
 
 /**
  * A rotação do player comparada com a rotação base escrita da spec: aproveitamento, os erros
@@ -245,26 +225,7 @@ export function RotationPanel({ rotation: r, bench, boss }: { rotation: Rotation
           {bench && bench.decisions.length > 0 && (
             <>
               <h4>{t.decisions}</h4>
-              <ul className="plain bench-list small">
-                {bench.decisions.map((d) => (
-                  <li key={`${d.kind}-${'buff' in d ? d.buff : d.spellId}`}>
-                    <SpellIcon spellId={'buff' in d ? d.buff : d.spellId} size={16} />{' '}
-                    <span className="warn">{decisionText(d, t)}</span>
-                    {'consumers' in d && <span className="muted"> {t.spentBy(d.consumers.map((c) => c.name).join(', '))}</span>}
-                    {d.times.length > 0 && (
-                      <span className="rot-times">
-                        {uniqueSeconds(d.times).slice(0, 6).map((at) => (
-                          <span key={at} className="rot-time">
-                            {mmss(at)}
-                            <PlayAt t={at} seek={seek} />
-                          </span>
-                        ))}
-                        {uniqueSeconds(d.times).length > 6 && <span className="muted"> +{uniqueSeconds(d.times).length - 6}</span>}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <DecisionList list={bench.decisions} />
               <p className="muted small">{t.decisionsHint}</p>
             </>
           )}

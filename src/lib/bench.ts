@@ -168,6 +168,9 @@ function treeIn<T>(r: RotationResult, byTree: Record<string, T> | undefined): T 
   return tree ? byTree![tree] : null;
 }
 
+/** Referência de decisões dos tops da spec na árvore do player (quem gasta cada proc, cooldowns). */
+export const decisionRefFor = (p: PlayerStats): DecisionRef | null => (p.rotation ? treeIn(p.rotation, bySpec.get(p.specId ?? -1)?.decisions) : null);
+
 /** Decisões do player contra as dos tops (os cooldowns do boss só na mesma dificuldade). */
 function decisionsFor(pull: Pull, p: PlayerStats, b: BossBench, sameDifficulty: boolean): DecisionFinding[] {
   const ref = treeIn(p.rotation!, bySpec.get(p.specId ?? -1)?.decisions);

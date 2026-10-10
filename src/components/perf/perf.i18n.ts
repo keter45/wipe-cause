@@ -36,6 +36,8 @@ export const perfViewMsg = defineMessages(
     cpm: 'Casts por minuto',
     itemLevel: 'Item level',
     keyPoints: 'Diferenças principais',
+    decisions: 'Procs e cooldowns contra esta referência',
+    decisionsHint: 'Só diferenças grandes entre os dois logs. Quem gasta cada proc e quais cooldowns andam juntos vêm dos tops da sua spec.',
     // janelas de burst
     bursts: 'Janelas de burst',
     burstsHint: (lead: number, win: number) => `sequência de casts de ${lead}s antes a ${win}s depois de cada uso`,
@@ -130,6 +132,8 @@ export const perfViewMsg = defineMessages(
     cpm: 'Casts per minute',
     itemLevel: 'Item level',
     keyPoints: 'Main differences',
+    decisions: 'Procs and cooldowns against this reference',
+    decisionsHint: "Only big differences between the two logs. What spends each proc and which cooldowns go together come from your spec's tops.",
     bursts: 'Burst windows',
     burstsHint: (lead: number, win: number) => `cast sequence from ${lead}s before to ${win}s after each use`,
     burstPick: (spec: string) => `Cooldowns to compare (${spec}):`,

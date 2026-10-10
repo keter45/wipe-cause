@@ -88,3 +88,9 @@ export function logTitle(all: Pull[]): string {
   return `${d.padStart(2, '0')}/${m.padStart(2, '0')} · ${main}${others > 0 ? ` +${others}` : ''}`;
 }
 
+
+/** Momentos em ordem, um por segundo (vários no mesmo segundo viram um ▶ só). */
+export const uniqueSeconds = (times: number[]) => {
+  const seen = new Set<number>();
+  return [...times].sort((a, b) => a - b).filter((t) => !seen.has(Math.floor(t / 1000)) && !!seen.add(Math.floor(t / 1000)));
+};

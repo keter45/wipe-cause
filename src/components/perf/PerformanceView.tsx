@@ -14,7 +14,9 @@ import { loadTop, type TopRanking, type TopSample } from '../../lib/wclApi';
 import { Stat, Bursts, Rotation, Potions, SetupView } from './sections';
 import { PerfShareCard } from '../share/PerfCard';
 import { Advantage, TakenMore } from './Advantage';
-import { compareWithTops } from '../../lib/bench';
+import { compareWithTops, decisionRefFor } from '../../lib/bench';
+import { compareWithLog, povOf } from '../../lib/decisions';
+import { DecisionList } from '../DecisionList';
 import { soloPullMsg } from '../SoloPullView.i18n';
 import { TrendingDown } from 'lucide-react';
 import { messagesOf, useMessages } from '../../i18n';
@@ -220,6 +222,10 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
   const [mo, ro] = [outputPerSec(me), outputPerSec(ref)];
   const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
   const insights = perfInsights(me, ref, cds);
+  // decisões contra este log (procs e cooldowns): o top do WCL não tem leitura de rotação, usa a sua
+  const mine = povOf(me.pull, me.player);
+  const theirs = mode === 'tops' && topSample ? povOf(topSample.pull, topSample.player, me.player.rotation, topSample.buffs) : povOf(ref.pull, ref.player);
+  const decisions = mine && theirs ? compareWithLog(mine, theirs, decisionRefFor(me.player)) : [];
   const refName = mode === 'tops' && topSample ? m.topName(topSample.source.name, num(topSample.source.amount), unit) : refLabel(me, ref);
 
   return (
@@ -263,6 +269,13 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
         </h4>
         <Advantage me={me} ref_={ref} refLabel={refName} unit={unit} casts wcl={{ mine: mineWcl, ref: refWcl, type: wclType }} />
       </section>
+      {decisions.length > 0 && (
+        <section className="perf-section">
+          <h4>{m.decisions}</h4>
+          <DecisionList list={decisions} who={mode === 'tops' && topSample ? topSample.source.name : shortName(ref.player.name)} />
+          <p className="muted small">{m.decisionsHint}</p>
+        </section>
+      )}
       <Bursts me={me} ref_={ref} cds={cds} />
       <CooldownCompare me={me} ref_={ref} cds={cds} />
       <Rotation me={me} ref_={ref} cds={cds} />
