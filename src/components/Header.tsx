@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { CircleAlert, Crosshair, ExternalLink, Link2, MessageSquare, MessageSquareOff, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { discordSetConfig, inTauri, migrateWcrDir, openExternal, savedWclLink, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
+import { discordSetConfig, inTauri, migrateWcrDir, openExternal, savedWclAuto, savedWclLink, saveWclAuto, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
 import { reportCode } from '../lib/wcl';
+import { findNightReport } from '../lib/guildNights';
 import { logTitle, mainEncounterId } from '../lib/format';
 import { BossName } from './Names';
 import { matchVideos } from '../lib/wcr';
@@ -74,7 +75,7 @@ export function Header(props: Props) {
       <div className="topbar-group" aria-label={t.tonight}>
         {props.showLive && <LiveButton status={props.live} error={props.liveError} onStart={props.onLiveStart} onStop={props.onLiveStop} />}
         {inTauri && <DiscordAutoButton />}
-        {report && <WclButton logFile={report.file} onWcl={props.onWcl} />}
+        {report && <WclButton logFile={report.file} pulls={report.pulls} onWcl={props.onWcl} />}
         {report && inTauri && <VideosButton pulls={report.pulls} onVideos={props.onVideos} />}
       </div>
     </header>
@@ -198,23 +199,54 @@ function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
 // ---------------------------------------------------------------------------
 // Warcraft Logs: link do report da noite
 
-function WclButton({ logFile, onWcl }: { logFile: string; onWcl: (code: string | null) => void }) {
+function WclButton({ logFile, pulls, onWcl }: { logFile: string; pulls: Pull[]; onWcl: (code: string | null) => void }) {
   const t = useMessages(headerMsg);
+  const { status } = useSetup();
   const [input, setInput] = useState(() => savedWclLink(logFile));
+  const [auto, setAuto] = useState(() => savedWclAuto(logFile));
+  const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
   const code = reportCode(input);
+  const canSearch = inTauri && !!status?.wcl?.configured;
+  // ao vivo: o report da noite pode ainda não existir no começo; procura de novo a cada pull novo
+  const raidPulls = pulls.filter((p) => !p.dungeon).length;
 
-  // outro log: recupera o link salvo para ele
+  // outro log: recupera o link salvo para ele; sem link, procura o report da noite no Warcraft
+  // Logs pelo horário dos pulls (nas guildas do login e nos reports que o próprio usuário subiu)
   useEffect(() => {
     const saved = savedWclLink(logFile);
     setInput(saved);
+    setAuto(savedWclAuto(logFile));
     onWcl(reportCode(saved));
+    if (saved || !canSearch || savedWclAuto(logFile) === 'off') return;
+    let alive = true;
+    setSearching(true);
+    findNightReport(pulls, status?.wcl?.user ?? null)
+      .then((found) => {
+        if (!alive || !found || savedWclLink(logFile)) return;
+        const url = `https://www.warcraftlogs.com/reports/${found.report.code}`;
+        const info = { owner: found.report.owner, matched: found.matched };
+        saveWclLink(logFile, url);
+        saveWclAuto(logFile, info);
+        setInput(url);
+        setAuto(info);
+        onWcl(found.report.code);
+      })
+      .catch(() => {})
+      .finally(() => alive && setSearching(false));
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logFile]);
+  }, [logFile, canSearch, raidPulls]);
 
   function change(value: string) {
     setInput(value);
     saveWclLink(logFile, value);
+    // colado à mão: vale o do usuário; tirado: não procura de novo
+    const next = value ? null : 'off';
+    saveWclAuto(logFile, next);
+    setAuto(next);
     onWcl(reportCode(value));
   }
 
@@ -233,6 +265,8 @@ function WclButton({ logFile, onWcl }: { logFile: string; onWcl: (code: string |
     >
       <h4>{t.reportTitle}</h4>
       <p className="muted small">{t.reportHint}</p>
+      {searching && !input && <p className="muted small">{t.searchingReport}</p>}
+      {input && auto && auto !== 'off' && <p className="small ok-text">{t.autoFound(auto.owner, auto.matched)}</p>}
       <input
         className="text-input"
         autoFocus

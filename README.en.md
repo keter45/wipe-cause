@@ -236,7 +236,7 @@ In the sidebar, **Progress** compares every saved night of a boss: best pull per
 
 With a Warcraft Logs account, your guild's reports (unlisted ones too) show up in **New analysis**, next to the PC's logs; a link that's not on the list can be pasted at the bottom of the screen. Whatever is in a log on your PC comes from it; only what's missing is downloaded from Warcraft Logs (downloaded events stay on disk, to re-analyze without spending the API). Several people uploaded the same night? The reports become a single analysis, with one copy of each pull.
 
-Paste the night's report link in the Warcraft Logs bar (it's saved for that log file). Each pull gets a button that opens the report already filtered to the boss and difficulty, with the try number as WCL shows it ("Wipe 13") — it also counts the short pulls the app ignores. This doesn't use the API or need a login.
+With the Warcraft Logs account connected, the app finds the night's report on its own: it searches the login's guilds and the reports you uploaded, around the log's time, and keeps the one with the same pulls (boss, difficulty and time). Without a login, or to change it, paste the link in the Warcraft Logs bar (it's saved for that log file; "Remove" stops the app from searching again). Each pull gets a button that opens the report already filtered to the boss and difficulty, with the try number as WCL shows it ("Wipe 13") — it also counts the short pulls the app ignores. The report button doesn't use the API.
 
 ### 🎥 Warcraft Recorder
 
