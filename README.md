@@ -236,7 +236,7 @@ Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melh
 
 Com a conta do Warcraft Logs, os reports da sua guilda (inclusive os não listados) aparecem em **Nova análise**, junto dos logs do PC; um link de fora da lista pode ser colado no fim da tela. O que estiver num log do seu PC sai dele; do Warcraft Logs só se baixa o que falta (os eventos baixados ficam no disco, para reanalisar sem gastar a API). Várias pessoas subiram a mesma noite? Os reports viram uma análise só, com uma cópia de cada pull.
 
-Cole o link do report da noite na barra do Warcraft Logs (fica salvo para aquele arquivo de log). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. Isso não usa a API nem pede login.
+Com a conta do Warcraft Logs conectada, o app acha sozinho o report da noite: procura nas guildas do login e nos reports que você subiu, perto do horário do log, e fica com o que tem os mesmos pulls (boss, dificuldade e horário). Sem login, ou para trocar, cole o link na barra do Warcraft Logs (fica salvo para aquele arquivo de log; "Remover" faz o app não procurar de novo). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. O botão do report não usa a API.
 
 ### 🎥 Warcraft Recorder
 

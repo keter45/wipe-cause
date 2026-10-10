@@ -102,6 +102,29 @@ export function saveWclLink(logFile: string, link: string) {
   }
 }
 
+const WCL_AUTO_KEY = 'wipe-cause:wcl-report-auto:';
+/**
+ * Como o link do report chegou: achado sozinho no Warcraft Logs (de quem é e quantos pulls batem),
+ * "off" = o usuário tirou o link (não procurar de novo), null = colado à mão ou nenhum.
+ */
+export type WclAuto = { owner: string; matched: number } | 'off' | null;
+export function savedWclAuto(logFile: string): WclAuto {
+  try {
+    const v = localStorage.getItem(WCL_AUTO_KEY + logFile);
+    return v == null ? null : v === 'off' ? 'off' : (JSON.parse(v) as WclAuto);
+  } catch {
+    return null;
+  }
+}
+export function saveWclAuto(logFile: string, auto: WclAuto) {
+  try {
+    if (auto == null) localStorage.removeItem(WCL_AUTO_KEY + logFile);
+    else localStorage.setItem(WCL_AUTO_KEY + logFile, auto === 'off' ? 'off' : JSON.stringify(auto));
+  } catch {
+    /* sem storage */
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Warcraft Recorder (vídeos locais)
 

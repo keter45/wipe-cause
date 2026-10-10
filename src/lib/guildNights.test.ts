@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupNights, uniquePulls, type GuildReport } from './guildNights';
+import { groupNights, matchedPulls, pickNightReport, uniquePulls, type GuildReport } from './guildNights';
 
 const H = 3_600_000;
 const fight = (id: number, encounterID: number, start: number, kill = false) => ({ id, encounterID, name: `Boss ${encounterID}`, difficulty: 5, kill, startTime: start, endTime: start + 120_000 });
@@ -40,5 +40,21 @@ describe('noites da guilda', () => {
 
   it('pulls únicos em ordem de horário', () => {
     expect(uniquePulls([b, a]).map((p) => p.encounterId)).toEqual([3470, 3470, 3445]);
+  });
+});
+
+describe('report da noite do log local', () => {
+  const pull = (encounterId: number, startMs: number) => ({ encounterId, difficultyId: 16, startMs, dungeon: false }) as never;
+  const certo: GuildReport = { code: 'CERTO123', title: '', startTime: 100 * H, endTime: 103 * H, owner: 'Fulano', zone: 'VA', fights: [fight(1, 3470, 0), fight(2, 3470, 10 * 60_000)] };
+  const outro: GuildReport = { ...certo, code: 'OUTRO123', startTime: 200 * H, endTime: 203 * H };
+
+  it('fica com o report que tem os pulls do log (boss, dificuldade e horário)', () => {
+    const pulls = [pull(3470, 100 * H + 30_000), pull(3470, 100 * H + 10 * 60_000)];
+    expect(matchedPulls(certo, pulls)).toBe(2);
+    expect(pickNightReport([outro, certo], pulls)?.report.code).toBe('CERTO123');
+  });
+
+  it('nenhum report bate: nada', () => {
+    expect(pickNightReport([outro], [pull(3470, 100 * H), pull(3470, 101 * H)])).toBeNull();
   });
 });
