@@ -189,7 +189,7 @@ No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é po
 
 Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.yaml` (pontos principais, prioridade por árvore de herói em alvo único e AoE, abertura e checagens), feita a partir do guia de rotação do Wowhead e da APL do SimulationCraft do patch e calibrada nos logs dos melhores players do mundo de cada spec (o que nem eles cumprem sai). Na aba **Desempenho** (e na aba **Você** do modo solo), o log do player é lido contra ela: aproveitamento (0–100), os erros claros e os ajustes, com o momento de cada um (▶ no vídeo), a abertura e o uso dos cooldowns.
 
-**Comparado com os tops neste boss:** o app traz embutida a mediana dos melhores players do mundo da spec em cada boss do raide. Cada item da rotação mostra o seu número ao lado do deles, e aparecem também: a habilidade que eles usam bem mais ou menos naquele boss (AoE x alvo único), o cooldown que eles seguram para depois (ou soltam no pull), o momento da poção e onde você parou depois de uma mecânica do boss enquanto eles continuaram castando.
+**Comparado com os tops neste boss:** o app traz embutida a mediana dos melhores players do mundo da spec em cada boss do raide. Cada item da rotação mostra o seu número ao lado do deles; a **abertura** é a dos tops naquele boss e na sua árvore de herói (ela muda de boss para boss e com os talentos), comparada com a sua; e aparecem também: a habilidade que eles usam bem mais ou menos naquele boss (AoE x alvo único), o cooldown que eles seguram para depois (ou soltam no pull), o momento da poção e onde você parou depois de uma mecânica do boss enquanto eles continuaram castando.
 
 Specs com rotação: todas as de dano — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) e **Warrior** (Arms, Fury).
 
@@ -219,6 +219,8 @@ As regras também cobrem:
 ### 📍 Posições
 
 Com Advanced Combat Logging, cada morte (antes do corte) guarda onde todo mundo estava: o detalhe da morte mostra um mini mapa, a distância até o boss e quem estava a menos de 8 jardas. As falhas coletivas de mecânica (ex.: detonação do orb roxo, Execution da Guillotine) também guardam a foto do momento.
+
+No Coiled Altar Mythic, o app reconstrói onde estava cada orb (quem carregava, onde cada um caiu, quais o Sever quebrou) e, em cada detonação, aponta quem levou um orb até outro parado no chão: "Rainface levou o roxo a 7 jardas de um verde no chão". Quando ninguém chegou perto (ex.: sobrou roxo no tempo), não culpa ninguém.
 
 ### 📈 Evolução
 

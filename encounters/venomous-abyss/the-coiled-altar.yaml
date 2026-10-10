@@ -32,9 +32,10 @@ mechanics:
   # Fase 1 — orbs (Coalesced Venom verde / Virulent Mutation roxo)
   # =====================================================================
 
-  # A falha que mais wipa: orb roxo encosta em outro orb (ou é carregado para perto de um)
-  # e dispara 20 Venom Ruptures de uma vez. Também acontece se sobrar roxo no timer da
-  # fase. No log só aparece como tick gigante de Venom Rupture (normal < 400k, explosão > 1M).
+  # A falha que mais wipa: um orb chega perto de um roxo e dispara a explosão. Só explode com
+  # um dos dois no chão (dois carregados por players diferentes não detonam). Também acontece
+  # se sobrar roxo no timer. No log só aparece como tick gigante de Venom Rupture no raid
+  # (normal < 400k, explosão ~1M+).
   - key: purple_detonation
     name: "Virulent Mutation (detonation)"
     type: failure_event
@@ -44,14 +45,26 @@ mechanics:
     detect:
       fail_ids: [1299838]         # Venom Rupture
       min_amount: 800000          # só a explosão; tick normal fica bem abaixo
-      culprit_auras: [1310498, 1282419]  # Mutagenic Venom (roxo) / Volatile Venom (verde) consumidos na explosão
-    tip: { pt: "Nunca levar orb (verde ou roxo) para perto de um roxo; roxos só morrem no frontal.", en: "Never take an orb (green or purple) near a purple one; purples only die in the frontal." }
+      confirm_aura: 1299838       # a explosão aplica stack de Venom Rupture; os ticks seguintes do DoT (também ~1M) não
+      orbs:
+        contact_yd: 9
+        window_ms: 500
+        breaker: { cast_id: 1299684, half_angle: 40, range: 40 }   # Sever quebra os orbs no cone
+        kinds:
+          - { npc_id: 271982, carry_aura: 1310498, volatile: true, name: { pt: roxo, en: purple } }   # Virulent Mutation / Mutagenic Venom
+          - { npc_id: 268042, carry_aura: 1282419, name: { pt: verde, en: green } }                   # Coalesced Venom Stalker / Volatile Venom
+    tip: { pt: "Nunca levar orb (verde ou roxo) para perto de um roxo no chão, nem largar orb perto de um; roxos só morrem no frontal.", en: "Never take an orb (green or purple) near a purple on the ground, or drop one near it; purples only die in the frontal." }
     message: { pt: "{count} detonação(ões) de orb roxo (Venom Rupture em massa)", en: "{count} purple orb detonation(s) (mass Venom Rupture)" }
-    blame_message: { pt: "{player} carregava um orb que detonou junto com um roxo", en: "{player} was carrying an orb that detonated with a purple one" }
     notes: >
-      Calibrado em 6 pulls Mythic de 28/09: 4 wipes vieram disso. Culpado = quem perdeu a
-      aura de portador até 0,5s antes do 1º tick gigante. Se sobrar roxo até o timer
-      (boss explode todos), não há portador e a lista fica vazia.
+      Carregar = debuff de 5s; quando acaba (ou o portador morre), o orb cai onde ele está e o
+      log mostra a unidade nova com posição. O Sever quebra os parados num cone de ~40°/40yd
+      (bate em 73% dos Severs com o salto de stacks de Venom Rupture). Culpado = quem passou
+      carregando um orb a até 9yd de outro parado (um deles roxo), ou largou um em cima, nos
+      0,5s antes da explosão. O caminho do portador é a linha reta entre as posições do log,
+      inclusive em teleporte (Blink, Heroic Leap...): teleportar com um orb no caminho também
+      detona. Calibrado em 37 explosões de 28/09, 05/10 e 08/10 (sem contar os ticks
+      seguintes do DoT): culpado em 22; o resto fica sem culpado (sobrou roxo no timer, ou
+      ninguém perto o bastante).
 
   - key: mutagenic_venom_splash
     name: "Mutagenic Venom (near the carrier)"

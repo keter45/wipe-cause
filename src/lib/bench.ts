@@ -1,7 +1,7 @@
 // O pull do player comparado com os tops da mesma spec no mesmo boss (src/data/bench, gerado por
 // scripts/rotation/bench.mjs a partir dos logs dos tops do Warcraft Logs).
 
-import type { PlayerStats, Pull } from '../types';
+import type { PlayerStats, Pull, RotationResult } from '../types';
 import { ANCHOR_WINDOW_MS, EARLY_MS, anchorTimes, castMix, defensivesNear, firstUse, idleIn, potionTimes } from './benchMetrics';
 import { isCombatPotion } from './performance';
 
@@ -12,6 +12,8 @@ interface Named {
 
 export interface BossBench {
   name: string;
+  /** dificuldade dos tops (id do jogo): abertura e mecânicas só valem nela */
+  difficultyId?: number;
   n: number;
   downtimePct: number | null;
   cpm: number | null;
@@ -21,6 +23,8 @@ export interface BossBench {
   potion: { used: number; first: number | null; second: number | null };
   anchors: (Named & { k: number; t: number; idle: number; use: (Named & { share: number })[] })[];
   defensives: (Named & { share: number; spells: (Named & { share: number })[] })[];
+  /** abertura dos tops neste boss, por árvore de herói (nome da árvore) */
+  openers?: Record<string, { n: number; support: number; seq: Named[] }>;
 }
 
 interface SpecBench {
@@ -41,6 +45,10 @@ export const benchFor = (specId: number | null | undefined, encounterId: number)
 export const MIX_MIN_DIFF = 0.08;
 /** Segundos a mais parado que os tops depois de uma mecânica para aparecer. */
 export const WINDOW_MIN_EXTRA_MS = 2500;
+/** Casts da abertura comparados (os mesmos 8 do script da referência). */
+export const OPENER_CASTS = 8;
+/** Menos tops que isso abrindo igual: a abertura varia demais no boss para cobrar a do player. */
+export const OPENER_MIN_SUPPORT = 0.3;
 /** Defensivo que os tops usam em pelo menos isso das vezes numa mecânica. */
 export const DEF_SHOW_SHARE = 0.5;
 /** Cooldown que os tops seguram: menos que isso deles usa nos primeiros 15s. */
@@ -51,6 +59,8 @@ const PULL_EARLY = 0.8;
 export interface BenchView {
   /** lutas dos tops neste boss */
   n: number;
+  /** o pull é de outra dificuldade que a dos tops: só as medidas gerais da rotação valem */
+  otherDifficulty: boolean;
   /** aproveitamento mediano dos tops em cada checagem da rotação (id do achado) */
   checks: Record<string, number>;
   /** uso mediano dos tops em cada cooldown (spellId) */
@@ -62,6 +72,12 @@ export interface BenchView {
   potion: { topsFirst: number | null; topsSecond: number | null; you: number[] } | null;
   /** mecânicas depois das quais o player ficou parado bem mais que os tops */
   windows: (Named & { k: number; t: number; you: number; tops: number; use: Named[] })[];
+  /**
+   * a abertura dos tops neste boss na árvore do player: `seq` = a sequência típica, `support` =
+   * fatia dos tops que abrem assim (até 2 casts de diferença), `missing` = o que dela faltou nos
+   * primeiros casts do player (null = o motor não leu a abertura dele, ou os tops variam demais no boss)
+   */
+  opener: { tree: string; n: number; support: number; seq: Named[]; missing: Named[] | null } | null;
   /** mecânicas em que os tops usam defensivo, e quantas vezes o player usou */
   defensives: (Named & { share: number; spells: Named[]; used: number; of: number })[];
 }
@@ -104,7 +120,9 @@ export function compareWithTops(pull: Pull, p: PlayerStats, b = benchFor(p.specI
 
   const potion = b.potion.used >= 0.5 && b.potion.first != null ? { topsFirst: b.potion.first, topsSecond: b.potion.second, you: potionTimes(p, isCombatPotion) } : null;
 
-  const until = aliveUntil(pull, p);
+  // abertura, paradas e defensivos dependem das mecânicas da dificuldade: só na mesma dos tops
+  const sameDifficulty = b.difficultyId == null || b.difficultyId === pull.difficultyId;
+  const until = sameDifficulty ? aliveUntil(pull, p) : -Infinity;
   const anchors = anchorTimes(pull);
   const windows: BenchView['windows'] = [];
   for (const a of b.anchors) {
@@ -132,5 +150,18 @@ export function compareWithTops(pull: Pull, p: PlayerStats, b = benchFor(p.specI
     });
   }
 
-  return { n: b.n, checks, cdUsage, mix, cooldowns, potion, windows: distinct.slice(0, 5), defensives };
+  return { n: b.n, otherDifficulty: !sameDifficulty, checks, cdUsage, mix, cooldowns, potion, opener: sameDifficulty ? bossOpener(r, b) : null, windows: distinct.slice(0, 5), defensives };
+}
+
+/** A abertura dos tops no boss na árvore do player (ou na única árvore com dados, se a dele não foi lida). */
+function bossOpener(r: RotationResult, b: BossBench): BenchView['opener'] {
+  const trees = Object.keys(b.openers ?? {});
+  const tree = r.tree != null ? trees.find((t) => t === r.tree) : trees.length === 1 ? trees[0] : undefined;
+  const o = tree ? b.openers![tree] : null;
+  if (!tree || !o) return null;
+  const mine = r.opener && o.support >= OPENER_MIN_SUPPORT ? new Set(r.opener.actual.slice(0, OPENER_CASTS).map((c) => c.spellId)) : null;
+  // o de preencher (o último da prioridade) não conta: faltar um Incinerate na abertura não é erro
+  const filler = r.prioritySt[r.prioritySt.length - 1]?.spellId;
+  const missing = mine ? o.seq.filter((s, i, all) => s.spellId !== filler && !mine.has(s.spellId) && all.findIndex((x) => x.spellId === s.spellId) === i) : null;
+  return { tree, n: o.n, support: o.support, seq: o.seq, missing };
 }
