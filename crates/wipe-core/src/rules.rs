@@ -3,6 +3,7 @@
 //! Formato documentado em `.claude/skills/boss-rules/references/schema.md`.
 
 use crate::i18n::Text;
+use crate::orbs::{OrbDetect, OrbLog};
 use crate::tx;
 use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PhaseWindow, PlayerStackOrigins, Positions, StackOrigin};
 use serde::{Deserialize, Serialize};
@@ -135,6 +136,9 @@ pub struct Detect {
     /// o acerto só conta se esta aura mudou de stack no player em até CONFIRM_MS (ex.: a onda
     /// que dá stack de Eternal Venom, para não confundir com outro spell de mesmo nome)
     pub confirm_aura: Option<u32>,
+    /// failure_event: orbs carregados e largados no chão; o culpado da explosão é quem levou um orb
+    /// até outro parado (ver `orbs.rs`), em vez de quem perdeu uma `culprit_auras`
+    pub orbs: Option<OrbDetect>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -501,6 +505,8 @@ struct MechState {
     pending_hits: Vec<(i64, String, String)>,
     /// stack_limit com sources: cada mudança de stack (t, guid, antes, depois)
     stack_changes: Vec<(i64, String, u32, u32)>,
+    /// texto do culpado escrito pela própria análise (ex.: qual orb levou até onde)
+    blame_texts: HashMap<String, Text>,
 }
 
 pub struct RuleTracker {
@@ -521,6 +527,8 @@ pub struct RuleTracker {
     /// mecânicas citadas em sources/removed_by de algum stack_limit e cada acerto delas (t, guid, mecânica)
     touch_mechs: HashSet<usize>,
     touches: Vec<(i64, String, usize)>,
+    /// mecânica com `orbs` (só uma por pull) e o que o pull mostrou dos orbs
+    orbs: Option<(usize, OrbLog)>,
 }
 
 impl RuleTracker {
@@ -557,7 +565,9 @@ impl RuleTracker {
             .flat_map(|m| m.sources.iter().chain(&m.removed_by))
             .filter_map(|k| mechs.iter().position(|x| &x.key == k))
             .collect();
+        let orbs = mechs.iter().position(|m| m.detect.orbs.is_some()).map(|i| (i, OrbLog::default()));
         Ok(RuleTracker {
+            orbs,
             files,
             mechs,
             state,
@@ -661,6 +671,16 @@ impl RuleTracker {
             if self.touch_mechs.contains(&i) {
                 self.touches.push((t, guid.to_string(), i));
             }
+            // falha só com a aura mudando de stack junto (ex.: a explosão aplica Venom Rupture; os
+            // ticks seguintes do mesmo DoT, também gigantes, não)
+            if hook == Hook::Fail {
+                if let Some(aura) = m.detect.confirm_aura {
+                    let changes = self.confirm_changes.get(&(guid.to_string(), aura));
+                    if !changes.is_some_and(|c| c.iter().rev().any(|&x| (t - x).abs() <= CONFIRM_MS)) {
+                        continue;
+                    }
+                }
+            }
             let st = &mut self.state[i];
             match hook {
                 Hook::Fail => {
@@ -732,6 +752,11 @@ impl RuleTracker {
         // aplicação ou dose (para cima ou para baixo); a remoção total (limpeza) não confirma
         if is_player && stacks > 0 && self.confirm_auras.contains(&spell_id) {
             self.confirm_changes.entry((guid.to_string(), spell_id)).or_default().push(t);
+        }
+        if let Some((i, log)) = &mut self.orbs {
+            if let (true, Some(cfg)) = (is_player, &self.mechs[*i].detect.orbs) {
+                log.on_aura(cfg, spell_id, guid, name, stacks, t);
+            }
         }
         if self.watched_auras.contains(&spell_id) {
             let key = (guid.to_string(), spell_id);
@@ -843,6 +868,27 @@ impl RuleTracker {
         }
     }
 
+    /// A análise precisa da posição dos players a cada instante (orbs carregados)?
+    pub fn wants_positions(&self) -> bool {
+        self.orbs.is_some()
+    }
+
+    pub fn on_player_pos(&mut self, guid: &str, x: f32, y: f32, t: i64) {
+        if let Some((_, log)) = &mut self.orbs {
+            log.on_player_pos(guid, x, y, t);
+        }
+    }
+
+    /// Cast de uma unidade inimiga com a posição e a direção dela (advanced logging).
+    #[allow(clippy::too_many_arguments)]
+    pub fn on_enemy_cast_at(&mut self, spell_id: u32, guid: &str, npc_id: Option<u32>, x: f32, y: f32, facing: f32, t: i64) {
+        if let Some((i, log)) = &mut self.orbs {
+            if let Some(cfg) = &self.mechs[*i].detect.orbs {
+                log.on_enemy_cast(cfg, npc_id, guid, spell_id, x, y, facing, t);
+            }
+        }
+    }
+
     pub fn on_enemy_cast(&mut self, spell_id: u32, source_guid: &str, source: &str, t: i64) {
         let Some(hooks) = self.hooks.get(&spell_id) else { return };
         for &(i, hook) in hooks {
@@ -930,6 +976,9 @@ impl RuleTracker {
         let mut out = Vec::new();
         let removals = self.removals;
         let mut state = self.state;
+        if let Some((i, log)) = &self.orbs {
+            orb_culprits(&self.mechs[*i], &mut state[*i], log);
+        }
         // acertos pela aura que a aura de confirmação mudou junto
         let mut touches = self.touches;
         for (i, (m, st)) in self.mechs.iter().zip(&mut state).enumerate() {
@@ -971,7 +1020,7 @@ impl RuleTracker {
                 continue;
             }
             // culpados de falha coletiva: quem perdeu a aura de portador junto com a falha
-            if !m.detect.culprit_auras.is_empty() {
+            if !m.detect.culprit_auras.is_empty() && m.detect.orbs.is_none() {
                 for &ft in &st.fail_times {
                     for (t, aura, guid, name) in &removals {
                         if m.detect.culprit_auras.contains(aura) && (ft - CULPRIT_BEFORE_MS..=ft + CULPRIT_AFTER_MS).contains(t) {
@@ -1003,15 +1052,18 @@ impl RuleTracker {
                         amount: p.amount,
                         first_t: p.first_t,
                         credit: false,
-                        message: with_origins(
-                            render(
-                                m.blame_message.as_ref().unwrap_or(&m.message),
-                                &p.name,
-                                if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count },
-                                lethal,
+                        message: match st.blame_texts.get(guid) {
+                            Some(t) => t.clone(),
+                            None => with_origins(
+                                render(
+                                    m.blame_message.as_ref().unwrap_or(&m.message),
+                                    &p.name,
+                                    if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count },
+                                    lethal,
+                                ),
+                                origins[mi].get(guid),
                             ),
-                            origins[mi].get(guid),
-                        ),
+                        },
                     })
                 })
                 .collect();
@@ -1362,6 +1414,41 @@ fn dispel_summary(name: &str, failures: u32, dispels: &[DispelOutcome]) -> Text 
     tx!("{failures} de {total} {name} sem dispel a tempo{avg_pt}", "{failures} of {total} {name} not dispelled in time{avg_en}")
 }
 
+/// Explosão de orb: quem levou um orb até outro parado no chão logo antes de cada falha.
+fn orb_culprits(m: &Mechanic, st: &mut MechState, log: &OrbLog) {
+    let Some(cfg) = &m.detect.orbs else { return };
+    for ft in st.fail_times.clone() {
+        let Some(c) = crate::orbs::collision(cfg, log, ft) else {
+            push_event(
+                st,
+                ft,
+                None,
+                tx!(
+                    "Ninguém levou orb até um orb no chão logo antes: sem culpado (pode ter sobrado orb no tempo)",
+                    "Nobody took an orb to one on the ground right before: no one to blame (an orb may have been left at the timer)"
+                ),
+            );
+            continue;
+        };
+        let name = log.name(&c.guid).to_string();
+        let short = name.split('-').next().unwrap_or(&name).to_string();
+        let (moved, ground) = (&cfg.kinds[c.moved].name, &cfg.kinds[c.ground].name);
+        let (mp, me, gp, ge) = (&moved.pt, &moved.en, &ground.pt, &ground.en);
+        let d = c.dist_yd.round() as i64;
+        let ago = format!("{:.1}", (ft - c.t) as f64 / 1000.0);
+        let text = if c.dropped {
+            tx!("{short} largou o {mp} a {d} jardas de um {gp} no chão", "{short} dropped the {me} {d} yards from a {ge} on the ground")
+        } else {
+            tx!("{short} levou o {mp} a {d} jardas de um {gp} no chão", "{short} took the {me} within {d} yards of a {ge} on the ground")
+        };
+        let ago_pt = ago.replace('.', ",");
+        let full = Text::new(format!("{} ({ago_pt}s antes da explosão)", text.pt), format!("{} ({ago}s before the explosion)", text.en));
+        bump(&mut st.players, &c.guid, &name, 0, ft);
+        st.blame_texts.entry(c.guid.clone()).or_insert(text);
+        push_event(st, ft, Some(&name), full);
+    }
+}
+
 fn bump(map: &mut HashMap<String, PlayerHits>, guid: &str, name: &str, amount: i64, t: i64) {
     let p = map.entry(guid.to_string()).or_default();
     if p.name.is_empty() {
@@ -1509,6 +1596,47 @@ mechanics:
         let bomb = get("bomb");
         assert_eq!(bomb.players.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Um-R"]);
         assert_eq!(get("double").players[0].count, 1);
+    }
+
+    #[test]
+    fn orb_detonation_blames_who_brought_the_orb() {
+        let yaml = r#"
+name: "Boss"
+encounter_id: 45
+mechanics:
+  - key: detonation
+    name: Detonation
+    type: failure_event
+    detect:
+      fail_ids: [50]
+      min_amount: 800000
+      confirm_aura: 50
+      orbs:
+        breaker: { cast_id: 99, half_angle: 40, range: 40 }
+        kinds:
+          - { npc_id: 1, carry_aura: 10, volatile: true, name: { pt: roxo, en: purple } }
+          - { npc_id: 2, carry_aura: 20, name: { pt: verde, en: green } }
+    message: "{count} detonação(ões)"
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        assert!(tr.wants_positions());
+        tr.on_enemy_cast_at(5, "G1", Some(2), 0.0, 0.0, 0.0, 100); // verde parado em (0,0)
+        // Alice pega o roxo e anda até 3 jardas do verde
+        for (i, t) in (1_000..=4_000).step_by(250).enumerate() {
+            tr.on_player_pos("A", 30.0 - i as f32 * 2.25, 0.0, t);
+        }
+        tr.on_aura(10, "A", "Alice-R", 1, true, 1_000);
+        // explosão: aplica o DoT e bate gigante; o tick seguinte do DoT não é outra explosão
+        tr.on_aura(50, "P1", "Um-R", 1, true, 4_000);
+        tr.on_damage(50, "P1", "Um-R", 1_200_000, 4_001);
+        tr.on_damage(50, "P1", "Um-R", 1_200_000, 6_001);
+        let res = tr.finish(&HashMap::new());
+        let det = res.iter().find(|r| r.key == "detonation").unwrap();
+        assert_eq!(det.failures, 1);
+        assert_eq!(det.players.len(), 1);
+        assert_eq!(det.players[0].message.pt, "Alice levou o roxo a 3 jardas de um verde no chão");
+        assert_eq!(det.players[0].message.en, "Alice took the purple within 3 yards of a green on the ground");
     }
 
     #[test]

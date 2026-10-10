@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BookOpen, ExternalLink } from 'lucide-react';
 import type { RotationResult } from '../types';
-import type { BenchView } from '../lib/bench';
+import { OPENER_CASTS, OPENER_MIN_SUPPORT, type BenchView } from '../lib/bench';
 import { ANCHOR_WINDOW_MS } from '../lib/benchMetrics';
 import { mmss } from '../lib/format';
 import { openExternal } from '../lib/api';
@@ -41,7 +41,12 @@ export function RotationPanel({ rotation: r, bench, boss }: { rotation: Rotation
         <div>
           <h3>{t.title}</h3>
           <p className="muted small">{t.comparedWith(r.specName, r.tree ?? null, r.patch)}</p>
-          {bench && boss && <p className="muted small">{t.benchNote(bench.n, boss)}</p>}
+          {bench && boss && (
+            <p className="muted small">
+              {t.benchNote(bench.n, boss)}
+              {bench.otherDifficulty && ` ${t.otherDifficulty}`}
+            </p>
+          )}
         </div>
         <span className={`score-pill big ${scoreTone(r.score)}`} title={t.scoreTitle}>
           {r.score}
@@ -89,7 +94,35 @@ export function RotationPanel({ rotation: r, bench, boss }: { rotation: Rotation
             </p>
           )}
 
-          {r.opener && (
+          {bench?.opener ? (
+            <>
+              <h4>{t.opener}</h4>
+              <p className={`small ${bench.opener.missing && bench.opener.missing.length === 0 ? 'ok-text' : ''}`}>
+                {bench.opener.missing == null
+                  ? bench.opener.support < OPENER_MIN_SUPPORT
+                    ? t.bossOpenerVaries
+                    : t.bossOpenerHint
+                  : bench.opener.missing.length === 0
+                    ? t.bossOpenerOk
+                    : t.bossOpenerMissing(bench.opener.missing.map((m) => m.name).join(', '))}
+              </p>
+              <div className="rot-seq">
+                <span className="muted small">{t.topsHere}</span>
+                {bench.opener.seq.map((s, i) => (
+                  <SpellIcon key={i} spellId={s.spellId} size={22} />
+                ))}
+              </div>
+              {r.opener && (
+                <div className="rot-seq">
+                  <span className="muted small">{t.you}</span>
+                  {r.opener.actual.slice(0, OPENER_CASTS).map((s, i) => (
+                    <SpellIcon key={i} spellId={s.spellId} size={22} />
+                  ))}
+                </div>
+              )}
+              <p className="muted small">{t.bossOpenerNote(Math.round(bench.opener.support * 100), bench.opener.n, bench.opener.tree)}</p>
+            </>
+          ) : r.opener && (
             <>
               <h4>{t.opener}</h4>
               <p className={`small ${r.opener.ok ? 'ok-text' : ''}`}>

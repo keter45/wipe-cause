@@ -1,6 +1,6 @@
 // Referência dos tops por boss: roda o motor nos tops baixados de cada spec e resume, boss a boss, o
 // que o app compara com o pull do player (src/components/BossBench.tsx): tempo parado, casts por
-// minuto, checagens da rotação, uso e momento dos cooldowns, a fatia de cada habilidade nos casts (AoE x
+// minuto, checagens da rotação, a abertura dos tops (por árvore de herói), uso e momento dos cooldowns, a fatia de cada habilidade nos casts (AoE x
 // alvo único), poção, o que acontece
 // depois de cada mecânica do boss (tempo parado e o que eles castam) e os defensivos nas mecânicas.
 //
@@ -36,6 +36,40 @@ const ANCHOR_SHARE = 0.7;
 const DEF_MIN_SHARE = 0.3;
 /** Habilidade que eles usam depois de uma mecânica: pelo menos isso a mais que a fatia dela na luta. */
 const USE_LIFT = 1.5;
+/** Abertura: os primeiros casts da rotação comparados (o motor guarda até 10 na janela da abertura). */
+const OPENER_CASTS = 8;
+/** Abre "igual": até isso de casts de diferença (trocados, a mais ou a menos) da abertura típica. */
+const OPENER_CLOSE = 2;
+
+/** Distância de edição entre duas sequências de casts (inserir, tirar ou trocar um cast custa 1). */
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+/**
+ * Abertura dos tops no boss, por árvore de herói (muda com o boss e com os talentos): a sequência de
+ * um top real que mais se parece com a dos outros, e quantos abrem assim.
+ */
+function bossOpeners(list) {
+  const out = {};
+  const withOpener = list.filter((x) => x.player.rotation.opener?.actual?.length);
+  for (const [tree, group] of Object.entries(Object.groupBy(withOpener, (x) => x.player.rotation.tree ?? '?'))) {
+    if (group.length < MIN_PULLS) continue;
+    const seqs = group.map((x) => x.player.rotation.opener.actual.slice(0, OPENER_CASTS));
+    const ids = seqs.map((s) => s.map((c) => c.spellId));
+    const total = ids.map((a) => ids.reduce((sum, b) => sum + editDistance(a, b), 0));
+    const best = total.indexOf(Math.min(...total));
+    const close = ids.filter((b) => editDistance(ids[best], b) <= OPENER_CLOSE).length;
+    out[tree] = { n: group.length, support: round(close / group.length, 2), seq: seqs[best].map((c) => ({ spellId: c.spellId, name: en(c.spellId, c.name) })) };
+  }
+  return out;
+}
 
 // o mesmo critério de performance.ts (isCombatPotion)
 const POTION = /potion|poção|pocao|elixir|flask|frasco/i; // i18n-ignore
@@ -190,6 +224,7 @@ function boss(list) {
       first: potions.some((p) => p.length) ? Math.round(median(potions.map((p) => p[0]))) : null,
       second: potions.filter((p) => p.length > 1).length >= MIN_PULLS ? Math.round(median(potions.map((p) => p[1]))) : null,
     },
+    openers: bossOpeners(list),
     anchors: dedupe(anchors.sort((a, b) => a.t - b.t)),
     // versões da mesma magia (mesmo nome): fica a de maior fatia
     defensives: defensives.sort((a, b) => b.share - a.share).filter((d, i, all) => all.findIndex((x) => x.name === d.name) === i),
@@ -226,7 +261,9 @@ for (const spec of specs) {
   learnNames(pulls);
   const byBoss = Object.groupBy(pulls, (x) => x.pull.encounterId);
   const bosses = {};
-  for (const [id, list] of Object.entries(byBoss)) if (list.length >= MIN_PULLS) bosses[id] = { name: list[0].pull.encounterName, ...boss(list) };
+  // a dificuldade dos tops (Mítico; Heroico só se não houve ranking): abertura e mecânicas mudam com ela
+  const mostCommon = (xs) => Object.entries(Object.groupBy(xs, (x) => x)).sort((a, b) => b[1].length - a[1].length)[0]?.[0];
+  for (const [id, list] of Object.entries(byBoss)) if (list.length >= MIN_PULLS) bosses[id] = { name: list[0].pull.encounterName, difficultyId: +mostCommon(list.map((x) => x.pull.difficultyId)), ...boss(list) };
   const file = path.join(OUT, `${spec.file}.json`);
   // compacto: vai embutido no app
   fs.writeFileSync(file, JSON.stringify({ spec: spec.id, name: spec.name, pulls: pulls.length, bosses }));

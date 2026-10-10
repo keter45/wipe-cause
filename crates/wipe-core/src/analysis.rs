@@ -67,6 +67,8 @@ struct Advanced<'a> {
     /// posição no mundo (jardas)
     x: f32,
     y: f32,
+    /// direção para onde a unidade olha (radianos)
+    facing: f32,
     /// quantidade de campos do bloco (varia entre patches)
     len: usize,
 }
@@ -95,7 +97,8 @@ fn advanced_at<'a>(f: &[&'a str], at: usize) -> Option<Advanced<'a>> {
     })?;
     let x = f[at + len - 5].parse().unwrap_or(0.0);
     let y = f[at + len - 4].parse().unwrap_or(0.0);
-    Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp, x, y, len })
+    let facing = f[at + len - 2].parse().unwrap_or(0.0);
+    Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp, x, y, facing, len })
 }
 
 #[derive(Default)]
@@ -343,6 +346,11 @@ impl PullBuilder {
         let rel = self.last_ms - self.start_ms;
         if let Some(p) = self.players.get_mut(adv.info_guid) {
             p.pos = Some((adv.x, adv.y, rel));
+            if self.cutoff_t.is_none() {
+                if let Some(r) = self.rules.as_mut().filter(|r| r.wants_positions()) {
+                    r.on_player_pos(adv.info_guid, adv.x, adv.y, rel);
+                }
+            }
             p.last_hp_pct = Some(pct);
             p.max_hp = Some(adv.max_hp);
             if p.hp_hist.back().is_none_or(|&(t, v)| t != rel || v != pct) {
@@ -786,8 +794,9 @@ impl PullBuilder {
     }
 
     fn cast(&mut self, f: &[&str], t: i64, data: &GameData) {
-        if let Some(adv) = advanced_at(f, 12) {
-            self.track_advanced(&adv, f);
+        let adv = advanced_at(f, 12);
+        if let Some(adv) = &adv {
+            self.track_advanced(adv, f);
         }
         let (src_guid, src_name, src_flags) = (f[1], f[2], hex(f[3]));
         let spell_id: u32 = f.get(9).and_then(|v| v.parse().ok()).unwrap_or(0);
@@ -801,6 +810,9 @@ impl PullBuilder {
             }
             if let Some(r) = self.rules.as_mut() {
                 r.on_enemy_cast(spell_id, src_guid, src_name, rel);
+                if let Some(a) = adv.as_ref().filter(|a| a.info_guid == src_guid) {
+                    r.on_enemy_cast_at(spell_id, src_guid, npc_id(src_guid), a.x, a.y, a.facing, rel);
+                }
             }
             let e = self.enemy_spells.entry(spell_id).or_default();
             e.name = spell_name;

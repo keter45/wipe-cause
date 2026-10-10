@@ -3,6 +3,7 @@
 pub mod analysis;
 pub mod data;
 pub mod i18n;
+pub mod orbs;
 pub mod peek;
 pub mod report;
 pub mod rotation;

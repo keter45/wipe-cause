@@ -125,3 +125,38 @@ describe('paradas sem repetição', () => {
     expect(v.windows.map((w) => w.name)).toEqual(['Big Slam']);
   });
 });
+
+describe('abertura dos tops no boss', () => {
+  const seq = [{ spellId: 31884, name: 'Avenging Wrath' }, { spellId: 255937, name: 'Wake of Ashes' }, { spellId: 383328, name: 'Final Verdict' }];
+  const withOpener = (actual: { spellId: number; name: string }[]) => ({
+    ...me,
+    rotation: rotation({ tree: 'Herald of the Sun', opener: { expected: [], actual, missing: [], ok: true } }),
+  });
+  const b = (support: number) => bench({ openers: { 'Herald of the Sun': { n: 8, support, seq }, Templar: { n: 3, support: 1, seq: [] } } });
+
+  it('a da árvore do player, com o que faltou nos primeiros casts dele', () => {
+    const v = compareWithTops(fight, withOpener([seq[0], seq[2]]), b(0.75))!;
+    expect(v.opener).toMatchObject({ tree: 'Herald of the Sun', n: 8, support: 0.75 });
+    expect(v.opener!.missing).toEqual([seq[1]]);
+    expect(compareWithTops(fight, withOpener(seq), b(0.75))!.opener!.missing).toEqual([]);
+  });
+
+  it('tops variando demais no boss: mostra, mas não cobra', () => {
+    expect(compareWithTops(fight, withOpener([]), b(0.2))!.opener!.missing).toBeNull();
+  });
+
+  it('sem a árvore do player nos dados: nada', () => {
+    const other = { ...me, rotation: rotation({ tree: 'Lightsmith' }) };
+    expect(compareWithTops(fight, other, b(0.75))!.opener).toBeNull();
+  });
+});
+
+describe('outra dificuldade', () => {
+  it('pull de outra dificuldade: sem abertura, paradas e defensivos; o resto continua', () => {
+    const heroic = { ...fight, difficultyId: 15 };
+    const v = compareWithTops(heroic, me, bench({ difficultyId: 16 }))!;
+    expect(v.otherDifficulty).toBe(true);
+    expect([v.windows, v.defensives, v.opener]).toEqual([[], [], null]);
+    expect(v.checks).toEqual({ always_be_casting: 0.98 });
+  });
+});
