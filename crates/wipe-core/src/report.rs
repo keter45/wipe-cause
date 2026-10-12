@@ -300,6 +300,12 @@ pub struct PlayerStats {
     pub damage_timeline: Vec<i64>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub healing_timeline: Vec<i64>,
+    /// healer: overheal por habilidade, maiores primeiro
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub overheal_by_spell: Vec<SpellAmount>,
+    /// healer: mana % por janela de 5s, até o corte
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub mana_timeline: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize)]

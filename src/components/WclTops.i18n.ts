@@ -10,6 +10,9 @@ export const wclTopsMsg = defineMessages(
     searching: 'Buscando os tops da spec no Warcraft Logs…',
     searchAgain: 'buscar de novo',
     changeClient: 'trocar client',
+    compSearching: 'Buscando no Warcraft Logs kills de outras guildas com composição de healers parecida…',
+    compNone: (checked: number) => `Nenhum dos ${checked} logs conferidos tem pelo menos 70% da nossa composição de healers.`,
+    compFound: (n: number, checked: number, ours: string) => `${n} de ${checked} logs conferidos com composição parecida com a nossa (${ours}).`,
     who: { you: 'Você', ref: 'Referência', both: 'Lado a lado', profile: 'Perfil' },
     site: {
       raiderio: (name: string) => `Raider.IO (${name})`,
@@ -25,6 +28,9 @@ export const wclTopsMsg = defineMessages(
     searching: "Searching Warcraft Logs for the spec's tops…",
     searchAgain: 'search again',
     changeClient: 'change client',
+    compSearching: 'Searching Warcraft Logs for kills from other guilds with a similar healer composition…',
+    compNone: (checked: number) => `None of the ${checked} logs checked has at least 70% of our healer composition.`,
+    compFound: (n: number, checked: number, ours: string) => `${n} of ${checked} logs checked with a composition similar to ours (${ours}).`,
     who: { you: 'You', ref: 'Reference', both: 'Side by side', profile: 'Profile' },
     site: {
       raiderio: (name: string) => `Raider.IO (${name})`,

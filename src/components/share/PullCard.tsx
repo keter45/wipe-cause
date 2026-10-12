@@ -57,7 +57,7 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
                   <li key={i} className={f.severity}>
                     {f.spellId != null && <SpellIcon spellId={f.spellId} size={16} />}{' '}
                     <strong>
-                      <Colored text={f.title} />
+                      <Colored text={f.title} plainStart={f.spellId != null} />
                     </strong>
                     {f.detail && (
                       <span>

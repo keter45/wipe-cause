@@ -104,6 +104,9 @@ export interface PlayerStats {
   /** dano / cura por janela de 5s (pets somados), até o corte; análises antigas não têm */
   damageTimeline?: number[];
   healingTimeline?: number[];
+  /** healer: overheal por habilidade e mana % por janela de 5s (análises antigas não têm) */
+  overhealBySpell?: SpellAmount[];
+  manaTimeline?: number[];
 }
 
 export interface SpellCasts {
@@ -419,7 +422,8 @@ export interface RotationResult {
   /** buffs curtos que o player pôs em si mesmo (procs, janelas de cooldown) */
   buffs?: BuffTrace[];
   /** buffs no player e debuffs dele nos inimigos mantidos boa parte da luta (fração do tempo vivo) */
-  uptimes?: { id: number; name: string; kind: 'buff' | 'debuff'; uptime: number; byRotation: number }[];
+  /** "ally": buff do healer em gente da raid (Atonement, Beacon, HoTs); `targets` = alvos ao mesmo tempo, em média */
+  uptimes?: { id: number; name: string; kind: 'buff' | 'debuff' | 'ally'; uptime: number; byRotation: number; targets?: number }[];
   /** inimigos diferentes acertados em cada trecho de 2s (alvo único x AoE) */
   targets?: number[];
 }

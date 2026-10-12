@@ -1,0 +1,111 @@
+# Discipline Priest — o que a spec pede (Midnight Season 2, patch 12.1). Healer não tem rotação fixa:
+# aqui ficam os cooldowns, os procs, a preparação de Atonement e o que o Disc mantém, que dá para
+# cobrar sem depender do dano. Escrita a partir do guia de cura do Wowhead; os textos são nossos.
+# Conferida nos logs de referência (samples/rotation/priest-discipline/refs, regras em
+# docs/healer-analysis.md), não nos tops.
+spec: 256
+name: Discipline Priest
+patch: "12.1"
+role: healer
+sources:
+  - title: Wowhead — Discipline Priest Healing Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/priest/discipline/rotation-cooldowns-pve-healer
+
+key_points:
+  - { pt: "Atonement antes do dano: Evangelism (que já lança um Power Word: Radiance e deixa os dois próximos instantâneos) uns 8 segundos antes, e logo depois o dano que vira cura.", en: "Atonement before the damage: Evangelism (which casts a Power Word: Radiance and makes the next two instant) about 8 seconds before, then the damage that turns into healing." }
+  - { pt: "Entre os cooldowns, 5 a 10 Atonements na raid com Power Word: Radiance, Void Shield e Flash Heal com Surge of Light.", en: "Between cooldowns, 5 to 10 Atonements on the raid with Power Word: Radiance, Void Shield and Flash Heal with Surge of Light." }
+  - { pt: "Mind Blast no cooldown (gera Void Shield e fortalece o próximo Penance); Penance sem estourar cargas; Void Shield sempre que estiver pronto.", en: "Mind Blast on cooldown (grants Void Shield and empowers the next Penance); Penance without capping charges; Void Shield whenever it's ready." }
+  - { pt: "Shadow Word: Pain mantido; Smite (ou Void Blast) no tempo livre.", en: "Keep Shadow Word: Pain up; Smite (or Void Blast) in downtime." }
+  - { pt: "Ultimate Penitence separado do Evangelism, para cobrir mais momentos de dano.", en: "Ultimate Penitence separate from Evangelism, to cover more damage moments." }
+
+hero_trees:
+  - key: voidweaver
+    name: Voidweaver
+    markers: [450215, 450193] # Void Blast, Entropic Rift
+  - key: oracle
+    name: Oracle
+    markers: [] # quem não usa Void Blast
+
+abilities:
+  evangelism: { id: 472433, name: Evangelism, cooldown_ms: 90000 }
+  ultimate_penitence: { id: 421453, name: Ultimate Penitence, cooldown_ms: 240000, optional: true }
+  power_infusion: { id: 10060, name: Power Infusion, cooldown_ms: 120000, optional: true }
+  mind_blast: { id: 8092, name: Mind Blast, cooldown_ms: 9000, cast_ms: 1500 }
+  penance: { id: 47540, name: Penance, cooldown_ms: 9000, channel_ms: 2000, alt_ids: [400169] }
+  void_shield: { id: 1253593, name: Void Shield, cooldown_ms: 7500 }
+  power_word_radiance: { id: 194509, name: "Power Word: Radiance", cast_ms: 2000 }
+  power_word_shield: { id: 17, name: "Power Word: Shield" }
+  flash_heal: { id: 2061, name: Flash Heal, cast_ms: 1500 }
+  smite: { id: 585, name: Smite, cast_ms: 1500 }
+  void_blast: { id: 450215, name: Void Blast, alt_ids: [450405], tree: voidweaver }
+  shadow_word_pain: { id: 589, name: "Shadow Word: Pain" }
+  shadow_word_death: { id: 32379, name: "Shadow Word: Death" }
+
+buffs:
+  power_of_the_dark_side: { id: 198069, name: Power of the Dark Side }
+  surge_of_light: { id: 114255, name: Surge of Light }
+  atonement: { id: 194384, name: Atonement }
+  shadow_word_pain: { id: 589, name: "Shadow Word: Pain" }
+
+checks:
+  - kind: downtime
+    id: idle_with_injured
+    gcd_ms: 1500
+    min_gap_ms: 1000
+    importance: high
+    title: { pt: "Parado com gente ferida", en: "Idle while people were hurt" }
+    tip: { pt: "Com alguém abaixo de 80% de vida, sempre um GCD rodando: o dano do Disc (Smite, Penance, Mind Blast) também é cura pelo Atonement.", en: "With someone below 80% health, always have a GCD rolling: Disc damage (Smite, Penance, Mind Blast) is healing too through Atonement." }
+  - kind: ally_uptime
+    id: atonement
+    aura: atonement
+    min_targets: 8
+    importance: medium
+    title: { pt: "Poucos Atonements na raid", en: "Few Atonements on the raid" }
+    tip: { pt: "A referência mantém 10 a 13 Atonements em média: Power Word: Radiance no cooldown, Void Shield e Flash Heal com Surge of Light. O dano só cura quem tem Atonement.", en: "The reference keeps 10 to 13 Atonements on average: Power Word: Radiance on cooldown, Void Shield and Flash Heal with Surge of Light. Damage only heals those with Atonement." }
+  - kind: dot_uptime
+    id: shadow_word_pain
+    debuff: shadow_word_pain
+    min_uptime: 0.85
+    importance: low
+    title: { pt: "Shadow Word: Pain fora do alvo", en: "Shadow Word: Pain off the target" }
+    tip: { pt: "Shadow Word: Pain no alvo: renove quando faltar menos de 20 segundos (o Penance espalha).", en: "Shadow Word: Pain on the target: refresh with less than 20 seconds left (Penance spreads it)." }
+  - kind: proc
+    id: power_of_the_dark_side
+    buff: power_of_the_dark_side
+    spenders: [penance]
+    # o buff sai no fim do canal do Penance, ~1 s depois do cast
+    channel: { spell: penance, ms: 2500 }
+    importance: medium
+    title: { pt: "Power of the Dark Side perdido", en: "Power of the Dark Side lost" }
+    tip: { pt: "Power of the Dark Side fortalece o próximo Penance: use antes de acabar.", en: "Power of the Dark Side empowers the next Penance: use it before it expires." }
+  - kind: proc
+    id: surge_of_light
+    buff: surge_of_light
+    spenders: [flash_heal]
+    importance: low
+    title: { pt: "Surge of Light perdido", en: "Surge of Light lost" }
+    tip: { pt: "Surge of Light deixa o Flash Heal instantâneo e de graça: é o Atonement mais barato.", en: "Surge of Light makes Flash Heal instant and free: it's the cheapest Atonement." }
+  - kind: after_cast
+    id: evangelism_then_damage
+    casts: [evangelism]
+    after: [penance, mind_blast, void_blast, smite]
+    within_ms: 10000
+    followed_by: true
+    importance: medium
+    title: { pt: "Evangelism sem dano depois", en: "Evangelism with no damage after" }
+    tip: { pt: "O Evangelism espalha Atonement para o dano virar cura: logo depois, Mind Blast, Penance e Void Blast.", en: "Evangelism spreads Atonement so damage turns into healing: right after, Mind Blast, Penance and Void Blast." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [evangelism, ultimate_penitence]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Evangelism e Ultimate Penitence o máximo de vezes que a luta deixar, em momentos de dano diferentes.", en: "Evangelism and Ultimate Penitence as many times as the fight allows, at different damage moments." }
+  - kind: cooldown
+    id: short_cooldowns
+    # Mind Blast fica de fora: nem a referência usa no cooldown (mediana 63%, Void Blast disputa o GCD)
+    spells: [penance, void_shield]
+    min_usage: 0.7
+    importance: low
+    title: { pt: "Penance ou Void Shield parado", en: "Penance or Void Shield sitting" }
+    tip: { pt: "Penance sem estourar as cargas e Void Shield sempre que estiver pronto.", en: "Penance without capping charges and Void Shield whenever it's ready." }

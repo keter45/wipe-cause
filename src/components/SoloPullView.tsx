@@ -10,8 +10,10 @@ import { specLabel } from '../lib/specs';
 import { scoreTone } from '../lib/score';
 import { PlayAt } from './VideoPanel';
 import { SpellIcon } from './SpellIcon';
-import { PlayerName } from './Names';
+import { Colored, PlayerName, useMentionsSpell } from './Names';
 import { RotationPanel, uniqueSeconds } from './RotationPanel';
+import { HealerPanel } from './HealerPanel';
+import { compareHealer } from '../lib/healer';
 import { compareWithTops, type BenchView } from '../lib/bench';
 import { killParseOf, ownPreviousParses } from '../lib/wclParses';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -113,6 +115,17 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
   const mechs = myMechanicFailures(me);
   const mechCount = mechs.reduce((n, m) => n + m.player.count, 0);
   const r = me.player.rotation;
+  const healerCmp = useMemo(() => (healer ? compareHealer(me.pull, me.player) : null), [healer, me]);
+  const healerRef = healerCmp?.context.hps ?? null;
+  const problems = r ? r.findings.filter((f) => f.count > 0 && f.id !== 'cooldowns').length : 0;
+  const tabs: { key: SoloTab; label: string; count?: number; tone?: string }[] = [
+    { key: 'mechanics', label: t.tabs.mechanics, count: mechCount + deaths.length, tone: deaths.length || mechCount > 2 ? 'bad' : 'warn' },
+    { key: 'main', label: healer ? t.tabs.healing : t.tabs.rotation, count: (healerCmp?.tips.length ?? 0) + problems, tone: 'warn' },
+    { key: 'cooldowns', label: t.tabs.cooldowns },
+    ...(r ? [{ key: 'guide' as const, label: t.tabs.guide }] : []),
+  ];
+  // abre onde há o que ver: mecânica errada primeiro, senão a cura/rotação
+  const [tab, setTab] = useState<SoloTab>(mechCount + deaths.length > 0 ? 'mechanics' : 'main');
 
   return (
     <div className="solo">
@@ -129,50 +142,99 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
         />
       </div>
 
-      <div className="death-stats perf-stats">
-        <div className="stat">
-          <span className="stat-label">{t.perSecondAlive(healer)}</span>
-          <strong className={diff != null && diff <= -15 ? 'bad' : diff != null && diff < -3 ? 'warn' : ''}>
-            {num(out)} {diff != null && <span className="small">({diff >= 0 ? '+' : ''}{diff.toFixed(0)}%)</span>}
-          </strong>
-          <span className="muted small">{ref ? `${refLabel}: ${num(refOut)}` : t.noReference}</span>
-          {parse != null && (
-            <span className="muted small">
-              {t.parseLine(parse)}
-              {own.previous && t.parseVsOwn(own.previous.percent, own.avg ?? own.previous.percent, own.kills)}
-            </span>
-          )}
-        </div>
-        <div className="stat">
-          <span className="stat-label">{t.rotation}</span>
-          <strong>{r ? <span className={`score-pill ${scoreTone(r.score)}`}>{r.score}</span> : <span className="muted">{t.underConstruction}</span>}</strong>
-          <span className="muted small">{r ? t.idle(mmss(r.downtimeMs)) : specLabel(me.player.specId)}</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">{t.survival}</span>
-          <strong className={deaths.length ? 'bad' : ''}>{deaths.length ? t.diedAt(mmss(deaths[0].death.t)) : t.aliveToEnd}</strong>
-          <span className="muted small">{t.resultIn(me.pull.success, mmss(me.pull.durationMs))}</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">{t.mechErrors}</span>
-          <strong className={mechCount ? 'warn' : ''}>{mechCount}</strong>
-          <span className="muted small">{me.pull.rulesFile ? t.onlyYours : t.noRules}</span>
-        </div>
+      <div className="solo-kpis">
+        <Kpi
+          tone={healer ? 'neutral' : diff == null ? 'neutral' : diff <= -15 ? 'bad' : diff < -3 ? 'warn' : 'good'}
+          // healer: o mesmo HPS da luta que a referência usa (cura efetiva no tempo analisado)
+          label={healer && healerCmp ? t.hpsEffective : t.perSecondAlive(healer)}
+          value={num(healer && healerCmp ? healerCmp.context.you.hps : out)}
+          delta={!healer && diff != null ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : undefined}
+          sub={
+            // healer: a referência é a dos logs de fora (nunca um colega da raid); o HPS não é nota
+            healer
+              ? healerRef
+                ? t.refMedian(num(healerRef.median))
+                : t.noReference
+              : ref
+                ? `${refLabel}: ${num(refOut)}`
+                : t.noReference
+          }
+          extra={parse != null ? t.parseLine(parse) + (own.previous ? t.parseVsOwn(own.previous.percent, own.avg ?? own.previous.percent, own.kills) : '') : undefined}
+        />
+        <Kpi
+          tone={r ? ({ good: 'good', mid: 'warn', bad: 'bad' } as const)[scoreTone(r.score)] : 'neutral'}
+          label={t.rotation}
+          value={r ? String(r.score) : t.underConstruction}
+          sub={r ? t.idle(mmss(r.downtimeMs)) : specLabel(me.player.specId)}
+        />
+        <Kpi
+          tone={deaths.length ? 'bad' : 'good'}
+          label={t.survival}
+          value={deaths.length ? t.diedAt(mmss(deaths[0].death.t)) : t.aliveToEnd}
+          sub={t.resultIn(me.pull.success, mmss(me.pull.durationMs))}
+        />
+        <Kpi
+          tone={!me.pull.rulesFile ? 'neutral' : mechCount === 0 ? 'good' : mechCount <= 2 ? 'warn' : 'bad'}
+          label={t.mechErrors}
+          value={String(mechCount)}
+          sub={me.pull.rulesFile ? t.onlyYours : t.noRules}
+        />
       </div>
-
-      <p className="muted small solo-more">{t.moreInComparison}</p>
 
       <NextPull losses={ls} unit={unit} seek={seek} />
 
-      <Mechanics me={me} bench={bench} seek={seek} />
+      <div className="solo-tabs" role="tablist" aria-label={t.tabsAria}>
+        {tabs.map((x) => (
+          <button key={x.key} role="tab" aria-selected={tab === x.key} className={tab === x.key ? 'active' : ''} onClick={() => setTab(x.key)}>
+            {x.label}
+            {x.count != null && x.count > 0 && <span className={`tab-count ${x.tone ?? ''}`}>{x.count}</span>}
+          </button>
+        ))}
+      </div>
 
-      {r ? (
-        <RotationPanel rotation={r} bench={bench} boss={me.pull.encounterName} />
-      ) : (
-        <p className="rot-wip small">
-          <span className="chip">{t.wipChip}</span> {t.wipText(specLabel(me.player.specId))}
-        </p>
+      {tab === 'mechanics' && <Mechanics me={me} bench={bench} seek={seek} />}
+      {tab === 'main' && (
+        <>
+          {healer && <HealerPanel pull={me.pull} me={me.player} part="healing" />}
+          {r ? (
+            <RotationPanel rotation={r} bench={bench} boss={me.pull.encounterName} part="findings" />
+          ) : (
+            <p className="rot-wip small">
+              <span className="chip">{t.wipChip}</span> {t.wipText(specLabel(me.player.specId))}
+            </p>
+          )}
+        </>
       )}
+      {tab === 'cooldowns' && (
+        <>
+          {healer && <HealerPanel pull={me.pull} me={me.player} part="cooldowns" />}
+          {r && <RotationPanel rotation={r} bench={bench} boss={me.pull.encounterName} part="cooldowns" />}
+        </>
+      )}
+      {tab === 'guide' && r && <RotationPanel rotation={r} bench={bench} boss={me.pull.encounterName} part="guide" />}
+    </div>
+  );
+}
+
+type SoloTab = 'mechanics' | 'main' | 'cooldowns' | 'guide';
+
+/**
+ * Um número do resumo com a cor do que ele significa: verde bom, amarelo atenção, vermelho ruim,
+ * cinza só contexto (o HPS do healer não é nota).
+ */
+function Kpi({ tone, label, value, delta, sub, extra }: { tone: 'good' | 'warn' | 'bad' | 'neutral'; label: string; value: string; delta?: string; sub?: string; extra?: string }) {
+  return (
+    <div className={`kpi tone-${tone}`}>
+      <span className="kpi-label">
+        <span className="kpi-dot" aria-hidden />
+        {label}
+      </span>
+      <strong className="kpi-value tabular">
+        {value}
+        {delta && <span className="kpi-delta">{delta}</span>}
+      </strong>
+      {sub && <span className="muted small">{sub}</span>}
+      {extra && <span className="muted small">{extra}</span>}
     </div>
   );
 }
@@ -193,6 +255,7 @@ const LOSS_ICON: Partial<Record<Loss['kind'], typeof Skull>> = { death: Skull, m
 
 function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; seek: ((t: number) => void) | null }) {
   const t = useMessages(soloPullMsg);
+  const mentions = useMentionsSpell();
   const [all, setAll] = useState(false);
   if (ls.length === 0)
     return (
@@ -211,15 +274,21 @@ function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; se
         {shown.map((l, i) => {
           const Icon = LOSS_ICON[l.kind];
           return (
-            <li key={l.key} className={`solo-loss ${i < 3 ? 'top' : ''}`}>
+            <li key={l.key} className={`solo-loss ${i < 3 ? 'top' : ''} cost-${l.weightSec >= 25 ? 'high' : l.weightSec >= 8 ? 'mid' : 'low'}`}>
               <span className="solo-rank tabular">{i + 1}</span>
               <div>
                 <div className="solo-loss-title">
-                  {l.spellId != null ? <SpellIcon spellId={l.spellId} size={18} /> : Icon && <Icon size={16} strokeWidth={1.5} aria-hidden />}
-                  <strong>{l.title}</strong>
+                  {l.spellId != null ? !mentions(l.title) && <SpellIcon spellId={l.spellId} size={18} /> : Icon && <Icon size={16} strokeWidth={1.5} aria-hidden />}
+                  <strong>
+                    <Colored text={l.title} />
+                  </strong>
                   <span className="muted small">{l.lost != null ? t.lost(num(l.lost), unit === 'HPS', Math.round(l.weightSec), unit) : costLabel(l)}</span>
                 </div>
-                {l.tip && <p className="muted small">{l.tip}</p>}
+                {l.tip && (
+                  <p className="muted small">
+                    <Colored text={l.tip} />
+                  </p>
+                )}
                 {l.times.length > 0 && (
                   <span className="chips solo-times">
                     {uniqueSeconds(l.times)
@@ -288,7 +357,11 @@ function Mechanics({ me, bench, seek }: { me: Sample; bench: BenchView | null; s
           {m.spellId != null ? <SpellIcon spellId={m.spellId} size={18} /> : <ShieldAlert size={16} strokeWidth={1.5} aria-hidden />}
           <div>
             <strong>{m.name}</strong> <span className="muted small">{trLoc(p.message) || t.errors(p.count)}</span>
-            {trLoc(m.tip) && <p className="muted small">{trLoc(m.tip)}</p>}
+            {trLoc(m.tip) && (
+              <p className="muted small">
+                <Colored text={trLoc(m.tip)} />
+              </p>
+            )}
           </div>
           {(times[0] ?? p.firstT) != null && <At t={(times[0] ?? p.firstT)!} seek={seek} />}
         </div>
@@ -299,7 +372,7 @@ function Mechanics({ me, bench, seek }: { me: Sample; bench: BenchView | null; s
           <ul className="plain bench-list small">
             {defs.map((d) => (
               <li key={d.spellId}>
-                <SpellIcon spellId={d.spellId} size={16} /> {t.defensive(d.name, Math.round(d.share * 100))} ({d.spells.map((x) => x.name).join(', ')}).{' '}
+                <Colored text={`${t.defensive(d.name, Math.round(d.share * 100))} (${d.spells.map((x) => x.name).join(', ')}).`} />{' '}
                 <span className={d.used < d.of / 2 ? 'warn' : 'muted'}>{t.defYou(d.used, d.of)}</span>
               </li>
             ))}

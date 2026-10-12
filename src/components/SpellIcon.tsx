@@ -19,13 +19,15 @@ interface Props {
   kind?: TooltipKind;
   /** nome do ícone já conhecido (ex.: talentos): não busca o tooltip */
   icon?: string | null;
+  /** nome da habilidade no tooltip, onde só cabe o ícone (marcas da linha do tempo) */
+  title?: string;
 }
 
 /**
  * Ícone da habilidade (Wowhead), carregado só quando entra na tela. Enquanto carrega, ou se o
  * spell não existe no Wowhead, fica um quadrado neutro do mesmo tamanho (sem pulo de layout).
  */
-export function SpellIcon({ spellId, size = 18, kind = 'spell', icon }: Props) {
+export function SpellIcon({ spellId, size = 18, kind = 'spell', icon, title }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
   const eager = useContext(EagerIcons);
   const [visible, setVisible] = useState(eager);
@@ -50,20 +52,22 @@ export function SpellIcon({ spellId, size = 18, kind = 'spell', icon }: Props) {
   }, [visible, special]);
 
   const style = { width: size, height: size };
+  // com `title` o ícone é o nome (leitor de tela e tooltip); sem, é enfeite ao lado do nome escrito
+  const a11y = title ? { role: 'img', 'aria-label': title, title } : { 'aria-hidden': true };
   if (spellId === MELEE)
     return (
-      <span className="spell-icon glyph" style={style} aria-hidden>
+      <span className="spell-icon glyph" style={style} {...a11y}>
         <Swords size={size - 6} strokeWidth={1.75} />
       </span>
     );
   if (spellId === ENVIRONMENT)
     return (
-      <span className="spell-icon glyph" style={style} aria-hidden>
+      <span className="spell-icon glyph" style={style} {...a11y}>
         <Mountain size={size - 6} strokeWidth={1.75} />
       </span>
     );
   return (
-    <span ref={ref} className="spell-icon" style={style} aria-hidden>
+    <span ref={ref} className={`spell-icon${title ? ' has-tip' : ''}`} style={style} {...a11y}>
       {iconName && (
         <img src={iconUrl(iconName)} alt="" width={size} height={size} loading={eager ? 'eager' : 'lazy'} decoding="async" crossOrigin="anonymous" />
       )}

@@ -1,0 +1,86 @@
+# Mistweaver Monk — o que a spec pede (Midnight Season 2, patch 12.1). Healer não tem rotação fixa:
+# aqui ficam os cooldowns, os procs e o Renewing Mist mantido na raid, que dá para cobrar sem depender
+# do dano. Escrita a partir do guia de cura do Wowhead; os textos são nossos. Conferida nos logs de
+# referência (samples/rotation/monk-mistweaver/refs, regras em docs/healer-analysis.md), não nos tops.
+spec: 270
+name: Mistweaver Monk
+patch: "12.1"
+role: healer
+sources:
+  - title: Wowhead — Mistweaver Monk Healing Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/monk/mistweaver/rotation-cooldowns-pve-healer
+
+key_points:
+  - { pt: "Rushing Wind Kick no cooldown: estende os Renewing Mist da raid (Rising Mist).", en: "Rushing Wind Kick on cooldown: it extends the Renewing Mists on the raid (Rising Mist)." }
+  - { pt: "Renewing Mist sem estourar as cargas: muita gente com Renewing Mist deixa o Vivify curar a raid toda.", en: "Renewing Mist without capping charges: many people with Renewing Mist lets Vivify heal the whole raid." }
+  - { pt: "Thunder Focus Tea no cooldown (no Renewing Mist); Mana Tea sem estourar as 20 cargas.", en: "Thunder Focus Tea on cooldown (into Renewing Mist); Mana Tea without capping its 20 stacks." }
+  - { pt: "Strength of the Black Ox vai num Enveloping Mist em quem está tomando dano.", en: "Strength of the Black Ox goes into an Enveloping Mist on someone taking damage." }
+  - { pt: "Revival, Invoke Yu'lon e Celestial Conduit nos momentos de dano; Life Cocoon em quem ia morrer.", en: "Revival, Invoke Yu'lon and Celestial Conduit at damage moments; Life Cocoon on whoever was about to die." }
+
+hero_trees:
+  - key: conduit_of_the_celestials
+    name: Conduit of the Celestials
+    markers: [443028] # Celestial Conduit
+  - key: master_of_harmony
+    name: Master of Harmony
+    markers: [] # quem não usa Celestial Conduit
+
+abilities:
+  revival: { id: 115310, name: Revival, cooldown_ms: 180000, alt_ids: [388615] }
+  invoke_yulon: { id: 322118, name: "Invoke Yu'lon, the Jade Serpent", cooldown_ms: 120000, alt_ids: [325197] }
+  celestial_conduit: { id: 443028, name: Celestial Conduit, cooldown_ms: 90000, tree: conduit_of_the_celestials }
+  thunder_focus_tea: { id: 116680, name: Thunder Focus Tea, cooldown_ms: 30000 }
+  rushing_wind_kick: { id: 467307, name: Rushing Wind Kick, cooldown_ms: 10000, alt_ids: [107428, 1269159] }
+  renewing_mist: { id: 115151, name: Renewing Mist, cooldown_ms: 9000 }
+  vivify: { id: 116670, name: Vivify, cast_ms: 1500 }
+  enveloping_mist: { id: 124682, name: Enveloping Mist, cast_ms: 2000 }
+  mana_tea: { id: 115294, name: Mana Tea }
+
+buffs:
+  strength_of_the_black_ox: { id: 443112, name: Strength of the Black Ox }
+  vivacious_vivification: { id: 392883, name: Vivacious Vivification }
+  renewing_mist: { id: 119611, name: Renewing Mist }
+
+checks:
+  - kind: downtime
+    id: idle_with_injured
+    gcd_ms: 1500
+    min_gap_ms: 1000
+    importance: high
+    title: { pt: "Parado com gente ferida", en: "Idle while people were hurt" }
+    tip: { pt: "Com alguém abaixo de 80% de vida, sempre um GCD rodando: Renewing Mist, Rushing Wind Kick, Vivify.", en: "With someone below 80% health, always have a GCD rolling: Renewing Mist, Rushing Wind Kick, Vivify." }
+  - kind: ally_uptime
+    id: renewing_mist
+    aura: renewing_mist
+    min_targets: 9
+    importance: medium
+    title: { pt: "Poucos Renewing Mist na raid", en: "Few Renewing Mists on the raid" }
+    tip: { pt: "A referência mantém 11 a 16 Renewing Mist em média: sem estourar cargas e com Rushing Wind Kick para estender. O Vivify cura todo mundo que tem Renewing Mist.", en: "The reference keeps 11 to 16 Renewing Mists on average: without capping charges and with Rushing Wind Kick to extend. Vivify heals everyone with Renewing Mist." }
+  - kind: proc
+    id: strength_of_the_black_ox
+    buff: strength_of_the_black_ox
+    spenders: [enveloping_mist]
+    importance: medium
+    title: { pt: "Strength of the Black Ox perdido", en: "Strength of the Black Ox lost" }
+    tip: { pt: "Strength of the Black Ox deixa o Enveloping Mist forte e com escudo na raid: use em quem está tomando dano.", en: "Strength of the Black Ox makes Enveloping Mist strong and shields the raid: use it on someone taking damage." }
+  - kind: proc
+    id: vivacious_vivification
+    buff: vivacious_vivification
+    spenders: [vivify]
+    importance: low
+    title: { pt: "Vivacious Vivification perdido", en: "Vivacious Vivification lost" }
+    tip: { pt: "Vivacious Vivification deixa o próximo Vivify instantâneo.", en: "Vivacious Vivification makes the next Vivify instant." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [revival, invoke_yulon, celestial_conduit, thunder_focus_tea]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Revival, Invoke Yu'lon e Celestial Conduit nos momentos de dano; Thunder Focus Tea no cooldown.", en: "Revival, Invoke Yu'lon and Celestial Conduit at damage moments; Thunder Focus Tea on cooldown." }
+  - kind: cooldown
+    id: short_cooldowns
+    spells: [rushing_wind_kick, renewing_mist]
+    min_usage: 0.7
+    importance: low
+    title: { pt: "Rushing Wind Kick ou Renewing Mist parado", en: "Rushing Wind Kick or Renewing Mist sitting" }
+    tip: { pt: "Rushing Wind Kick e Renewing Mist no cooldown.", en: "Rushing Wind Kick and Renewing Mist on cooldown." }

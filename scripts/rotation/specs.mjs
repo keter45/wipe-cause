@@ -1,4 +1,4 @@
-// Specs de DPS: id do jogo, nomes no SimulationCraft, no Warcraft Logs e o arquivo em rotations/.
+// Specs de DPS e de cura: id do jogo, nomes no SimulationCraft, no Warcraft Logs e o arquivo em rotations/.
 
 const LIST = [
   ['deathknight', 'frost', 251, 'DeathKnight', 'Frost', 'Frost Death Knight'],
@@ -30,7 +30,20 @@ const LIST = [
   ['warrior', 'fury', 72, 'Warrior', 'Fury', 'Fury Warrior'],
 ];
 
-export const SPECS = LIST.map(([cls, spec, id, wclClass, wclSpec, name]) => ({
+// Healers: comparados com logs de referência (composição parecida, sem só o topo do ranking), não com
+// os tops; ver docs/healer-analysis.md. Ficam fora do fluxo dos DPS (refresh, tops-all).
+const HEALERS = [
+  ['druid', 'restoration', 105, 'Druid', 'Restoration', 'Restoration Druid'],
+  ['paladin', 'holy', 65, 'Paladin', 'Holy', 'Holy Paladin'],
+  ['priest', 'discipline', 256, 'Priest', 'Discipline', 'Discipline Priest'],
+  ['priest', 'holy', 257, 'Priest', 'Holy', 'Holy Priest'],
+  ['shaman', 'restoration', 264, 'Shaman', 'Restoration', 'Restoration Shaman'],
+  ['monk', 'mistweaver', 270, 'Monk', 'Mistweaver', 'Mistweaver Monk'],
+  ['evoker', 'preservation', 1468, 'Evoker', 'Preservation', 'Preservation Evoker'],
+];
+
+const toSpec = (role) => ([cls, spec, id, wclClass, wclSpec, name]) => ({
+  role,
   id,
   cls,
   spec,
@@ -41,12 +54,15 @@ export const SPECS = LIST.map(([cls, spec, id, wclClass, wclSpec, name]) => ({
   specLabel: name.replace(/ (Death Knight|Demon Hunter|Druid|Evoker|Hunter|Mage|Monk|Paladin|Priest|Rogue|Shaman|Warlock|Warrior)$/, ''),
   simc: `${cls}_${spec}`,
   file: `${cls}-${spec.replace(/_/g, '-')}`,
-}));
+});
+
+export const SPECS = LIST.map(toSpec('dps'));
+export const HEALER_SPECS = HEALERS.map(toSpec('healer'));
 
 /** "unholy", "deathknight-unholy", "deathknight_unholy" ou "252". */
 export function findSpec(key) {
   const k = String(key ?? '').toLowerCase();
-  const hits = SPECS.filter((s) => String(s.id) === k || s.file === k || s.simc === k || s.spec === k || s.spec.replace(/_/g, '-') === k);
+  const hits = [...SPECS, ...HEALER_SPECS].filter((s) => String(s.id) === k || s.file === k || s.simc === k || s.spec === k || s.spec.replace(/_/g, '-') === k);
   if (hits.length === 1) return hits[0];
   if (hits.length > 1) throw new Error(`"${key}" é ambíguo: ${hits.map((s) => s.file).join(', ')}`);
   throw new Error(`spec desconhecida: "${key}" (ex.: ${SPECS.slice(0, 3).map((s) => s.file).join(', ')})`);

@@ -3,8 +3,9 @@ import { ExternalLink, Settings2, Trophy } from 'lucide-react';
 import type { Pull } from '../types';
 import { inTauri, openExternal } from '../lib/api';
 import { shortName } from '../lib/format';
-import { fetchRankings, ownFight, pickTops, TOPS_SHOWN, withoutExternalPI, profileUrls, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl, type TopRanking, type WclFightRef, type WclView } from '../lib/wclApi';
+import { fetchRankings, healerCompCandidates, ownFight, pickTops, TOPS_SHOWN, withoutExternalPI, profileUrls, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl, type TopRanking, type WclFightRef, type WclView } from '../lib/wclApi';
 import { useSetup } from '../lib/setup';
+import { pullHealers } from '../lib/healer';
 import type { Sample } from '../lib/performance';
 import { messagesOf, useMessages } from '../i18n';
 import { wclTopsMsg } from './WclTops.i18n';
@@ -19,6 +20,8 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
   const configured = !!status?.wcl?.configured;
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  /** resultado da busca de healer (quantos logs passaram no filtro de composição) */
+  const [info, setInfo] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
   useEffect(() => {
@@ -44,11 +47,21 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
       </div>
     );
 
+  // healer: kills de outras guildas com composição de healers parecida (nunca os tops nem a nossa raid)
+  const healer = me.player.role === 'healer';
   async function search() {
     setBusy(true);
     setMsg(null);
+    setInfo(null);
     try {
-      const all = await fetchRankings(me.pull, me.player.specId!, me.player.role === 'healer');
+      if (healer) {
+        const ours = pullHealers(me.pull);
+        const { list, checked } = await healerCompCandidates(me.pull, me.player.specId!, ours);
+        setInfo(list.length ? t.compFound(list.length, checked, ours.join(', ')) : t.compNone(checked));
+        onTops(list);
+        return;
+      }
+      const all = await fetchRankings(me.pull, me.player.specId!, false);
       // o dobro de candidatos: os que receberam Power Infusion de outra pessoa saem
       const tops = await withoutExternalPI(pickTops(all, me.player.setup?.itemLevel ?? null, me.pull.success ? me.pull.durationMs : null, TOPS_SHOWN * 2), TOPS_SHOWN);
       if (tops.length === 0) setMsg(t.noParses);
@@ -64,7 +77,7 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
     <div className="wcl-tops">
       {busy ? (
         <span className="muted small">
-          <Trophy size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.searching}
+          <Trophy size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> {healer ? t.compSearching : t.searching}
         </span>
       ) : (
         <button className="link small" onClick={search}>
@@ -74,6 +87,7 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
       <button className="link small" onClick={() => openSettings('wcl')}>
         {t.changeClient}
       </button>
+      {info && <p className="small muted">{info}</p>}
       {msg && <p className="small bad">{msg}</p>}
     </div>
   );
