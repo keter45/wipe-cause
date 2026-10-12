@@ -27,7 +27,7 @@ import { WclApiForm } from './WclApiForm';
 import { FirstSteps } from './FirstSteps';
 import { StartupForm } from './StartupForm';
 import { WcrCloudForm } from './WcrCloudForm';
-import { LOCALES, messagesOf, setLocale, useLocale, useMessages, type Locale } from '../../i18n';
+import { LOCALES, messagesOf, setLocale, systemLocale, useLocaleChoice, useMessages, type LocaleChoice } from '../../i18n';
 import { settingsMsg } from './SettingsView.i18n';
 
 type Tone = 'ok' | 'todo' | 'off' | 'info';
@@ -317,11 +317,14 @@ function OnlyInApp() {
 
 /** Idioma do app (vale na hora, para todas as telas). */
 function LanguageSelect({ label }: { label: string }) {
-  const locale = useLocale();
+  const t = useMessages(settingsMsg);
+  const choice = useLocaleChoice();
+  const system = LOCALES.find((l) => l.value === systemLocale())?.label ?? '';
   return (
     <label className="set-lang">
       <span className="muted small">{label}</span>
-      <select className="select" value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
+      <select className="select" value={choice} onChange={(e) => setLocale(e.target.value as LocaleChoice)}>
+        <option value="system">{t.systemLanguage(system)}</option>
         {LOCALES.map((l) => (
           <option key={l.value} value={l.value}>
             {l.label}

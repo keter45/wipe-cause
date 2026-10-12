@@ -42,7 +42,7 @@ import { matchVideos } from './lib/wcr';
 import { raidOnly } from './lib/content';
 import { PlayerClassesContext, playerClasses } from './lib/players';
 import { SettingsView } from './components/settings/SettingsView';
-import { messagesOf, useLocale, useMessages } from './i18n';
+import { messagesOf, useLocale, useLocaleChoice, useMessages } from './i18n';
 import { appMsg } from './App.i18n';
 import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
 
@@ -82,10 +82,11 @@ function markOnboarded() {
 export default function App() {
   // trocar o idioma remonta as telas (textos montados em memória saem de novo), sem perder o log aberto
   const locale = useLocale();
+  const localeChoice = useLocaleChoice();
   useEffect(() => {
-    void setBackendLocale(locale);
+    void setBackendLocale(locale, localeChoice !== 'system');
     document.documentElement.lang = locale === 'en' ? 'en' : 'pt-BR';
-  }, [locale]);
+  }, [locale, localeChoice]);
   const [report, setReport] = useState<LogReport | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   // NIGHT = visão geral; chave de boss = resumo do boss; null = pull selecionado

@@ -7,6 +7,7 @@ export const settingsMsg = defineMessages(
     title: 'Configurações',
     intro: 'O essencial para analisar os logs e as integrações que você pode ligar quando quiser. Tudo fica salvo só neste PC.',
     language: 'Idioma',
+    systemLanguage: (name: string) => `Do sistema: ${name}`,
     logsMissing: 'Falta a pasta de logs',
     essentialReady: 'Essencial pronto',
     integrationsOn: (done: number, total: number) => (
@@ -117,6 +118,7 @@ export const settingsMsg = defineMessages(
     title: 'Settings',
     intro: 'What you need to analyze logs, plus integrations you can turn on whenever you want. Everything is saved only on this PC.',
     language: 'Language',
+    systemLanguage: (name: string) => `System: ${name}`,
     logsMissing: 'Logs folder missing',
     essentialReady: 'Essentials ready',
     integrationsOn: (done: number, total: number) => (

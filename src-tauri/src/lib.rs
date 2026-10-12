@@ -79,13 +79,30 @@ fn save_file(path: String, data_b64: String) -> Result<(), String> {
     std::fs::write(&path, bytes).map_err(|e| pick(format!("não foi possível salvar {path}: {e}"), format!("could not save {path}: {e}")))
 }
 
-/// Idioma escolhido na UI: vale para as mensagens do backend, o menu da bandeja e os avisos do
-/// Windows (e fica salvo para o app abrir já nele, mesmo escondido na bandeja).
+/// Idioma da UI: vale para as mensagens do backend, o menu da bandeja e os avisos do Windows.
+/// `chosen` = o usuário escolheu (fica salvo para o app abrir já nele, mesmo escondido na bandeja);
+/// sem escolha, o app segue o idioma do sistema.
 #[tauri::command]
-fn set_locale(app: AppHandle, locale: String) -> Result<(), String> {
+fn set_locale(app: AppHandle, locale: String, chosen: bool) -> Result<(), String> {
     wipe_core::i18n::set_english(locale == "en");
     tray::relabel(&app);
-    settings::update(&app, |s| s.locale = Some(locale))
+    settings::update(&app, |s| s.locale = chosen.then_some(locale))
+}
+
+/// O Windows está em português (idioma da interface)? Inglês é o padrão.
+#[cfg(windows)]
+fn system_is_portuguese() -> bool {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetUserDefaultUILanguage() -> u16;
+    }
+    // LANGID: os 10 bits de baixo são o idioma principal; 0x16 = LANG_PORTUGUESE
+    unsafe { GetUserDefaultUILanguage() & 0x3ff == 0x16 }
+}
+
+#[cfg(not(windows))]
+fn system_is_portuguese() -> bool {
+    ["LC_ALL", "LC_MESSAGES", "LANG"].iter().find_map(|k| std::env::var(k).ok().filter(|v| !v.is_empty())).is_some_and(|v| v.to_lowercase().starts_with("pt"))
 }
 
 /// Caminho da pasta de regras do usuário, para mostrar na UI.
@@ -105,7 +122,11 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         // fechar a janela esconde na bandeja (o ao vivo continua); Sair fica no menu do ícone
         .setup(|app| {
-            wipe_core::i18n::set_english(settings::load(app.handle()).locale.as_deref() == Some("en"));
+            let english = match settings::load(app.handle()).locale.as_deref() {
+                Some(l) => l == "en",
+                None => !system_is_portuguese(),
+            };
+            wipe_core::i18n::set_english(english);
             tray::setup(app.handle())?;
             // a janela nasce escondida: aparece, a não ser quando o Windows abriu o app na bandeja
             if !std::env::args().any(|a| a == startup::TRAY_ARG) {
