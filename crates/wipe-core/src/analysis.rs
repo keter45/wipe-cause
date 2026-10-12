@@ -18,6 +18,8 @@ const RECAP_WINDOW_MS: i64 = 15_000;
 const RECENT_DEFENSIVE_MS: i64 = 10_000;
 const MAX_RECAP_ENTRIES: usize = 150;
 const FEIGN_DEATH: u32 = 5384;
+/// Abaixo disso de vida o player "precisa de cura": o tempo parado do healer só conta com alguém assim.
+const INJURED_PCT: f32 = 80.0;
 /// Histórico de HP guardado por player (para slow death).
 const HP_HISTORY_MS: i64 = 60_000;
 /// Posição de player mais velha que isso não entra na foto (ele pode ter andado).
@@ -69,6 +71,8 @@ struct Advanced<'a> {
     y: f32,
     /// direção para onde a unidade olha (radianos)
     facing: f32,
+    /// recurso principal da unidade: (tipo, atual, máximo); 0 = mana
+    power: Option<(u32, i64, i64)>,
     /// quantidade de campos do bloco (varia entre patches)
     len: usize,
 }
@@ -98,7 +102,9 @@ fn advanced_at<'a>(f: &[&'a str], at: usize) -> Option<Advanced<'a>> {
     let x = f[at + len - 5].parse().unwrap_or(0.0);
     let y = f[at + len - 4].parse().unwrap_or(0.0);
     let facing = f[at + len - 2].parse().unwrap_or(0.0);
-    Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp, x, y, facing, len })
+    // powerType, currentPower, maxPower, powerCost vêm logo antes da posição (no 12.x há dois campos a mais no meio)
+    let power = (|| Some((f[at + len - 9].parse().ok()?, f[at + len - 8].parse().ok()?, f[at + len - 7].parse().ok()?)))();
+    Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp, x, y, facing, power, len })
 }
 
 #[derive(Default)]
@@ -142,6 +148,10 @@ struct PlayerAcc {
     /// dano e cura por janela de TIMELINE_MS (pets somados)
     damage_timeline: Vec<i64>,
     healing_timeline: Vec<i64>,
+    /// overheal por habilidade (pets somados ao dono)
+    overheal_by_spell: HashMap<u32, (String, i64)>,
+    /// mana % no último cast de cada janela de TIMELINE_MS (-1 = sem cast na janela)
+    mana_timeline: Vec<i16>,
 }
 
 fn add_at(v: &mut Vec<i64>, rel: i64, amount: i64) {
@@ -197,6 +207,27 @@ fn by_spell(m: &HashMap<(u32, bool), (String, i64)>) -> Vec<SpellAmount> {
     v
 }
 
+fn overheal_list(m: &HashMap<u32, (String, i64)>) -> Vec<SpellAmount> {
+    let mut v: Vec<SpellAmount> = m.iter().map(|(id, (name, amount))| SpellAmount { spell_id: *id, name: name.clone(), amount: *amount, pet: false }).collect();
+    v.sort_by(|a, b| b.amount.cmp(&a.amount).then(a.spell_id.cmp(&b.spell_id)));
+    v
+}
+
+/// Mana % por janela até o tempo analisado; janela sem cast repete a anterior (começa cheia).
+fn mana_list(v: &[i16], analyzed_ms: i64) -> Vec<u8> {
+    if v.iter().all(|&x| x < 0) {
+        return Vec::new();
+    }
+    let n = ((analyzed_ms + TIMELINE_MS - 1) / TIMELINE_MS).max(0) as usize;
+    let mut last = 100u8;
+    (0..n).map(|i| {
+        if let Some(&x) = v.get(i).filter(|&&x| x >= 0) {
+            last = x as u8;
+        }
+        last
+    }).collect()
+}
+
 /// Spec com rotação base escrita: passa a acompanhar os casts e buffs do player.
 fn start_rotation(p: &mut PlayerAcc) {
     if p.rotation.is_none() {
@@ -237,6 +268,9 @@ pub(crate) struct PullBuilder {
     hp_at_cutoff: HashMap<String, f32>,
     /// segundos do pull em que alguém da raid acertou um inimigo
     raid_active: Vec<bool>,
+    /// players vivos abaixo de INJURED_PCT agora, e os segundos do pull com alguém assim
+    injured: HashSet<String>,
+    injured_secs: Vec<bool>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -276,6 +310,8 @@ impl PullBuilder {
             cutoff_t: None,
             hp_at_cutoff: HashMap::new(),
             raid_active: Vec::new(),
+            injured: HashSet::new(),
+            injured_secs: Vec::new(),
         }
     }
 
@@ -335,6 +371,17 @@ impl PullBuilder {
         None
     }
 
+    /// Segundos desde o último evento até `t`: alguém da raid estava ferido?
+    fn mark_injured(&mut self, t: i64) {
+        let (from, to) = ((self.rel(self.last_ms).max(0) / 1000) as usize, (self.rel(t).max(0) / 1000) as usize);
+        if to >= self.injured_secs.len() {
+            self.injured_secs.resize(to + 1, false);
+        }
+        if !self.injured.is_empty() {
+            self.injured_secs[from..=to.max(from)].iter_mut().for_each(|s| *s = true);
+        }
+    }
+
     fn track_advanced(&mut self, adv: &Advanced, f: &[&str]) {
         if adv.max_hp <= 0 {
             return;
@@ -353,6 +400,11 @@ impl PullBuilder {
             }
             p.last_hp_pct = Some(pct);
             p.max_hp = Some(adv.max_hp);
+            if pct < INJURED_PCT && adv.hp > 0 {
+                self.injured.insert(adv.info_guid.to_string());
+            } else {
+                self.injured.remove(adv.info_guid);
+            }
             if p.hp_hist.back().is_none_or(|&(t, v)| t != rel || v != pct) {
                 p.hp_hist.push_back((rel, pct));
             }
@@ -415,6 +467,7 @@ impl PullBuilder {
             }
             return;
         }
+        self.mark_injured(t);
         self.last_ms = t;
         let event = f[0];
         if self.owner.is_none() && f[1].starts_with("Player-") && f[3].starts_with("0x") && hex(f[3]) & AFFILIATION_MINE != 0 {
@@ -445,6 +498,7 @@ impl PullBuilder {
                 }
             }
             "SPELL_HEAL" | "SPELL_PERIODIC_HEAL" => self.heal(f, t),
+            "SPELL_ABSORBED" => self.absorbed(f, t),
             "SPELL_CAST_SUCCESS" => self.cast(f, t, data),
             "SPELL_ENERGIZE" => {
                 // recurso ganho (sufixo depois do bloco advanced: amount, overEnergize, powerType, maxPower)
@@ -511,6 +565,14 @@ impl PullBuilder {
                 r.on_aura(rel, spell_id, stacks);
                 if f[1] == dst_guid {
                     r.on_self_aura(rel, spell_id, f[10], stacks);
+                }
+            }
+            // buff que um player põe nos outros (Atonement, Beacon of Light, HoTs): o que o healer mantém
+            if matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") && f.get(12) == Some(&"BUFF") {
+                let owner = self.owner_of(f[1], hex(f[3]));
+                let on_self = owner.as_deref() == Some(dst_guid);
+                if let Some(r) = owner.and_then(|o| self.players.get_mut(&o)).and_then(|p| p.rotation.as_mut()) {
+                    r.on_ally_aura(rel, dst_guid, spell_id, f[10], f[0] == "SPELL_AURA_APPLIED", on_self);
                 }
             }
         }
@@ -746,12 +808,14 @@ impl PullBuilder {
             self.track_advanced(a, f);
         }
         let s = 12 + adv.as_ref().map_or(0, |a| a.len);
-        let effective = match f.len().saturating_sub(s) {
+        let overheal = match f.len().saturating_sub(s) {
             // 12.x: amount, baseAmount, overheal, absorbed, critical (amount inclui o overheal)
-            5.. => (num(f.get(s)) - num(f.get(s + 2)).max(0)).max(0),
+            5.. => num(f.get(s + 2)),
             // formato antigo: amount, overheal, absorbed, critical
-            _ => (num(f.get(s)) - num(f.get(s + 1)).max(0)).max(0),
-        };
+            _ => num(f.get(s + 1)),
+        }
+        .max(0);
+        let effective = (num(f.get(s)) - overheal).max(0);
 
         let (src_guid, src_name, src_flags) = (f[1], f[2], hex(f[3]));
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
@@ -762,9 +826,12 @@ impl PullBuilder {
                 let p = self.player(&owner, if pet { "" } else { src_name });
                 p.healing_done += effective;
                 add_at(&mut p.healing_timeline, rel, effective);
+                let (id, name) = (f[9].parse().unwrap_or(0), f[10]);
                 if effective > 0 {
-                    let (id, name) = (f[9].parse().unwrap_or(0), f[10]);
                     p.healing_by_spell.entry((id, pet)).or_insert_with(|| (name.to_string(), 0)).1 += effective;
+                }
+                if overheal > 0 {
+                    p.overheal_by_spell.entry(id).or_insert_with(|| (name.to_string(), 0)).1 += overheal;
                 }
             }
         }
@@ -795,6 +862,32 @@ impl PullBuilder {
                 },
             );
         }
+    }
+
+    /// SPELL_ABSORBED: um escudo (Power Word: Shield...) segurou dano. Conta como cura de quem pôs o
+    /// escudo, como no Warcraft Logs. Depois do cabeçalho (atacante -> alvo) vem o spell do golpe
+    /// (não vem em golpe corpo a corpo), quem pôs o escudo (guid, nome, flags, raidFlags), o spell do
+    /// escudo (id, nome, escola) e o valor absorvido.
+    fn absorbed(&mut self, f: &[&str], t: i64) {
+        if !self.counting() {
+            return;
+        }
+        let at = if is_guid_like(f[9]) { 9 } else { 12 };
+        if f.len() < at + 8 {
+            return;
+        }
+        let (caster, caster_flags) = (f[at], hex(f[at + 2]));
+        let (id, name, amount) = (f[at + 4].parse().unwrap_or(0), f[at + 5], num(f.get(at + 7)));
+        if amount <= 0 {
+            return;
+        }
+        let Some(owner) = self.owner_of(caster, caster_flags) else { return };
+        let pet = owner != caster;
+        let rel = self.rel(t);
+        let p = self.player(&owner, if pet { "" } else { f[at + 1] });
+        p.healing_done += amount;
+        add_at(&mut p.healing_timeline, rel, amount);
+        p.healing_by_spell.entry((id, pet)).or_insert_with(|| (name.to_string(), 0)).1 += amount;
     }
 
     fn cast(&mut self, f: &[&str], t: i64, data: &GameData) {
@@ -843,6 +936,16 @@ impl PullBuilder {
         if let Some(d) = p.dead_since.take() {
             // voltou (battle rez): o tempo morto conta só até o corte
             p.dead_ms += (cut.map_or(rel, |c| rel.min(c)) - d).max(0);
+        }
+        // mana de quem lançou (o bloco advanced do cast é de quem lança)
+        if let Some((0, cur, max)) = adv.as_ref().filter(|a| a.info_guid == src_guid).and_then(|a| a.power) {
+            if max > 0 && counting {
+                let i = (rel.max(0) / TIMELINE_MS) as usize;
+                if p.mana_timeline.len() <= i {
+                    p.mana_timeline.resize(i + 1, -1);
+                }
+                p.mana_timeline[i] = (cur * 100 / max).clamp(0, 100) as i16;
+            }
         }
         if counting {
             p.casts.entry(spell_id).or_insert_with(|| (spell_name.clone(), Vec::new())).1.push(rel);
@@ -940,6 +1043,7 @@ impl PullBuilder {
         if !Self::is_group_player(dst_guid, dst_flags) {
             return;
         }
+        self.injured.remove(dst_guid);
         let rel = self.rel(t);
         let order = self.deaths.len() as u32 + 1;
         // depois do corte a morte fica registrada (recap), mas não conta em nada
@@ -1088,6 +1192,7 @@ impl PullBuilder {
                 p.defensive_casts.iter().chain(p.externals_received.iter()).filter(|u| before_cut(u.t)).cloned().collect();
             defensives_used.sort_by_key(|u| u.t);
             let interrupts = p.interrupt_log.iter().filter(|u| u.target_spell_id.is_some()).count() as u32;
+            let healer = spec.is_some_and(|s| s.role == "healer");
             players.push(PlayerStats {
                 guid: guid.clone(),
                 name: p.name.clone(),
@@ -1118,9 +1223,12 @@ impl PullBuilder {
                 healing_by_spell: by_spell(&p.healing_by_spell),
                 alive_ms: (analyzed_ms - p.dead_ms.min(analyzed_ms) - p.dead_since.map_or(0, |d| (analyzed_ms - d).max(0))).max(0),
                 setup: p.setup.clone(),
-                rotation: rotations.remove(guid).map(|r| r.finish(analyzed_ms, &self.raid_active)),
+                // healer parado só conta com alguém da raid precisando de cura
+                rotation: rotations.remove(guid).map(|r| r.finish(analyzed_ms, if healer { &self.injured_secs } else { &self.raid_active })),
                 damage_timeline: timeline(&p.damage_timeline, analyzed_ms),
                 healing_timeline: timeline(&p.healing_timeline, analyzed_ms),
+                overheal_by_spell: if healer { overheal_list(&p.overheal_by_spell) } else { Vec::new() },
+                mana_timeline: if healer { mana_list(&p.mana_timeline, analyzed_ms) } else { Vec::new() },
             });
         }
         players.sort_by_key(|a| std::cmp::Reverse(a.damage_done));
@@ -1427,6 +1535,28 @@ mod tests {
         let legacy = "SPELL_DAMAGE,Player-1-A,\"A\",0x514,0x0,Creature-0-1-2-3-4-5,\"B\",0x10a48,0x0,1,\"X\",0x1,Creature-0-1-2-3-4-5,0000000000000000,50,100,0,0,0,0,0,0,0,0,1.00,2.00,2607,0.5000,80,10,10,-1,1,0,0,0,nil,nil,nil";
         split_fields(legacy, &mut f);
         assert_eq!(advanced_at(&f, 12).unwrap().len, 17);
+    }
+
+    // Linhas reais do build 12.1.0 (nomes trocados): cast com mana no bloco advanced e escudo segurando dano.
+    const PWS_CAST_12_1: &str = "SPELL_CAST_SUCCESS,Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000,Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000,17,\"Power Word: Shield\",0x2,Player-3209-0B7FC171,0000000000000000,945960,945960,321,3510,678,187,624,33154,0,187500,250000,25000,534.62,-0.53,2607,0.1669,327";
+    const ABSORBED_12_1: &str = "SPELL_ABSORBED,Creature-0-3783-3004-41340-261490-0002C82864,\"Venomfang Seer\",0xa48,0x80000000,Player-3209-0B58762E,\"Beltrano-Azralon-US\",0x514,0x80000000,1290147,\"Poison Bolt\",0x8,Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000,17,\"Power Word: Shield\",0x2,25970,39669,nil";
+
+    #[test]
+    fn reads_mana_and_credits_absorbs_as_healing() {
+        let mut f = Vec::new();
+        split_fields(PWS_CAST_12_1, &mut f);
+        assert_eq!(advanced_at(&f, 12).unwrap().power, Some((0, 187500, 250000)));
+
+        let data = GameData::embedded();
+        let start = ["ENCOUNTER_START", "1", "Boss", "16", "20", "1"];
+        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::default(), 0);
+        b.feed(&f, 1000, &data);
+        split_fields(ABSORBED_12_1, &mut f);
+        b.feed(&f, 2000, &data);
+        let p = b.players.get("Player-3209-0B7FC171").unwrap();
+        assert_eq!(p.healing_done, 25970);
+        assert_eq!(p.healing_by_spell.get(&(17, false)).map(|x| x.1), Some(25970));
+        assert_eq!(p.mana_timeline, vec![75]);
     }
 
     #[test]

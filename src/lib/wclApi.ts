@@ -124,15 +124,15 @@ const RANKINGS_QUERY = `query Rankings($id: Int!, $difficulty: Int!, $className:
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export async function fetchRankings(pull: Pull, specId: number, healer: boolean): Promise<TopRanking[]> {
+export async function fetchRankings(pull: Pull, specId: number, healer: boolean, pageList: number[] = [1, 2]): Promise<TopRanking[]> {
   const spec = SPEC_NAMES[specId];
   const difficulty = WCL_DIFFICULTY[pull.difficultyId];
   if (!spec || !difficulty) throw new Error(messagesOf(wclMsg).noRankings);
   const metric = healer ? 'hps' : 'dps';
   const vars = { id: pull.encounterId, difficulty, className: spec.class, specName: spec.spec, metric };
-  // rankings mudam ao longo do dia: cache diário, 2 páginas (200 parses)
+  // rankings mudam ao longo do dia: cache diário, 2 páginas (200 parses) por padrão
   const pages = await Promise.all(
-    [1, 2].map((page) =>
+    pageList.map((page) =>
       query<any>(RANKINGS_QUERY, { ...vars, page }, `rank-all-${pull.encounterId}-${difficulty}-${specId}-${metric}-p${page}-${today()}`).catch((e) => {
         if (page === 1) throw e;
         return null;
@@ -140,6 +140,82 @@ export async function fetchRankings(pull: Pull, specId: number, healer: boolean)
     ),
   );
   return pages.flatMap((d) => parseRankings(d?.worldData?.encounter?.characterRankings));
+}
+
+// ---- healer: logs de outras guildas com composição de healers parecida (docs/healer-analysis.md)
+
+/** Composição mínima em comum para um log servir de comparação para healer. */
+export const COMP_MIN_SIMILARITY = 0.7;
+/** Posições do topo do ranking de cura que ficam de fora (onde a cura mais engana). */
+const HEAL_SKIP_TOP = 10;
+/** Candidatos conferidos (cada lote de COMP_BATCH custa uma consulta). */
+const COMP_CANDIDATES = 40;
+const COMP_BATCH = 10;
+const HEAL_REGIONS = new Set(['US', 'EU']);
+
+export interface CompCandidate extends TopRanking {
+  /** specs dos healers do fight ("Holy Paladin") */
+  healers: string[];
+  /** fração da composição em comum (0–1) */
+  similarity: number;
+}
+
+/** Healers em comum (cada spec conta tantas vezes quanto aparece) sobre o maior dos dois grupos. */
+export function compSimilarity(ours: string[], theirs: string[]): number {
+  const rest = [...theirs];
+  let n = 0;
+  for (const s of ours) {
+    const i = rest.indexOf(s);
+    if (i >= 0) {
+      n++;
+      rest.splice(i, 1);
+    }
+  }
+  return n / Math.max(1, ours.length, theirs.length);
+}
+
+/** Candidatos espalhados pela lista (não só o começo). */
+function spread<T>(list: T[], n: number): T[] {
+  if (list.length <= n) return list;
+  const step = list.length / n;
+  return Array.from({ length: n }, (_, i) => list[Math.floor(i * step)]);
+}
+
+const healerSpecs = (details: any): string[] =>
+  ((details?.healers ?? []) as any[]).map((h) => `${h?.specs?.[0]?.spec ?? '?'} ${h?.type ?? '?'}`).sort();
+
+/**
+ * Logs de kill de outras guildas para comparar um healer: várias páginas do ranking de cura, sem o
+ * topo (a nota não entra na escolha), US e EU, e só os com pelo menos COMP_MIN_SIMILARITY da nossa
+ * composição de healers. Do mais parecido para o menos, e pela duração mais perto da nossa.
+ */
+export async function healerCompCandidates(pull: Pull, specId: number, ourHealers: string[], n = TOPS_SHOWN): Promise<{ list: CompCandidate[]; checked: number }> {
+  const all = await fetchRankings(pull, specId, true, [1, 2, 3, 4]);
+  const pool = spread(
+    all.slice(HEAL_SKIP_TOP).filter((r) => HEAL_REGIONS.has(r.region.toUpperCase())),
+    COMP_CANDIDATES,
+  );
+  const found: CompCandidate[] = [];
+  for (let i = 0; i < pool.length; i += COMP_BATCH) {
+    const batch = pool.slice(i, i + COMP_BATCH);
+    // uma consulta por lote: cada report com o seu apelido
+    const q = `query { ${batch.map((r, k) => `r${k}: reportData { report(code: ${JSON.stringify(r.code)}) { playerDetails(fightIDs: [${r.fightId}]) } }`).join(' ')} }`;
+    const key = `comp-${batch.map((r) => `${r.code}.${r.fightId}`).join(',')}`;
+    const d = await query<any>(q, {}, key).catch(() => null);
+    batch.forEach((r, k) => {
+      const pd = d?.[`r${k}`]?.report?.playerDetails;
+      const details = pd?.data?.playerDetails ?? pd?.playerDetails;
+      if (!details) return;
+      const healers = healerSpecs(details);
+      const similarity = compSimilarity(ourHealers, healers);
+      if (similarity >= COMP_MIN_SIMILARITY) found.push({ ...r, healers, similarity });
+    });
+  }
+  const mine = pull.success ? pull.durationMs : null;
+  found.sort((a, b) => b.similarity - a.similarity || (mine != null ? Math.abs(a.durationMs - mine) - Math.abs(b.durationMs - mine) : 0));
+  // quem recebeu Power Infusion de outra pessoa sai (mesma regra dos tops)
+  const list = (await withoutExternalPI(found.slice(0, n * 2), n)) as CompCandidate[];
+  return { list, checked: pool.length };
 }
 
 // ---- fight de um top

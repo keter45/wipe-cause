@@ -343,7 +343,7 @@ function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] 
         )}
         {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}
         <strong>
-          <Colored text={f.title} />
+          <Colored text={f.title} plainStart={f.spellId != null} />
         </strong>
         {f.detail && (
           <span className="muted">

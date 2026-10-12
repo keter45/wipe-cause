@@ -1,0 +1,75 @@
+# Holy Priest — o que a spec pede (Midnight Season 2, patch 12.1). Healer não tem rotação fixa: aqui
+# ficam os cooldowns, os procs e as combinações que dá para cobrar sem depender do dano. Escrita a partir
+# do guia de cura do Wowhead; os textos são nossos. Conferida nos logs de referência
+# (samples/rotation/priest-holy/refs, regras em docs/healer-analysis.md), não nos tops.
+spec: 257
+name: Holy Priest
+patch: "12.1"
+role: healer
+sources:
+  - title: Wowhead — Holy Priest Healing Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/priest/holy/rotation-cooldowns-pve-healer
+
+key_points:
+  - { pt: "Holy Word: Serenity e Prayer of Mending no cooldown; o Prayer of Mending pode guardar uma carga para quando precisar andar.", en: "Holy Word: Serenity and Prayer of Mending on cooldown; Prayer of Mending can hold a charge for when you need to move." }
+  - { pt: "Flash Heal é a cura principal (reduz o cooldown do Serenity); não estoure as duas cargas de Benediction.", en: "Flash Heal is the main heal (it lowers Serenity's cooldown); don't cap the two Benediction stacks." }
+  - { pt: "Apotheosis com uma carga de Serenity pronta; no Archon, Apotheosis junto com Halo no começo do dano.", en: "Apotheosis with a Serenity charge ready; as Archon, Apotheosis together with Halo as the damage starts." }
+  - { pt: "Surge of Light: no Archon vai no Prayer of Healing, no Oracle no Flash Heal; Smite no tempo livre para gerar mais.", en: "Surge of Light: as Archon it goes into Prayer of Healing, as Oracle into Flash Heal; Smite in downtime to generate more." }
+  - { pt: "Divine Hymn é o cooldown de raide: no dano de raide planejado.", en: "Divine Hymn is the raid cooldown: on planned raid damage." }
+
+hero_trees:
+  - key: archon
+    name: Archon
+    markers: [120517] # Halo
+  - key: oracle
+    name: Oracle
+    markers: [] # quem não usa Halo
+
+abilities:
+  apotheosis: { id: 200183, name: Apotheosis, cooldown_ms: 120000 }
+  divine_hymn: { id: 64843, name: Divine Hymn, cooldown_ms: 180000, channel_ms: 5000 }
+  halo: { id: 120517, name: Halo, cooldown_ms: 60000, cast_ms: 1500, tree: archon }
+  holy_word_serenity: { id: 2050, name: "Holy Word: Serenity", cooldown_ms: 60000 }
+  prayer_of_mending: { id: 33076, name: Prayer of Mending, cooldown_ms: 12000 }
+  # com Benediction o Flash Heal vira outro spell (1262763), com cast próprio
+  flash_heal: { id: 2061, name: Flash Heal, cast_ms: 1500, alt_ids: [1262763] }
+  prayer_of_healing: { id: 596, name: Prayer of Healing, cast_ms: 2500 }
+  smite: { id: 585, name: Smite, cast_ms: 1500 }
+  holy_fire: { id: 14914, name: Holy Fire }
+
+buffs:
+  surge_of_light: { id: 114255, name: Surge of Light }
+
+checks:
+  - kind: downtime
+    id: idle_with_injured
+    gcd_ms: 1500
+    min_gap_ms: 1000
+    importance: high
+    title: { pt: "Parado com gente ferida", en: "Idle while people were hurt" }
+    tip: { pt: "Com alguém abaixo de 80% de vida, sempre um GCD rodando: Prayer of Mending, Serenity, Flash Heal.", en: "With someone below 80% health, always have a GCD rolling: Prayer of Mending, Serenity, Flash Heal." }
+  - kind: proc
+    id: surge_of_light
+    buff: surge_of_light
+    spenders: [flash_heal, prayer_of_healing]
+    importance: medium
+    title: { pt: "Surge of Light perdido", en: "Surge of Light lost" }
+    tip: { pt: "Surge of Light deixa o próximo Flash Heal (ou Prayer of Healing, no Archon) instantâneo e de graça.", en: "Surge of Light makes the next Flash Heal (or Prayer of Healing, as Archon) instant and free." }
+  # "Apotheosis com Halo" (Archon, guia) ficou de fora: 71 de 72 referências são Oracle, sem base para cobrar
+  - kind: cooldown
+    id: cooldowns
+    spells: [apotheosis, divine_hymn]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Apotheosis e Divine Hymn o máximo de vezes que a luta deixar.", en: "Apotheosis and Divine Hymn as many times as the fight allows." }
+  - kind: cooldown
+    id: holy_words
+    spells: [holy_word_serenity, prayer_of_mending]
+    min_usage: 0.7
+    importance: low
+    title: { pt: "Serenity ou Prayer of Mending parado", en: "Serenity or Prayer of Mending sitting" }
+    tip: { pt: "Holy Word: Serenity e Prayer of Mending no cooldown.", en: "Holy Word: Serenity and Prayer of Mending on cooldown." }
+
+# cada pulso do Divine Hymn aparece como cast sem o player apertar
+ignore_casts: [64844]

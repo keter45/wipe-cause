@@ -63,7 +63,8 @@ export function contextMix(pull: Pull, p: PlayerStats, r: RotationResult = p.rot
 /** Uptime de cada aura no pull: as mantidas (`uptimes`) e as curtas (pelos trechos ativos). */
 export function uptimeOf(pull: Pull, p: PlayerStats, r: RotationResult = p.rotation!): Map<number, number> {
   const out = new Map<number, number>();
-  for (const u of r.uptimes ?? []) out.set(u.id, u.uptime);
+  // "ally" (buff do player nos outros) é leitura de healer: não entra no contexto da rotação
+  for (const u of r.uptimes ?? []) if (u.kind !== 'ally') out.set(u.id, u.uptime);
   const alive = Math.max(1, untilOf(pull, p));
   for (const b of r.buffs ?? []) if (!out.has(b.id)) out.set(b.id, Math.min(1, b.spans.reduce((s, [a, z]) => s + Math.min(z, alive) - Math.min(a, alive), 0) / alive));
   return out;
@@ -102,8 +103,8 @@ export function buildContextRef(samples: { pull: Pull; player: PlayerStats }[], 
   const ups = list.map((s) => uptimeOf(s.pull, s.player));
   const kinds = new Map<number, { name: string; kind: 'buff' | 'debuff'; byRot: number[] }>();
   for (const s of list)
-    for (const u of s.player.rotation!.uptimes ?? []) {
-      const k = kinds.get(u.id) ?? kinds.set(u.id, { name: u.name, kind: u.kind, byRot: [] }).get(u.id)!;
+    for (const u of (s.player.rotation!.uptimes ?? []).filter((u) => u.kind !== 'ally')) {
+      const k = kinds.get(u.id) ?? kinds.set(u.id, { name: u.name, kind: u.kind as 'buff' | 'debuff', byRot: [] }).get(u.id)!;
       k.byRot.push(u.byRotation ?? 0);
     }
   for (const [id, k] of kinds) {

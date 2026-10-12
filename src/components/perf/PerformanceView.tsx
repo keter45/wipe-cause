@@ -6,10 +6,11 @@ import { ShareMenu } from '../share/ShareMenu';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { specLabel } from '../../lib/specs';
 import { SpellIcon } from '../SpellIcon';
+import { Colored, useMentionsSpell } from '../Names';
 import { PerfLinks, WclTopsButton, perfLinks, useWclFight } from '../WclTops';
 import { RotationPanel } from '../RotationPanel';
 import { CooldownCompare } from './CooldownCompare';
-import { loadTop, type TopRanking, type TopSample } from '../../lib/wclApi';
+import { loadTop, type CompCandidate, type TopRanking, type TopSample } from '../../lib/wclApi';
 
 import { Stat, Bursts, Rotation, Potions, SetupView } from './sections';
 import { PerfShareCard } from '../share/PerfCard';
@@ -116,8 +117,11 @@ const topKey = (t: Pick<TopRanking, 'code' | 'fightId'>) => `top:${t.code}:${t.f
 type Mode = 'tops' | 'raid';
 
 function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[]; wclCode?: string }) {
+  const mentions = useMentionsSpell();
   const list = useMemo(() => candidates(me, nightPulls), [me, nightPulls]);
-  const [mode, setMode] = useState<Mode>('tops');
+  const [modeChoice, setMode] = useState<Mode>('tops');
+  // healer: só logs de outras guildas com composição parecida; ninguém da nossa raid vira referência
+  const mode: Mode = isHealer(me.player) ? 'tops' : modeChoice;
   const [raidKey, setRaidKey] = useState<string | null>(null);
   const [topSel, setTopSel] = useState<string | null>(null);
   const [tops, setTops] = useState<TopRanking[] | null>(null);
@@ -160,13 +164,15 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
           aria-checked={mode === 'tops'}
           className={mode === 'tops' ? 'active' : ''}
           onClick={() => setMode('tops')}
-          title={m.topsTitle}
+          title={healer ? m.healerCompTitle : m.topsTitle}
         >
-          {m.tops}
+          {healer ? m.healerComp : m.tops}
         </button>
-        <button role="radio" aria-checked={mode === 'raid'} className={mode === 'raid' ? 'active' : ''} onClick={() => setMode('raid')}>
-          {m.raid}
-        </button>
+        {!healer && (
+          <button role="radio" aria-checked={mode === 'raid'} className={mode === 'raid' ? 'active' : ''} onClick={() => setMode('raid')}>
+            {m.raid}
+          </button>
+        )}
       </div>
       {mode === 'tops' ? (
         <>
@@ -184,6 +190,11 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
                       {num(t.amount)} {unit}
                       {t.itemLevel ? ` · ilvl ${t.itemLevel.toFixed(0)}` : ''} · {mmss(t.durationMs)}
                     </span>
+                    {'similarity' in t && (
+                      <span className="chip comp-chip" title={(t as CompCandidate).healers.join(', ')}>
+                        {m.compChip(Math.round((t as CompCandidate).similarity * 100))}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -255,8 +266,8 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
           <ul className="perf-insights">
             {insights.map((i, k) => (
               <li key={k} className={`tone-${i.tone}`}>
-                {i.spellId != null && <SpellIcon spellId={i.spellId} size={16} />}
-                {i.text}
+                {i.spellId != null && !mentions(i.text) && <SpellIcon spellId={i.spellId} size={16} />}
+                <Colored text={i.text} />
               </li>
             ))}
           </ul>

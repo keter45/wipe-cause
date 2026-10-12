@@ -350,6 +350,9 @@ fn advanced(actors: &HashMap<i64, Actor>, e: &Value, src: &str, dst: &str, out: 
     // o WCL guarda a posição em centésimos de jarda e com os eixos girados: (x, y) = (-yLog, xLog)
     let (x, y) = (int(&e["y"]) as f64 / 100.0, -int(&e["x"]) as f64 / 100.0);
     let facing = int(&e["facing"]) as f64 / 100.0;
+    // recurso principal (mana primeiro: o healer tem mana e às vezes outro recurso junto)
+    let res = e["classResources"].as_array().and_then(|rs| rs.iter().find(|r| int(&r["type"]) == 0).or_else(|| rs.first()));
+    let power = |k: &str| res.map_or(0, |r| int(&r[k])).to_string();
     out.extend([
         guid.to_string(),
         owner,
@@ -361,9 +364,9 @@ fn advanced(actors: &HashMap<i64, Actor>, e: &Value, src: &str, dst: &str, out: 
         int(&e["absorb"]).to_string(),
         "0".into(),
         "0".into(),
-        "0".into(),
-        "0".into(),
-        "0".into(),
+        power("type"),
+        power("amount"),
+        power("max"),
         "0".into(),
         format!("{x:.2}"),
         format!("{y:.2}"),
@@ -384,6 +387,9 @@ fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64
     let (spell_name, school) = ability(abilities, spell_id);
     let tick = e["tick"].as_bool().unwrap_or(false);
 
+    if kind == "absorbed" {
+        return absorbed_fields(actors, abilities, e, out);
+    }
     let event = match kind {
         // golpes absorvidos por inteiro: no log são SPELL_MISSED (ABSORB), que o motor não conta
         "damage" if int(&e["amount"]) == 0 => return false,
@@ -464,6 +470,25 @@ fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64
             }
         }
     }
+    true
+}
+
+/// `absorbed` (escudo segurou dano) -> SPELL_ABSORBED: atacante -> alvo, spell do golpe (fora corpo a
+/// corpo), quem pôs o escudo, spell do escudo, valor absorvido.
+fn absorbed_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64)>, e: &Value, out: &mut Vec<String>) -> bool {
+    let Some((caster_guid, caster_name, caster_flags)) = unit(actors, e, "source") else { return false };
+    let (dst_guid, dst_name, dst_flags) = unit(actors, e, "target").unwrap_or((NIL_GUID.into(), "nil".into(), FLAGS_NONE));
+    let (att_guid, att_name, att_flags) = unit(actors, e, "attacker").unwrap_or((NIL_GUID.into(), "nil".into(), FLAGS_NONE));
+    out.extend(["SPELL_ABSORBED".to_string(), att_guid, att_name, att_flags.into(), "0x0".into(), dst_guid, dst_name, dst_flags.into(), "0x0".into()]);
+    let attack = int(&e["extraAbilityGameID"]);
+    if attack > 1 {
+        let (name, school) = ability(abilities, attack);
+        out.extend([attack.to_string(), name, school]);
+    }
+    let shield = int(&e["abilityGameID"]);
+    let (name, school) = ability(abilities, shield);
+    let amount = int(&e["amount"]).to_string();
+    out.extend([caster_guid, caster_name, caster_flags.into(), "0x0".into(), shield.to_string(), name, school, amount.clone(), amount, "nil".into()]);
     true
 }
 

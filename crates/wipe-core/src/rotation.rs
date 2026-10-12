@@ -12,6 +12,11 @@
 //!   - `aoe_swap`: com N+ alvos, este cast deveria ser outro (ex.: Lightning Bolt -> Chain Lightning);
 //!   - `after_cast`: este cast precisa vir pouco depois de outro (ex.: Demonic Tyrant com os
 //!     Dreadstalkers fora).
+//!   - `ally_uptime` (healer): buff do player mantido em gente da raid (ex.: Beacon of Light), pelo
+//!     tempo em pelo menos um alvo ou pela média de alvos ao mesmo tempo (ex.: Atonement).
+//!
+//! Healer (`role: healer`) não tem prioridade nem abertura; o tempo parado dele só conta nos segundos
+//! em que alguém da raid precisava de cura.
 //!
 //! O `RotationTracker` acompanha um player durante o pull (casts, buffs nele, quantos inimigos
 //! ele acertou nos últimos segundos) e no fim devolve os achados e o aproveitamento.
@@ -96,7 +101,7 @@ pub struct Priority {
     pub aoe: Vec<PrioItem>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct Opener {
     pub window_ms: i64,
     /// false = basta tudo sair dentro da janela, em qualquer ordem (ex.: empilhar cooldowns)
@@ -191,6 +196,19 @@ pub enum Check {
         title: Text,
         tip: Text,
     },
+    AllyUptime {
+        id: String,
+        aura: String,
+        /// meta: fração do tempo vivo com o buff em pelo menos um da raid
+        #[serde(default)]
+        min_uptime: Option<f32>,
+        /// meta: média de alvos com o buff ao mesmo tempo (substitui a de tempo)
+        #[serde(default)]
+        min_targets: Option<f32>,
+        importance: String,
+        title: Text,
+        tip: Text,
+    },
     AfterCast {
         id: String,
         casts: Vec<String>,
@@ -203,6 +221,9 @@ pub enum Check {
         /// só vale para quem ganhou um destes buffs no pull (o talento que pede a combinação)
         #[serde(default)]
         only_with: Vec<String>,
+        /// só vale nesta árvore de herói (ex.: Apotheosis com Halo, do Archon)
+        #[serde(default)]
+        tree: Option<String>,
         importance: String,
         title: Text,
         tip: Text,
@@ -216,10 +237,15 @@ pub struct RotationSpec {
     pub patch: String,
     pub sources: Vec<Source>,
     pub key_points: Vec<Text>,
+    /// "healer" para as specs de cura (o resto é dps)
+    #[serde(default)]
+    pub role: Option<String>,
     pub hero_trees: Vec<HeroTree>,
     pub abilities: BTreeMap<String, Ability>,
     pub buffs: BTreeMap<String, BuffDef>,
+    #[serde(default)]
     pub priority: BTreeMap<String, Priority>,
+    #[serde(default)]
     pub opener: Opener,
     pub checks: Vec<Check>,
     /// casts no log que não são o player apertando um botão (procs, pegar alma): não contam como ação
@@ -256,11 +282,22 @@ impl RotationSpec {
                 Check::Downtime { .. } => {}
                 Check::ResourceWaste { from, .. } => from.iter().try_for_each(ability)?,
                 Check::DotUptime { debuff, .. } => buff(debuff)?,
+                Check::AllyUptime { aura, min_uptime, min_targets, .. } => {
+                    buff(aura)?;
+                    if min_uptime.is_none() && min_targets.is_none() {
+                        return Err(crate::i18n::pick(format!("{aura}: ally_uptime sem min_uptime nem min_targets"), format!("{aura}: ally_uptime without min_uptime or min_targets")));
+                    }
+                }
                 Check::AoeSwap { casts, instead, unless_buff, .. } => {
                     casts.iter().chain(instead).try_for_each(ability)?;
                     unless_buff.iter().try_for_each(buff)?;
                 }
-                Check::AfterCast { casts, after, only_with, .. } => {
+                Check::AfterCast { casts, after, only_with, tree, .. } => {
+                    if let Some(k) = tree {
+                        if !self.hero_trees.iter().any(|t| &t.key == k) {
+                            return Err(crate::i18n::pick(format!("árvore desconhecida: {k}"), format!("unknown hero tree: {k}")));
+                        }
+                    }
                     casts.iter().chain(after).try_for_each(ability)?;
                     only_with.iter().try_for_each(buff)?;
                 }
@@ -294,6 +331,7 @@ impl Check {
             Check::Cooldown { .. } => "cooldown",
             Check::ResourceWaste { .. } => "resource_waste",
             Check::DotUptime { .. } => "dot_uptime",
+            Check::AllyUptime { .. } => "ally_uptime",
             Check::AoeSwap { .. } => "aoe_swap",
             Check::AfterCast { .. } => "after_cast",
         }
@@ -442,7 +480,8 @@ pub struct BuffTrace {
     pub drops: Vec<[i64; 2]>,
 }
 
-/** Buff ou debuff mantido: `kind` = "buff" (no player) ou "debuff" (dele, em algum inimigo). */
+/** Buff ou debuff mantido: `kind` = "buff" (no player), "debuff" (dele, em algum inimigo) ou "ally" (dele,
+em alguém da raid: Atonement, Beacon of Light, HoTs). */
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Uptime {
@@ -453,6 +492,24 @@ pub struct Uptime {
     /// fração das aplicações logo depois de um cast da rotação (o player controla pela rotação; o
     /// resto é equipamento, encantamento, outro player)
     pub by_rotation: f32,
+    /// "ally": em quantos da raid ao mesmo tempo, em média no tempo vivo
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub targets: Option<f32>,
+}
+
+/// Buff do player em gente da raid: em quem está agora, tempo em pelo menos um e soma alvo × tempo.
+#[derive(Default)]
+struct AllyAcc {
+    name: String,
+    on: HashSet<String>,
+    since: Option<i64>,
+    total: i64,
+    last_t: i64,
+    target_ms: i64,
+    applied: u32,
+    by_rotation: u32,
+    /** alvos que já tiveram o buff aplicado ou removido no pull */
+    seen: HashSet<String>,
 }
 
 /// Debuff do player em algum inimigo: em quantos está agora e o tempo com ele em pelo menos um.
@@ -560,6 +617,8 @@ pub(crate) struct RotationTracker {
     debuffs: HashMap<u32, DebuffAcc>,
     target_buckets: HashMap<i64, HashSet<String>>,
     recent: Vec<(i64, u32)>,
+    /// buffs do player em gente da raid, por spell
+    allies: HashMap<u32, AllyAcc>,
 }
 
 impl RotationTracker {
@@ -598,6 +657,7 @@ impl RotationTracker {
             debuffs: HashMap::new(),
             target_buckets: HashMap::new(),
             recent: Vec::new(),
+            allies: HashMap::new(),
         }
     }
 
@@ -814,6 +874,43 @@ impl RotationTracker {
         }
     }
 
+    /// Buff do player em alguém da raid (aplicado / removido). Nele mesmo só conta o que o YAML declara
+    /// (Lifebloom do Everbloom fica no próprio druid); o resto (runas, procs) já está em `buffs`.
+    pub fn on_ally_aura(&mut self, t: i64, target: &str, spell_id: u32, name: &str, applied: bool, on_self: bool) {
+        if on_self && !self.buff_by_id.contains_key(&spell_id) {
+            return;
+        }
+        let by_rot = applied && self.after_rotation_cast(t);
+        let a = self.allies.entry(spell_id).or_insert_with(|| AllyAcc { name: name.to_string(), last_t: t, ..Default::default() });
+        a.target_ms += a.on.len() as i64 * (t - a.last_t).max(0);
+        a.last_t = t;
+        let first = a.seen.insert(target.to_string());
+        if applied {
+            a.applied += 1;
+            a.by_rotation += by_rot as u32;
+            if a.on.insert(target.to_string()) && a.on.len() == 1 {
+                a.since = Some(t);
+            }
+        } else if a.on.remove(target) {
+            if a.on.is_empty() {
+                if let Some(s) = a.since.take() {
+                    a.total += t - s;
+                }
+            }
+        } else if first {
+            // removido sem ter sido aplicado no pull: estava ativo desde antes do pull (Atonement,
+            // Lifebloom e Rejuvenation pré-aplicados). Os trechos fechados até aqui cabem em [0, t].
+            a.target_ms += t;
+            match a.since {
+                Some(_) => {
+                    a.total = 0;
+                    a.since = Some(0);
+                }
+                None => a.total = t,
+            }
+        }
+    }
+
     pub fn on_death(&mut self, t: i64) {
         self.resolve(t);
         self.dead_since.get_or_insert(t);
@@ -1013,6 +1110,37 @@ impl RotationTracker {
                         spell_id: None,
                     });
                 }
+                Check::AllyUptime { id, aura, min_uptime, min_targets, importance, title, tip } => {
+                    let b = &spec.buffs[aura];
+                    let Some(a) = self.allies.get(&b.id) else { continue };
+                    let alive = (end_ms - START_GRACE_MS - self.dead_ms).max(1) as f64;
+                    let total = a.total + a.since.map_or(0, |s| end_ms - s);
+                    let target_ms = a.target_ms + a.on.len() as i64 * (end_ms - a.last_t).max(0);
+                    let (up, avg) = ((total as f64 / alive).min(1.0) as f32, (target_ms as f64 / alive) as f32);
+                    let (rate, detail) = match (min_targets, min_uptime) {
+                        (Some(goal), _) => ((avg / goal).min(1.0), {
+                            let name = &b.name;
+                            Text::new(format!("{name} em {avg:.1} da raid em média (meta {goal:.1})").replace('.', ","), format!("{name} on {avg:.1} raid members on average (goal {goal:.1})"))
+                        }),
+                        (None, Some(goal)) => ((up / goal).min(1.0), {
+                            let (name, pct, goal) = (&b.name, up * 100.0, goal * 100.0);
+                            tx!("{name} em alguém da raid {pct:.0}% do tempo (meta {goal:.0}%)", "{name} on someone {pct:.0}% of the time (goal {goal:.0}%)")
+                        }),
+                        (None, None) => continue,
+                    };
+                    findings.push(RotationFinding {
+                        id: id.clone(),
+                        kind: c.kind_name(),
+                        title: title.clone(),
+                        tip: tip.clone(),
+                        importance: importance.clone(),
+                        count: (rate < 1.0) as u32,
+                        rate,
+                        times: Vec::new(),
+                        detail,
+                        spell_id: Some(b.id),
+                    });
+                }
                 Check::DotUptime { id, debuff, min_uptime, importance, title, tip } => {
                     let spans = self.dot_spans.remove(debuff).unwrap_or_default();
                     if spans.is_empty() {
@@ -1084,8 +1212,11 @@ impl RotationTracker {
                         spell_id: casts.first().map(|k| spec.abilities[k].id),
                     });
                 }
-                Check::AfterCast { id, casts, after, within_ms, followed_by, only_with, importance, title, tip } => {
+                Check::AfterCast { id, casts, after, within_ms, followed_by, only_with, tree: only_tree, importance, title, tip } => {
                     if !only_with.is_empty() && !only_with.iter().any(|b| self.seen_buffs.contains(b)) {
+                        continue;
+                    }
+                    if only_tree.as_ref().is_some_and(|k| tree.is_none_or(|t| &t.key != k)) {
                         continue;
                     }
                     let mine: Vec<i64> = self.casts.iter().filter(|(_, k)| casts.contains(k)).map(|(t, _)| *t).collect();
@@ -1218,7 +1349,7 @@ impl RotationTracker {
                 let up: i64 = b.spans.iter().map(|[a, z]| z - a).sum();
                 if b.gains > 0 && up as f64 >= alive * UPTIME_MIN {
                     let by_rotation = b.by_rotation as f32 / b.applied.max(1) as f32;
-                    uptimes.push(Uptime { id, name: b.name.clone(), kind: "buff", uptime: (up as f64 / alive).min(1.0) as f32, by_rotation });
+                    uptimes.push(Uptime { id, name: b.name.clone(), kind: "buff", uptime: (up as f64 / alive).min(1.0) as f32, by_rotation, targets: None });
                 }
                 if b.gains == 0 || up as f64 > end_ms as f64 * BUFF_MAX_UPTIME {
                     return None;
@@ -1235,7 +1366,18 @@ impl RotationTracker {
             }
             if d.total as f64 >= alive * UPTIME_MIN {
                 let by_rotation = d.by_rotation as f32 / d.applied.max(1) as f32;
-                uptimes.push(Uptime { id, name: d.name, kind: "debuff", uptime: (d.total as f64 / alive).min(1.0) as f32, by_rotation });
+                uptimes.push(Uptime { id, name: d.name, kind: "debuff", uptime: (d.total as f64 / alive).min(1.0) as f32, by_rotation, targets: None });
+            }
+        }
+        for (id, mut a) in std::mem::take(&mut self.allies) {
+            a.target_ms += a.on.len() as i64 * (end_ms - a.last_t).max(0);
+            if let Some(s) = a.since.take() {
+                a.total += end_ms - s;
+            }
+            if a.total as f64 >= alive * UPTIME_MIN {
+                let by_rotation = a.by_rotation as f32 / a.applied.max(1) as f32;
+                let targets = Some((a.target_ms as f64 / alive) as f32);
+                uptimes.push(Uptime { id, name: a.name, kind: "ally", uptime: (a.total as f64 / alive).min(1.0) as f32, by_rotation, targets });
             }
         }
         uptimes.sort_by(|a, b| b.uptime.total_cmp(&a.uptime).then(a.id.cmp(&b.id)));
@@ -1281,6 +1423,27 @@ mod tests {
         let book = RotationBook::embedded();
         assert!(book.errors.is_empty(), "{:?}", book.errors);
         book.get(254).expect("marksmanship")
+    }
+
+    #[test]
+    fn ally_aura_counts_targets_and_pre_pull_buffs() {
+        let disc = RotationBook::embedded().get(256).expect("discipline");
+        let mut r = RotationTracker::new(disc);
+        r.on_ally_aura(2000, "B", 194384, "Atonement", true, false);
+        r.on_ally_aura(3000, "C", 194384, "Atonement", true, false);
+        // removido sem ter sido aplicado no pull: estava no A desde antes do pull
+        r.on_ally_aura(5000, "A", 194384, "Atonement", false, false);
+        r.on_ally_aura(12000, "B", 194384, "Atonement", false, false);
+        // nele mesmo só o que o YAML declara: uma runa qualquer fica de fora
+        r.on_ally_aura(4000, "me", 1287771, "Rune", true, true);
+        let res = r.finish(20000, &[true; 25]);
+        let u = res.uptimes.iter().find(|u| u.kind == "ally" && u.id == 194384).unwrap();
+        // A 0–5 s, B 2–12 s, C 3–20 s: alguém com Atonement o tempo todo, 1,6 alvos em média
+        assert_eq!((u.uptime, (u.targets.unwrap() * 10.0).round()), (1.0, 16.0));
+        assert!(res.uptimes.iter().all(|u| u.id != 1287771));
+        // meta de 8 alvos no tempo vivo depois do começo (18 s): 32 / 18 = 1,78 alvos
+        let f = res.findings.iter().find(|f| f.id == "atonement").unwrap();
+        assert!((f.rate - 32.0 / 18.0 / 8.0).abs() < 0.01, "{}", f.rate);
     }
 
     #[test]

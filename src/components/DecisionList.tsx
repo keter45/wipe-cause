@@ -3,6 +3,7 @@ import { mmss, uniqueSeconds } from '../lib/format';
 import { useSeek } from '../lib/wcr';
 import { useMessages } from '../i18n';
 import { SpellIcon } from './SpellIcon';
+import { Colored, useMentionsSpell } from './Names';
 import { PlayAt } from './VideoPanel';
 import { decisionMsg } from './DecisionList.i18n';
 
@@ -15,6 +16,7 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
  */
 export function DecisionList({ list, who = null }: { list: DecisionFinding[]; who?: string | null }) {
   const t = useMessages(decisionMsg);
+  const mentions = useMentionsSpell();
   const seek = useSeek();
   const text = (d: DecisionFinding): string => {
     switch (d.kind) {
@@ -34,8 +36,16 @@ export function DecisionList({ list, who = null }: { list: DecisionFinding[]; wh
         const times = uniqueSeconds(d.times);
         return (
           <li key={`${d.kind}-${'buff' in d ? d.buff : d.spellId}`}>
-            <SpellIcon spellId={'buff' in d ? d.buff : d.spellId} size={16} /> <span className="warn">{text(d)}</span>
-            {'consumers' in d && <span className="muted"> {t.spentBy(d.consumers.map((c) => c.name).join(', '))}</span>}
+            {!mentions(text(d)) && <SpellIcon spellId={'buff' in d ? d.buff : d.spellId} size={16} />}{' '}
+            <span className="warn">
+              <Colored text={text(d)} />
+            </span>
+            {'consumers' in d && (
+              <span className="muted">
+                {' '}
+                <Colored text={t.spentBy(d.consumers.map((c) => c.name).join(', '))} />
+              </span>
+            )}
             {times.length > 0 && (
               <span className="rot-times">
                 {times.slice(0, 6).map((at) => (

@@ -135,7 +135,7 @@ const ZONES = `query { worldData { zones { id name frozen encounters { id } diff
  * `zone` = id da zona, "latest" = a zona de raide mais nova (não congelada, com Mítico), ou nada =
  * a zona do raide que já tem regras em encounters/ (pega também os chefes ainda sem regras).
  */
-async function raidEncounters(gql, zone) {
+export async function raidEncounters(gql, zone) {
   let z = null;
   if (zone === 'latest') {
     const zones = (await gql(ZONES)).worldData.zones.filter((x) => !x.frozen && x.encounters.length >= 3 && x.difficulties.some((d) => d.id === 5));
@@ -158,15 +158,15 @@ async function raidEncounters(gql, zone) {
 const RANKINGS = `query R($id: Int!, $difficulty: Int!, $className: String!, $specName: String!) {
   worldData { encounter(id: $id) { characterRankings(difficulty: $difficulty, className: $className, specName: $specName, metric: dps) } }
 }`;
-const POWER_INFUSION = 10060;
-const BUFF_EVENTS = `query B($code: String!, $fight: Int!, $start: Float!, $end: Float!, $target: Int!, $ability: Float!) {
+export const POWER_INFUSION = 10060;
+export const BUFF_EVENTS = `query B($code: String!, $fight: Int!, $start: Float!, $end: Float!, $target: Int!, $ability: Float!) {
   reportData { report(code: $code) {
     events(fightIDs: [$fight], startTime: $start, endTime: $end, targetID: $target, dataType: Buffs, abilityID: $ability, limit: 1000) { data }
   } }
 }`;
 /** Candidatos conferidos por boss, no máximo: para não gastar pontos se muitos tiverem PI. */
 const MAX_TRIES_PER_PICK = 3;
-const REPORT = `query R($code: String!) {
+export const REPORT = `query R($code: String!) {
   reportData { report(code: $code) {
     code title startTime endTime visibility
     zone { id name }
@@ -185,7 +185,7 @@ const REPORT = `query R($code: String!) {
 // - nas auras o WCL inverte: Buffs/Debuffs com sourceID = quem TEM a aura, com targetID = quem
 //   LANÇA; os DoTs do player nos inimigos pedem também hostilityType Enemies;
 // - Resources não filtra por ator de jeito nenhum: vem de todos e o trimEvents fica com o do player.
-const EVENTS = `query E($code: String!, $fight: Int!, $start: Float!, $end: Float!, $source: Int, $target: Int, $dataType: EventDataType, $hostility: HostilityType) {
+export const EVENTS = `query E($code: String!, $fight: Int!, $start: Float!, $end: Float!, $source: Int, $target: Int, $dataType: EventDataType, $hostility: HostilityType) {
   reportData { report(code: $code) {
     events(fightIDs: [$fight], startTime: $start, endTime: $end, sourceID: $source, targetID: $target, dataType: $dataType, hostilityType: $hostility, includeResources: true, limit: 10000) { data nextPageTimestamp }
   } }
@@ -198,10 +198,10 @@ const MAX_PER_QUERY = 400_000;
 const MIN_MATCH = 0.5;
 /** O evento é do ator pedido? `q.expect`: o ator é a origem ('source') ou o alvo ('target') do evento. */
 const matches = (e, q) => (q.expect === 'source' ? e.sourceID === q.actor || e.supportID === q.actor : q.expect === 'target' ? e.targetID === q.actor : true);
-const RATE = `{ rateLimitData { limitPerHour pointsSpentThisHour } }`;
+export const RATE = `{ rateLimitData { limitPerHour pointsSpentThisHour } }`;
 
 /** Casts dos inimigos: para alinhar os pulls pelas mecânicas do boss (janelas paradas, defensivos). */
-const ENEMY_CASTS = { dataType: 'Casts', hostility: 'Enemies' };
+export const ENEMY_CASTS = { dataType: 'Casts', hostility: 'Enemies' };
 /** Fights de uma pasta que já têm os casts dos inimigos (os antigos não tinham). */
 const enemyCastsDone = (dir) => {
   const f = path.join(dir, 'enemy-casts.json');

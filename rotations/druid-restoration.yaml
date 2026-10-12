@@ -1,0 +1,121 @@
+# Restoration Druid — o que a spec pede (Midnight Season 2, patch 12.1). Healer não tem rotação fixa:
+# aqui ficam os cooldowns, os procs, as combinações antes dos cooldowns e os HoTs que o Druid mantém,
+# que dá para cobrar sem depender do dano. Escrita a partir do guia de cura do Wowhead; os textos são
+# nossos. Conferida nos logs de referência (samples/rotation/druid-restoration/refs, regras em
+# docs/healer-analysis.md), não nos tops.
+spec: 105
+name: Restoration Druid
+patch: "12.1"
+role: healer
+sources:
+  - title: Wowhead — Restoration Druid Healing Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/druid/restoration/rotation-cooldowns-pve-healer
+
+key_points:
+  - { pt: "Everbloom: Lifebloom em você mesmo o tempo todo, com Rejuvenations e Swiftmend em você no cooldown.", en: "Everbloom: Lifebloom on yourself at all times, with Rejuvenations and Swiftmend on yourself on cooldown." }
+  - { pt: "Abundance: cinco Rejuvenations ativas e Regrowth para aproveitar (no fim da luta, mais Regrowth que Rejuvenation). Swiftmend antes da Rejuvenation espalha três HoTs.", en: "Abundance: five Rejuvenations active and Regrowth to cash in (by the end of the fight, more Regrowth than Rejuvenation). Swiftmend before Rejuvenation spreads three HoTs." }
+  - { pt: "Wild Growth é caro: use quando a raid está em perigo, não sempre que estiver pronto. Antes do Convoke the Spirits, um Wild Growth.", en: "Wild Growth is expensive: use it when the raid is in danger, not whenever it's ready. Before Convoke the Spirits, a Wild Growth." }
+  - { pt: "Tranquility: 15 a 20 segundos antes, Wild Growth e o máximo de Regrowths; o Tranquility estende os HoTs e o Regrowth depois espalha.", en: "Tranquility: 15 to 20 seconds before, Wild Growth and as many Regrowths as possible; Tranquility extends the HoTs and Regrowth afterwards splashes." }
+  - { pt: "Nature's Swiftness em você durante dano perigoso, para o Regrowth refrescar os HoTs e curar os outros alvos de Regrowth.", en: "Nature's Swiftness on yourself during dangerous damage, so Regrowth refreshes the HoTs and heals your other Regrowth targets." }
+
+hero_trees:
+  - key: wildstalker
+    name: Wildstalker
+    markers: [439530] # Symbiotic Blooms
+  - key: keeper_of_the_grove
+    name: Keeper of the Grove
+    markers: [] # quem não tem Symbiotic Blooms
+
+abilities:
+  convoke_the_spirits: { id: 391528, name: Convoke the Spirits, cooldown_ms: 120000, channel_ms: 4000, alt_ids: [323764] }
+  tranquility: { id: 740, name: Tranquility, cooldown_ms: 180000, channel_ms: 6000 }
+  natures_swiftness: { id: 132158, name: Nature's Swiftness, cooldown_ms: 60000 }
+  swiftmend: { id: 18562, name: Swiftmend, cooldown_ms: 15000 }
+  wild_growth: { id: 48438, name: Wild Growth, cast_ms: 1500 }
+  regrowth: { id: 8936, name: Regrowth, cast_ms: 1500 }
+  rejuvenation: { id: 774, name: Rejuvenation, alt_ids: [155777] }
+  lifebloom: { id: 33763, name: Lifebloom }
+  wrath: { id: 5176, name: Wrath, cast_ms: 1500 }
+
+buffs:
+  clearcasting: { id: 16870, name: Clearcasting }
+  natures_swiftness: { id: 132158, name: Nature's Swiftness }
+  soul_of_the_forest: { id: 114108, name: Soul of the Forest }
+  lifebloom: { id: 33763, name: Lifebloom }
+  rejuvenation: { id: 774, name: Rejuvenation }
+
+checks:
+  - kind: downtime
+    id: idle_with_injured
+    gcd_ms: 1500
+    min_gap_ms: 1000
+    importance: high
+    title: { pt: "Parado com gente ferida", en: "Idle while people were hurt" }
+    tip: { pt: "Com alguém abaixo de 80% de vida, sempre um GCD rodando: Rejuvenation antes do dano, Regrowth com Abundance, Swiftmend.", en: "With someone below 80% health, always have a GCD rolling: Rejuvenation before the damage, Regrowth with Abundance, Swiftmend." }
+  - kind: ally_uptime
+    id: lifebloom
+    aura: lifebloom
+    min_uptime: 0.85
+    importance: medium
+    title: { pt: "Lifebloom caiu", en: "Lifebloom dropped" }
+    tip: { pt: "Lifebloom ativo o tempo todo (em você, para o Everbloom): renove com menos de 5 segundos.", en: "Lifebloom active at all times (on yourself, for Everbloom): refresh it with less than 5 seconds left." }
+  - kind: ally_uptime
+    id: abundance
+    aura: rejuvenation
+    min_targets: 5
+    importance: medium
+    title: { pt: "Poucas Rejuvenations para o Abundance", en: "Too few Rejuvenations for Abundance" }
+    tip: { pt: "Cinco Rejuvenations ativas mantêm o Abundance; lance em sequência (Swiftmend antes espalha três).", en: "Five active Rejuvenations keep Abundance up; cast them in a batch (Swiftmend first spreads three)." }
+  - kind: proc
+    id: clearcasting
+    buff: clearcasting
+    spenders: [regrowth]
+    importance: low
+    title: { pt: "Clearcasting perdido", en: "Clearcasting lost" }
+    tip: { pt: "Clearcasting deixa o próximo Regrowth de graça.", en: "Clearcasting makes the next Regrowth free." }
+  - kind: proc
+    id: natures_swiftness
+    buff: natures_swiftness
+    spenders: [regrowth]
+    importance: medium
+    title: { pt: "Nature's Swiftness sem Regrowth", en: "Nature's Swiftness without Regrowth" }
+    tip: { pt: "Nature's Swiftness é para o Regrowth: em você, ele refresca os HoTs e cura os outros alvos de Regrowth.", en: "Nature's Swiftness is for Regrowth: on yourself it refreshes the HoTs and heals your other Regrowth targets." }
+  - kind: proc
+    id: soul_of_the_forest
+    buff: soul_of_the_forest
+    spenders: [regrowth, rejuvenation, wild_growth]
+    importance: low
+    title: { pt: "Soul of the Forest perdido", en: "Soul of the Forest lost" }
+    tip: { pt: "Soul of the Forest (do Swiftmend) fortalece o próximo Regrowth, Rejuvenation ou Wild Growth.", en: "Soul of the Forest (from Swiftmend) empowers the next Regrowth, Rejuvenation or Wild Growth." }
+  - kind: after_cast
+    id: wild_growth_before_convoke
+    casts: [convoke_the_spirits]
+    after: [wild_growth]
+    within_ms: 8000
+    importance: medium
+    title: { pt: "Convoke sem Wild Growth antes", en: "Convoke without Wild Growth first" }
+    tip: { pt: "Wild Growth antes do Convoke the Spirits: os HoTs dele aproveitam o que o Convoke lança.", en: "Wild Growth before Convoke the Spirits: its HoTs benefit from what Convoke casts." }
+  - kind: after_cast
+    id: ramp_before_tranquility
+    casts: [tranquility]
+    after: [wild_growth]
+    within_ms: 20000
+    importance: medium
+    title: { pt: "Tranquility sem preparar os HoTs", en: "Tranquility without setting up HoTs" }
+    tip: { pt: "15 a 20 segundos antes do Tranquility, Wild Growth e Regrowths: ele estende os HoTs que já estão na raid.", en: "15 to 20 seconds before Tranquility, Wild Growth and Regrowths: it extends the HoTs already on the raid." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [convoke_the_spirits, tranquility, natures_swiftness]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Convoke the Spirits, Tranquility e Nature's Swiftness o máximo de vezes que a luta deixar.", en: "Convoke the Spirits, Tranquility and Nature's Swiftness as many times as the fight allows." }
+  - kind: cooldown
+    id: swiftmend
+    spells: [swiftmend]
+    min_usage: 0.7
+    importance: low
+    title: { pt: "Swiftmend parado", en: "Swiftmend sitting" }
+    tip: { pt: "Swiftmend em você no cooldown (Everbloom) e antes da Rejuvenation para espalhar.", en: "Swiftmend on yourself on cooldown (Everbloom) and before Rejuvenation to spread." }
+
+ignore_casts: [157982] # cada pulso do Tranquility aparece como cast

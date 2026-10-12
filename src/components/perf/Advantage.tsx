@@ -85,7 +85,7 @@ function WindowCard({ n, w, unit, relevant, casts, wcl }: { n: number; w: Advant
           {diff.map((d, i) => (
             <span key={d.name} className="solo-diff">
               {i > 0 && ', '}
-              <SpellName spellId={d.spellId} name={d.name} size={14} />{' '}
+              <SpellName spellId={d.spellId} name={d.name} size={16} />{' '}
               <span className="muted">{t.timesVsYou(d.ref, d.mine)}</span>
             </span>
           ))}

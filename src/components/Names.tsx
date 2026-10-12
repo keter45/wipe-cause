@@ -1,7 +1,7 @@
 import { useContext, useMemo, useState, type ReactNode } from 'react';
 import { classColor, shortName } from '../lib/format';
-import { classOf, namesRegex, usePlayerClasses } from '../lib/players';
-import { EagerIcons } from './SpellIcon';
+import { classOf, richRegex, type PlayerClasses, usePlayerClasses } from '../lib/players';
+import { EagerIcons, SpellName } from './SpellIcon';
 
 /** Ícone do boss (arte do Warcraft Logs pelo ID do encontro). */
 export const bossIconUrl = (encounterId: number) => `https://assets.rpglogs.com/img/warcraft/bosses/${encounterId}-icon.jpg`;
@@ -67,9 +67,53 @@ export function withPlayerNames(text: string, keyBase: string, re: RegExp | null
   return out;
 }
 
-/** Texto com os nomes de personagem coloridos (para frases do veredito, resumos, Evolução). */
-export function Colored({ text }: { text: string }) {
+/** Num texto livre: personagem na cor da classe e habilidade com o ícone ao lado do nome. */
+export function withRichNames(text: string, keyBase: string, pc: PlayerClasses, re: RegExp | null, plainStart = false): ReactNode[] {
+  if (!re || !text) return [text];
+  const out: ReactNode[] = [];
+  let last = 0;
+  let skip = plainStart;
+  for (const m of text.matchAll(re)) {
+    if (m.index! > last) out.push(text.slice(last, m.index));
+    const id = pc.spells.get(m[0]);
+    // a linha já tem o ícone da habilidade principal na frente: a primeira citada fica sem outro
+    if (id != null && skip) {
+      skip = false;
+      out.push(m[0]);
+      last = m.index! + m[0].length;
+      continue;
+    }
+    out.push(
+      id != null ? (
+        <span key={`${keyBase}-${m.index}`} className="spell-inline">
+          <SpellName spellId={id} name={m[0]} size={14} />
+        </span>
+      ) : (
+        <PlayerName key={`${keyBase}-${m.index}`} name={m[0]} />
+      ),
+    );
+    last = m.index! + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+/** O texto cita alguma habilidade do log? (aí o ícone já sai junto do nome, sem outro na frente) */
+export function useMentionsSpell(): (text: string) => boolean {
   const pc = usePlayerClasses();
-  const re = useMemo(() => namesRegex(pc), [pc]);
-  return <>{withPlayerNames(text, 'n', re)}</>;
+  return useMemo(() => {
+    const re = pc.spells.size ? new RegExp(richRegex({ ...pc, names: [] })!.source, 'u') : null;
+    return (text: string) => !!re && re.test(text);
+  }, [pc]);
+}
+
+/**
+ * Frase com os nomes de personagem coloridos e o ícone ao lado de cada habilidade citada (veredito,
+ * resumos, dicas da rotação e do healer, Evolução). `plainStart`: a linha já tem o ícone na frente,
+ * então a primeira habilidade citada fica sem outro.
+ */
+export function Colored({ text, plainStart = false }: { text: string; plainStart?: boolean }) {
+  const pc = usePlayerClasses();
+  const re = useMemo(() => richRegex(pc), [pc]);
+  return <>{withRichNames(text, 'n', pc, re, plainStart)}</>;
 }

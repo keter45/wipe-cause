@@ -177,11 +177,12 @@ To use the tops, create a free client at [warcraftlogs.com/api/clients](https://
 
 At the top, **Guild / Solo** switches the app's focus. In guild mode, the question is why the raid wiped. In solo, it's how **you** can improve. "You" is whoever recorded the log; when analyzing from Warcraft Logs, or to look at another character, choose on the screen itself.
 
-- **Pull → You tab**: what to fix, by topic:
-  - **For the next pull:** your mistakes sorted by what they cost, each with the moment (▶ in the video) and what to do.
-  - **Survival and mechanics:** your deaths and mechanic mistakes, and the defensives the spec's tops use on this boss's mechanics.
-  - **Rotation:** the reading of the [spec's base rotation](#-rotation), with the tops on the same boss on every item.
-- **Pull → Detailed comparison tab**: you against a reference (a top of your spec on Warcraft Logs, someone in the raid or yourself on another pull), with everything from the [Performance](#-performance) tab.
+- **Pull → You tab**: at the top, four colored cards (green good, yellow attention, red bad, gray context only): output, rotation, survival and mechanic mistakes. Then **For the next pull**: your mistakes sorted by what they cost, each with the moment (▶ in the video) and what to do. Below, tabs:
+  - **Mechanics:** your deaths and mechanic mistakes, and the defensives the spec's tops use on this boss's mechanics.
+  - **Rotation** (or **Healing**, for healers): the reading of the [spec's base rotation](#-rotation), with the tops on the same boss on every item; for healers, the [healing comparison](#-healers).
+  - **Cooldowns:** cooldown usage and, for healers, on which boss mechanic the reference uses each big cooldown.
+  - **Spec guide:** key points, priority and sources.
+- **Pull → Detailed comparison tab**: you against a reference (a top of your spec on Warcraft Logs, someone in the raid or yourself on another pull), with everything from the [Performance](#-performance) tab. For healers, the Warcraft Logs search brings kills from other guilds with at least 70% of our healer composition.
 - **Night and boss summary**: your pulls boss by boss, the best of each and the mistakes that repeat.
 - **Progress**: a boss across the saved nights: your best output, rotation, deaths and mechanic mistakes per pull.
 
@@ -198,6 +199,19 @@ Each spec can have a **written base rotation** in `rotations/<class>-<spec>.yaml
 In the **Performance** tab's comparison, the same decisions are also compared with the chosen reference, someone from the raid or a Warcraft Logs top (the app also downloads their buffs): "Explosive Shot: once ready, you take 8.8s to use it on average (Bettaozor 1.3s)". With a single log there's no way to tell what's normal, so only a big difference between the two that also goes beyond what the tops do shows up: what two good players do differently from each other is style, not a mistake.
 
 Specs with a rotation: every damage spec — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) and **Warrior** (Arms, Fury).
+
+### 💚 Healers
+
+Healing isn't compared with the tops: HPS is misleading (a raid taking extra damage, a raid built with few healers) and top logs get more distorted over time. The healer reference is **Mythic kills from other guilds** (8 per boss for each spec, taken from several pages of the ranking, without the top and without using the parse to pick), with the **healer composition closest to ours** and without distorted logs (raid taking too much damage or healing concentrated on one healer). Healers from your own raid are never the reference: they're who the analysis wants to help. Full rules in [docs/healer-analysis.md](docs/healer-analysis.md).
+
+- **Context, not a grade:** HPS, share of the healers' healing and raid damage taken, each with the reference range drawn.
+- **What to adjust:** only where the reference does what is asked and you're outside its range: cooldown sitting, lost proc (Infusion of Light, Surge of Light, Strength of the Black Ox…), spec combos (Divine Toll inside Beacon of Virtue, Wild Growth before Convoke), Atonement/Renewing Mist/Rejuvenation on the raid, idle time while people were hurt, mana left at the kill and overheal above the reference.
+- **Where the healing comes from:** each spell's share of healing, overheal and casts, yours and the reference's.
+- **Cooldown timings:** on which boss mechanic most of the reference uses each big cooldown ("2nd Stir the Depths · reference +3 s · you +8 s"), on a timeline of the fight.
+
+Healing now counts absorbs (Power Word: Shield and other shields), as Warcraft Logs does.
+
+Specs with healer analysis: **Discipline Priest**, **Holy Priest**, **Holy Paladin**, **Restoration Druid**, **Restoration Shaman**, **Mistweaver Monk** and **Preservation Evoker**.
 
 ### 🛠️ Tuning the boss rules
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { auraChanges, groupCasts, matchFight, parseCombatantInfo, parseRankings, pickTops, profileUrls, realmSlug, tableAmounts, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl } from './wclApi';
+import { auraChanges, compSimilarity, groupCasts, matchFight, parseCombatantInfo, parseRankings, pickTops, profileUrls, realmSlug, tableAmounts, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl } from './wclApi';
 import { pull } from './test-fixtures';
 
 // formato real de `characterRankings` (gear e talents direto na entrada; números às vezes como texto)
@@ -119,5 +119,14 @@ describe('auraChanges', () => {
       [400, 1],
       [500, 0],
     ]);
+  });
+
+  it('composição de healers: em comum sobre o maior grupo, cada spec contando quantas vezes aparece', () => {
+    const ours = ['Holy Paladin', 'Holy Priest', 'Holy Priest', 'Restoration Shaman'];
+    // 3 de 4 iguais (75%) passa nos 70%; um Holy Priest só conta uma vez
+    expect(compSimilarity(ours, ['Holy Paladin', 'Holy Priest', 'Mistweaver Monk', 'Restoration Shaman'])).toBe(0.75);
+    // com 5 healers do outro lado, 3 iguais viram 60%: não passa
+    expect(compSimilarity(ours, ['Holy Paladin', 'Holy Priest', 'Restoration Shaman', 'Discipline Priest', 'Preservation Evoker'])).toBe(0.6);
+    expect(compSimilarity(ours, ours)).toBe(1);
   });
 });

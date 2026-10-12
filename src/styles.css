@@ -1754,6 +1754,10 @@ ul.plain {
 .spell-icon.glyph {
   color: var(--muted);
 }
+/* ícone sozinho (habilidade do player em lista e tabela): o nome vem no tooltip */
+.spell-icon.has-tip {
+  cursor: help;
+}
 .spell-name {
   display: inline-flex;
   align-items: center;
@@ -1766,6 +1770,14 @@ ul.plain {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* habilidade no meio de uma frase: ícone colado no nome, sem cortar o texto */
+.spell-inline .spell-name {
+  gap: 4px;
+}
+.spell-inline .spell-name-text {
+  overflow: visible;
+  white-space: normal;
 }
 .chip.with-icon {
   display: inline-flex;
@@ -3002,6 +3014,162 @@ td.warn {
 .perf-section h5 {
   margin: 4px 0;
   font-weight: 600;
+}
+.healer-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.healer-source p {
+  margin: 0 0 4px;
+}
+.healer-source .chip {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.chip.comp-chip {
+  margin-left: 6px;
+  background: color-mix(in oklch, var(--info) 16%, transparent);
+  color: var(--info);
+}
+.healer-source .chip.warn-chip,
+.chip.warn-chip {
+  color: var(--minor);
+  background: color-mix(in oklch, var(--minor) 14%, transparent);
+}
+.healer-comps {
+  flex-basis: 100%;
+}
+.healer-comps summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.healer-comps > div {
+  margin-top: 6px;
+}
+/* contexto: número + faixa da referência (neutro: contexto não é nota) */
+.healer-context {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.healer-ctx {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.healer-ctx strong {
+  font-size: 18px;
+}
+.bullet {
+  position: relative;
+  height: 10px;
+  margin: 2px 0;
+  background: linear-gradient(var(--border), var(--border)) no-repeat center / 100% 2px;
+}
+.bullet-band {
+  position: absolute;
+  top: 2px;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in oklch, var(--info) 35%, transparent);
+}
+.bullet-med {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 10px;
+  background: var(--info);
+  transform: translateX(-50%);
+}
+.bullet-you {
+  position: absolute;
+  top: 1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text);
+  box-shadow: 0 0 0 2px var(--panel);
+  transform: translateX(-50%);
+}
+.healer-moment > ul {
+  margin: 4px 0 6px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+/* linha do tempo de um cooldown de healer: mecânica, referência e você sobre a luta inteira */
+.hl-timeline {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 8px;
+  margin: 8px 0 4px 26px;
+}
+.hl-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+}
+.hl-labels span {
+  height: 18px;
+  line-height: 18px;
+}
+.hl-tracks {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-right: 12px;
+}
+.hl-lane {
+  position: relative;
+  height: 18px;
+  background: linear-gradient(var(--border), var(--border)) no-repeat center / 100% 1px;
+}
+.hl-lane .cd-mark {
+  top: 4px;
+  width: 10px;
+  height: 10px;
+}
+.hl-boss {
+  position: absolute;
+  top: 1px;
+  transform: translateX(-50%);
+  line-height: 0;
+}
+.hl-guide {
+  position: absolute;
+  top: 0;
+  bottom: 18px;
+  border-left: 1px dashed var(--border);
+}
+.hl-axis {
+  position: relative;
+  height: 14px;
+  color: var(--muted);
+}
+.hl-axis span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.hl-axis span:first-child {
+  transform: none;
+}
+.healer-anchor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.healer-mix th.group {
+  text-align: center;
+  border-bottom: 1px solid var(--border);
 }
 .perf-insights {
   list-style: none;
@@ -4710,6 +4878,104 @@ svg.wcl-mark {
   flex: 1;
 }
 
+/* resumo do pull: números com a cor do que significam */
+.solo-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.kpi {
+  --tone: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: inset 3px 0 0 var(--tone), var(--shadow-card);
+}
+.kpi.tone-good {
+  --tone: var(--kill);
+}
+.kpi.tone-warn {
+  --tone: var(--minor);
+}
+.kpi.tone-bad {
+  --tone: var(--wipe);
+}
+.kpi-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.kpi-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.kpi-value {
+  font-size: 22px;
+  line-height: 1.2;
+  color: var(--text);
+}
+.kpi:not(.tone-neutral) .kpi-value {
+  color: color-mix(in oklch, var(--tone) 70%, var(--text));
+}
+.kpi-delta {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* abas da página Você (dentro da aba do pull: segmentado, para não parecer o mesmo nível) */
+.solo-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 20px 0 14px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.solo-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+}
+.solo-tabs button:hover {
+  color: var(--text);
+}
+.solo-tabs button.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.solo-tabs .tab-count.warn {
+  background: color-mix(in oklch, var(--minor) 18%, transparent);
+  color: var(--minor);
+}
+.solo-tabs .tab-count.bad {
+  background: color-mix(in oklch, var(--wipe) 18%, transparent);
+  color: var(--wipe);
+}
+
 /* o que corrigir primeiro */
 .solo-losses {
   list-style: none;
@@ -4747,6 +5013,21 @@ svg.wcl-mark {
 .solo-loss.top .solo-rank {
   background: color-mix(in oklch, var(--accent) 22%, transparent);
   color: var(--accent);
+}
+/* gravidade de cada item: faixa à esquerda e o número na mesma cor */
+.solo-loss.cost-high {
+  box-shadow: inset 3px 0 0 var(--wipe), var(--shadow-card);
+}
+.solo-loss.cost-mid {
+  box-shadow: inset 3px 0 0 var(--minor), var(--shadow-card);
+}
+.solo-loss.top.cost-high .solo-rank {
+  background: color-mix(in oklch, var(--wipe) 22%, transparent);
+  color: var(--wipe);
+}
+.solo-loss.top.cost-mid .solo-rank {
+  background: color-mix(in oklch, var(--minor) 22%, transparent);
+  color: var(--minor);
 }
 .solo-loss-title {
   display: flex;

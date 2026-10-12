@@ -177,11 +177,12 @@ Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](http
 
 No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é por que a raid wipou. No solo, é como **você** pode melhorar. "Você" é quem gravou o log; na análise do Warcraft Logs, ou para ver outro personagem, escolha na própria tela.
 
-- **Pull → aba Você**: o que corrigir, por assunto:
-  - **Para o próximo pull:** os seus erros ordenados pelo que custaram, cada um com o momento (▶ no vídeo) e o que fazer.
-  - **Sobrevivência e mecânicas:** as suas mortes e erros de mecânica, e os defensivos que os tops da spec usam nas mecânicas deste boss.
-  - **Rotação:** a leitura da [rotação base da spec](#-rotação), com os tops do mesmo boss em cada item.
-- **Pull → aba Comparação detalhada**: você contra uma referência (um top da spec no Warcraft Logs, alguém da raid ou você em outro pull), com tudo da aba [Desempenho](#-desempenho).
+- **Pull → aba Você**: no topo, quatro cartões coloridos (verde bom, amarelo atenção, vermelho ruim, cinza só contexto): output, rotação, sobrevivência e erros de mecânica. Depois, **Para o próximo pull**: os seus erros ordenados pelo que custaram, cada um com o momento (▶ no vídeo) e o que fazer. Embaixo, abas:
+  - **Mecânicas:** as suas mortes e erros de mecânica, e os defensivos que os tops da spec usam nas mecânicas deste boss.
+  - **Rotação** (ou **Cura**, para healer): a leitura da [rotação base da spec](#-rotação), com os tops do mesmo boss em cada item; para healer, a [cura comparada](#-healers).
+  - **Cooldowns:** o uso dos cooldowns e, para healer, em qual mecânica do boss a referência usa cada cooldown grande.
+  - **Guia da spec:** pontos principais, prioridade e fontes.
+- **Pull → aba Comparação detalhada**: você contra uma referência (um top da spec no Warcraft Logs, alguém da raid ou você em outro pull), com tudo da aba [Desempenho](#-desempenho). Para healer, a busca no Warcraft Logs traz kills de outras guildas com pelo menos 70% da nossa composição de healers.
 - **Resumo da noite e do boss**: os seus pulls boss a boss, o melhor de cada um e os erros que se repetem.
 - **Evolução**: um boss ao longo das noites salvas: o seu melhor output, a rotação, as mortes e os erros de mecânica por pull.
 
@@ -198,6 +199,19 @@ Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.ya
 Na comparação da aba **Desempenho**, as mesmas decisões também são comparadas com a referência escolhida, alguém da raid ou um top do Warcraft Logs (o app baixa também os buffs dele): "Explosive Shot: depois de pronto, você leva 8.8s para usar, em média (Bettaozor 1.3s)". Com um log só não há como saber o que é normal, então aparece só diferença grande entre os dois e que também passa do que os tops fazem: o que dois bons players fazem diferente entre si é estilo, não erro.
 
 Specs com rotação: todas as de dano — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) e **Warrior** (Arms, Fury).
+
+### 💚 Healers
+
+Cura não se compara com os tops: o HPS engana (raid tomando dano a mais, raid montada com poucos healers) e os logs do topo distorcem cada vez mais com o tempo. A referência de healer são **kills no mítico de outras guildas** (8 por boss em cada spec, tirados de várias páginas do ranking, sem o topo e sem usar a nota na escolha), com a **composição de healers mais parecida com a nossa** e sem os logs distorcidos (raid tomando dano demais ou cura concentrada num healer). Os healers da própria raid nunca são a referência: são quem a análise quer ajudar. Regras completas em [docs/healer-analysis.md](docs/healer-analysis.md).
+
+- **Contexto, não nota:** HPS, fatia da cura dos healers e dano tomado pela raid, cada um com a faixa da referência desenhada.
+- **O que ajustar:** só onde a referência cumpre o que se cobra e você está fora da faixa dela: cooldown parado, proc perdido (Infusion of Light, Surge of Light, Strength of the Black Ox…), combinações da spec (Divine Toll dentro do Beacon of Virtue, Wild Growth antes do Convoke), Atonement/Renewing Mist/Rejuvenation na raid, tempo parado com gente ferida, mana sobrando no kill e overheal acima da referência.
+- **De onde vem a cura:** a fatia de cada habilidade na cura, o overheal e os casts, seus e da referência.
+- **Momentos dos cooldowns:** em qual mecânica do boss a maioria da referência usa cada cooldown grande ("2ª Stir the Depths · referência +3 s · você +8 s"), numa linha do tempo da luta.
+
+A cura agora conta as absorções (Power Word: Shield e outros escudos), como no Warcraft Logs.
+
+Specs com análise de healer: **Discipline Priest**, **Holy Priest**, **Holy Paladin**, **Restoration Druid**, **Restoration Shaman**, **Mistweaver Monk** e **Preservation Evoker**.
 
 ### 🛠️ Ajustar as regras do boss
 

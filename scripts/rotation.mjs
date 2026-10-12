@@ -4,6 +4,9 @@
 //   node scripts/rotation.mjs tops <spec> [--difficulty 5] [--per-boss 2]
 //       baixa os tops da spec (sem buffs externos) em cada chefe do raide: samples/rotation/<spec>/tops/
 //       (credenciais só por variável de ambiente: WCL_CLIENT_ID e WCL_CLIENT_SECRET)
+//   node scripts/rotation.mjs refs <spec> [--per-boss 4]
+//       healer: baixa logs de referência (kills no mítico, composição e sinais de log distorcido
+//       guardados em refs.json) em samples/rotation/<spec>/refs/; regras em docs/healer-analysis.md
 //   node scripts/rotation.mjs calibrate <spec> [--dirs a,b] [--force]
 //       gera o rascunho, roda nos tops pelo motor do app, ajusta as metas e tira o que nem os tops
 //       cumprem; escreve rotations/<spec>.yaml (ou samples/rotation/<spec>/ se já existir uma escrita
@@ -38,7 +41,8 @@ if (!cmd || !key) {
 }
 const spec = findSpec(key);
 const WORK = path.join(ROOT, 'samples', 'rotation', spec.file);
-const TOPS = path.join(WORK, 'tops');
+// healer: os logs de referência (refs) fazem o papel dos tops
+const TOPS = path.join(WORK, spec.role === 'healer' ? 'refs' : 'tops');
 
 function dataDirs() {
   const given = opt('dirs');
@@ -158,6 +162,7 @@ function writeOut(yaml) {
 }
 
 async function main() {
+  if (cmd === 'refs') return (await import('./rotation/heal-refs.mjs')).downloadHealRefs(spec, path.join(WORK, 'refs'), { perBoss: +opt('per-boss', 4) });
   if (cmd === 'tops') return (await import('./rotation/tops.mjs')).downloadTops(spec, TOPS, { difficulty: +opt('difficulty', 5), perBoss: +opt('per-boss', 2) });
 
   if (cmd === 'check') {

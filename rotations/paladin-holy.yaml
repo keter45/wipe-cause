@@ -1,0 +1,101 @@
+# Holy Paladin — o que a spec pede (Midnight Season 2, patch 12.1). Healer não tem rotação fixa: aqui
+# ficam os cooldowns, os procs, as combinações e o recurso que dá para cobrar sem depender do dano.
+# Escrita a partir do guia de cura do Wowhead; os textos são nossos. Conferida nos logs de referência
+# (samples/rotation/paladin-holy/refs, regras em docs/healer-analysis.md), não nos tops.
+spec: 65
+name: Holy Paladin
+patch: "12.1"
+role: healer
+sources:
+  - title: Wowhead — Holy Paladin Healing Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/paladin/holy/rotation-cooldowns-pve-healer
+
+key_points:
+  - { pt: "Não gere Holy Power com 5: gaste antes (Eternal Flame; Light of Dawn quando o Eternal Flame curaria demais). Divine Toll só com 2 ou menos.", en: "Don't build Holy Power at 5: spend first (Eternal Flame; Light of Dawn when Eternal Flame would overheal). Divine Toll only at 2 or less." }
+  - { pt: "Infusion of Light vai no Flash of Light em quem precisa; Judgment só se ninguém precisar.", en: "Infusion of Light goes into Flash of Light on someone who needs it; Judgment only if nobody does." }
+  - { pt: "Beacon of Virtue perto do cooldown quando há cura a fazer; no raide, Divine Toll e Aura Mastery dentro da janela do Beacon of Virtue.", en: "Beacon of Virtue close to on cooldown when there is healing to do; in raid, Divine Toll and Aura Mastery inside the Beacon of Virtue window." }
+  - { pt: "Divine Toll perto do cooldown; Avenging Wrath sempre que precisar de cura, o máximo de vezes na luta.", en: "Divine Toll close to on cooldown; Avenging Wrath whenever healing is needed, as many times as the fight allows." }
+  - { pt: "A mana se controla pelo Holy Light: sobrou mana no fim, dava para lançar mais.", en: "Mana is managed through Holy Light: mana left at the end means more could have been cast." }
+
+hero_trees:
+  - key: lightsmith
+    name: Lightsmith
+    markers: [432459, 432472] # Holy Bulwark, Sacred Weapon
+  - key: herald_of_the_sun
+    name: Herald of the Sun
+    markers: [] # quem não usa os Holy Armaments
+
+abilities:
+  divine_toll: { id: 375576, name: Divine Toll, cooldown_ms: 60000 }
+  avenging_wrath: { id: 31884, name: Avenging Wrath, cooldown_ms: 120000, alt_ids: [216331] }
+  aura_mastery: { id: 31821, name: Aura Mastery, cooldown_ms: 180000 }
+  beacon_of_virtue: { id: 200025, name: Beacon of Virtue, cooldown_ms: 15000, optional: true }
+  holy_shock: { id: 20473, name: Holy Shock, cooldown_ms: 6000 }
+  flash_of_light: { id: 19750, name: Flash of Light, cast_ms: 1500 }
+  holy_light: { id: 82326, name: Holy Light, cast_ms: 2000 }
+  judgment: { id: 275773, name: Judgment, alt_ids: [20271] }
+  eternal_flame: { id: 156322, name: Eternal Flame, alt_ids: [85673] }
+  light_of_dawn: { id: 85222, name: Light of Dawn }
+  shield_of_the_righteous: { id: 415091, name: Shield of the Righteous, alt_ids: [53600] }
+
+buffs:
+  infusion_of_light: { id: 54149, name: Infusion of Light }
+  divine_purpose: { id: 223819, name: Divine Purpose }
+  beacon_of_virtue: { id: 200025, name: Beacon of Virtue }
+
+checks:
+  - kind: downtime
+    id: idle_with_injured
+    gcd_ms: 1500
+    min_gap_ms: 1000
+    importance: high
+    title: { pt: "Parado com gente ferida", en: "Idle while people were hurt" }
+    tip: { pt: "Com alguém abaixo de 80% de vida, sempre um GCD rodando: Holy Shock, Flash of Light com Infusion, Eternal Flame.", en: "With someone below 80% health, always have a GCD rolling: Holy Shock, Flash of Light with Infusion, Eternal Flame." }
+  - kind: resource_waste
+    id: holy_power
+    power_type: 9
+    resource: Holy Power
+    # o Divine Toll pode estourar (é o certo com 1 ou 2): só conta o que vem dos geradores normais
+    from: [holy_shock, judgment]
+    importance: medium
+    title: { pt: "Holy Power desperdiçado", en: "Holy Power wasted" }
+    tip: { pt: "Com 5 Holy Power, gaste antes do Holy Shock: Eternal Flame ou Light of Dawn.", en: "At 5 Holy Power, spend before Holy Shock: Eternal Flame or Light of Dawn." }
+  - kind: proc
+    id: infusion_of_light
+    buff: infusion_of_light
+    spenders: [flash_of_light, holy_light, judgment]
+    importance: medium
+    title: { pt: "Infusion of Light perdido", en: "Infusion of Light lost" }
+    tip: { pt: "Infusion of Light deixa o Flash of Light barato e forte: use antes de acabar.", en: "Infusion of Light makes Flash of Light cheap and strong: use it before it expires." }
+  - kind: proc
+    id: divine_purpose
+    buff: divine_purpose
+    spenders: [eternal_flame, light_of_dawn, shield_of_the_righteous]
+    importance: low
+    title: { pt: "Divine Purpose perdido", en: "Divine Purpose lost" }
+    tip: { pt: "Divine Purpose deixa o próximo Eternal Flame ou Light of Dawn de graça.", en: "Divine Purpose makes the next Eternal Flame or Light of Dawn free." }
+  - kind: after_cast
+    id: cooldowns_in_virtue
+    casts: [divine_toll, aura_mastery]
+    after: [beacon_of_virtue]
+    within_ms: 9000
+    only_with: [beacon_of_virtue]
+    importance: medium
+    title: { pt: "Cooldown fora do Beacon of Virtue", en: "Cooldown outside Beacon of Virtue" }
+    tip: { pt: "No raide, Divine Toll e Aura Mastery dentro dos 9 segundos do Beacon of Virtue: a cura passa para os alvos dele.", en: "In raid, Divine Toll and Aura Mastery inside the 9 seconds of Beacon of Virtue: the healing transfers to its targets." }
+  - kind: cooldown
+    id: cooldowns
+    spells: [divine_toll, avenging_wrath, aura_mastery]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Divine Toll perto do cooldown, Avenging Wrath e Aura Mastery o máximo de vezes que a luta deixar.", en: "Divine Toll close to on cooldown, Avenging Wrath and Aura Mastery as many times as the fight allows." }
+  - kind: cooldown
+    id: holy_shock
+    spells: [holy_shock]
+    min_usage: 0.7
+    importance: low
+    title: { pt: "Holy Shock parado", en: "Holy Shock sitting" }
+    tip: { pt: "Holy Shock gera Holy Power e Infusion of Light: não deixe parado.", en: "Holy Shock builds Holy Power and Infusion of Light: don't let it sit." }
+
+ignore_casts: [415388] # Reclamation (efeito do Holy Shock, não é botão)

@@ -1,0 +1,91 @@
+# Restoration Shaman — o que a spec pede (Midnight Season 2, patch 12.1). Healer não tem rotação fixa:
+# aqui ficam os cooldowns, os procs e a preparação do Ascendance que dá para cobrar sem depender do dano.
+# Escrita a partir do guia de cura do Wowhead; os textos são nossos. Conferida nos logs de referência
+# (samples/rotation/shaman-restoration/refs, regras em docs/healer-analysis.md), não nos tops.
+spec: 264
+name: Restoration Shaman
+patch: "12.1"
+role: healer
+sources:
+  - title: Wowhead — Restoration Shaman Healing Rotation Guide (Midnight)
+    url: https://www.wowhead.com/guide/classes/shaman/restoration/rotation-cooldowns-pve-healer
+
+key_points:
+  - { pt: "Gaste os Stormstream Totem; Riptide e Healing Stream Totem no cooldown; Surging Totem mantido (Totemic).", en: "Spend Stormstream Totem procs; Riptide and Healing Stream Totem on cooldown; keep Surging Totem up (Totemic)." }
+  - { pt: "Nature's Swiftness no cooldown: é dele que vêm quase todos os Stormstream Totem.", en: "Nature's Swiftness on cooldown: almost every Stormstream Totem comes from it." }
+  - { pt: "Chain Heal quando a mana deixa e há gente para curar; Healing Wave para um alvo ou para poupar mana.", en: "Chain Heal when mana allows and several need healing; Healing Wave for one target or to save mana." }
+  - { pt: "Antes do Ascendance: Riptides para ter 2 Tidal Waves; dentro dele, todos os totens.", en: "Before Ascendance: Riptides for 2 Tidal Waves; inside it, every totem." }
+  - { pt: "Spirit Link Totem logo antes do dano grande, não depois.", en: "Spirit Link Totem right before the big damage, not after." }
+
+hero_trees:
+  - key: totemic
+    name: Totemic
+    markers: [444995] # Surging Totem
+  - key: farseer
+    name: Farseer
+    markers: [443454] # Ancestral Swiftness
+
+abilities:
+  ascendance: { id: 114052, name: Ascendance, cooldown_ms: 180000 }
+  spirit_link_totem: { id: 98008, name: Spirit Link Totem, cooldown_ms: 180000, optional: true }
+  healing_tide_totem: { id: 108280, name: Healing Tide Totem, cooldown_ms: 180000, optional: true }
+  natures_swiftness: { id: 378081, name: Nature's Swiftness, cooldown_ms: 60000, alt_ids: [443454] }
+  riptide: { id: 61295, name: Riptide, cooldown_ms: 6000 }
+  healing_stream_totem: { id: 5394, name: Healing Stream Totem, cooldown_ms: 30000 }
+  stormstream_totem: { id: 1267068, name: Stormstream Totem }
+  surging_totem: { id: 444995, name: Surging Totem, cooldown_ms: 25000, tree: totemic }
+  chain_heal: { id: 1064, name: Chain Heal, cast_ms: 2000 }
+  healing_wave: { id: 77472, name: Healing Wave, cast_ms: 2000 }
+
+buffs:
+  stormstream_totem: { id: 1267089, name: Stormstream Totem }
+  natures_swiftness: { id: 378081, name: Nature's Swiftness }
+  tidal_waves: { id: 53390, name: Tidal Waves }
+
+checks:
+  - kind: downtime
+    id: idle_with_injured
+    gcd_ms: 1500
+    min_gap_ms: 1000
+    importance: high
+    title: { pt: "Parado com gente ferida", en: "Idle while people were hurt" }
+    tip: { pt: "Com alguém abaixo de 80% de vida, sempre um GCD rodando: Riptide, totens, Chain Heal ou Healing Wave.", en: "With someone below 80% health, always have a GCD rolling: Riptide, totems, Chain Heal or Healing Wave." }
+  - kind: proc
+    id: stormstream_totem
+    buff: stormstream_totem
+    spenders: [stormstream_totem, healing_stream_totem]
+    importance: medium
+    title: { pt: "Stormstream Totem perdido", en: "Stormstream Totem lost" }
+    tip: { pt: "O Stormstream Totem dura 60 segundos: dá para guardar um pouco, mas não deixe acabar.", en: "Stormstream Totem lasts 60 seconds: you can hold it a little, but don't let it expire." }
+  - kind: proc
+    id: natures_swiftness
+    buff: natures_swiftness
+    spenders: [chain_heal, healing_wave]
+    importance: low
+    title: { pt: "Nature's Swiftness sem cura", en: "Nature's Swiftness without a heal" }
+    tip: { pt: "O cooldown do Nature's Swiftness só começa quando o buff é gasto: lance a cura logo depois.", en: "Nature's Swiftness only starts its cooldown once the buff is spent: cast the heal right after." }
+  - kind: after_cast
+    id: ascendance_after_riptide
+    casts: [ascendance]
+    after: [riptide]
+    within_ms: 8000
+    importance: medium
+    title: { pt: "Ascendance sem preparar", en: "Ascendance without setup" }
+    tip: { pt: "Riptides logo antes do Ascendance, para entrar com 2 Tidal Waves.", en: "Riptides right before Ascendance, to go in with 2 Tidal Waves." }
+  # "Surging Totem logo antes do Ascendance" (guia) ficou de fora: só 33% das referências fazem
+  - kind: cooldown
+    id: cooldowns
+    spells: [ascendance, natures_swiftness, spirit_link_totem, healing_tide_totem]
+    min_usage: 0.8
+    importance: medium
+    title: { pt: "Cooldown parado", en: "Cooldown sitting" }
+    tip: { pt: "Ascendance e Nature's Swiftness o máximo de vezes que a luta deixar; Spirit Link Totem e Healing Tide Totem nos momentos de dano.", en: "Ascendance and Nature's Swiftness as many times as the fight allows; Spirit Link Totem and Healing Tide Totem at damage moments." }
+  - kind: cooldown
+    id: short_cooldowns
+    spells: [riptide, healing_stream_totem, surging_totem]
+    min_usage: 0.7
+    importance: low
+    title: { pt: "Riptide ou totem parado", en: "Riptide or totem sitting" }
+    tip: { pt: "Riptide, Healing Stream Totem e Surging Totem no cooldown.", en: "Riptide, Healing Stream Totem and Surging Totem on cooldown." }
+
+ignore_casts: [1] # ataque corpo a corpo automático
