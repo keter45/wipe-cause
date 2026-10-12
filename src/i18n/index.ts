@@ -10,8 +10,8 @@ import { useSyncExternalStore } from 'react';
 export type Locale = 'pt' | 'en';
 
 export const LOCALES: { value: Locale; label: string }[] = [
-  { value: 'pt', label: 'Português (Brasil)' },
   { value: 'en', label: 'English' },
+  { value: 'pt', label: 'Português (Brasil)' },
 ];
 
 /**
@@ -42,11 +42,30 @@ function initial(): Locale {
   } catch {
     /* sem storage */
   }
-  const nav = typeof navigator !== 'undefined' ? navigator.language : 'pt-BR';
+  return systemLocale();
+}
+
+/** Idioma do sistema: português se o computador estiver em português; senão inglês (o padrão). */
+export function systemLocale(): Locale {
+  const nav = typeof navigator !== 'undefined' ? (navigator.languages?.[0] ?? navigator.language ?? '') : '';
   return nav.toLowerCase().startsWith('pt') ? 'pt' : 'en';
 }
 
+/** Escolha em Configurações: um idioma fixo, ou seguir o sistema. */
+export type LocaleChoice = Locale | 'system';
+
+function initialChoice(): LocaleChoice {
+  try {
+    const saved = localStorage.getItem(KEY);
+    if (saved === 'pt' || saved === 'en') return saved;
+  } catch {
+    /* sem storage */
+  }
+  return 'system';
+}
+
 let locale: Locale = initial();
+let choice: LocaleChoice = initialChoice();
 const listeners = new Set<() => void>();
 const subscribe = (f: () => void) => {
   listeners.add(f);
@@ -55,11 +74,14 @@ const subscribe = (f: () => void) => {
 
 export const getLocale = () => locale;
 
-export function setLocale(l: Locale) {
-  if (l === locale) return;
-  locale = l;
+/** `'system'` volta a seguir o idioma do computador. */
+export function setLocale(l: LocaleChoice) {
+  if (l === choice) return;
+  choice = l;
+  locale = l === 'system' ? systemLocale() : l;
   try {
-    localStorage.setItem(KEY, l);
+    if (l === 'system') localStorage.removeItem(KEY);
+    else localStorage.setItem(KEY, l);
   } catch {
     /* vale só nesta sessão */
   }
@@ -67,6 +89,8 @@ export function setLocale(l: Locale) {
 }
 
 export const useLocale = () => useSyncExternalStore(subscribe, getLocale, getLocale);
+const getChoice = () => choice;
+export const useLocaleChoice = () => useSyncExternalStore(subscribe, getChoice, getChoice);
 
 /** Dicionário no idioma atual (componente: re-renderiza quando o idioma muda). */
 export function useMessages<T>(m: Messages<T>): T {

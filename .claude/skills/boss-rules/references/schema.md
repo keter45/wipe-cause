@@ -52,12 +52,14 @@ Opções extras:
 
 | campo | descrição |
 |---|---|
+| `priority` | importância da mecânica dentro do boss (número, padrão 0): com falha, a maior aparece antes das outras na aba Mecânicas e no veredito (o foco marcado pelo usuário ainda vem antes). Ex.: `helical_toxins` em `entombed-sentinels.yaml`. |
 | `ignore_first_hit_in_burst` | `avoidable_damage`: o 1º hit de cada rajada (hits a <1,5s um do outro) é o alvo da mecânica e não conta como erro. Ex.: linha mirada em um player. |
 | `detect.requires_aura` | o dano só conta se o player **já** tinha a aura há 0,5s+ (a vulnerabilidade aplicada pelo próprio hit não conta). Ex.: soak duplo. |
 | `detect.excludes_aura` | o dano não conta em quem tem a aura ou a perdeu há <0,5s: é o portador. Ex.: bomba/orb que machuca quem está perto. |
 | `detect.min_amount` | hits abaixo do valor não contam (nem para culpa no recap). Ex.: separar a explosão do tick normal do mesmo spell. |
 | `detect.culprit_auras` | falha coletiva: culpa quem perdeu uma destas auras entre 0,5s antes e 50ms depois do 1º hit da falha (quem carregava o orb que explodiu). |
 | `detect.orbs` | `failure_event` de orbs que os players carregam e largam (ex.: `the-coiled-altar.yaml`): culpa quem levou um orb até outro **parado no chão** (ou largou um em cima) nos instantes antes da falha. Campos: `kinds` (`npc_id` da unidade no chão, `carry_aura` de quem carrega, `volatile: true` no que explode, `name` pt/en), `contact_yd` (9), `window_ms` (500), `breaker` (`cast_id`, `half_angle`, `range`: frontal que quebra orbs parados). Substitui `culprit_auras`. Precisa de advanced logging. |
+| `detect.pairing` | `failure_event` de debuff que os players somam encostando um no outro (ex.: Helical Toxins em `entombed-sentinels.yaml`): cada um recebe 1 a `max_initial` stacks e a soma `target` limpa os dois; outra soma fica nos dois. Campos: `aura_id` (a aura com os stacks), `tick_id` (tick de dano do debuff: o dano base, sem mitigação, dá os stacks de cada um, já que a aplicação não mostra o número), `target` (4), `max_initial` (3). Falha = soma acima de `target` ou abaixo dele deixando a rodada sem solução; culpado = quem fez 65%+ da aproximação nos 5s antes. Guarda replay das posições (15s antes). Precisa de advanced logging. |
 | `detect.hit_aura_id` | `avoidable_damage`/`tank_range`/`positioning`: o acerto é a aplicação desta aura no player (para mecânica que quase não loga dano, só a aura de "dentro da onda"). |
 | `detect.confirm_aura` | com `hit_aura_id`: o acerto só conta se esta aura mudou de stack no player em até 250ms (subiu, ou desceu na aplicação letal; a limpeza total não conta). Ex.: `the-twin-fangs.yaml` → `stir_the_depths_wave` (onda = aura 1292807 + stack de Eternal Venom; o pulso de mesmo nome, 1292806, não dá stack). Com `fail_ids`: o hit só vira falha se a aura mudou de stack naquele player em até 250ms (a explosão aplica o DoT; os ticks seguintes, do mesmo tamanho, não). |
 | `blame_message` | texto por jogador numa regra coletiva (`{player}`); `message` fica para o resumo. |
@@ -115,6 +117,7 @@ detect:
   min_amount: 800000          # opcional: quando o mesmo spell também tem tick normal
   culprit_auras: [..]         # opcional: auras de portador consumidas na falha
   orbs: { .. }                # opcional: orbs carregados/largados (culpa quem levou um até outro no chão)
+  pairing: { .. }             # opcional: debuff de somar encostando (sem fail_ids: a falha é o encontro com soma errada)
 blame_message: "{player} carregava o orb"
 ```
 Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `orbs` ou `culprit_auras`); sem eles, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.

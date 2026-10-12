@@ -96,6 +96,9 @@ pub struct MechanicResult {
     pub kind: String,
     /// wipe | major | minor | none
     pub severity: String,
+    /// importância dentro do boss (YAML): maior vem antes
+    #[serde(skip_serializing_if = "is_zero")]
+    pub priority: u32,
     pub tip: Text,
     /// marcada pelo usuário como foco da progressão
     #[serde(skip_serializing_if = "std::ops::Not::not")]
@@ -137,6 +140,85 @@ pub struct MechanicResult {
     /// stack_limit com `sources`: de onde veio cada stack, por player (todos, não só os culpados)
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub stack_origins: Vec<PlayerStackOrigins>,
+    /// debuff de parear (Helical Toxins): cada encontro com soma errada, com replay das posições
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pairings: Vec<PairFault>,
+}
+
+/// Encontro de players com soma errada num debuff de parear (ex.: Helical Toxins, que precisa
+/// somar exatamente 4 stacks encostando em alguém).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairFault {
+    /// instante do encontro (ms do pull)
+    pub t: i64,
+    /// começo da rodada (aplicação do debuff)
+    pub round_start: i64,
+    pub members: Vec<PairMember>,
+    /// stacks de cada um depois do encontro
+    pub sum: u32,
+    /// soma que limpa
+    pub target: u32,
+    /// passou da soma: ninguém consegue mais limpar o debuff deles
+    pub over: bool,
+    /// true: a rodada tinha solução e deixou de ter aqui; false: não mudou (ou já não tinha);
+    /// null: algum stack ficou desconhecido
+    pub broke: Option<bool>,
+    /// conta como falha (passou da soma ou deixou a rodada sem solução)
+    pub counted: bool,
+    /// guid de quem andou até o outro (null = os dois andaram, ou já estavam juntos)
+    pub culprit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replay: Option<PairReplay>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairMember {
+    pub guid: String,
+    pub name: String,
+    /// stacks antes do encontro (null = não deu para saber)
+    pub before: Option<u32>,
+    /// jardas andadas na direção do outro nos segundos antes do encontro
+    pub approach_yd: f32,
+    /// parte da aproximação feita por ele (0 a 1)
+    pub share: f32,
+    /// o parceiro certo mais perto naquele instante (com os stacks que completavam a soma)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub better: Option<PairHint>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairHint {
+    pub guid: String,
+    pub name: String,
+    pub stacks: u32,
+    pub dist_yd: f32,
+}
+
+/// Posições de quem tinha o debuff em volta do encontro (para o replay).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairReplay {
+    pub from: i64,
+    pub to: i64,
+    pub tracks: Vec<PairTrack>,
+    /// bosses no instante do encontro
+    pub enemies: Vec<UnitPos>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairTrack {
+    pub guid: String,
+    pub name: String,
+    /// um dos que se encostaram
+    pub focus: bool,
+    /// (t, x, y) em passos fixos
+    pub pts: Vec<(i64, f32, f32)>,
+    /// (t, stacks) a cada mudança: 0 = limpou, -1 = desconhecido
+    pub stacks: Vec<(i64, i32)>,
 }
 
 /// Uma origem de stacks: a mecânica e quantos stacks deu (ou tirou).

@@ -369,4 +369,5 @@ export async function revealInExplorer(path: string) {
 }
 
 /** Idioma da UI para o backend (mensagens de erro, menu da bandeja, avisos do Windows). */
-export const setBackendLocale = (locale: string) => (inTauri ? invoke<void>('set_locale', { locale }).catch(() => {}) : Promise.resolve());
+/** `chosen`: escolha do usuário (fica salva); sem ela o backend segue o idioma do sistema ao abrir. */
+export const setBackendLocale = (locale: string, chosen: boolean) => (inTauri ? invoke<void>('set_locale', { locale, chosen }).catch(() => {}) : Promise.resolve());

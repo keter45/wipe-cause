@@ -9,6 +9,7 @@ import { PlayAt } from './VideoPanel';
 import { SpellName } from './SpellIcon';
 import { PositionMap, type Mark } from './PositionMap';
 import { PullPhaseTimes } from './PhaseTimes';
+import { PairingFaults } from './PairingFaults';
 import { tr, useMessages } from '../i18n';
 import { mechMsg } from './MechanicsView.i18n';
 
@@ -151,6 +152,7 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           ))}
         </p>
       )}
+      <PairingFaults m={m} classes={classes} />
       {snaps.length > 0 && (
         <div className="mechanic-snaps">
           <span className="muted small">{t.positionsAt}</span>

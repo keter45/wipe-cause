@@ -68,7 +68,8 @@ macro_rules! tx {
 
 // ---------------------------------------------------------------- idioma atual (mensagens na hora)
 
-static ENGLISH: AtomicBool = AtomicBool::new(false);
+/// Inglês é o padrão; o app troca para português pela escolha do usuário ou pelo idioma do sistema.
+static ENGLISH: AtomicBool = AtomicBool::new(true);
 
 pub fn set_english(en: bool) {
     ENGLISH.store(en, Ordering::Relaxed);

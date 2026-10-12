@@ -488,7 +488,12 @@ impl PullBuilder {
                 if self.counting() && Self::is_group_player(f[5], hex(f[7])) {
                     let rel = self.rel(t);
                     if let Some(r) = self.rules.as_mut() {
-                        r.on_missed(f[9].parse().unwrap_or(0), f[5], rel);
+                        let spell_id = f[9].parse().unwrap_or(0);
+                        r.on_missed(spell_id, f[5], rel);
+                        // absorvido inteiro: missType,isOffHand,amountMissed,baseAmount,critical
+                        if f[12] == "ABSORB" {
+                            r.on_tick(spell_id, f[5], num(f.get(15)), rel);
+                        }
                     }
                 }
             }
@@ -579,6 +584,13 @@ impl PullBuilder {
         if self.counting() {
             if let Some(r) = self.rules.as_mut() {
                 r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
+            }
+            // encontro com soma errada num debuff de parear: onde estavam os bosses
+            if self.rules.as_mut().is_some_and(|r| r.wants_pair_snapshot()) {
+                let snap = self.snapshot(rel);
+                if let Some(r) = self.rules.as_mut() {
+                    r.add_pair_snapshot(snap);
+                }
             }
         }
         if !is_player || f.get(12) != Some(&"DEBUFF") {
@@ -764,6 +776,9 @@ impl PullBuilder {
             };
             let rel = self.rel(t);
             if counting {
+                if let Some(r) = self.rules.as_mut() {
+                    r.on_tick(spell_id, dst_guid, num(f.get(s + 1)), rel);
+                }
                 let failed = self.rules.as_mut().map(|r| r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel)).unwrap_or_default();
                 // falha coletiva nova: guarda onde cada um estava
                 if !failed.is_empty() {

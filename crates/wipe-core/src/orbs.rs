@@ -127,17 +127,7 @@ impl OrbLog {
     /// Onde o player estava em `t`, em linha reta entre as posições registradas (teleporte também:
     /// para o orb, Blink com outro orb no caminho conta como passar por ele).
     fn pos(&self, guid: &str, t: i64) -> Option<(f32, f32)> {
-        let tr = self.trails.get(guid)?;
-        let i = tr.partition_point(|p| p.0 <= t);
-        match (i.checked_sub(1).map(|j| tr[j]), tr.get(i)) {
-            (Some(lo), Some(hi)) if hi.0 - lo.0 <= MAX_GAP_MS => {
-                let k = (t - lo.0) as f32 / (hi.0 - lo.0) as f32;
-                Some((lo.1 + (hi.1 - lo.1) * k, lo.2 + (hi.2 - lo.2) * k))
-            }
-            (Some(lo), _) => Some((lo.1, lo.2)),
-            (None, Some(hi)) => Some((hi.1, hi.2)),
-            (None, None) => None,
-        }
+        pos_at(self.trails.get(guid)?, t)
     }
 
     /// Menor distância entre (x, y) e o caminho do player de `t0` a `t1` (trechos retos entre as
@@ -167,6 +157,20 @@ impl OrbLog {
 
     pub fn name(&self, guid: &str) -> &str {
         self.names.get(guid).map_or("", String::as_str)
+    }
+}
+
+/// Onde a unidade estava em `t`, em linha reta entre as posições registradas `(t, x, y)` (em ordem).
+pub(crate) fn pos_at(tr: &[(i64, f32, f32)], t: i64) -> Option<(f32, f32)> {
+    let i = tr.partition_point(|p| p.0 <= t);
+    match (i.checked_sub(1).map(|j| tr[j]), tr.get(i)) {
+        (Some(lo), Some(hi)) if hi.0 - lo.0 <= MAX_GAP_MS => {
+            let k = (t - lo.0) as f32 / (hi.0 - lo.0) as f32;
+            Some((lo.1 + (hi.1 - lo.1) * k, lo.2 + (hi.2 - lo.2) * k))
+        }
+        (Some(lo), _) => Some((lo.1, lo.2)),
+        (None, Some(hi)) => Some((hi.1, hi.2)),
+        (None, None) => None,
     }
 }
 

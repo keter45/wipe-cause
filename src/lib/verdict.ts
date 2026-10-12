@@ -20,6 +20,8 @@ export interface Finding {
   spellId?: number | null;
   /** mecânica marcada como foco da progressão */
   focus?: boolean;
+  /** importância da mecânica dentro do boss (regra) */
+  priority?: number;
 }
 
 export interface Verdict {
@@ -78,6 +80,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
     findings.push({
       severity: m.severity === 'minor' ? 'major' : m.severity,
       focus: m.focus,
+      priority: m.priority,
       spellId: m.spellId,
       title: tr(m.summary) || t.mechanicPlayers(m.name, blamed.length),
       detail: tr(m.summary)
@@ -213,7 +216,7 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   }
 
   const order: Record<Severity, number> = { wipe: 0, major: 1, minor: 2, info: 3 };
-  // o foco da progressão vem antes de tudo; depois, pela gravidade
-  findings.sort((a, b) => Number(!!b.focus) - Number(!!a.focus) || order[a.severity] - order[b.severity]);
+  // o foco da progressão vem antes de tudo; depois, pela gravidade e pela importância da mecânica no boss
+  findings.sort((a, b) => Number(!!b.focus) - Number(!!a.focus) || order[a.severity] - order[b.severity] || (b.priority ?? 0) - (a.priority ?? 0));
   return { headline, findings, decisiveDeaths: decisive };
 }

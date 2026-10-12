@@ -4,8 +4,9 @@
 
 use crate::i18n::Text;
 use crate::orbs::{OrbDetect, OrbLog};
+use crate::pairing::{PairDetect, PairLog};
 use crate::tx;
-use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PhaseWindow, PlayerStackOrigins, Positions, StackOrigin};
+use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PairFault, PhaseWindow, PlayerStackOrigins, Positions, StackOrigin};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
@@ -139,6 +140,9 @@ pub struct Detect {
     /// failure_event: orbs carregados e largados no chão; o culpado da explosão é quem levou um orb
     /// até outro parado (ver `orbs.rs`), em vez de quem perdeu uma `culprit_auras`
     pub orbs: Option<OrbDetect>,
+    /// failure_event: debuff que os players somam encostando um no outro (ex.: Helical Toxins);
+    /// a falha é o encontro com soma errada (ver `pairing.rs`)
+    pub pairing: Option<PairDetect>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -149,6 +153,9 @@ pub struct Mechanic {
     pub kind: MechanicType,
     #[serde(default = "default_severity")]
     pub severity: String,
+    /// importância dentro do boss: maior aparece antes das outras com falha (depois do foco do usuário)
+    #[serde(default)]
+    pub priority: u32,
     #[serde(default)]
     pub roles: Vec<String>,
     #[serde(default)]
@@ -507,6 +514,8 @@ struct MechState {
     stack_changes: Vec<(i64, String, u32, u32)>,
     /// texto do culpado escrito pela própria análise (ex.: qual orb levou até onde)
     blame_texts: HashMap<String, Text>,
+    /// pairing: encontros com soma errada
+    pairings: Vec<PairFault>,
 }
 
 pub struct RuleTracker {
@@ -529,6 +538,8 @@ pub struct RuleTracker {
     touches: Vec<(i64, String, usize)>,
     /// mecânica com `orbs` (só uma por pull) e o que o pull mostrou dos orbs
     orbs: Option<(usize, OrbLog)>,
+    /// mecânica com `pairing` (só uma por pull) e os stacks e posições de quem teve o debuff
+    pairing: Option<(usize, PairLog)>,
 }
 
 impl RuleTracker {
@@ -566,8 +577,10 @@ impl RuleTracker {
             .filter_map(|k| mechs.iter().position(|x| &x.key == k))
             .collect();
         let orbs = mechs.iter().position(|m| m.detect.orbs.is_some()).map(|i| (i, OrbLog::default()));
+        let pairing = mechs.iter().position(|m| m.detect.pairing.is_some()).map(|i| (i, PairLog::default()));
         Ok(RuleTracker {
             orbs,
+            pairing,
             files,
             mechs,
             state,
@@ -758,6 +771,11 @@ impl RuleTracker {
                 log.on_aura(cfg, spell_id, guid, name, stacks, t);
             }
         }
+        if let Some((i, log)) = &mut self.pairing {
+            if let (true, Some(cfg)) = (is_player, &self.mechs[*i].detect.pairing) {
+                log.on_aura(cfg, spell_id, guid, name, stacks, t);
+            }
+        }
         if self.watched_auras.contains(&spell_id) {
             let key = (guid.to_string(), spell_id);
             if stacks > 0 {
@@ -870,12 +888,36 @@ impl RuleTracker {
 
     /// A análise precisa da posição dos players a cada instante (orbs carregados)?
     pub fn wants_positions(&self) -> bool {
-        self.orbs.is_some()
+        self.orbs.is_some() || self.pairing.is_some()
     }
 
     pub fn on_player_pos(&mut self, guid: &str, x: f32, y: f32, t: i64) {
         if let Some((_, log)) = &mut self.orbs {
             log.on_player_pos(guid, x, y, t);
+        }
+        if let Some((_, log)) = &mut self.pairing {
+            log.on_player_pos(guid, x, y, t);
+        }
+    }
+
+    /// Dano (ou absorção) num player com o valor antes da mitigação: o tick de um debuff de
+    /// parear mostra quantos stacks o player tem.
+    pub fn on_tick(&mut self, spell_id: u32, guid: &str, base: i64, t: i64) {
+        if let Some((i, log)) = &mut self.pairing {
+            if let Some(cfg) = &self.mechs[*i].detect.pairing {
+                log.on_tick(cfg, spell_id, guid, base, t);
+            }
+        }
+    }
+
+    /// Algum encontro com soma errada acabou de acontecer: a análise manda a foto dos bosses.
+    pub fn wants_pair_snapshot(&mut self) -> bool {
+        self.pairing.as_mut().is_some_and(|(_, log)| log.take_snapshot_request())
+    }
+
+    pub fn add_pair_snapshot(&mut self, snap: Positions) {
+        if let Some((_, log)) = &mut self.pairing {
+            log.add_snapshot(snap);
         }
     }
 
@@ -978,6 +1020,9 @@ impl RuleTracker {
         let mut state = self.state;
         if let Some((i, log)) = &self.orbs {
             orb_culprits(&self.mechs[*i], &mut state[*i], log);
+        }
+        if let Some((i, log)) = &self.pairing {
+            pair_culprits(&self.mechs[*i], &mut state[*i], log);
         }
         // acertos pela aura que a aura de confirmação mudou junto
         let mut touches = self.touches;
@@ -1150,6 +1195,7 @@ impl RuleTracker {
                 name: m.name,
                 kind: m.kind.as_str().to_string(),
                 severity: m.severity,
+                priority: m.priority,
                 tip: m.tip,
                 focus: m.focus,
                 tuned: m.tuned,
@@ -1167,6 +1213,7 @@ impl RuleTracker {
                 target_ms: m.target_s.map(|s| (s * 1000.0) as i64),
                 max_ms,
                 stack_origins,
+                pairings: st.pairings,
             });
         }
         let rank = |s: &str| match s {
@@ -1180,6 +1227,7 @@ impl RuleTracker {
             (a.failures == 0)
                 .cmp(&(b.failures == 0))
                 .then(b.focus.cmp(&a.focus))
+                .then(b.priority.cmp(&a.priority))
                 .then(rank(&a.severity).cmp(&rank(&b.severity)))
                 .then(b.failures.cmp(&a.failures))
         });
@@ -1449,6 +1497,59 @@ fn orb_culprits(m: &Mechanic, st: &mut MechState, log: &OrbLog) {
     }
 }
 
+/// Debuff de parear: cada encontro com soma errada que conta é uma falha, e o culpado é quem
+/// andou até o outro (os dois, quando os dois andaram ou já estavam juntos).
+fn pair_culprits(m: &Mechanic, st: &mut MechState, log: &PairLog) {
+    let Some(cfg) = &m.detect.pairing else { return };
+    let faults = crate::pairing::faults(cfg, log);
+    let short = |n: &str| n.split('-').next().unwrap_or(n).to_string();
+    for f in &faults {
+        let names: Vec<String> = f.members.iter().map(|x| short(&x.name)).collect();
+        let parts: Vec<String> = f.members.iter().map(|x| x.before.map_or("?".into(), |b| b.to_string())).collect();
+        let (who, sum) = (names.join(" + "), format!("{} = {}", parts.join(" + "), f.sum));
+        let tg = f.target;
+        let what = match (f.over, f.broke) {
+            (true, Some(false)) => tx!("passou de {tg} (a rodada já estava sem solução antes)", "went over {tg} (the round already had no solution before)"),
+            (true, _) => tx!("passou de {tg}: nenhum dos dois limpa mais", "went over {tg}: neither can clear it anymore"),
+            (false, Some(true)) => tx!("abaixo de {tg}, e a rodada ficou sem solução a partir daqui", "under {tg}, and the round had no solution from here on"),
+            (false, Some(false)) => tx!("abaixo de {tg}, sem prejuízo: ainda dava para fechar", "under {tg}, no harm: it could still be closed"),
+            (false, None) => tx!("abaixo de {tg}", "under {tg}"),
+        };
+        let culprit = f.culprit.as_ref().and_then(|g| f.members.iter().find(|x| &x.guid == g));
+        let walk = match culprit {
+            Some(c) => {
+                let others: Vec<String> = f.members.iter().filter(|x| x.guid != c.guid).map(|x| short(&x.name)).collect();
+                let (cn, on, pct) = (short(&c.name), others.join(" + "), (c.share * 100.0).round() as i64);
+                tx!("{cn} foi até {on} ({pct}% da aproximação)", "{cn} walked into {on} ({pct}% of the approach)")
+            }
+            None => tx!("os dois andaram (ou já estavam juntos)", "both moved (or were already together)"),
+        };
+        let detail = Text::new(format!("{who}: {sum} — {}; {}", what.pt, walk.pt), format!("{who}: {sum} — {}; {}", what.en, walk.en));
+        push_event(st, f.t, None, detail);
+        if !f.counted {
+            continue;
+        }
+        st.failures += 1;
+        st.fail_times.push(f.t);
+        let blamed: Vec<_> = match culprit {
+            Some(c) => vec![c],
+            None => f.members.iter().collect(),
+        };
+        for b in blamed {
+            let others: Vec<String> = f.members.iter().filter(|x| x.guid != b.guid).map(|x| short(&x.name)).collect();
+            let on = others.join(" + ");
+            let text = if culprit.is_some() {
+                tx!("foi até {on} e a soma deu {sum}", "walked into {on} and the sum was {sum}")
+            } else {
+                tx!("encostou em {on} e a soma deu {sum}", "touched {on} and the sum was {sum}")
+            };
+            bump(&mut st.players, &b.guid, &b.name, 0, f.t);
+            st.blame_texts.entry(b.guid.clone()).or_insert(text);
+        }
+    }
+    st.pairings = faults;
+}
+
 fn bump(map: &mut HashMap<String, PlayerHits>, guid: &str, name: &str, amount: i64, t: i64) {
     let p = map.entry(guid.to_string()).or_default();
     if p.name.is_empty() {
@@ -1596,6 +1697,45 @@ mechanics:
         let bomb = get("bomb");
         assert_eq!(bomb.players.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Um-R"]);
         assert_eq!(get("double").players[0].count, 1);
+    }
+
+    #[test]
+    fn pairing_blames_who_walked_into_the_wrong_partner() {
+        let yaml = r#"
+name: "Boss"
+encounter_id: 45
+mechanics:
+  - key: helical
+    name: Helical Toxins
+    type: failure_event
+    detect:
+      aura_id: 10
+      damage_ids: [11]
+      pairing: { aura_id: 10, tick_id: 11 }
+    message: "{count} soma(s) errada(s)"
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        assert!(tr.wants_positions());
+        for (g, n, base, y) in [("A", "Alice-R", 3000, 0.0), ("B", "Bob-R", 3000, 20.0), ("C", "Carol-R", 1000, 40.0), ("D", "Dan-R", 1000, 60.0)] {
+            tr.on_aura(10, g, n, 1, true, 0);
+            tr.on_tick(11, g, base, 2_000);
+            for t in (0..=5_000).step_by(250) {
+                // Alice anda de (0,0) até Bob em (0,20); os outros ficam parados
+                let y = if g == "A" { 19.0 * t as f32 / 5_000.0 } else { y };
+                tr.on_player_pos(g, 0.0, y, t);
+            }
+        }
+        tr.on_aura(10, "A", "Alice-R", 6, true, 5_000);
+        tr.on_aura(10, "B", "Bob-R", 6, true, 5_000);
+        assert!(tr.wants_pair_snapshot());
+        let res = tr.finish(&HashMap::new());
+        let m = res.iter().find(|r| r.key == "helical").unwrap();
+        assert_eq!(m.failures, 1);
+        assert_eq!(m.pairings.len(), 1);
+        assert_eq!(m.players.len(), 1);
+        assert_eq!(m.players[0].message.pt, "foi até Bob e a soma deu 3 + 3 = 6");
+        assert_eq!(m.players[0].message.en, "walked into Bob and the sum was 3 + 3 = 6");
     }
 
     #[test]
