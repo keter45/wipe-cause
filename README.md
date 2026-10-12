@@ -5,367 +5,367 @@
 <h1 align="center">Wipe Cause</h1>
 
 <p align="center">
-  <b>Descubra por que a try deu wipe.</b><br>
-  Lê o combat log do World of Warcraft direto do seu PC e mostra o gatilho do wipe, cada morte e quem errou o quê.
+  <b>Find out why the try wiped.</b><br>
+  Reads the World of Warcraft combat log straight from your PC and shows the wipe's trigger, every death and who failed what.
 </p>
 
 <p align="center">
-  <a href="https://github.com/keter45/wipe-cause/releases/latest"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?label=vers%C3%A3o&color=d4a54a" alt="Última versão"></a>
-  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows" alt="Windows 10 e 11">
-  <img src="https://img.shields.io/badge/idiomas-portugu%C3%AAs%20%C2%B7%20English-4cc38a" alt="Português e inglês">
+  <a href="https://github.com/keter45/wipe-cause/releases/latest"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?label=version&color=d4a54a" alt="Latest version"></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/languages-English%20%C2%B7%20portugu%C3%AAs-4cc38a" alt="English and Portuguese">
 </p>
 
 <p align="center">
-  <a href="https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?style=for-the-badge&label=Baixar%20para%20Windows&logo=windows&logoColor=white&color=d4a54a" alt="Baixar para Windows" height="40"></a>
+  <a href="https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?style=for-the-badge&label=Download%20for%20Windows&logo=windows&logoColor=white&color=d4a54a" alt="Download for Windows" height="40"></a>
 </p>
 <p align="center">
-  <a href="https://github.com/keter45/wipe-cause/releases/latest">Novidades da versão</a>
+  <a href="https://github.com/keter45/wipe-cause/releases/latest">What's new</a>
   &nbsp;·&nbsp;
-  <a href="README.en.md">English</a>
+  <a href="README.pt-BR.md">Português</a>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/pt/pull.png" alt="Pull do The Twin Fangs: wipe com o boss em 5.8%, gatilho Eternal Venom aos 5:49 e a lista de erros de mecânica com quem errou" width="100%">
+  <img src="docs/screenshots/en/pull.png" alt="A The Twin Fangs pull: wipe with the boss at 5.8%, Eternal Venom trigger at 5:49 and the list of mechanic mistakes with who failed them" width="100%">
 </p>
-<p align="center"><i>Um pull do The Twin Fangs: o gatilho do wipe, as mecânicas que deram errado e quem errou cada uma.</i></p>
+<p align="center"><i>A The Twin Fangs pull: the wipe's trigger, the mechanics that went wrong and who failed each one.</i></p>
 
 <p align="center">
-  <a href="#instalar">Instalar</a> ·
-  <a href="#como-funciona">Como funciona</a> ·
-  <a href="#resumo-da-noite-e-do-boss">Resumo da noite e do boss</a> ·
-  <a href="#mais-recursos">Mais recursos</a> ·
-  <a href="#para-quem-contribui">Para quem contribui</a>
+  <a href="#install">Install</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#night-and-boss-summary">Night and boss summary</a> ·
+  <a href="#more-features">More features</a> ·
+  <a href="#for-contributors">For contributors</a>
 </p>
 
 ---
 
-### 🎯 O gatilho do wipe
-A falha de mecânica que puxou as mortes, com o momento exato e quem estava envolvido. Nada de adivinhar no Discord depois da raid.
+### 🎯 The wipe's trigger
+The mechanic failure that set off the deaths, with the exact moment and who was involved. No more guessing on Discord after the raid.
 
-### ☠️ Cada morte explicada
-Spike ou morte lenta, se faltou cura, os debuffs ativos, o golpe final, os defensivos que sobraram e onde a pessoa estava.
+### ☠️ Every death explained
+Spike or slow death, missing healing, active debuffs, the killing blow, the defensives left unused and where the player was standing.
 
-### 📊 A noite inteira em uma tela
-O progresso pull a pull, a maior causa dos wipes, o downtime entre as trys e as mecânicas que o grupo escolheu acompanhar.
+### 📊 The whole night on one screen
+Progress pull by pull, the top cause of the wipes, the downtime between tries and the mechanics the group chose to track.
 
-### 🔴 Ao vivo, entre um pull e outro
-Com o ao vivo ligado, o motivo do wipe aparece em segundos depois do pull — e pode ir sozinho para o Discord da raid.
+### 🔴 Live, between pulls
+With live mode on, the reason for the wipe shows up seconds after the pull — and can go straight to the raid's Discord.
 
 ---
 
-## Instalar
+## Install
 
-1. **[Baixe o instalador](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`, ~4 MB).
-2. Abra o arquivo. Na primeira vez, o Windows pode mostrar *"O Windows protegeu o computador"*: clique em **Mais informações → Executar assim mesmo** (o app ainda não tem certificado de assinatura pago).
-3. Pronto. O app **se atualiza sozinho** quando sai versão nova; não precisa baixar de novo.
+1. **[Download the installer](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`, ~4 MB).
+2. Open the file. The first time, Windows may show *"Windows protected your PC"*: click **More info → Run anyway** (the app doesn't have a paid signing certificate yet).
+3. Done. The app **updates itself** when a new version comes out; no need to download it again.
 
 > [!TIP]
-> Não tem servidor do Wipe Cause: tudo roda no seu PC. A conta do Warcraft Logs é opcional e só serve para ver os logs da guilda e completar o que o seu log não pegou.
+> There's no Wipe Cause server: everything runs on your PC. The Warcraft Logs account is optional and only used to see the guild's logs and fill in what your log missed.
 
-### Primeiros passos
+### First steps
 
-Na primeira vez, o app abre em **Configurações** com o passo a passo (depois ele fica em *Configurações → Como funciona*):
+The first time, the app opens on **Settings** with a step-by-step guide (afterwards it lives in *Settings → How it works*):
 
-1. **Pasta de logs do WoW** — encontrada sozinha na maioria dos PCs (`World of Warcraft\_retail_\Logs`).
-2. **No jogo** — em *Opções → Rede*, ligue o *Advanced Combat Logging*; antes do primeiro pull, `/combatlog` (ou o uploader do Warcraft Logs, que liga sozinho).
-3. **Entrar com o Warcraft Logs** (recomendado) — com a sua conta o app vê os logs da sua guilda, completa o que faltou no seu log, liga o ao vivo sozinho e mostra o parse de cada um. Não precisa criar chave nem client.
-4. **Opcional** — ligar o ao vivo quando o WoW abrir (com o app fechado, o jogo abre o Wipe Cause minimizado na bandeja e já ao vivo; um vigia leve, sem janela, inicia com o Windows), vídeos do Warcraft Recorder, Discord e IA.
+1. **WoW logs folder** — found automatically on most PCs (`World of Warcraft\_retail_\Logs`).
+2. **In game** — in *Options → Network*, turn on *Advanced Combat Logging*; before the first pull, `/combatlog` (or the Warcraft Logs uploader, which turns it on by itself).
+3. **Sign in with Warcraft Logs** (recommended) — with your account the app sees your guild's logs, completes what your log missed, turns live mode on by itself and shows everyone's parse. No key or client to create.
+4. **Optional** — turn live on when WoW opens (with the app closed, the game opens Wipe Cause minimized in the tray, already live; a light watcher with no window starts with Windows), Warcraft Recorder videos, Discord and AI.
 
-## Como funciona
+## How it works
 
-### 1. Escolha a noite
+### 1. Pick the night
 
-![Tela Escolha a noite: barra de filtro por boss com o The Twin Fangs escolhido e duas noites com o boss](docs/screenshots/pt/logs.png)
-<p align="center"><i>Uma linha por noite, com os bosses de cada uma. O filtro mostra só as noites de um boss.</i></p>
+![Pick the night screen: boss filter bar with The Twin Fangs selected and two nights with that boss](docs/screenshots/en/logs.png)
+<p align="center"><i>One line per night, with each night's bosses. The filter shows only one boss's nights.</i></p>
 
-**Nova análise** junta os logs do seu PC e os reports da guilda no Warcraft Logs, uma linha por noite. **Analisar** usa o log do seu PC (rápido, sem baixar nada); **Analisar todos** lê um por um os logs da lista que ainda não foram analisados e guarda no histórico, para a Evolução. A pasta de logs inclui a `warcraftlogsarchive` do uploader do Warcraft Logs. Logs só de masmorra (M+) não aparecem. **Guilda / Pug** separa a raid da guilda das raids com outros personagens e gente aleatória: pelo núcleo de players que se repete nas suas noites (um mesmo log pode ter os dois, separados boss a boss). Para achar as noites de um boss, filtre por ele (e pela dificuldade) na barra acima da lista; a escolha fica lembrada.
+**New analysis** brings together the logs on your PC and the guild's Warcraft Logs reports, one line per night. **Analyze** uses your PC's log (fast, no download); **Analyze all** reads one by one the logs in the list that haven't been analyzed yet and saves them in the history, for Progress. The logs folder includes the Warcraft Logs uploader's `warcraftlogsarchive`. Dungeon-only (M+) logs don't show up. **Guild / Pug** separates the guild raid from raids with other characters and random people: by the core of players that repeats across your nights (one log can have both, split boss by boss). To find a boss's nights, filter by it (and by difficulty) in the bar above the list; the choice is remembered.
 
-Bosses e pulls que **não estão no seu log** mas estão no Warcraft Logs (você saiu antes, entrou depois, estava longe) aparecem com o ícone de download. **Completar** baixa só o que falta — demora alguns minutos, então é você quem decide; depois do primeiro download, reabrir é rápido. Masmorras (M+) ficam de fora, e wipes com menos de 30s são ignorados.
+Bosses and pulls that **aren't in your log** but are on Warcraft Logs (you left early, joined late, were away) show a download icon. **Complete** downloads only what's missing — it takes a few minutes, so you decide; after the first download, reopening is fast. Dungeons (M+) are left out, and wipes shorter than 30s are ignored.
 
-### 2. Veja por que deu wipe
+### 2. See why you wiped
 
-O topo do pull é o **veredito**: o boss em quanto ficou, o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e cada erro de mecânica com quem errou, do mais grave para o mais leve (veja o print no topo desta página). Abaixo, as abas:
+The top of the pull is the **verdict**: where the boss ended, the wipe's **trigger** (the mechanic failure that set off the deaths) and every mechanic mistake with who made it, from most to least severe (see the screenshot at the top of this page). Below it, the tabs:
 
-| Mortes | Mecânicas |
+| Deaths | Mechanics |
 |---|---|
-| ![Detalhe de uma morte: tipo spike, debuffs na hora da morte, mapa com a posição de todos e os últimos 15s](docs/screenshots/pt/death.png) | ![Aba Mecânicas: Stir the Depths com quem foi pego e quantas vezes, e Eternal Venom com os stacks de cada um](docs/screenshots/pt/mechanics.png) |
-| Spike ou morte lenta, se faltou cura, debuffs ativos (com stacks), golpe final, defensivos/poção/healthstone e um mini mapa de onde todo mundo estava. | Cada mecânica do boss com quem errou, quantas vezes, a primeira vez e como evitar. |
+| ![A death's details: spike, debuffs at the time of death, a map with everyone's position and the last 15s](docs/screenshots/en/death.png) | ![Mechanics tab: Stir the Depths with who was caught and how many times, and Eternal Venom with each player's stacks](docs/screenshots/en/mechanics.png) |
+| Spike or slow death, missing healing, active debuffs (with stacks), killing blow, defensives/potion/healthstone and a mini map of where everyone was. | Each boss mechanic with who failed it, how many times, the first time and how to avoid it. |
 
-- **Interrupts**: casts que passaram, quem cortou, quem tentou e errou, quem podia e não cortou — e, com a escala colada, de quem era a vez.
-- **Jogadores**: dano causado e tomado, defensivos, poções e a **nota** de cada um.
+- **Interrupts**: casts that went through, who kicked, who tried and missed, who could have and didn't — and, with the assignments pasted, whose turn it was.
+- **Players**: damage done and taken, defensives, potions and each player's **score**.
 
-![Aba Jogadores: tabela com a nota de 0 a 100 de cada player, DPS, HPS, dano tomado, mortes e defensivos](docs/screenshots/pt/players.png)
-<p align="center"><i>A nota de 0 a 100 desconta erros de mecânica, a vez perdida na escala de interrupts e a morte decisiva.</i></p>
+![Players tab: table with each player's 0–100 score, DPS, HPS, damage taken, deaths and defensives](docs/screenshots/en/players.png)
+<p align="center"><i>The 0–100 score takes off points for mechanic mistakes, a missed turn in the interrupt assignments and a decisive death.</i></p>
 
-## Resumo da noite e do boss
+## Night and boss summary
 
-![Resumo da noite: tempo de raid, downtime, um cartão por boss com o resultado e a linha do tempo da noite](docs/screenshots/pt/night.png)
-<p align="center"><i>O resumo da noite: tempo de raid, downtime entre as trys, um cartão por boss e a linha do tempo com as pausas.</i></p>
+![Night summary: raid time, downtime, one card per boss with the result and the night's timeline](docs/screenshots/en/night.png)
+<p align="center"><i>The night summary: raid time, downtime between tries, one card per boss and the timeline with the breaks.</i></p>
 
-No **resumo do boss**: o melhor pull, a maior causa dos wipes, o progresso pull a pull, o placar de vilões e mocinhos e o downtime.
+In the **boss summary**: the best pull, the top cause of the wipes, progress pull by pull, the villains and heroes scoreboard and the downtime.
 
-![Resumo do boss: melhor pull 5.8%, maior causa Stone Breaker, gráfico de progresso por pull e o começo das métricas do grupo](docs/screenshots/pt/boss.png)
+![Boss summary: best pull 5.8%, top cause Stone Breaker, progress chart per pull and the start of the group metrics](docs/screenshots/en/boss.png)
 
-### Métricas do grupo
+### Group metrics
 
-Escolha as mecânicas que importam para o grupo em **Adicionar métrica** (as que mais falharam vêm primeiro). Cada uma vira um cartão com as falhas pull a pull — clique numa barra para abrir o pull —, quem errou e quem ajudou. Dá para reordenar e tirar; a escolha fica salva para aquele boss.
+Pick the mechanics that matter to the group under **Add metric** (the ones that failed most come first). Each one becomes a card with the failures pull by pull — click a bar to open the pull —, who failed and who helped. You can reorder and remove them; the choice is saved for that boss.
 
-![Métricas do grupo: cartões de Stir the Depths, Visceral Burst e Eternal Venom com as falhas por pull, quem errou e quem ajudou](docs/screenshots/pt/metrics.png)
+![Group metrics: Stir the Depths, Visceral Burst and Eternal Venom cards with the failures per pull, who failed and who helped](docs/screenshots/en/metrics.png)
 
-### De onde vieram os stacks
+### Where the stacks came from
 
-Em debuffs que acumulam, como o Eternal Venom do The Twin Fangs, o app diz de onde veio cada stack: os **evitáveis** (onda, orb caindo em cima, Vile Flood, linha do Corrosive Spit), os inevitáveis e os que foram tirados. A regra só culpa quem pegou stack evitável.
+For stacking debuffs, like Eternal Venom on The Twin Fangs, the app tells where every stack came from: the **avoidable** ones (waves, an orb landing on you, Vile Flood, the Corrosive Spit line), the unavoidable ones and the ones that were removed. The rule only blames whoever took an avoidable stack.
 
-![De onde vieram os stacks do Eternal Venom: 601 evitáveis, 3.774 inevitáveis e a tabela por player](docs/screenshots/pt/stacks.png)
+![Where the Eternal Venom stacks came from: 601 avoidable, 3,774 unavoidable and the table per player](docs/screenshots/en/stacks.png)
 
-### Tempo das intermissões
+### Intermission times
 
-Fases em que o boss fica imune até o raid resolver a mecânica são cronometradas pull a pull, com o melhor da noite em cada vez.
+Phases where the boss is immune until the raid solves the mechanic are timed pull by pull, with the best of the night for each one.
 
-![Tempo do Vitriolic Stasis pull a pull no Entombed Sentinels, com o melhor tempo de cada vez e as mortes na fase](docs/screenshots/pt/phase.png)
+![Vitriolic Stasis time pull by pull on Entombed Sentinels, with the best time for each one and the deaths in the phase](docs/screenshots/en/phase.png)
 
-## Mais recursos
+## More features
 
-### 🔴 Modo ao vivo e Discord
+### 🔴 Live mode and Discord
 
-Com **Ao vivo** ligado (no topo), o app acompanha o `WoWCombatLog` mais recente da pasta de logs. Sem o WoW aberto neste PC e com a conta do Warcraft Logs, ele segue o log ao vivo da guilda (alguém precisa estar com o *Live Logging* do uploader ligado); com a opção *Ligar o ao vivo sozinho* (Configurações → Warcraft Logs), ele liga assim que a guilda começa a raid. Quando um pull termina, ele reanalisa o log em alguns segundos, abre o pull novo e mostra uma notificação — dá para ver o motivo do wipe antes do próximo pull.
+With **Live** on (at the top), the app follows the most recent `WoWCombatLog` in the logs folder. Without WoW open on this PC and with a Warcraft Logs account, it follows the guild's live log (someone needs the uploader's *Live Logging* on); with *Turn live on by itself* (Settings → Warcraft Logs), it starts as soon as the guild starts the raid. When a pull ends, it re-analyzes the log in a few seconds, opens the new pull and shows a notification — you can see why you wiped before the next pull.
 
-Fechar a janela deixa o app na bandeja (perto do relógio), com o ao vivo rodando; clique no ícone para voltar e use **Sair** no menu do ícone para fechar de vez.
+Closing the window leaves the app in the tray (near the clock) with live mode running; click the icon to bring it back and use **Quit** in the icon's menu to close it for good.
 
-O aviso do pull tem um campo para anotar o motivo do wipe na hora, do jeito que a raid percebeu (ele não some enquanto você escreve). A anotação fica salva no PC, aparece no topo do pull (onde dá para editar depois), marca o pull na lista, vai no cartão de compartilhar e entra no contexto do "Perguntar à IA".
+The pull notification has a field to note the reason for the wipe right away, the way the raid saw it (it doesn't disappear while you type). The note is saved on the PC, shows at the top of the pull (where you can edit it later), marks the pull in the list, goes on the share card and into the "Ask the AI" context.
 
-Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar*. O botão **Discord** no topo pausa e religa o envio automático sem mexer nas opções (o *Compartilhar* continua funcionando).
+In **Settings → Discord**, paste the raid channel's webhook. In live mode, everything arrives as an image (the same card as *Share*): on every wipe, the reason for the wipe; on every kill, the boss summary; and at the end of the raid (live turned off or 30 min with no new pull), the night summary. The pull, the boss summary and the night summary can also be sent right away through *Share*. The **Discord** button at the top pauses and resumes automatic posting without touching the options (*Share* keeps working).
 
-### 📤 Compartilhar
+### 📤 Share
 
-O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compartilhar**: gera um cartão para **copiar como imagem** e colar no Discord/WhatsApp, **salvar como PNG, HTML ou PDF** ou **enviar a imagem ao Discord** pelo webhook configurado. Cada cartão tem duas versões:
+The pull, the boss, the night, a player's performance and solo mode have **Share**: it builds a card to **copy as an image** and paste on Discord/WhatsApp, **save as PNG, HTML or PDF** or **send the image to Discord** through the configured webhook. Each card has two versions:
 
-- **Resumo** (padrão, e o que vai sozinho no ao vivo): o principal para uma olhada. No pull, o veredito, os 3 achados principais, as mortes decisivas, quem ficou abaixo de 80 e o mapa da falha; no boss, o HP de cada pull, as maiores causas, quem ficou abaixo de 80 e os destaques; no solo, os seus números contra a referência e os 3 erros que mais custaram.
-- **Completo**: tudo aberto, mais largo. Cada morte em ordem, as mecânicas com quem errou, os interrupts que passaram e a tabela dos jogadores (pull); o pull a pull e o placar (boss e noite); os trechos em que a referência abriu vantagem, os cooldowns e o dano tomado a mais (solo); rotação, poções e setup (desempenho).
+- **Summary** (default, and what goes out automatically in live mode): the essentials at a glance. For a pull, the verdict, the top 3 findings, the decisive deaths, who scored below 80 and the failure map; for a boss, each pull's HP, the top causes, who scored below 80 and the highlights; for solo, your numbers against the reference and the 3 most costly mistakes.
+- **Full**: everything open, wider. Every death in order, the mechanics with who failed them, the interrupts that went through and the player table (pull); pull by pull and the scoreboard (boss and night); the stretches where the reference pulled ahead, cooldowns and extra damage taken (solo); rotation, potions and setup (performance).
 
-### 🧮 Nota por player
+### 🧮 Player score
 
-Cada player recebe uma nota de 0 a 100 por pull: parte de 100 e perde pontos por:
+Each player gets a 0–100 score per pull: it starts at 100 and loses points for:
 
-- **erros de mecânica**, pela gravidade da regra, até 3 por mecânica. Dano evitável de tank pesa metade, porque muitas vezes ele toma de propósito para segurar ou posicionar o boss;
-- **deixar passar a própria vez** na escala de interrupts;
-- **morte decisiva**, e mais se tinha defensivo sobrando.
+- **mechanic mistakes**, by the rule's severity, up to 3 per mechanic. A tank's avoidable damage weighs half, since they often take it on purpose to hold or position the boss;
+- **missing their own turn** in the interrupt assignments;
+- **a decisive death**, more if they had a defensive left.
 
-No fim pesam o tempo vivo até a primeira morte e, no kill, o **parse do Warcraft Logs**: de 50 (a mediana) para cima não perde nada; abaixo perde proporcional, até 30% (parse 25 perde 15%). Wipe não tem parse, então fica sem essa parte. O parse é buscado uma vez (com o report da noite cadastrado e a conta do Warcraft Logs conectada) e fica salvo no app. Morte em **wipe geral** (mais de 5 mortes em até 1,5s — explosão, Execution, enrage) não conta: é consequência do wipe, e a culpa fica com a mecânica e quem a causou. Aparece na aba Jogadores (passe o mouse para ver os descontos), como média no placar do boss e por noite na Evolução.
+At the end it weighs the time alive until the first death and, on a kill, the **Warcraft Logs parse**: from 50 (the median) up it loses nothing; below it loses proportionally, up to 30% (parse 25 loses 15%). Wipes have no parse, so they skip this part. The parse is fetched once (with the night's report set and the Warcraft Logs account connected) and saved in the app. A death in a **mass wipe** (more than 5 deaths within 1.5s — explosion, Execution, enrage) doesn't count: it's a consequence of the wipe, and the blame goes to the mechanic and whoever caused it. It shows in the Players tab (hover to see the deductions), as an average on the boss scoreboard and per night in Progress.
 
-### 🤖 Perguntar à IA
+### 🤖 Ask the AI
 
-Cada pull tem a aba **Perguntar à IA**: a IA recebe um dossiê do pull (mecânicas do boss com as dicas das regras, veredito, mortes, defensivos, posições, escala de interrupts, dispels, notas e um resumo dos outros pulls da noite — ~3–5 mil tokens) e responde só com base nele. Dá para ver o dossiê em **Ver dossiê**.
+Every pull has an **Ask the AI** tab: the AI gets a dossier of the pull (the boss mechanics with the rules' tips, verdict, deaths, defensives, positions, interrupt assignments, dispels, notes and a summary of the night's other pulls — ~3–5k tokens) and answers only from it. You can read the dossier in **View dossier**.
 
-Funciona com qualquer provedor no formato de chat da OpenAI, com presets para opções gratuitas: **Google Gemini** e **Groq** (planos gratuitos sem cartão), **OpenRouter** (modelos `:free`) e **Ollama** (roda no seu PC, grátis e offline), escolhidos em **Configurações → Perguntar à IA**. A chave de API fica no Gerenciador de Credenciais do Windows. Nos planos gratuitos, o provedor pode usar as perguntas para treinar modelos — o dossiê inclui os nomes dos players.
+It works with any provider using OpenAI's chat format, with presets for free options: **Google Gemini** and **Groq** (free plans with no card), **OpenRouter** (`:free` models) and **Ollama** (runs on your PC, free and offline), chosen in **Settings → Ask the AI**. The API key is kept in the Windows Credential Manager. On free plans, the provider may use the questions to train models — the dossier includes player names.
 
-### ⚡ Desempenho
+### ⚡ Performance
 
-A aba **Desempenho** de cada pull compara um player com os **top players da mesma spec no Warcraft Logs**, com item level parecido (e tempo de kill parecido, se o pull foi kill). Na progressão não há tempo de kill: o fight do top é recortado no mesmo tempo que o player ficou vivo, então um wipe de 2:30 é comparado com os 2:30 iniciais do kill.
+Each pull's **Performance** tab compares a player with the **top players of the same spec on Warcraft Logs**, with a similar item level (and a similar kill time, if the pull was a kill). In progression there's no kill time: the top's fight is cut at the same time the player stayed alive, so a 2:30 wipe is compared with the first 2:30 of the kill.
 
-- **Janelas de burst**: marque os cooldowns que quer comparar; cada uso mostra os casts de 3s antes a 20s depois numa linha do tempo, lado a lado com o mesmo uso do top.
-- **Cooldowns**: quando cada um foi usado, quantas vezes (e quantas cabiam no tempo) e se o 1º uso veio atrasado ou adiantado.
-- **Onde a referência abriu vantagem**: o seu dano a cada 5s contra o da referência, com os 3 trechos de maior diferença e os casts de cada um lado a lado.
-- **Casts por habilidade**: casts por minuto e % do dano de cada habilidade, e a leitura da [rotação base da spec](#-rotação).
-- **Dano tomado a mais**: as habilidades do boss que pegaram bem mais em você que na referência, por minuto vivo.
-- **Setup**: poção de combate, distribuição de status, talentos diferentes e itens lado a lado, com encantamentos e gemas que faltam.
-- **Exportar**: o relatório do jogador vira um cartão para copiar, salvar (PNG/HTML) ou mandar ao Discord — para quem não tem o app.
+- **Burst windows**: pick the cooldowns to compare; each use shows the casts from 3s before to 20s after on a timeline, side by side with the same use by the top.
+- **Cooldowns**: when each one was used, how many times (and how many fit in the time) and whether the 1st use came late or early.
+- **Where the reference pulled ahead**: your damage every 5s against the reference's, with the 3 stretches with the biggest difference and each one's casts side by side.
+- **Casts by ability**: casts per minute and % of damage per ability, and the reading of the [spec's base rotation](#-rotation).
+- **Extra damage taken**: the boss abilities that hit you much more than the reference, per minute alive.
+- **Setup**: combat potion, stat distribution, different talents and items side by side, with missing enchants and gems.
+- **Export**: the player's report becomes a card to copy, save (PNG/HTML) or send to Discord — for people who don't have the app.
 
-Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) e cole o client ID e o secret na aba (ficam no Gerenciador de Credenciais do Windows). As consultas enviam só boss, spec e códigos de report; as respostas ficam em cache. A comparação com a própria raid fica na aba **Na própria raid**. Se o link do report da noite estiver cadastrado, o pull também ganha links para o seu fight no Warcraft Logs e no WoWAnalyzer.
+To use the tops, create a free client at [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) and paste the client ID and secret in the tab (they're kept in the Windows Credential Manager). Queries only send the boss, spec and report codes; responses are cached. Comparing with your own raid lives in the **In your own raid** tab. If the night's report link is set, the pull also gets links to your fight on Warcraft Logs and WoWAnalyzer.
 
-### 👤 Modo solo
+### 👤 Solo mode
 
-No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é por que a raid wipou. No solo, é como **você** pode melhorar. "Você" é quem gravou o log; na análise do Warcraft Logs, ou para ver outro personagem, escolha na própria tela.
+At the top, **Guild / Solo** switches the app's focus. In guild mode, the question is why the raid wiped. In solo, it's how **you** can improve. "You" is whoever recorded the log; when analyzing from Warcraft Logs, or to look at another character, choose on the screen itself.
 
-- **Pull → aba Você**: no topo, quatro cartões coloridos (verde bom, amarelo atenção, vermelho ruim, cinza só contexto): output, rotação, sobrevivência e erros de mecânica. Depois, **Para o próximo pull**: os seus erros ordenados pelo que custaram, cada um com o momento (▶ no vídeo) e o que fazer. Embaixo, abas:
-  - **Mecânicas:** as suas mortes e erros de mecânica, e os defensivos que os tops da spec usam nas mecânicas deste boss.
-  - **Rotação** (ou **Cura**, para healer): a leitura da [rotação base da spec](#-rotação), com os tops do mesmo boss em cada item; para healer, a [cura comparada](#-healers).
-  - **Cooldowns:** o uso dos cooldowns e, para healer, em qual mecânica do boss a referência usa cada cooldown grande.
-  - **Guia da spec:** pontos principais, prioridade e fontes.
-- **Pull → aba Comparação detalhada**: você contra uma referência (um top da spec no Warcraft Logs, alguém da raid ou você em outro pull), com tudo da aba [Desempenho](#-desempenho). Para healer, a busca no Warcraft Logs traz kills de outras guildas com pelo menos 70% da nossa composição de healers.
-- **Resumo da noite e do boss**: os seus pulls boss a boss, o melhor de cada um e os erros que se repetem.
-- **Evolução**: um boss ao longo das noites salvas: o seu melhor output, a rotação, as mortes e os erros de mecânica por pull.
+- **Pull → You tab**: at the top, four colored cards (green good, yellow attention, red bad, gray context only): output, rotation, survival and mechanic mistakes. Then **For the next pull**: your mistakes sorted by what they cost, each with the moment (▶ in the video) and what to do. Below, tabs:
+  - **Mechanics:** your deaths and mechanic mistakes, and the defensives the spec's tops use on this boss's mechanics.
+  - **Rotation** (or **Healing**, for healers): the reading of the [spec's base rotation](#-rotation), with the tops on the same boss on every item; for healers, the [healing comparison](#-healers).
+  - **Cooldowns:** cooldown usage and, for healers, on which boss mechanic the reference uses each big cooldown.
+  - **Spec guide:** key points, priority and sources.
+- **Pull → Detailed comparison tab**: you against a reference (a top of your spec on Warcraft Logs, someone in the raid or yourself on another pull), with everything from the [Performance](#-performance) tab. For healers, the Warcraft Logs search brings kills from other guilds with at least 70% of our healer composition.
+- **Night and boss summary**: your pulls boss by boss, the best of each and the mistakes that repeat.
+- **Progress**: a boss across the saved nights: your best output, rotation, deaths and mechanic mistakes per pull.
 
-### 📜 Rotação
+### 📜 Rotation
 
-Cada spec pode ter a **rotação base escrita** em `rotations/<classe>-<spec>.yaml` (pontos principais, prioridade por árvore de herói em alvo único e AoE, abertura e checagens), feita a partir do guia de rotação do Wowhead e da APL do SimulationCraft do patch e calibrada nos logs dos melhores players do mundo de cada spec (o que nem eles cumprem sai). Na aba **Desempenho** (e na aba **Você** do modo solo), o log do player é lido contra ela: aproveitamento (0–100), os erros claros e os ajustes, com o momento de cada um (▶ no vídeo), a abertura e o uso dos cooldowns.
+Each spec can have a **written base rotation** in `rotations/<class>-<spec>.yaml` (key points, priority per hero tree for single target and AoE, opener and checks), built from Wowhead's rotation guide and the patch's SimulationCraft APL and calibrated on the logs of the world's best players of each spec (what not even they do is dropped). In the **Performance** tab (and in solo mode's **You** tab), the player's log is read against it: efficiency (0–100), clear mistakes and tweaks, with the moment of each (▶ in the video), the opener and cooldown usage.
 
-**Comparado com os tops neste boss:** o app traz embutida a mediana dos melhores players do mundo da spec em cada boss do raide. Cada item da rotação mostra o seu número ao lado do deles; a **abertura** é a dos tops naquele boss e na sua árvore de herói (ela muda de boss para boss e com os talentos), comparada com a sua; e aparecem também: a habilidade que eles usam bem mais ou menos naquele boss (AoE x alvo único), o cooldown que eles seguram para depois (ou soltam no pull), o momento da poção e onde você parou depois de uma mecânica do boss enquanto eles continuaram castando.
+**Compared with the tops on this boss:** the app ships with the median of the world's best players of the spec on each raid boss. Every rotation item shows your number next to theirs; the **opener** is the tops' one on that boss and for your hero tree (it changes from boss to boss and with talents), compared with yours; along with: the ability they use much more or less on that boss (AoE vs single target), the cooldown they hold for later (or fire on the pull), when they drink the potion and where you stopped after a boss mechanic while they kept casting.
 
-**Procs e cooldowns, como os tops decidem:** o app descobre nos logs dos tops quem gasta cada proc (Art of War → Blade of Justice, Divine Resonance → Hammer of Wrath...) e quais cooldowns eles soltam juntos, e aponta onde você decide diferente: o proc que você deixa acabar bem mais que eles ("Divine Resonance: você deixou acabar 51% (tops 0%)"), as outras habilidades que você casta com o proc esperando, o cooldown que eles usam assim que fica pronto e você segura, e o que eles alinham (Avenging Wrath junto do Wake of Ashes) e você não, com o ▶ de cada momento. Segurar para uma fase muda de boss para boss: com tops suficientes no boss, a comparação dos cooldowns é a daquele boss. Só aparece o que passa bem do que os próprios tops fazem, e proc que você nunca gastou (outro build) não é cobrado.
+**Procs and cooldowns, how the tops decide:** the app finds in the tops' logs what spends each proc (Art of War → Blade of Justice, Divine Resonance → Hammer of Wrath...) and which cooldowns they fire together, and points out where you decide differently: the proc you let expire much more than they do ("Divine Resonance: you let 51% expire (tops 0%)"), the other abilities you cast with the proc waiting, the cooldown they use as soon as it's ready and you hold, and what they line up (Avenging Wrath with Wake of Ashes) and you don't, with the ▶ for each moment. Holding for a phase changes from boss to boss: with enough tops on the boss, the cooldown comparison is that boss's. Only what goes well beyond what the tops themselves do shows up, and a proc you never spent (another build) isn't flagged.
 
-**O contexto da luta:** a rotação é comparada separada nos trechos em que você acertava 1 inimigo e nos de AoE (3 ou mais), com os tops daquele boss: "AoE: os tops usam Divine Storm em 80% dos casts; você em 20%". Pull bem mais curto que a luta dos tops (wipe numa fase do começo) não compara a mistura. Buffs e debuffs que os tops mantêm o tempo todo pela rotação (não os de equipamento) viram checagem de uptime sozinhos. E quando um talento muda a rotação dos tops em todos os bosses (não só nos de AoE, onde quem muda é a luta), quem joga esse build é comparado com os tops do mesmo build.
+**The fight's context:** your rotation is compared separately in the stretches where you were hitting 1 enemy and in the AoE ones (3 or more), with that boss's tops: "AoE: the tops use Divine Storm for 80% of casts; you 20%". A pull much shorter than the tops' fight (a wipe in an early phase) doesn't compare the mix. Buffs and debuffs the tops keep up all the time through their rotation (not gear ones) become uptime checks on their own. And when a talent changes the tops' rotation on every boss (not just the AoE ones, where the fight is what changes it), whoever plays that build is compared with the tops of the same build.
 
-Na comparação da aba **Desempenho**, as mesmas decisões também são comparadas com a referência escolhida, alguém da raid ou um top do Warcraft Logs (o app baixa também os buffs dele): "Explosive Shot: depois de pronto, você leva 8.8s para usar, em média (Bettaozor 1.3s)". Com um log só não há como saber o que é normal, então aparece só diferença grande entre os dois e que também passa do que os tops fazem: o que dois bons players fazem diferente entre si é estilo, não erro.
+In the **Performance** tab's comparison, the same decisions are also compared with the chosen reference, someone from the raid or a Warcraft Logs top (the app also downloads their buffs): "Explosive Shot: once ready, you take 8.8s to use it on average (Bettaozor 1.3s)". With a single log there's no way to tell what's normal, so only a big difference between the two that also goes beyond what the tops do shows up: what two good players do differently from each other is style, not a mistake.
 
-Specs com rotação: todas as de dano — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) e **Warrior** (Arms, Fury).
+Specs with a rotation: every damage spec — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) and **Warrior** (Arms, Fury).
 
 ### 💚 Healers
 
-Cura não se compara com os tops: o HPS engana (raid tomando dano a mais, raid montada com poucos healers) e os logs do topo distorcem cada vez mais com o tempo. A referência de healer são **kills no mítico de outras guildas** (8 por boss em cada spec, tirados de várias páginas do ranking, sem o topo e sem usar a nota na escolha), com a **composição de healers mais parecida com a nossa** e sem os logs distorcidos (raid tomando dano demais ou cura concentrada num healer). Os healers da própria raid nunca são a referência: são quem a análise quer ajudar. Regras completas em [docs/healer-analysis.md](docs/healer-analysis.md).
+Healing isn't compared with the tops: HPS is misleading (a raid taking extra damage, a raid built with few healers) and top logs get more distorted over time. The healer reference is **Mythic kills from other guilds** (8 per boss for each spec, taken from several pages of the ranking, without the top and without using the parse to pick), with the **healer composition closest to ours** and without distorted logs (raid taking too much damage or healing concentrated on one healer). Healers from your own raid are never the reference: they're who the analysis wants to help. Full rules in [docs/healer-analysis.md](docs/healer-analysis.md).
 
-- **Contexto, não nota:** HPS, fatia da cura dos healers e dano tomado pela raid, cada um com a faixa da referência desenhada.
-- **O que ajustar:** só onde a referência cumpre o que se cobra e você está fora da faixa dela: cooldown parado, proc perdido (Infusion of Light, Surge of Light, Strength of the Black Ox…), combinações da spec (Divine Toll dentro do Beacon of Virtue, Wild Growth antes do Convoke), Atonement/Renewing Mist/Rejuvenation na raid, tempo parado com gente ferida, mana sobrando no kill e overheal acima da referência.
-- **De onde vem a cura:** a fatia de cada habilidade na cura, o overheal e os casts, seus e da referência.
-- **Momentos dos cooldowns:** em qual mecânica do boss a maioria da referência usa cada cooldown grande ("2ª Stir the Depths · referência +3 s · você +8 s"), numa linha do tempo da luta.
+- **Context, not a grade:** HPS, share of the healers' healing and raid damage taken, each with the reference range drawn.
+- **What to adjust:** only where the reference does what is asked and you're outside its range: cooldown sitting, lost proc (Infusion of Light, Surge of Light, Strength of the Black Ox…), spec combos (Divine Toll inside Beacon of Virtue, Wild Growth before Convoke), Atonement/Renewing Mist/Rejuvenation on the raid, idle time while people were hurt, mana left at the kill and overheal above the reference.
+- **Where the healing comes from:** each spell's share of healing, overheal and casts, yours and the reference's.
+- **Cooldown timings:** on which boss mechanic most of the reference uses each big cooldown ("2nd Stir the Depths · reference +3 s · you +8 s"), on a timeline of the fight.
 
-A cura agora conta as absorções (Power Word: Shield e outros escudos), como no Warcraft Logs.
+Healing now counts absorbs (Power Word: Shield and other shields), as Warcraft Logs does.
 
-Specs com análise de healer: **Discipline Priest**, **Holy Priest**, **Holy Paladin**, **Restoration Druid**, **Restoration Shaman**, **Mistweaver Monk** e **Preservation Evoker**.
+Specs with healer analysis: **Discipline Priest**, **Holy Priest**, **Holy Paladin**, **Restoration Druid**, **Restoration Shaman**, **Mistweaver Monk** and **Preservation Evoker**.
 
-### 🛠️ Ajustar as regras do boss
+### 🛠️ Tuning the boss rules
 
-Cada raid tem sua estratégia, então as regras dos bosses podem ser ajustadas sem mexer em arquivo:
+Every raid has its own strategy, so boss rules can be tuned without touching files:
 
-- **Ajustar regras deste boss** (aba Mecânicas): ligar/desligar cada mecânica, mudar a gravidade, quantos hits por player são tolerados, com quantos stacks avisar, o tempo máximo até o dispel, quem pode ser culpado e os textos de dica e mensagem. Só o que muda em relação ao padrão é salvo, então os ajustes continuam valendo quando o app atualiza as regras.
-- **Foco da progressão (★)**: as mecânicas que estão segurando a progressão entram no veredito mesmo quando leves, vêm primeiro e pesam 1,5× na nota.
-- **Criar regra** (aba Habilidades do boss): para algo que as regras não pegam, escolha em linguagem simples o que aquela habilidade significa ("tomar isso é erro", "tem que ser cortado", "stack que mata"…); a prévia mostra o que ela marcaria no pull.
-- **Marcar erro**: para o que o log não prova (posição, bait, escala), marque no pull quem errou e o quê — ou "essa morte foi erro do player" no detalhe da morte. Entra no veredito, na nota e no contexto da IA.
-- **Exportar / Importar**: mande os ajustes de um boss para os officers usarem a mesma configuração.
+- **Adjust this boss's rules** (Mechanics tab): turn each mechanic on/off, change its severity, how many hits per player are tolerated, at how many stacks to warn, the maximum time until a dispel, who can be blamed and the tip and message texts. Only what differs from the default is saved, so your tuning keeps working when the app updates its rules.
+- **Progression focus (★)**: the mechanics holding progression back go into the verdict even when minor, come first and weigh 1.5× in the score.
+- **Create rule** (Boss abilities tab): for something the rules don't catch, pick in plain language what that ability means ("taking this is a mistake", "must be interrupted", "stack that kills"…); the preview shows what it would flag in the pull.
+- **Mark mistake**: for what the log can't prove (positioning, baits, assignments), mark in the pull who failed and what — or "this death was the player's fault" in the death details. It goes into the verdict, the score and the AI context.
+- **Export / Import**: send a boss's tuning to the officers so everyone uses the same setup.
 
-Salvar reanalisa o log aberto. Os ajustes ficam em `rule-tuning/<encounter>.json` na pasta de dados do app (`wipe-cli analyze <log> --tuning <pasta>` também aplica).
+Saving re-analyzes the open log. Tuning is stored in `rule-tuning/<encounter>.json` in the app's data folder (`wipe-cli analyze <log> --tuning <folder>` applies it too).
 
-### ✋ Escala de interrupts, dispels e mecânicas especiais
+### ✋ Interrupt assignments, dispels and special mechanics
 
-Na aba **Interrupts**, cole a nota do MRT/NSRT (ou escreva `Cast: Fulano, Ciclano, Beltrano`, uma linha por add): o app confere cast a cast de quem era a vez, quem cortou, quem cobriu e em que vez o cast passou — e o veredito do pull e o Discord passam a apontar quem deixou passar.
+In the **Interrupts** tab, paste the MRT/NSRT note (or write `Cast: Alice, Bob, Carol`, one line per add): the app checks cast by cast whose turn it was, who kicked, who covered and on which turn the cast went through — and the pull's verdict and Discord start pointing out who let it through.
 
-As regras também cobrem:
+The rules also cover:
 
-- **`dispel`**: o tempo até o dispel de cada debuff e quem ficou sem.
-- **`phase_duration`**: fases cronometradas, como o puzzle do Vitriolic Stasis no Entombed Sentinels.
-- **Debuff acumulativo com fontes**: de onde veio cada stack (ex.: Eternal Venom no The Twin Fangs).
-- **`exclusive_auras`**: quem pegou duas auras que não podem andar juntas. Ex.: Mark of Acid e Mark of Blood no Entombed Sentinels, quando alguém chega perto do outro boss no meio da luta; a troca de lado depois da intermissão não conta.
+- **`dispel`**: the time until each debuff is dispelled and who was left without one.
+- **`phase_duration`**: timed phases, like the Vitriolic Stasis puzzle on Entombed Sentinels.
+- **Stacking debuffs with sources**: where every stack came from (e.g. Eternal Venom on The Twin Fangs).
+- **`exclusive_auras`**: who picked up two auras that must not be held together. E.g. Mark of Acid and Mark of Blood on Entombed Sentinels, when someone gets near the other boss mid-fight; swapping sides after the intermission doesn't count.
 
-### 📍 Posições
+### 📍 Positions
 
-Com Advanced Combat Logging, cada morte (antes do corte) guarda onde todo mundo estava: o detalhe da morte mostra um mini mapa, a distância até o boss e quem estava a menos de 8 jardas. As falhas coletivas de mecânica (ex.: detonação do orb roxo, Execution da Guillotine) também guardam a foto do momento.
+With Advanced Combat Logging, each death (before the cutoff) keeps where everyone was: the death details show a mini map, the distance to the boss and who was within 8 yards. Collective mechanic failures (e.g. the purple orb's detonation, Guillotine's Execution) also keep a snapshot of the moment.
 
-No Coiled Altar Mythic, o app reconstrói onde estava cada orb (quem carregava, onde cada um caiu, quais o Sever quebrou) e, em cada detonação, aponta quem levou um orb até outro parado no chão: "Rainface levou o roxo a 7 jardas de um verde no chão". Quando ninguém chegou perto (ex.: sobrou roxo no tempo), não culpa ninguém.
+On Mythic Coiled Altar, the app rebuilds where every orb was (who carried it, where each one was dropped, which ones Sever broke) and, at each detonation, points out who took an orb to another one sitting on the ground: "Rainface took the purple within 7 yards of a green on the ground". When nobody got close (e.g. a purple was left at the timer), it blames no one.
 
-### 📈 Evolução
+### 📈 Progress
 
-Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull, nota e parse em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando. Usa só a raid da guilda (dá para incluir os pugs). Mostra também **quem está melhorando e quem está piorando** (começo x fim das noites em que cada um jogou) e, na **progressão** (os wipes antes da primeira kill), a melhor e a pior nota nos wipes e o melhor e o pior parse na kill.
+In the sidebar, **Progress** compares every saved night of a boss: best pull per night, the % of wipes where each mechanic was the trigger (to see whether the mistake is going down) and, per player, deaths per pull, score and parse each night, what kills them most and how many of those deaths had a defensive left. It only uses the guild raid (pugs can be included). It also shows **who is improving and who is getting worse** (start vs end of the nights each one played) and, for the **progression** (the wipes before the first kill), the best and worst score on the wipes and the best and worst parse on the kill.
 
 ### 🌐 Warcraft Logs
 
-Com a conta do Warcraft Logs, os reports da sua guilda (inclusive os não listados) aparecem em **Nova análise**, junto dos logs do PC; um link de fora da lista pode ser colado no fim da tela. O que estiver num log do seu PC sai dele; do Warcraft Logs só se baixa o que falta (os eventos baixados ficam no disco, para reanalisar sem gastar a API). Várias pessoas subiram a mesma noite? Os reports viram uma análise só, com uma cópia de cada pull.
+With a Warcraft Logs account, your guild's reports (unlisted ones too) show up in **New analysis**, next to the PC's logs; a link that's not on the list can be pasted at the bottom of the screen. Whatever is in a log on your PC comes from it; only what's missing is downloaded from Warcraft Logs (downloaded events stay on disk, to re-analyze without spending the API). Several people uploaded the same night? The reports become a single analysis, with one copy of each pull.
 
-Com a conta do Warcraft Logs conectada, o app acha sozinho o report da noite: procura nas guildas do login e nos reports que você subiu, perto do horário do log, e fica com o que tem os mesmos pulls (boss, dificuldade e horário). Sem login, ou para trocar, cole o link na barra do Warcraft Logs (fica salvo para aquele arquivo de log; "Remover" faz o app não procurar de novo). Cada pull ganha um botão que abre o report já filtrado no boss e na dificuldade, com o número da try como o WCL mostra ("Wipe 13") — ele conta também os pulls curtos que o app ignora. O botão do report não usa a API.
+With the Warcraft Logs account connected, the app finds the night's report on its own: it searches the login's guilds and the reports you uploaded, around the log's time, and keeps the one with the same pulls (boss, difficulty and time). Without a login, or to change it, paste the link in the Warcraft Logs bar (it's saved for that log file; "Remove" stops the app from searching again). Each pull gets a button that opens the report already filtered to the boss and difficulty, with the try number as WCL shows it ("Wipe 13") — it also counts the short pulls the app ignores. The report button doesn't use the API.
 
 ### 🎥 Warcraft Recorder
 
-Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com), cadastre a pasta dos vídeos (**Configurações → Vídeos do Warcraft Recorder**, ou o botão **Vídeos** no topo). Sem cadastro, o app tenta detectar a pasta pela configuração do Recorder e casa cada vídeo com o pull pelo boss e horário de início. No pull aparece o botão **▶ Vídeo**, e cada morte, gatilho e evento de mecânica ganha um **▶** que abre o vídeo 5s antes do momento.
+If you record your fights with [Warcraft Recorder](https://warcraftrecorder.com), set the videos folder (**Settings → Warcraft Recorder videos**, or the **Videos** button at the top). Without it, the app tries to detect the folder from the Recorder's config and matches each video to its pull by boss and start time. The pull gets a **▶ Video** button, and every death, trigger and mechanic event gets a **▶** that opens the video 5s before the moment.
 
-**Vídeos da guilda (nuvem do Recorder):** em *Configurações → Vídeos*, entre com a conta da nuvem do Warcraft Recorder. Os vídeos que a guilda sobe viram outros pontos de vista de cada pull: no player, troque de POV e o vídeo continua no mesmo segundo.
+**Guild videos (Recorder cloud):** in *Settings → Videos*, sign in with the Warcraft Recorder cloud account. The videos the guild uploads become other points of view of each pull: in the player, switch POV and the video keeps going from the same second.
 
-### ⚙️ Configurações
+### ⚙️ Settings
 
-Tudo o que o app precisa fica em **Configurações** (rodapé da barra lateral), cada item com o status (pronto, falta configurar, desligado):
+Everything the app needs lives in **Settings** (bottom of the sidebar), each item with its status (ready, needs setup, off):
 
-- **Essencial:** a pasta de logs do WoW e o combat log no jogo (`/combatlog` + Advanced Combat Logging — o app avisa se o log aberto veio sem ele).
-- **Análise:** o corte de mortes padrão para logs novos.
-- **Integrações opcionais:** Warcraft Logs, pasta de vídeos do Warcraft Recorder, webhook do Discord e o provedor do "Perguntar à IA".
-- **Sobre:** versão, atualizações e a pasta das regras de boss.
+- **Essential:** the WoW logs folder and the in-game combat log (`/combatlog` + Advanced Combat Logging — the app warns you if the open log was recorded without it).
+- **Analysis:** the default death cutoff for new logs.
+- **Optional integrations:** Warcraft Logs, Warcraft Recorder videos folder, Discord webhook and the "Ask the AI" provider.
+- **About:** version, updates and the boss rules folder.
 
-Quando um recurso depende de uma integração que ainda não foi ligada, ele mostra um atalho que abre a seção certa.
+When a feature depends on an integration that isn't set up yet, it shows a shortcut to the right section.
 
-**Ignorar após N mortes** (topo da tela; o padrão, 4, fica em Configurações): depois de algumas mortes o wipe já está decidido. Erros de mecânica, falhas, interrupts e o gatilho só contam até a N-ésima morte de cada pull; o resto aparece esmaecido. Mudar o N é instantâneo (0 = conta tudo).
+**Ignore after N deaths** (top of the screen; the default, 4, is in Settings): after a few deaths the wipe is already decided. Mechanic mistakes, failures, interrupts and the trigger only count up to the N-th death of each pull; the rest is dimmed. Changing N is instant (0 = count everything).
 
-### 🗣️ Idiomas
+### 🗣️ Languages
 
-O app é em português (Brasil) e inglês: o idioma vem do sistema na primeira vez e troca em **Configurações**, na hora e sem perder o que está aberto. A análise, as dicas das regras, a rotação, os cartões de compartilhar, as mensagens do Discord, o dossiê da IA e o menu da bandeja seguem o idioma escolhido. Nomes de habilidades, bosses e mecânicas ficam em inglês nos dois, como vêm do jogo.
+The app is in Portuguese (Brazil) and English: the language comes from the system the first time and can be switched in **Settings**, instantly and without losing what's open. The analysis, rule tips, rotation, share cards, Discord messages, AI dossier and tray menu follow the chosen language. Ability, boss and mechanic names stay in English in both, as they come from the game.
 
-## Para quem contribui
+## For contributors
 
-### Estrutura
+### Layout
 
-| pasta | o quê |
+| folder | what |
 |---|---|
-| `crates/wipe-core` | parser do combat log e análise dos pulls (Rust, sem dependência de UI) |
-| `src-tauri` | app desktop (Tauri) que expõe o `wipe-core` para a UI |
+| `crates/wipe-core` | combat log parser and pull analysis (Rust, no UI dependency) |
+| `src-tauri` | desktop app (Tauri) exposing `wipe-core` to the UI |
 | `src` | interface (React + TypeScript) |
-| `encounters/` | regras por boss (YAML), geradas pela skill `boss-rules` |
-| `rotations/` | rotação base por spec (YAML) |
-| `data/` | tabelas editáveis: defensivos por classe, consumíveis |
-| `docs/screenshots/` | os prints deste README (`pt/` e `en/`) |
+| `encounters/` | per-boss rules (YAML), generated by the `boss-rules` skill |
+| `rotations/` | base rotation per spec (YAML) |
+| `data/` | editable tables: defensives per class, consumables |
+| `docs/screenshots/` | this README's screenshots (`pt/` and `en/`) |
 
-### Desenvolvimento
+### Development
 
-Pré-requisitos: Node 20+, Rust (rustup) e MSVC Build Tools (Windows).
+Requirements: Node 20+, Rust (rustup) and MSVC Build Tools (Windows).
 
 ```bash
 npm install
 npm run tauri dev
 ```
 
-Rodar só o analisador, sem UI:
+Run only the analyzer, with no UI:
 
 ```bash
-cargo run -p wipe-core --bin wipe-cli -- analyze caminho/do/WoWCombatLog.txt
+cargo run -p wipe-core --bin wipe-cli -- analyze path/to/WoWCombatLog.txt
 ```
 
-Para testar o ao vivo sem estar em raid: `node scripts/simulate-live.mjs <log antigo> <pasta Logs>` escreve alguns pulls de um log real, aos poucos, num `WoWCombatLog` novo.
+To test live mode without raiding: `node scripts/simulate-live.mjs <old log> <Logs folder>` writes a few pulls from a real log, bit by bit, into a new `WoWCombatLog`.
 
-### Textos nas duas línguas
+### Texts in both languages
 
-Todo texto novo entra em português e inglês na mesma mudança.
+Every new text goes in Portuguese and English in the same change.
 
-- **Interface:** os textos ficam em dicionários (`*.i18n.ts`, com `defineMessages(pt, en)`); o inglês é tipado contra o português, então faltar uma frase não compila. Um teste falha se aparecer português fora dos dicionários, e outro se o lado inglês de um dicionário tiver português.
-- **Regras de boss e rotações (YAML):** dicas, mensagens, títulos e notas são `{ pt: "...", en: "..." }`; os nomes ficam em inglês. O teste do `wipe-core` confere as duas coisas.
-- **Notas de versão:** uma seção `## Português` e uma `## English` (o app mostra a do idioma escolhido).
+- **Interface:** texts live in dictionaries (`*.i18n.ts`, with `defineMessages(pt, en)`); English is typed against Portuguese, so a missing phrase doesn't compile. One test fails if Portuguese shows up outside the dictionaries, and another if a dictionary's English side has Portuguese in it.
+- **Boss rules and rotations (YAML):** tips, messages, titles and notes are `{ pt: "...", en: "..." }`; names stay in English. The `wipe-core` test checks both.
+- **Release notes:** a `## Português` section and a `## English` section (the app shows the one for the chosen language).
 
 <details>
-<summary><b>Atualizar tudo depois de patch, raide nova ou nerf</b></summary>
+<summary><b>Updating everything after a patch, a new raid or a nerf</b></summary>
 
-`npm run refresh` refaz sem IA tudo o que muda com o jogo: baixa a APL do SimulationCraft (e marca as specs em que ela mudou), roda os tops de cada spec pelo motor, ajusta só os números das rotações (metas de uptime e de uso de cooldown pelo quartil de baixo dos tops; id novo da mesma habilidade em `alt_ids`; evento repetido do mesmo botão em `ignore_casts`), gera a referência dos tops por boss e escreve um relatório em `samples/refresh/<data>.md` com cada spec **OK**, **ATENÇÃO** ou **REVISAR**.
+`npm run refresh` redoes, without AI, everything that changes with the game: it downloads SimulationCraft's APL (and flags the specs where it changed), runs each spec's tops through the engine, adjusts only the rotations' numbers (uptime and cooldown usage targets from the tops' lower quartile; a new id for the same ability in `alt_ids`; a repeated event of the same button in `ignore_casts`), generates the tops' per-boss reference and writes a report to `samples/refresh/<date>.md` with each spec **OK**, **ATENÇÃO** (attention) or **REVISAR** (review).
 
-- `npm run refresh -- --tops`: baixa os tops antes (credenciais por variável de ambiente, `samples/wcl-credentials.env`, fora do git, ou o cofre do app; com mais de um cliente no arquivo, troca quando os pontos por hora acabam).
-- `npm run refresh -- --tops --zone latest --fresh`: raide nova; os chefes vêm da zona mais nova do Warcraft Logs (sem regras escritas) e os tops do raide anterior saem da referência.
-- `npm run refresh -- --dry <spec>`: só o relatório, sem mudar nada.
+- `npm run refresh -- --tops`: downloads the tops first (credentials from environment variables, `samples/wcl-credentials.env`, kept out of git, or the app's vault; with more than one client in the file, it switches when the hourly points run out).
+- `npm run refresh -- --tops --zone latest --fresh`: a new raid; the bosses come from Warcraft Logs' newest zone (no written rules needed) and the previous raid's tops leave the reference.
+- `npm run refresh -- --dry <spec>`: just the report, changing nothing.
 
-REVISAR é o que muda o que a spec é (habilidade que os tops pararam de usar, habilidade nova, APL nova, checagem que nem os tops cumprem): a skill `rotation-refresh` do Claude Code cuida disso.
+REVISAR is what changes what the spec is (an ability the tops stopped using, a new ability, a new APL, a check not even the tops meet): Claude Code's `rotation-refresh` skill handles it.
 
 </details>
 
 <details>
-<summary><b>Gerar a rotação de uma spec</b></summary>
+<summary><b>Generating a spec's rotation</b></summary>
 
-Sem escrever à mão nem usar IA: `scripts/rotation.mjs` monta o YAML a partir da APL e dos dados de spell do SimulationCraft e calibra nos logs dos tops do Warcraft Logs.
+No handwriting and no AI: `scripts/rotation.mjs` builds the YAML from SimulationCraft's APL and spell data and calibrates it on the Warcraft Logs tops' logs.
 
-1. `node scripts/rotation.mjs tops <spec>`: baixa os 2 melhores parses de cada chefe do raide (sem buffs externos), só com os eventos do player. Usa as variáveis de ambiente `WCL_CLIENT_ID` e `WCL_CLIENT_SECRET`.
-2. `node scripts/rotation.mjs calibrate <spec>`: gera o rascunho e o roda nos tops pelo próprio motor do app.
-   - **Prioridade:** sai da APL, por árvore de herói, em alvo único e AoE.
-   - **Ids:** vêm do que os tops castam.
-   - **Números:** cooldown, cargas e cast vêm do dump do SimC (ou do tooltip do Wowhead).
-   - **Checagens inferidas:** DoT, pelo `dot.X.refreshable`; proc, pelo `buff.X.react` numa spell que o buff modifica; recurso, pelo custo dos gastos; cooldowns de 20s ou mais.
-   - **Calibração pelos tops:** metas de uptime e de uso de cooldown pelo que os tops fazem; abertura, pelo que 70% deles casta nos primeiros segundos; sai o que nem os tops cumprem.
-   - **Destino:** escreve em `rotations/`; se já existe uma escrita à mão, vai para `samples/rotation/` para comparar.
-3. `node scripts/rotation.mjs check <spec>`: mostra como os tops se saem na rotação atual, para validar uma escrita à mão.
+1. `node scripts/rotation.mjs tops <spec>`: downloads the 2 best parses of each raid boss (without external buffs), only with the player's events. Uses the `WCL_CLIENT_ID` and `WCL_CLIENT_SECRET` environment variables.
+2. `node scripts/rotation.mjs calibrate <spec>`: generates the draft and runs it on the tops with the app's own engine.
+   - **Priority:** from the APL, per hero tree, for single target and AoE.
+   - **Ids:** from what the tops cast.
+   - **Numbers:** cooldown, charges and cast time come from the SimC dump (or Wowhead's tooltip).
+   - **Inferred checks:** DoT, from `dot.X.refreshable`; proc, from `buff.X.react` on a spell the buff modifies; resource, from the spenders' cost; cooldowns of 20s or more.
+   - **Calibration from the tops:** uptime and cooldown usage targets from what the tops do; the opener, from what 70% of them cast in the first seconds; drops what not even the tops meet.
+   - **Output:** written to `rotations/`; if a handwritten one already exists, it goes to `samples/rotation/` for comparison.
+3. `node scripts/rotation.mjs check <spec>`: shows how the tops do on the current rotation, to validate a handwritten one.
 
-Tipos de checagem: `proc` (buff que precisa ser gasto, carga por carga — ex.: Precise Shots, Demonic Core), `requires_buff` (casts que pedem um buff — ex.: Trick Shots, Demonbolt com Demonic Core), `downtime` (tempo sem castar, só quando a raid estava batendo), `cooldown` (usos vs. possíveis no tempo vivo), `resource_waste` (recurso estourado, ex.: Maelstrom, Astral Power, Soul Shards), `dot_uptime` (DoT no alvo, ex.: Flame Shock), `aoe_swap` (com N+ alvos o cast deveria ser outro, ex.: Chain Lightning) e `after_cast` (cast que precisa vir logo antes ou depois de outro, ex.: Demonic Tyrant com os Dreadstalkers fora).
+Check types: `proc` (a buff that must be spent, charge by charge — e.g. Precise Shots, Demonic Core), `requires_buff` (casts that need a buff — e.g. Trick Shots, Demonbolt with Demonic Core), `downtime` (time without casting, only while the raid was hitting), `cooldown` (uses vs. possible over the time alive), `resource_waste` (capped resource, e.g. Maelstrom, Astral Power, Soul Shards), `dot_uptime` (DoT on the target, e.g. Flame Shock), `aoe_swap` (with N+ targets the cast should be another, e.g. Chain Lightning) and `after_cast` (a cast that must come right before or after another, e.g. Demonic Tyrant with the Dreadstalkers out).
 
-Os textos saem em modelo ("X perdido: use antes de acabar"): vale revisar os pontos principais antes de publicar.
-
-</details>
-
-<details>
-<summary><b>Versões e atualização automática</b></summary>
-
-Versões seguem semver. Cada feature grande é fechada em uma release (`vX.Y.Z`) depois de aprovada.
-
-O app instalado procura versão nova ao abrir (e a cada 6h): lê o `latest.json` da última release do GitHub, baixa o instalador, confere a assinatura e reinstala sozinho. Na barra lateral, "Procurar atualizações" força a checagem.
-
-Publicar uma versão:
-
-1. Suba a versão em `Cargo.toml`, `package.json` e `src-tauri/tauri.conf.json`.
-2. `npm run release:build` — build assinado com a chave privada em `~/.tauri/wipe-cause.key` (fora do repo; sem ela não dá para publicar atualizações, guarde um backup).
-3. `node scripts/release.mjs notas.md` (com as seções `## Português` e `## English`) — gera `target/release/upload/` com o instalador (com a versão no nome e uma cópia `WipeCause_x64-setup.exe`, que é o link de download deste README) e o `latest.json`, e mostra o `gh release create` para publicar os três.
+The texts come out as templates ("X wasted: use it before it expires"), in both languages: review the key points before publishing.
 
 </details>
 
 <details>
-<summary><b>Prints deste README</b></summary>
+<summary><b>Versions and automatic updates</b></summary>
 
-Os prints saem de relatórios reais com os nomes dos personagens trocados por nomes fictícios. Ficam em `docs/screenshots/pt/` e `docs/screenshots/en/`, um conjunto por idioma, em 1440×900.
+Versions follow semver. Each big feature is closed in a release (`vX.Y.Z`) after it's approved.
+
+The installed app looks for a new version when it opens (and every 6h): it reads the `latest.json` of the latest GitHub release, downloads the installer, verifies the signature and reinstalls itself. In the sidebar, "Check for updates" forces the check.
+
+Publishing a version:
+
+1. Bump the version in `Cargo.toml`, `package.json` and `src-tauri/tauri.conf.json`.
+2. `npm run release:build` — a build signed with the private key in `~/.tauri/wipe-cause.key` (outside the repo; without it you can't publish updates, keep a backup).
+3. `node scripts/release.mjs notes.md` (with `## Português` and `## English` sections) — generates `target/release/upload/` with the installer (with the version in the name and a `WipeCause_x64-setup.exe` copy, which is this README's download link) and `latest.json`, and prints the `gh release create` command to publish all three.
+
+</details>
+
+<details>
+<summary><b>This README's screenshots</b></summary>
+
+The screenshots come from real reports with the character names swapped for made-up ones. They live in `docs/screenshots/pt/` and `docs/screenshots/en/`, one set per language, at 1440×900.
 
 </details>
