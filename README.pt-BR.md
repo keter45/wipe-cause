@@ -242,6 +242,8 @@ Com Advanced Combat Logging, cada morte (antes do corte) guarda onde todo mundo 
 
 No Coiled Altar Mythic, o app reconstrói onde estava cada orb (quem carregava, onde cada um caiu, quais o Sever quebrou) e, em cada detonação, aponta quem levou um orb até outro parado no chão: "Rainface levou o roxo a 7 jardas de um verde no chão". Quando ninguém chegou perto (ex.: sobrou roxo no tempo), não culpa ninguém.
 
+Na intermissão do Entombed Sentinels, o app reconstrói os stacks de Helical Toxins de todo mundo (o log esconde o número inicial; ele sai do tick do debuff) e lista cada encontro com soma errada: 3 + 3 = 6 (ninguém limpa mais), ou um 1 + 1 que deixou dois 3 sem par. Em cada um diz quem andou até quem nos segundos antes, qual era o parceiro certo por perto, e mostra um replay das posições de quem tinha o debuff nos 15 segundos antes do encontro.
+
 ### 📈 Evolução
 
 Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull, nota e parse em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando. Usa só a raid da guilda (dá para incluir os pugs). Mostra também **quem está melhorando e quem está piorando** (começo x fim das noites em que cada um jogou) e, na **progressão** (os wipes antes da primeira kill), a melhor e a pior nota nos wipes e o melhor e o pior parse na kill.
@@ -273,7 +275,7 @@ Quando um recurso depende de uma integração que ainda não foi ligada, ele mos
 
 ### 🗣️ Idiomas
 
-O app é em português (Brasil) e inglês: o idioma vem do sistema na primeira vez e troca em **Configurações**, na hora e sem perder o que está aberto. A análise, as dicas das regras, a rotação, os cartões de compartilhar, as mensagens do Discord, o dossiê da IA e o menu da bandeja seguem o idioma escolhido. Nomes de habilidades, bosses e mecânicas ficam em inglês nos dois, como vêm do jogo.
+O app é em inglês e português (Brasil): inglês por padrão, português quando o computador está em português, e troca em **Configurações**, na hora e sem perder o que está aberto. A análise, as dicas das regras, a rotação, os cartões de compartilhar, as mensagens do Discord, o dossiê da IA e o menu da bandeja seguem o idioma escolhido. Nomes de habilidades, bosses e mecânicas ficam em inglês nos dois, como vêm do jogo.
 
 ## Para quem contribui
 

@@ -20,6 +20,28 @@ phases:
   - { key: intermission, name: "Vitriolic Stasis", start: { cast: vitriolic_stasis } }
 
 mechanics:
+  # ---------- Intermissão: Helical Toxins (o erro que mais custa) ----------
+  - key: helical_toxins
+    name: "Helical Toxins"
+    type: failure_event
+    severity: major
+    priority: 1   # a segunda coisa mais importante da luta, depois da própria intermissão
+    detect:
+      aura_id: 1284590
+      damage_ids: [1284813]
+      pairing: { aura_id: 1284590, tick_id: 1284813, target: 4, max_initial: 3 }
+    tip: { pt: "Cada um tem 1 a 3 stacks: encostar só em quem completa exatamente 4 (3 com 1, 2 com 2). Soma errada fica com os dois (3 + 3 = 6) e acima de 4 ninguém limpa mais; o DoT cresce com os stacks.", en: "Everyone has 1 to 3 stacks: only touch someone who makes exactly 4 (3 with 1, 2 with 2). A wrong sum stays on both (3 + 3 = 6) and above 4 nobody can clear it anymore; the DoT grows with the stacks." }
+    message: { pt: "{count} encontro(s) com soma errada no Helical Toxins", en: "{count} Helical Toxins touch(es) with the wrong sum" }
+    notes: >
+      O log não mostra o stack inicial (SPELL_AURA_APPLIED sem número); soma 4 tira a aura dos dois
+      no mesmo instante e outra soma vira SPELL_AURA_APPLIED_DOSE nos dois com a soma. O stack
+      inicial sai do dano base do tick (1284813, a cada 2s): ~15,9k por stack no mítico, ~5,9k no
+      heroico (medido no pull). Conta como falha a soma acima de 4 e a soma abaixo de 4 que deixa
+      a rodada sem solução (ex.: 1 + 1 quando os 1 eram o par dos 3). Culpado = quem fez 65%+ da
+      aproximação nos 5s antes do encontro. A Vitriolic Stasis acaba em ~15s mesmo com gente
+      presa; quem fica com o debuff segue tomando o DoT. Logs de 06/10: 1+1 que deixou dois 3 sem
+      par, 3+3 = 6, e uma corrente 5, 7, 12, 19, 31 de quem ficou junto.
+
   # ---------- Posicionamento dos dois ----------
   - key: ulateks_dominance
     name: "Ula'tek's Dominance"
@@ -197,12 +219,3 @@ mechanics:
     tip: { pt: "Com 100 de energia as duas ficam imunes até o raid resolver o puzzle: quanto mais rápido, menos a luta se arrasta (a próxima intermissão vem ~90s depois do fim desta).", en: "At 100 energy both become immune until the raid solves the puzzle: the faster, the less the fight drags on (the next intermission comes ~90s after this one ends)." }
     message: { pt: "{count} intermissão lenta ou com wipe", en: "{count} slow intermission or wipe during it" }
     notes: "A aura 1284588 fica no Blood of Ula'tek (o Breath tem a 1284606, com o mesmo tempo) e sai ~0,5s depois do último Helical Toxins ser limpo. Tempos nos logs de set/out: mítico 7-18s (29s num pull com 17 mortes), heroico 8-13s; alvo e máximo pela mediana e pelo pior dos kills."
-
-  - key: helical_toxins
-    name: "Helical Toxins"
-    type: info
-    severity: major
-    detect: { aura_id: 1284590, damage_ids: [1284813] }
-    tip: { pt: "Parear para somar exatamente 4 stacks (orbes verdes); errar dá um hit enorme e DoT.", en: "Pair up to add up to exactly 4 stacks (green orbs); getting it wrong means a huge hit and a DoT." }
-    message: { pt: "Helical Toxins", en: "Helical Toxins" }
-    notes: "O dano 1284813 pega quase todo o raid em cada puzzle; ainda sem forma de separar o erro do dano normal."

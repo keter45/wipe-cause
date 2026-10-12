@@ -242,6 +242,8 @@ With Advanced Combat Logging, each death (before the cutoff) keeps where everyon
 
 On Mythic Coiled Altar, the app rebuilds where every orb was (who carried it, where each one was dropped, which ones Sever broke) and, at each detonation, points out who took an orb to another one sitting on the ground: "Rainface took the purple within 7 yards of a green on the ground". When nobody got close (e.g. a purple was left at the timer), it blames no one.
 
+In the Entombed Sentinels intermission, the app rebuilds everyone's Helical Toxins stacks (the log hides the starting number; it comes from the debuff's tick) and lists every touch with the wrong sum: 3 + 3 = 6 (nobody can clear it anymore), or a 1 + 1 that left two 3s with no partner. For each one it says who walked into whom in the seconds before, who the right partner nearby was, and plays back the positions of everyone with the debuff in the 15 seconds before the touch.
+
 ### 📈 Progress
 
 In the sidebar, **Progress** compares every saved night of a boss: best pull per night, the % of wipes where each mechanic was the trigger (to see whether the mistake is going down) and, per player, deaths per pull, score and parse each night, what kills them most and how many of those deaths had a defensive left. It only uses the guild raid (pugs can be included). It also shows **who is improving and who is getting worse** (start vs end of the nights each one played) and, for the **progression** (the wipes before the first kill), the best and worst score on the wipes and the best and worst parse on the kill.
@@ -273,7 +275,7 @@ When a feature depends on an integration that isn't set up yet, it shows a short
 
 ### 🗣️ Languages
 
-The app is in Portuguese (Brazil) and English: the language comes from the system the first time and can be switched in **Settings**, instantly and without losing what's open. The analysis, rule tips, rotation, share cards, Discord messages, AI dossier and tray menu follow the chosen language. Ability, boss and mechanic names stay in English in both, as they come from the game.
+The app is in English and Portuguese (Brazil): English by default, Portuguese when the computer is set to Portuguese, and it can be switched in **Settings**, instantly and without losing what's open. The analysis, rule tips, rotation, share cards, Discord messages, AI dossier and tray menu follow the chosen language. Ability, boss and mechanic names stay in English in both, as they come from the game.
 
 ## For contributors
 

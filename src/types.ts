@@ -271,6 +271,8 @@ export interface MechanicResult {
   spellId: number | null;
   kind: string;
   severity: MechanicSeverity;
+  /** importância dentro do boss (regra): maior vem antes */
+  priority?: number;
   tip: Loc;
   /** foco da progressão (marcado pelo usuário) */
   focus?: boolean;
@@ -298,6 +300,62 @@ export interface MechanicResult {
   maxMs?: number;
   /** stack_limit com fontes: de onde veio cada stack, por player (todos, não só os culpados) */
   stackOrigins?: PlayerStackOrigins[];
+  /** debuff de parear (Helical Toxins): cada encontro com soma errada */
+  pairings?: PairFault[];
+}
+
+/** Encontro de players com soma errada num debuff de parear (ex.: Helical Toxins, soma 4). */
+export interface PairFault {
+  /** instante do encontro (ms do pull) */
+  t: number;
+  /** começo da rodada (aplicação do debuff) */
+  roundStart: number;
+  members: PairMember[];
+  /** stacks de cada um depois do encontro */
+  sum: number;
+  /** soma que limpa */
+  target: number;
+  /** passou da soma: ninguém limpa mais o debuff deles */
+  over: boolean;
+  /** true: a rodada tinha solução e deixou de ter aqui; false: não mudou; null: stack desconhecido */
+  broke: boolean | null;
+  /** conta como falha */
+  counted: boolean;
+  /** guid de quem andou até o outro (null = os dois, ou já estavam juntos) */
+  culprit: string | null;
+  replay?: PairReplay;
+}
+
+export interface PairMember {
+  guid: string;
+  name: string;
+  /** stacks antes do encontro (null = desconhecido) */
+  before: number | null;
+  /** jardas andadas na direção do outro antes do encontro */
+  approachYd: number;
+  /** parte da aproximação feita por ele (0 a 1) */
+  share: number;
+  /** parceiro certo mais perto naquele instante */
+  better?: { guid: string; name: string; stacks: number; distYd: number };
+}
+
+export interface PairReplay {
+  from: number;
+  to: number;
+  tracks: PairTrack[];
+  /** bosses no instante do encontro */
+  enemies: UnitPos[];
+}
+
+export interface PairTrack {
+  guid: string;
+  name: string;
+  /** um dos que se encostaram */
+  focus: boolean;
+  /** [t, x, y] em passos fixos */
+  pts: [number, number, number][];
+  /** [t, stacks] a cada mudança: 0 = limpou, -1 = desconhecido */
+  stacks: [number, number][];
 }
 
 /** Uma origem de stacks: a mecânica e quantos stacks deu (ou tirou). */
