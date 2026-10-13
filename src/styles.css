@@ -467,7 +467,6 @@ code,
 }
 .summary-link.active {
   background: var(--panel-2);
-  box-shadow: inset 2px 0 0 var(--accent);
 }
 .pull-row {
   display: grid;
@@ -489,7 +488,6 @@ code,
 }
 .pull-row.active {
   background: var(--panel-2);
-  box-shadow: inset 2px 0 0 var(--accent);
 }
 .pull-num {
   color: var(--muted);
@@ -597,6 +595,10 @@ code,
 }
 .findings.minor {
   margin-top: 8px;
+}
+/* o detalhe do achado (quem errou) numa linha embaixo do título */
+.finding-detail {
+  margin-top: 2px;
 }
 .finding {
   display: grid;
@@ -1623,21 +1625,16 @@ ul.plain {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
 }
-.verdict {
-  border-left: 3px solid var(--wipe); /* estado do pull: mantém como borda */
-}
-.verdict.kill {
-  border-left-color: var(--kill);
-}
+
 .awards {
   border-top: none;
-  box-shadow: var(--shadow-card), inset 0 3px 0 var(--border);
 }
-.awards.bad {
-  box-shadow: var(--shadow-card), inset 0 3px 0 var(--wipe);
+/* sem faixa colorida: o tom fica no título */
+.awards.bad h3 {
+  color: var(--wipe);
 }
-.awards.good {
-  box-shadow: var(--shadow-card), inset 0 3px 0 var(--kill);
+.awards.good h3 {
+  color: var(--kill);
 }
 .pull-row,
 .summary-link {
@@ -1729,9 +1726,7 @@ ul.plain {
 .recap-table tr.kb-row td {
   background: rgba(224, 86, 86, 0.08);
 }
-.recap-table tr.kb-row td:first-child {
-  box-shadow: inset 2px 0 0 var(--wipe);
-}
+
 
 /* ícones de habilidade (Wowhead) */
 .spell-icon {
@@ -1771,9 +1766,15 @@ ul.plain {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* habilidade no meio de uma frase: ícone colado no nome, sem cortar o texto */
+/* habilidade no meio de uma frase: texto na mesma linha de base das outras palavras (inline, não
+   flex) e o ícone rebaixado para ficar centrado nas letras, colado no nome */
 .spell-inline .spell-name {
-  gap: 4px;
+  display: inline;
+  vertical-align: baseline;
+}
+.spell-inline .spell-icon {
+  margin-right: 4px;
+  vertical-align: -0.22em;
 }
 .spell-inline .spell-name-text {
   overflow: visible;
@@ -2358,11 +2359,7 @@ ul.plain {
   border-radius: var(--radius);
   background: var(--panel);
   box-shadow: var(--shadow-card), 0 8px 24px rgb(0 0 0 / 0.35);
-  border-left: 3px solid var(--wipe);
   animation: toast-in 200ms var(--ease-out);
-}
-.live-toast.kill {
-  border-left-color: var(--kill);
 }
 .live-toast {
   flex-direction: column;
@@ -2639,58 +2636,241 @@ table.heat td {
 .chip.bad {
   color: var(--major);
 }
-.pair-replay {
+.replay {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;
 }
-.pair-replay-map {
+.replay-map {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   height: auto;
   background: var(--panel);
 }
-.pair-dot-num {
+.replay-dot-num {
   fill: var(--bg);
   font-size: 8px;
   font-weight: 700;
   pointer-events: none;
 }
-.pair-dot-num.strong {
+.replay-dot-num.strong {
   font-size: 11px;
 }
-.pair-replay-map {
+.replay-map {
   overflow: hidden;
 }
-.pair-gap {
+.svg-spell-frame {
+  fill: var(--panel-2);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+.replay-castbar-bg {
+  fill: oklch(0 0 0 / 0.55);
+}
+.replay-castbar {
+  fill: var(--accent);
+}
+.replay-castbar.cut {
+  fill: var(--muted);
+}
+.replay-facing {
+  stroke: var(--wipe);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+.replay-facing-head {
+  fill: var(--wipe);
+}
+.replay-casts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 480px;
+}
+.replay-cast-row {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.replay-cast-boss {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.replay-cast-track {
+  position: relative;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+}
+.replay-cast-mark {
+  position: absolute;
+  top: 3px;
+  height: 16px;
+  border-radius: 3px;
+  background: oklch(1 0 0 / 0.08);
+  opacity: 0.55;
+  transform: translateX(-1px);
+}
+.replay-cast-mark.past {
+  opacity: 1;
+}
+.replay-cast-now,
+.replay-cast-moment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+.replay-cast-now {
+  background: var(--accent);
+}
+.replay-cast-moment {
+  background: var(--wipe);
+  opacity: 0.6;
+}
+.replay-cast-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+.replay-cast-list li > .num {
+  min-width: 5ch;
+}
+.replay-void {
+  fill: #111317;
+}
+.replay-floor {
+  fill: #1f232b;
+}
+.replay-grid line {
+  stroke: oklch(1 0 0 / 0.045);
+  stroke-width: 1;
+}
+.replay-scale line {
+  stroke: var(--muted);
+  stroke-width: 1.25;
+}
+.replay-boss {
+  stroke-width: 2;
+}
+.replay-boss-label {
+  font-size: 9.5px;
+  opacity: 0.85;
+}
+.replay-focus {
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+.replay-hit {
+  fill: none;
+  stroke: var(--wipe);
+  stroke-width: 3;
+}
+.replay-dead {
+  fill: var(--wipe);
+  font-size: 14px;
+  font-weight: 800;
+}
+.replay-hpbar-bg {
+  fill: oklch(0 0 0 / 0.55);
+  stroke: oklch(1 0 0 / 0.12);
+  stroke-width: 1;
+}
+.replay-hpbar-fill {
+  transition-property: width;
+  transition-duration: 120ms;
+}
+.replay-hpbar-fill.good {
+  fill: var(--kill);
+}
+.replay-hpbar-fill.mid {
+  fill: var(--minor);
+}
+.replay-hpbar-fill.low {
+  fill: var(--wipe);
+}
+.replay-dmg {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+.replay-dmg.cause {
+  fill: var(--wipe);
+}
+.replay-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0;
+}
+.replay-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.replay-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+.replay-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 480px;
+}
+.replay-feed li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+.replay-feed li > .num:first-child {
+  min-width: 5ch;
+}
+.replay-feed li.cause > .num:not(:first-child) {
+  color: var(--wipe);
+}
+.replay-gap {
   stroke: var(--muted);
   stroke-width: 1;
   stroke-dasharray: 2 3;
 }
-.pair-replay-controls {
+.replay-controls {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  max-width: 420px;
+  max-width: 480px;
 }
-.pair-replay-controls input[type='range'] {
+.replay-controls input[type='range'] {
   flex: 1;
   min-width: 140px;
   accent-color: var(--accent);
 }
-.pair-clock {
+.replay-clock {
   min-width: 13ch;
 }
-.pair-clock.bad {
+.replay-clock.bad {
   color: var(--major);
 }
-.pair-speeds {
+.replay-speeds {
   display: inline-flex;
   gap: 2px;
 }
-.pair-others {
+.replay-others {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2800,13 +2980,12 @@ td.warn {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   background: var(--panel-2);
-  border-left: 3px solid var(--border);
 }
-.progression-card.good {
-  border-left-color: var(--kill);
+.progression-card.good > span:first-child {
+  color: var(--kill);
 }
-.progression-card.bad {
-  border-left-color: var(--wipe);
+.progression-card.bad > span:first-child {
+  color: var(--wipe);
 }
 .moves h3 {
   margin-top: 0;
@@ -2852,12 +3031,8 @@ td.warn {
   border-radius: 14px;
   background: var(--bg);
   color: var(--text);
-  border-top: 4px solid var(--wipe);
   font-size: 14px;
   line-height: 1.45;
-}
-.share-card.kill {
-  border-top-color: var(--kill);
 }
 .share-head {
   display: flex;
@@ -3282,31 +3457,40 @@ td.warn {
   text-align: center;
   border-bottom: 1px solid var(--border);
 }
+/* diferenças principais: o mesmo item de lista do "Para o próximo pull" (faixa de cor à esquerda) */
 .perf-insights {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  gap: 8px;
 }
 .perf-insights li {
+  --tone: var(--muted);
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--panel-2);
-  border-left: 3px solid var(--muted);
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+}
+.perf-insights li::before {
+  content: '';
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone);
 }
 .perf-insights li.tone-bad {
-  border-left-color: var(--wipe);
+  --tone: var(--wipe);
 }
 .perf-insights li.tone-warn {
-  border-left-color: var(--major);
+  --tone: var(--minor);
 }
 .perf-insights li.tone-good {
-  border-left-color: var(--kill);
+  --tone: var(--kill);
 }
 .cd-legend {
   display: flex;
@@ -3940,7 +4124,6 @@ td.warn {
   padding: 12px 14px;
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--wipe) 8%, var(--panel));
-  border-left: 3px solid var(--wipe);
 }
 .error-box h3 {
   display: flex;
@@ -3983,7 +4166,6 @@ td.warn {
   border-radius: var(--radius);
   background: var(--panel);
   box-shadow: var(--shadow-card), 0 8px 24px rgb(0 0 0 / 0.35);
-  border-left: 3px solid var(--wipe);
   animation: toast-in 200ms var(--ease-out);
 }
 .error-toast-body {
@@ -4036,9 +4218,7 @@ td.warn {
 .rule-row:last-child {
   border-bottom: none;
 }
-.rule-row.tuned {
-  box-shadow: inset 3px 0 0 var(--accent);
-}
+
 .rule-row.off .rule-name {
   opacity: 0.45;
   text-decoration: line-through;
@@ -4516,9 +4696,7 @@ svg.wcl-mark {
   background: var(--panel-2);
   color: var(--text);
 }
-.rail-item.active {
-  box-shadow: inset 2px 0 0 var(--accent);
-}
+
 .rail-item.new {
   color: var(--accent);
 }
@@ -4989,12 +5167,149 @@ svg.wcl-mark {
   flex: 1;
 }
 
-/* resumo do pull: números com a cor do que significam */
+/* números em destaque (noite, boss, você, comparação, morte): o mesmo cartão em todo lugar,
+   com a cor do que significam */
+.kpis,
 .solo-kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
   margin-bottom: 16px;
+}
+.kpis.compact {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.kpis.compact .kpi {
+  padding: 8px 12px;
+  background: var(--panel-2);
+  box-shadow: none;
+}
+.kpis.compact .kpi-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+button.kpi {
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition-property: box-shadow, background-color;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+}
+button.kpi:hover {
+  background: var(--panel-2);
+}
+.kpi.tone-neutral {
+  box-shadow: var(--shadow-card);
+}
+
+/* explicação sob demanda: (i) ao lado do título */
+.hint {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+.hint-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: help;
+  transition-property: color, background-color;
+  transition-duration: 120ms;
+}
+/* área de toque maior que o ícone */
+.hint-btn::after {
+  content: '';
+  position: absolute;
+  inset: -11px;
+}
+.hint-btn:hover,
+.hint-btn.open {
+  color: var(--text);
+  background: oklch(1 0 0 / 0.06);
+}
+.hint-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 40;
+  width: max-content;
+  max-width: min(320px, 80vw);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+  text-wrap: pretty;
+}
+.hint-list {
+  display: grid;
+  gap: 4px;
+}
+.hint-pop.left {
+  left: -6px;
+}
+.hint-pop.right {
+  right: -6px;
+}
+
+/* texto longo em uma linha, com "mais" */
+.clamp {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.clamp-text {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.clamp.multi {
+  display: block;
+}
+.clamp.multi .clamp-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--lines);
+  white-space: normal;
+  text-wrap: pretty;
+}
+.clamp.multi.open .clamp-text {
+  display: inline;
+  -webkit-line-clamp: none;
+}
+.clamp.open {
+  display: block;
+}
+.clamp.open .clamp-text {
+  white-space: normal;
+  text-wrap: pretty;
+}
+.clamp.open .clamp-toggle {
+  margin-left: 6px;
+}
+.clamp-toggle {
+  flex-shrink: 0;
 }
 .kpi {
   --tone: var(--muted);
@@ -5004,7 +5319,7 @@ svg.wcl-mark {
   padding: 12px 14px;
   border-radius: var(--radius);
   background: var(--panel);
-  box-shadow: inset 3px 0 0 var(--tone), var(--shadow-card);
+  box-shadow: var(--shadow-card);
 }
 .kpi.tone-good {
   --tone: var(--kill);
@@ -5126,17 +5441,11 @@ svg.wcl-mark {
   color: var(--accent);
 }
 /* gravidade de cada item: faixa à esquerda e o número na mesma cor */
-.solo-loss.cost-high {
-  box-shadow: inset 3px 0 0 var(--wipe), var(--shadow-card);
-}
-.solo-loss.cost-mid {
-  box-shadow: inset 3px 0 0 var(--minor), var(--shadow-card);
-}
-.solo-loss.top.cost-high .solo-rank {
+.solo-loss.cost-high .solo-rank {
   background: color-mix(in oklch, var(--wipe) 22%, transparent);
   color: var(--wipe);
 }
-.solo-loss.top.cost-mid .solo-rank {
+.solo-loss.cost-mid .solo-rank {
   background: color-mix(in oklch, var(--minor) 22%, transparent);
   color: var(--minor);
 }
@@ -5332,6 +5641,12 @@ svg.wcl-mark {
 }
 .solo-mech p {
   margin: 2px 0 0;
+}
+.solo-mech > div {
+  min-width: 0;
+}
+.solo-mech .replay-link {
+  margin-top: 4px;
 }
 
 /* noite, boss e evolução */
@@ -5892,4 +6207,50 @@ svg.wcl-mark {
   background: var(--accent);
   color: var(--bg);
   box-shadow: none;
+}
+
+/* descrição do Wowhead de uma habilidade (mouse parado sobre o ícone ou o nome) */
+.spell-card {
+  position: fixed;
+  z-index: 60;
+  width: max-content;
+  max-width: min(340px, calc(100vw - 16px));
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  box-shadow: var(--shadow-pop);
+  pointer-events: none;
+}
+.spell-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.spell-card-head img {
+  flex-shrink: 0;
+  border-radius: 4px;
+  outline: 1px solid oklch(1 0 0 / 0.1);
+  outline-offset: -1px;
+}
+.spell-card-head div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.spell-card-text {
+  margin: 8px 0 0;
+  color: var(--minor);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-line;
+  text-wrap: pretty;
+}
+.spell-card-src {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+[data-spell-id] {
+  cursor: help;
 }

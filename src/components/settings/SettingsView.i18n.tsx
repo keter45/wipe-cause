@@ -5,7 +5,7 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 export const settingsMsg = defineMessages(
   {
     title: 'Configurações',
-    intro: 'O essencial para analisar os logs e as integrações que você pode ligar quando quiser. Tudo fica salvo só neste PC.',
+    intro: 'O essencial para analisar e as integrações opcionais. Tudo fica só neste PC.',
     language: 'Idioma',
     systemLanguage: (name: string) => `Do sistema: ${name}`,
     logsMissing: 'Falta a pasta de logs',
@@ -31,7 +31,7 @@ export const settingsMsg = defineMessages(
     },
     logs: {
       title: 'Pasta de logs do WoW',
-      desc: 'Onde o jogo grava os WoWCombatLog*.txt. A lista de “Nova análise” e o modo ao vivo leem daqui.',
+      desc: 'Onde o jogo grava os WoWCombatLog*.txt.',
       missing: 'Falta configurar',
       detected: 'Detectada',
       configured: 'Configurada',
@@ -40,7 +40,7 @@ export const settingsMsg = defineMessages(
     },
     game: {
       title: 'Combat log no jogo',
-      desc: 'O WoW só grava o log quando você pede, e os detalhes dependem do Advanced Combat Logging.',
+      desc: 'Ligar o log e o Advanced Combat Logging no jogo.',
       on: 'Ligado no log aberto',
       off: 'Desligado no log aberto',
       check: 'Confira no jogo',
@@ -58,26 +58,26 @@ export const settingsMsg = defineMessages(
     },
     startup: {
       title: 'Ao vivo quando o WoW abrir',
-      desc: 'Abriu o jogo, o Wipe Cause abre na bandeja e já acompanha a raid — sem precisar lembrar de ligar.',
+      desc: 'Abriu o jogo, o app abre na bandeja e já acompanha a raid.',
     },
     on: 'Ligado',
     off: 'Desligado',
     cutoff: {
       title: 'Corte de mortes',
-      desc: 'Depois de algumas mortes o wipe já está decidido: dano, cura, erros e interrupts param de contar na N-ésima morte.',
+      desc: 'Depois da N-ésima morte, o resto do pull não conta.',
       label: (n: number) => (n === 0 ? 'Desligado' : `Após ${n} morte${n > 1 ? 's' : ''}`),
       stepper: 'Padrão para logs novos. 0 = conta tudo.',
       note: 'Vale para os próximos logs. Para mudar só o log aberto, use o contador no topo (ele reanalisa na hora).',
     },
     wcl: {
-      desc: 'Abre as noites da guilda sem o log no PC, compara você com os top players da spec e mostra o parse de cada um.',
+      desc: 'Noites da guilda sem o log no PC, os tops da spec e o parse de cada um.',
       connectedAs: (name: string) => `Conectado: ${name}`,
       connected: 'Conectado',
       notConnected: 'Não conectado',
     },
     videos: {
       title: 'Vídeos do Warcraft Recorder',
-      desc: 'Assista ao gatilho do wipe e a cada morte no vídeo do Warcraft Recorder — o seu e, com a nuvem, o de quem mais da guilda subiu.',
+      desc: 'O gatilho do wipe e cada morte no vídeo — o seu e o da guilda.',
       folderFound: 'Pasta encontrada',
       cloud: (guild: string) => `Nuvem: ${guild}`,
       noFolder: 'Sem pasta',
@@ -85,11 +85,11 @@ export const settingsMsg = defineMessages(
       detectedLabel: 'pasta do Warcraft Recorder',
     },
     discord: {
-      desc: 'Manda o resumo de cada pull para o canal da raid, sozinho no modo ao vivo ou pelo botão “Discord”.',
+      desc: 'O resumo de cada pull no canal da raid.',
     },
     ai: {
       title: 'Perguntar à IA',
-      desc: 'Tire dúvidas sobre o pull com um provedor gratuito (ou local). A IA recebe um dossiê da luta.',
+      desc: 'Perguntas sobre o pull a um provedor gratuito ou local.',
       configured: 'Configurada',
       notConfigured: 'Não configurada',
     },
@@ -116,7 +116,7 @@ export const settingsMsg = defineMessages(
   },
   {
     title: 'Settings',
-    intro: 'What you need to analyze logs, plus integrations you can turn on whenever you want. Everything is saved only on this PC.',
+    intro: 'What you need to analyze, plus optional integrations. Everything stays on this PC.',
     language: 'Language',
     systemLanguage: (name: string) => `System: ${name}`,
     logsMissing: 'Logs folder missing',
@@ -142,7 +142,7 @@ export const settingsMsg = defineMessages(
     },
     logs: {
       title: 'WoW logs folder',
-      desc: 'Where the game writes the WoWCombatLog*.txt files. The “New analysis” list and live mode read from here.',
+      desc: 'Where the game writes the WoWCombatLog*.txt files.',
       missing: 'Not set up',
       detected: 'Detected',
       configured: 'Configured',
@@ -151,7 +151,7 @@ export const settingsMsg = defineMessages(
     },
     game: {
       title: 'Combat log in game',
-      desc: 'WoW only writes the log when you ask, and the details depend on Advanced Combat Logging.',
+      desc: 'Turning on the log and Advanced Combat Logging in the game.',
       on: 'On in the open log',
       off: 'Off in the open log',
       check: 'Check in game',
@@ -169,26 +169,26 @@ export const settingsMsg = defineMessages(
     },
     startup: {
       title: 'Live when WoW opens',
-      desc: 'Open the game and Wipe Cause opens in the tray, already following the raid — no need to remember to turn it on.',
+      desc: 'Open the game and the app opens in the tray, already following the raid.',
     },
     on: 'On',
     off: 'Off',
     cutoff: {
       title: 'Death cutoff',
-      desc: 'After a few deaths the wipe is already decided: damage, healing, mistakes and interrupts stop counting at the Nth death.',
+      desc: 'After the Nth death, the rest of the pull doesn’t count.',
       label: (n: number) => (n === 0 ? 'Off' : `After ${n} death${n > 1 ? 's' : ''}`),
       stepper: 'Default for new logs. 0 = count everything.',
       note: 'Applies to the next logs. To change only the open log, use the counter at the top (it re-analyzes right away).',
     },
     wcl: {
-      desc: 'Opens the guild’s nights without the log on this PC, compares you with the spec’s top players and shows everyone’s parse.',
+      desc: 'Guild nights without the log on this PC, the spec’s tops and everyone’s parse.',
       connectedAs: (name: string) => `Connected: ${name}`,
       connected: 'Connected',
       notConnected: 'Not connected',
     },
     videos: {
       title: 'Warcraft Recorder videos',
-      desc: 'Watch the wipe trigger and every death in the Warcraft Recorder video — yours and, with the cloud, whoever else in the guild uploaded.',
+      desc: 'The wipe trigger and every death on video — yours and the guild’s.',
       folderFound: 'Folder found',
       cloud: (guild: string) => `Cloud: ${guild}`,
       noFolder: 'No folder',
@@ -196,11 +196,11 @@ export const settingsMsg = defineMessages(
       detectedLabel: 'Warcraft Recorder folder',
     },
     discord: {
-      desc: 'Sends each pull’s summary to the raid channel, automatically in live mode or with the “Discord” button.',
+      desc: 'Each pull’s summary in the raid channel.',
     },
     ai: {
       title: 'Ask the AI',
-      desc: 'Ask questions about the pull with a free (or local) provider. The AI receives a dossier of the fight.',
+      desc: 'Questions about the pull to a free or local provider.',
       configured: 'Configured',
       notConfigured: 'Not configured',
     },

@@ -52,6 +52,7 @@ Opções extras:
 
 | campo | descrição |
 |---|---|
+| `ground` | replay: cada acerto de `damage_ids` marca o chão onde a vítima estava (o log não registra poças/gotas). Padrão: ligado (2s) em `avoidable_damage`, `soak`, `positioning` e `spread`, desligado no resto e em mecânica só de tank. `ground: { lingers_s: 6 }` para poça que fica; `ground: false` para desligar (dano que pega o raid inteiro, DoT que segue o player). |
 | `priority` | importância da mecânica dentro do boss (número, padrão 0): com falha, a maior aparece antes das outras na aba Mecânicas e no veredito (o foco marcado pelo usuário ainda vem antes). Ex.: `helical_toxins` em `entombed-sentinels.yaml`. |
 | `ignore_first_hit_in_burst` | `avoidable_damage`: o 1º hit de cada rajada (hits a <1,5s um do outro) é o alvo da mecânica e não conta como erro. Ex.: linha mirada em um player. |
 | `detect.requires_aura` | o dano só conta se o player **já** tinha a aura há 0,5s+ (a vulnerabilidade aplicada pelo próprio hit não conta). Ex.: soak duplo. |

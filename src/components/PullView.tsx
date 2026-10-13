@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, Star, X } from 'lucide-react';
 import { useNote } from '../lib/notes';
 import { addMark, useMarks } from '../lib/marks';
@@ -9,6 +9,9 @@ import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
 import { DeathList } from './DeathList';
+import { Hint } from './ui/Hint';
+import { Clamp } from './ui/Clamp';
+import { decodeReplay } from '../lib/replay';
 import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
 import { MechanicsView } from './MechanicsView';
@@ -68,6 +71,7 @@ export function PullView(props: Props) {
 function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Props) {
   const t = useMessages(pullMsg);
   useMarks(pull);
+  const replayData = useMemo(() => decodeReplay(pull), [pull]);
   const mode = useMode();
   const chosen = useSoloCharacter();
   const solo = mode === 'solo';
@@ -282,6 +286,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
           cutoffT={pull.cutoffT ?? null}
           classes={classesOf(pull)}
           mechanicSpells={mechanicSpellMap([pull])}
+          replayData={replayData}
           onMark={(d) =>
             addMark(pull, {
               guid: d.guid,
@@ -345,11 +350,15 @@ function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] 
         <strong>
           <Colored text={f.title} plainStart={f.spellId != null} />
         </strong>
+        {f.tip && (
+          <Hint>
+            <Colored text={f.tip} />
+          </Hint>
+        )}
         {f.detail && (
-          <span className="muted">
-            {' '}
-            — <Colored text={f.detail} />
-          </span>
+          <Clamp className="finding-detail muted small">
+            <Colored text={f.detail} />
+          </Clamp>
         )}
       </span>
     </li>

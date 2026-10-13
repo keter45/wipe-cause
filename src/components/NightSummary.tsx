@@ -9,6 +9,7 @@ import { lowestBossHp } from '../lib/verdict';
 import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
+import { Stat, StatGrid } from './ui/Stat';
 import { ShareMenu } from './share/ShareMenu';
 import { NightPhaseTimes } from './PhaseTimes';
 import { NightStackOrigins } from './StackOrigins';
@@ -19,6 +20,7 @@ import { withErrorBoundary } from './ErrorBoundary';
 import { bossPayload } from '../lib/discord';
 import { messagesOf, useMessages } from '../i18n';
 import { nightMsg } from './NightSummary.i18n';
+import { Hint } from './ui/Hint';
 
 interface Props {
   pulls: Pull[];
@@ -61,13 +63,13 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
         </span>
       </header>
 
-      <div className="tiles">
-        <Tile label={t.raidTime} value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
-        <Tile label={t.inCombat} value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
-        <Tile label={t.downtime} value={duration(s.downtimeMs)} sub={t.breaks(s.gaps.filter((g) => g.isBreak).length)} />
-        <Tile label={t.avgGap} value={mmss(s.avgGapMs)} sub={t.median(mmss(s.medianGapMs))} />
-        <Tile label={t.longestGap} value={s.longestGap ? mmss(s.longestGap.ms) : '—'} sub={s.longestGap ? t.after(pullName(s.longestGap.after, true), s.longestGap.isBreak) : undefined} />
-      </div>
+      <StatGrid>
+        <Stat label={t.raidTime} value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
+        <Stat label={t.inCombat} value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
+        <Stat label={t.downtime} value={duration(s.downtimeMs)} sub={t.breaks(s.gaps.filter((g) => g.isBreak).length)} />
+        <Stat label={t.avgGap} value={mmss(s.avgGapMs)} sub={t.median(mmss(s.medianGapMs))} />
+        <Stat label={t.longestGap} value={s.longestGap ? mmss(s.longestGap.ms) : '—'} sub={s.longestGap ? t.after(pullName(s.longestGap.after, true), s.longestGap.isBreak) : undefined} />
+      </StatGrid>
 
       <section className="boss-cards" aria-label={t.bossesAria}>
         {bosses.map(({ key, s: b }) => {
@@ -99,8 +101,7 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
       )}
 
       <section className="panel">
-        <h3>{t.nightTimeline}</h3>
-        <p className="muted small">{t.timelineHint}</p>
+        <h3>{t.nightTimeline} <Hint>{t.timelineHint}</Hint></h3>
         <Timeline s={s} onSelect={onSelectPull} />
         <GapList s={s} />
       </section>
@@ -137,19 +138,19 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
         </span>
       </header>
 
-      <div className="tiles">
-        <Tile label={t.pulls} value={String(s.pulls.length)} sub={t.wipesKills(s.wipes, s.kills)} />
-        <Tile
+      <StatGrid>
+        <Stat label={t.pulls} value={String(s.pulls.length)} sub={t.wipesKills(s.wipes, s.kills)} />
+        <Stat
           label={t.bestPull}
           value={s.kills ? 'Kill' : s.best ? pct(s.best.hp) : '—'}
           sub={s.best ? t.pullAt(s.best.pull.pullNumber, clock(s.best.pull)) : undefined}
           onClick={s.best ? () => onSelectPull(s.best!.pull.id) : undefined}
         />
-        <Tile label={t.bossTime} value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
-        <Tile label={t.inCombat} value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
-        <Tile label={t.avgGap} value={mmss(s.avgGapMs)} sub={t.median(mmss(s.medianGapMs))} />
-        <Tile label={t.longestGap} value={s.longestGap ? mmss(s.longestGap.ms) : '—'} sub={s.longestGap ? t.afterPull(s.longestGap.after.pullNumber, s.longestGap.isBreak) : undefined} />
-      </div>
+        <Stat label={t.bossTime} value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
+        <Stat label={t.inCombat} value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
+        <Stat label={t.avgGap} value={mmss(s.avgGapMs)} sub={t.median(mmss(s.medianGapMs))} />
+        <Stat label={t.longestGap} value={s.longestGap ? mmss(s.longestGap.ms) : '—'} sub={s.longestGap ? t.afterPull(s.longestGap.after.pullNumber, s.longestGap.isBreak) : undefined} />
+      </StatGrid>
 
       {topCause && (
         <section className="panel hero-cause">
@@ -165,8 +166,7 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
       )}
 
       <section className="panel">
-        <h3>{t.progress}</h3>
-        <p className="muted small">{t.progressHint}</p>
+        <h3>{t.progress} <Hint>{t.progressHint}</Hint></h3>
         <ProgressChart pulls={s.pulls} onSelect={onSelectPull} bestId={s.best?.pull.id} />
       </section>
 
@@ -180,8 +180,7 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
           <CausesTable s={s} spellIds={mechanicSpellIds} />
         </section>
         <section className="panel">
-          <h3>{t.timeline}</h3>
-          <p className="muted small">{t.timelineHint}</p>
+          <h3>{t.timeline} <Hint>{t.timelineHint}</Hint></h3>
           <Timeline s={s} onSelect={onSelectPull} />
           <GapList s={s} />
         </section>
@@ -197,17 +196,6 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
         <Scoreboard players={s.players} />
       </section>
     </div>
-  );
-}
-
-function Tile({ label, value, sub, onClick }: { label: string; value: string; sub?: string; onClick?: () => void }) {
-  const Tag = onClick ? 'button' : 'div';
-  return (
-    <Tag className={`tile ${onClick ? 'clickable' : ''}`} onClick={onClick}>
-      <span className="tile-label">{label}</span>
-      <span className="tile-value">{value}</span>
-      {sub && <span className="tile-sub">{sub}</span>}
-    </Tag>
   );
 }
 

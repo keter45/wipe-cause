@@ -5,8 +5,7 @@ export const enemySpellsMsg = defineMessages(
     none: 'Nenhuma habilidade inimiga registrada.',
     intro: () => (
       <>
-        Tudo o que os inimigos castaram ou que causou dano em players neste pull. Achou algo que as regras não pegam? Use <strong>+ criar regra</strong> para o app
-        passar a apontar isso nos próximos pulls.
+        Algo aqui que as regras não pegam? Use <strong>+ criar regra</strong>.
       </>
     ),
     ability: 'Habilidade',
@@ -21,8 +20,7 @@ export const enemySpellsMsg = defineMessages(
     none: 'No enemy abilities recorded.',
     intro: () => (
       <>
-        Everything the enemies cast or that damaged players in this pull. Found something the rules don't catch? Use <strong>+ create rule</strong> so the app
-        starts pointing it out in the next pulls.
+        Something here the rules don't catch? Use <strong>+ create rule</strong>.
       </>
     ),
     ability: 'Ability',

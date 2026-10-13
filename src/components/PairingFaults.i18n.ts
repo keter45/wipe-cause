@@ -1,8 +1,5 @@
 import { defineMessages } from '../i18n';
 
-const secPt = (ms: number) => `${(ms / 1000).toFixed(1).replace('.', ',')}s`;
-const secEn = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
-
 export const pairingMsg = defineMessages(
   {
     title: 'Encontros com soma errada',
@@ -18,17 +15,6 @@ export const pairingMsg = defineMessages(
     needed: (stacks: number) => `precisava de ${stacks}:`,
     nearest: (yd: string) => `a ${yd} jd`,
     replay: (open: boolean): string => (open ? 'Fechar replay' : 'Ver replay'),
-    play: 'Reproduzir',
-    pause: 'Pausar',
-    restart: 'Do começo',
-    speed: 'Velocidade',
-    slider: 'Momento do replay',
-    toContact: (ms: number) => (ms < 0 ? `${secPt(-ms)} antes do encontro` : ms === 0 ? 'encontro' : `${secPt(ms)} depois`),
-    distance: (yd: string) => `${yd} jd`,
-    showOthers: 'Mostrar os outros com o debuff',
-    aria: (a: string, b: string) => `Replay das posições de ${a} e ${b}`,
-    legend: 'Linha: caminho percorrido. Número: stacks naquele instante (✓ = limpou). Os outros com o debuff aparecem apagados; losangos são os bosses no instante do encontro. A orientação pode não bater com a do jogo; as distâncias batem.',
-    noPositions: 'Sem posições no log para este encontro (precisa de advanced combat logging).',
   },
   {
     title: 'Touches with the wrong sum',
@@ -44,16 +30,5 @@ export const pairingMsg = defineMessages(
     needed: (stacks: number) => `needed ${stacks}:`,
     nearest: (yd: string) => `${yd} yd away`,
     replay: (open: boolean) => (open ? 'Close replay' : 'Watch replay'),
-    play: 'Play',
-    pause: 'Pause',
-    restart: 'From the start',
-    speed: 'Speed',
-    slider: 'Replay moment',
-    toContact: (ms: number) => (ms < 0 ? `${secEn(-ms)} before the touch` : ms === 0 ? 'touch' : `${secEn(ms)} after`),
-    distance: (yd: string) => `${yd} yd`,
-    showOthers: 'Show the others with the debuff',
-    aria: (a: string, b: string) => `Position replay of ${a} and ${b}`,
-    legend: "Line: path walked. Number: stacks at that moment (✓ = cleared). The others with the debuff are faded; diamonds are the bosses at the moment of the touch. The orientation may not match the game's; the distances do.",
-    noPositions: 'No positions in the log for this touch (needs advanced combat logging).',
   },
 );

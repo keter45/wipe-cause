@@ -4,6 +4,7 @@ import { PlayerName } from './Names';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { intlLocale, useMessages } from '../i18n';
 import { stackOriginsMsg } from './StackOrigins.i18n';
+import { Hint } from './ui/Hint';
 
 const int = (n: number) => n.toLocaleString(intlLocale());
 const oneDecimal = (n: number) => n.toLocaleString(intlLocale(), { maximumFractionDigits: 1 });
@@ -31,6 +32,7 @@ function StackOriginsPanel({ n }: { n: StackOriginsNight }) {
           <SpellName spellId={n.spellId} name={n.name} size={20} />
         </strong>
         <span className="muted small">{t.head}</span>
+        <Hint>{t.legend(n.name)}</Hint>
       </header>
       <div className="origin-totals">
         <span className={`origin-total ${avoidable ? 'bad' : 'good'}`}>
@@ -107,7 +109,6 @@ function StackOriginsPanel({ n }: { n: StackOriginsNight }) {
           </table>
         </div>
       )}
-      <p className="muted small">{t.legend(n.name)}</p>
     </section>
   );
 }

@@ -72,6 +72,128 @@ pub struct Pull {
     /// player que gravou o log (flag "meu" do combat log); no Warcraft Logs não tem
     #[serde(skip_serializing_if = "Option::is_none")]
     pub owner_guid: Option<String>,
+    /// posições de players e bosses nas janelas dos replays (mortes e falhas de mecânica)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tracks: Option<PullTracks>,
+    /// onde cada acerto de mecânica "de chão" caiu, nas janelas dos replays
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ground: Option<PullGround>,
+    /// chão da arena: onde algum player pisou durante o pull (o log não tem o mapa)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arena: Option<Arena>,
+    /// casts dos bosses nas janelas dos replays
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub casts: Vec<BossCast>,
+}
+
+/// Cast de um boss (para o replay): começo, fim e para onde ele olhava quando terminou.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BossCast {
+    pub t: i64,
+    /// fim do cast com tempo (null = instantâneo, ou não terminou)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end: Option<i64>,
+    pub guid: String,
+    pub spell_id: u32,
+    pub name: String,
+    /// direção do boss no fim do cast (radianos, no mesmo sistema das posições)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub facing: Option<f32>,
+    /// cortado (interrupt)
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub interrupted: bool,
+}
+
+/// Células (`cell_yd` de lado) em que algum player esteve no pull: desenham o chão da arena.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Arena {
+    pub cell_yd: f32,
+    /// (coluna, linha): a célula cobre [c, c+1) × [l, l+1) vezes `cell_yd`
+    pub cells: Vec<(i32, i32)>,
+}
+
+/// Marcas no chão para os replays: o log não mostra poças nem gotas, mas mostra onde estava
+/// cada player atingido por elas.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullGround {
+    pub kinds: Vec<GroundKind>,
+    /// (t, x, y em décimos de jarda, índice em `kinds`)
+    pub marks: Vec<(i64, i32, i32, usize)>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroundKind {
+    /// chave da mecânica
+    pub key: String,
+    pub name: String,
+    /// spell do acerto (ícone)
+    pub spell_id: u32,
+    /// quanto a marca fica no chão
+    pub linger_ms: i64,
+}
+
+/// Posições (advanced logging) só nos trechos que algum replay usa, em passos fixos.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PullTracks {
+    /// ms entre duas posições de um trecho
+    pub step_ms: i64,
+    pub units: Vec<UnitTrack>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnitTrack {
+    pub guid: String,
+    pub name: String,
+    /// "player" | "enemy"
+    pub kind: String,
+    pub segs: Vec<TrackSeg>,
+}
+
+/// Trecho contínuo: posições a cada `step_ms` a partir de `t0`, em décimos de jarda (x, y, x, y...).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackSeg {
+    pub t0: i64,
+    pub xy: Vec<i32>,
+}
+
+/// Replay de um momento do pull: as posições vêm de `Pull.tracks`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayRef {
+    /// o momento (morte, encontro, acerto, falha)
+    pub t: i64,
+    pub from: i64,
+    pub to: i64,
+    /// quem o replay acompanha (vazio = falha coletiva: todo mundo igual)
+    pub focus: Vec<String>,
+    /// stacks do debuff da mecânica ao longo do replay
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub stacks: Vec<StackLine>,
+    /// acertos da mecânica em quem o replay acompanha
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub marks: Vec<ReplayMark>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StackLine {
+    pub guid: String,
+    /// (t, stacks) a cada mudança: 0 = sem o debuff, -1 = desconhecido
+    pub pts: Vec<(i64, i32)>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplayMark {
+    pub t: i64,
+    pub guid: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -143,6 +265,9 @@ pub struct MechanicResult {
     /// debuff de parear (Helical Toxins): cada encontro com soma errada, com replay das posições
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pairings: Vec<PairFault>,
+    /// replays das falhas (quem errou, ou a falha coletiva), com as posições em `Pull.tracks`
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub replays: Vec<ReplayRef>,
 }
 
 /// Encontro de players com soma errada num debuff de parear (ex.: Helical Toxins, que precisa
@@ -169,7 +294,7 @@ pub struct PairFault {
     /// guid de quem andou até o outro (null = os dois andaram, ou já estavam juntos)
     pub culprit: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub replay: Option<PairReplay>,
+    pub replay: Option<ReplayRef>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -195,30 +320,6 @@ pub struct PairHint {
     pub name: String,
     pub stacks: u32,
     pub dist_yd: f32,
-}
-
-/// Posições de quem tinha o debuff em volta do encontro (para o replay).
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PairReplay {
-    pub from: i64,
-    pub to: i64,
-    pub tracks: Vec<PairTrack>,
-    /// bosses no instante do encontro
-    pub enemies: Vec<UnitPos>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PairTrack {
-    pub guid: String,
-    pub name: String,
-    /// um dos que se encostaram
-    pub focus: bool,
-    /// (t, x, y) em passos fixos
-    pub pts: Vec<(i64, f32, f32)>,
-    /// (t, stacks) a cada mudança: 0 = limpou, -1 = desconhecido
-    pub stacks: Vec<(i64, i32)>,
 }
 
 /// Uma origem de stacks: a mecânica e quantos stacks deu (ou tirou).
@@ -506,6 +607,9 @@ pub struct Death {
     /// onde cada um estava na hora da morte (só mortes antes do corte)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub positions: Option<Positions>,
+    /// replay dos segundos antes da morte (posições em `Pull.tracks`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub replay: Option<ReplayRef>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -592,6 +696,9 @@ pub struct RecapEntry {
     pub absorbed: i64,
     /// HP do player depois do evento (0-100), quando o log informa
     pub hp_pct: Option<f32>,
+    /// mecânica do boss a que o golpe pertence (chave da regra)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mechanic: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

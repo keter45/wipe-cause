@@ -6,7 +6,7 @@ use crate::i18n::Text;
 use crate::orbs::{OrbDetect, OrbLog};
 use crate::pairing::{PairDetect, PairLog};
 use crate::tx;
-use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PairFault, PhaseWindow, PlayerStackOrigins, Positions, StackOrigin};
+use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PairFault, PhaseWindow, PlayerStackOrigins, Positions, ReplayMark, ReplayRef, StackOrigin};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
@@ -50,6 +50,15 @@ const EXCLUSIVE_MASS_MS: i64 = 5_000;
 const EXCLUSIVE_MASS_MIN: usize = 7;
 /// confirm_aura: a mudança de stack chega até ~200ms antes ou ~60ms depois da aura de acerto.
 const CONFIRM_MS: i64 = 250;
+/// Acertos guardados por player (marcas no replay).
+const MAX_HIT_TIMES: usize = 50;
+/// Replays por mecânica (um por culpado, ou por falha coletiva).
+const MAX_REPLAYS: usize = 12;
+/// ... e um por culpado, até o tamanho de uma raid (o modo solo mostra o replay de cada um).
+const MAX_PLAYER_REPLAYS: usize = 30;
+/// Falha coletiva: culpado com acerto até isso do momento da falha entra no foco do replay.
+const REPLAY_FOCUS_MS: i64 = 1_000;
+const REPLAY_MAX_FOCUS: usize = 4;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -192,6 +201,9 @@ pub struct Mechanic {
     /// dano evitável que pesa inteiro para tank (o padrão é metade: tank toma de propósito)
     #[serde(default)]
     pub tank_full_weight: bool,
+    /// replay: cada acerto marca o chão onde a vítima estava (gota, poça, soak, projétil). Sem o
+    /// campo, vale para dano evitável, soak, posicionamento e spread; `false` desliga.
+    pub ground: Option<GroundSpec>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -203,6 +215,35 @@ pub struct Mechanic {
 
 fn default_severity() -> String {
     "minor".into()
+}
+
+/// `ground: true | false | { lingers_s: 6 }`
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum GroundSpec {
+    On(bool),
+    Spec {
+        /// segundos que a marca fica no chão (poça que dura; gota some logo)
+        lingers_s: Option<f64>,
+    },
+}
+
+/// Quanto a marca de um acerto fica no chão quando a regra não diz.
+const GROUND_LINGER_MS: i64 = 2_000;
+
+impl Mechanic {
+    /// Acertos desta mecânica marcam o chão no replay? Quanto tempo (ms).
+    pub fn ground_linger_ms(&self) -> Option<i64> {
+        let only_tanks = !self.roles.is_empty() && self.roles.iter().all(|r| r == "tank");
+        match &self.ground {
+            Some(GroundSpec::On(false)) => None,
+            Some(GroundSpec::On(true)) => Some(GROUND_LINGER_MS),
+            Some(GroundSpec::Spec { lingers_s }) => Some(lingers_s.map_or(GROUND_LINGER_MS, |s| (s * 1000.0) as i64)),
+            None => (!only_tanks
+                && matches!(self.kind, MechanicType::AvoidableDamage | MechanicType::Soak | MechanicType::Positioning | MechanicType::Spread))
+            .then_some(GROUND_LINGER_MS),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -483,6 +524,8 @@ struct PlayerHits {
     stacks: u32,
     max_stacks: u32,
     first_t: Option<i64>,
+    /// momento de cada acerto (para marcar no replay)
+    times: Vec<i64>,
 }
 
 #[derive(Default)]
@@ -516,6 +559,8 @@ struct MechState {
     blame_texts: HashMap<String, Text>,
     /// pairing: encontros com soma errada
     pairings: Vec<PairFault>,
+    /// stack_limit: stacks de cada player a cada mudança (para o replay)
+    stack_hist: HashMap<String, Vec<(i64, u32)>>,
 }
 
 pub struct RuleTracker {
@@ -540,6 +585,8 @@ pub struct RuleTracker {
     orbs: Option<(usize, OrbLog)>,
     /// mecânica com `pairing` (só uma por pull) e os stacks e posições de quem teve o debuff
     pairing: Option<(usize, PairLog)>,
+    /// spell de dano -> (mecânica, ms que a marca fica no chão) para o replay
+    ground: HashMap<u32, (usize, i64)>,
 }
 
 impl RuleTracker {
@@ -578,7 +625,16 @@ impl RuleTracker {
             .collect();
         let orbs = mechs.iter().position(|m| m.detect.orbs.is_some()).map(|i| (i, OrbLog::default()));
         let pairing = mechs.iter().position(|m| m.detect.pairing.is_some()).map(|i| (i, PairLog::default()));
+        let mut ground = HashMap::new();
+        for (i, m) in mechs.iter().enumerate() {
+            if let Some(ms) = m.ground_linger_ms() {
+                for id in m.detect.damage_ids.iter().flatten() {
+                    ground.entry(*id).or_insert((i, ms));
+                }
+            }
+        }
         Ok(RuleTracker {
+            ground,
             orbs,
             pairing,
             files,
@@ -607,6 +663,11 @@ impl RuleTracker {
         self.auras
             .get(&(guid.to_string(), aura))
             .is_some_and(|&(_, removed)| removed.is_none_or(|r| t - r <= AURA_GRACE_MS))
+    }
+
+    /// Acerto deste spell marca o chão no replay: (chave, nome da mecânica, ms que a marca fica).
+    pub fn ground_for(&self, spell_id: u32) -> Option<(&str, &str, i64)> {
+        self.ground.get(&spell_id).map(|&(i, ms)| (self.mechs[i].key.as_str(), self.mechs[i].name.as_str(), ms))
     }
 
     /// Chave e nome da mecânica que causa dano com este spell (para anotar golpes finais).
@@ -808,6 +869,9 @@ impl RuleTracker {
                     if !m.sources.is_empty() && stacks != p.stacks {
                         st.stack_changes.push((t, guid.to_string(), p.stacks, stacks));
                     }
+                    if stacks != p.stacks {
+                        st.stack_hist.entry(guid.to_string()).or_default().push((t, stacks));
+                    }
                     p.stacks = stacks;
                     if stacks > p.max_stacks {
                         p.max_stacks = stacks;
@@ -910,16 +974,6 @@ impl RuleTracker {
         }
     }
 
-    /// Algum encontro com soma errada acabou de acontecer: a análise manda a foto dos bosses.
-    pub fn wants_pair_snapshot(&mut self) -> bool {
-        self.pairing.as_mut().is_some_and(|(_, log)| log.take_snapshot_request())
-    }
-
-    pub fn add_pair_snapshot(&mut self, snap: Positions) {
-        if let Some((_, log)) = &mut self.pairing {
-            log.add_snapshot(snap);
-        }
-    }
 
     /// Cast de uma unidade inimiga com a posição e a direção dela (advanced logging).
     #[allow(clippy::too_many_arguments)]
@@ -1189,7 +1243,9 @@ impl RuleTracker {
             } else {
                 Text::default()
             };
+            let replays = mechanic_replays(&m, &st, &players);
             out.push(MechanicResult {
+                replays,
                 spell_id,
                 key: m.key,
                 name: m.name,
@@ -1497,6 +1553,58 @@ fn orb_culprits(m: &Mechanic, st: &mut MechState, log: &OrbLog) {
     }
 }
 
+/// Replays das falhas de mecânica que dependem de onde cada um estava: um por culpado (no 1º
+/// acerto, com os outros acertos marcados) ou um por falha coletiva.
+fn mechanic_replays(m: &Mechanic, st: &MechState, players: &[MechanicPlayer]) -> Vec<ReplayRef> {
+    use crate::replay::{around, stack_lines, AFTER_MS};
+    let blamed: Vec<&MechanicPlayer> = players.iter().filter(|p| !p.credit).collect();
+    let marks = |r: &mut ReplayRef| {
+        for g in &r.focus {
+            if let Some(p) = st.players.get(g) {
+                r.marks.extend(p.times.iter().filter(|&&t| t >= r.from && t <= r.to).map(|&t| ReplayMark { t, guid: g.clone() }));
+            }
+        }
+        r.marks.sort_by_key(|x| x.t);
+    };
+    match m.kind {
+        // a culpa é de cada um: o replay acompanha o culpado
+        MechanicType::AvoidableDamage | MechanicType::Positioning | MechanicType::TankRange | MechanicType::ExclusiveAuras | MechanicType::StackLimit => blamed
+            .iter()
+            .filter_map(|p| p.first_t.map(|t| (t, p)))
+            .take(MAX_PLAYER_REPLAYS)
+            .map(|(t, p)| {
+                let mut r = around(t, AFTER_MS, vec![p.guid.clone()]);
+                marks(&mut r);
+                if m.kind == MechanicType::StackLimit {
+                    r.stacks = stack_lines(&st.stack_hist, r.from, r.to);
+                }
+                r
+            })
+            .collect(),
+        // falha coletiva (o debuff de parear tem replay em cada encontro)
+        MechanicType::FailureEvent | MechanicType::Soak | MechanicType::TankSoak | MechanicType::Spread if m.detect.pairing.is_none() => st
+            .fail_times
+            .iter()
+            .take(MAX_REPLAYS)
+            .map(|&ft| {
+                let mut focus: Vec<String> = blamed
+                    .iter()
+                    .filter(|p| st.players.get(&p.guid).is_some_and(|h| h.times.iter().any(|&t| (t - ft).abs() <= REPLAY_FOCUS_MS)))
+                    .map(|p| p.guid.clone())
+                    .collect();
+                // a lista é de atingidos, não de culpados (ex.: explosão no raid todo): todo mundo igual
+                if focus.len() > REPLAY_MAX_FOCUS {
+                    focus.clear();
+                }
+                let mut r = around(ft, AFTER_MS, focus);
+                marks(&mut r);
+                r
+            })
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
 /// Debuff de parear: cada encontro com soma errada que conta é uma falha, e o culpado é quem
 /// andou até o outro (os dois, quando os dois andaram ou já estavam juntos).
 fn pair_culprits(m: &Mechanic, st: &mut MechState, log: &PairLog) {
@@ -1558,6 +1666,9 @@ fn bump(map: &mut HashMap<String, PlayerHits>, guid: &str, name: &str, amount: i
     p.count += 1;
     p.amount += amount;
     p.first_t.get_or_insert(t);
+    if p.times.len() < MAX_HIT_TIMES {
+        p.times.push(t);
+    }
 }
 
 fn push_event(st: &mut MechState, t: i64, player: Option<&str>, detail: Text) {
@@ -1700,6 +1811,27 @@ mechanics:
     }
 
     #[test]
+    fn ground_marks_by_kind_and_rule() {
+        let yaml = r#"
+name: "Boss"
+encounter_id: 45
+mechanics:
+  - { key: dodge, name: Dodge, type: avoidable_damage, detect: { damage_ids: [1] } }
+  - { key: pool, name: Pool, type: unavoidable, detect: { damage_ids: [2] }, ground: { lingers_s: 6 } }
+  - { key: raid, name: Raid, type: unavoidable, detect: { damage_ids: [3] } }
+  - { key: off, name: Off, type: avoidable_damage, detect: { damage_ids: [4] }, ground: false }
+  - { key: buster, name: Buster, type: avoidable_damage, roles: [tank], detect: { damage_ids: [5] } }
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let tr = RuleTracker::new(&[&set], 16).unwrap();
+        assert_eq!(tr.ground_for(1), Some(("dodge", "Dodge", 2_000)));
+        assert_eq!(tr.ground_for(2), Some(("pool", "Pool", 6_000)));
+        assert_eq!(tr.ground_for(3), None);
+        assert_eq!(tr.ground_for(4), None);
+        assert_eq!(tr.ground_for(5), None);
+    }
+
+    #[test]
     fn pairing_blames_who_walked_into_the_wrong_partner() {
         let yaml = r#"
 name: "Boss"
@@ -1728,7 +1860,6 @@ mechanics:
         }
         tr.on_aura(10, "A", "Alice-R", 6, true, 5_000);
         tr.on_aura(10, "B", "Bob-R", 6, true, 5_000);
-        assert!(tr.wants_pair_snapshot());
         let res = tr.finish(&HashMap::new());
         let m = res.iter().find(|r| r.key == "helical").unwrap();
         assert_eq!(m.failures, 1);

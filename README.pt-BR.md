@@ -178,7 +178,7 @@ Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](http
 No topo, **Guilda / Solo** troca o foco do app. No modo guilda, a pergunta é por que a raid wipou. No solo, é como **você** pode melhorar. "Você" é quem gravou o log; na análise do Warcraft Logs, ou para ver outro personagem, escolha na própria tela.
 
 - **Pull → aba Você**: no topo, quatro cartões coloridos (verde bom, amarelo atenção, vermelho ruim, cinza só contexto): output, rotação, sobrevivência e erros de mecânica. Depois, **Para o próximo pull**: os seus erros ordenados pelo que custaram, cada um com o momento (▶ no vídeo) e o que fazer. Embaixo, abas:
-  - **Mecânicas:** as suas mortes e erros de mecânica, e os defensivos que os tops da spec usam nas mecânicas deste boss.
+  - **Mecânicas:** as suas mortes e erros de mecânica, cada um com um **replay** dos segundos antes (o seu caminho, os golpes que você tomou, o que estava no chão), e os defensivos que os tops da spec usam nas mecânicas deste boss.
   - **Rotação** (ou **Cura**, para healer): a leitura da [rotação base da spec](#-rotação), com os tops do mesmo boss em cada item; para healer, a [cura comparada](#-healers).
   - **Cooldowns:** o uso dos cooldowns e, para healer, em qual mecânica do boss a referência usa cada cooldown grande.
   - **Guia da spec:** pontos principais, prioridade e fontes.
@@ -238,7 +238,7 @@ As regras também cobrem:
 
 ### 📍 Posições
 
-Com Advanced Combat Logging, cada morte (antes do corte) guarda onde todo mundo estava: o detalhe da morte mostra um mini mapa, a distância até o boss e quem estava a menos de 8 jardas. As falhas coletivas de mecânica (ex.: detonação do orb roxo, Execution da Guillotine) também guardam a foto do momento.
+Com Advanced Combat Logging, cada morte (antes do corte) vem com um **replay** dos 15 segundos antes dela: o caminho do player, a vida, cada golpe grande que ele tomou (com a mecânica que matou em destaque), a distância até o boss mais perto e todo mundo em volta, além de quem estava a menos de 8 jardas no momento. Mecânicas que dependem de movimentação ou de stacks ganham o mesmo replay: um por culpado em dano evitável, posicionamento, debuff que acumula e marca dupla (cada acerto aparece como um anel vermelho), e um por falha nas coletivas (soak, explosão, detonação do orb roxo). O log não registra poças nem gotas, mas registra onde cada player estava quando foi atingido por uma: todo replay desenha esses pontos no chão (gotas, poças, círculo de soak, projétil), com uma cor por mecânica. O mapa desenha o chão da arena pelos lugares em que alguém pisou no pull (o log não tem o mapa), com grade e régua de 10 jardas, e alterna entre a arena inteira e o zoom em quem o replay acompanha. Os casts dos bosses também aparecem: o ícone do spell e a barra de cast ao lado do boss enquanto ele casta, uma seta para onde ele olhava ao terminar (frontais) e uma faixa embaixo do mapa com os casts de cada boss ao longo do replay.
 
 No Coiled Altar Mythic, o app reconstrói onde estava cada orb (quem carregava, onde cada um caiu, quais o Sever quebrou) e, em cada detonação, aponta quem levou um orb até outro parado no chão: "Rainface levou o roxo a 7 jardas de um verde no chão". Quando ninguém chegou perto (ex.: sobrou roxo no tempo), não culpa ninguém.
 

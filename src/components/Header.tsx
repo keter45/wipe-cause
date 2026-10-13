@@ -14,6 +14,7 @@ import { useSetup } from '../lib/setup';
 import { setMode, useMode } from '../lib/mode';
 import { useMessages } from '../i18n';
 import { headerMsg } from './Header.i18n';
+import { Hint } from './ui/Hint';
 
 /** Tamanho e traço dos ícones ao lado de texto regular. */
 const ICON = { size: 16, strokeWidth: 1.5, 'aria-hidden': true } as const;
@@ -263,8 +264,7 @@ function WclButton({ logFile, pulls, onWcl }: { logFile: string; pulls: Pull[]; 
         </button>
       }
     >
-      <h4>{t.reportTitle}</h4>
-      <p className="muted small">{t.reportHint}</p>
+      <h4>{t.reportTitle} <Hint>{t.reportHint}</Hint></h4>
       {searching && !input && <p className="muted small">{t.searchingReport}</p>}
       {input && auto && auto !== 'off' && <p className="small ok-text">{t.autoFound(auto.owner, auto.matched)}</p>}
       <input

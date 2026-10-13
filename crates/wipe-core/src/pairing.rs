@@ -15,7 +15,7 @@
 //! posições de quem tinha o debuff.
 
 use crate::orbs::pos_at;
-use crate::report::{PairFault, PairHint, PairMember, PairReplay, PairTrack, Positions, UnitPos};
+use crate::report::{PairFault, PairHint, PairMember, StackLine};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 
@@ -29,15 +29,9 @@ const APPROACH_STEP_MS: i64 = 100;
 /// Culpado = quem fez pelo menos essa parte da aproximação, se ela teve pelo menos MIN_APPROACH_YD.
 const CULPRIT_SHARE: f32 = 0.65;
 const MIN_APPROACH_YD: f32 = 3.0;
-/// Replay: segundos antes e depois do encontro, passo das posições e quantos encontros por pull.
-const REPLAY_BEFORE_MS: i64 = 15_000;
-const REPLAY_AFTER_MS: i64 = 2_000;
-/// Antes da rodada só interessa o comecinho (de onde cada um saiu).
+/// Replay: começa no máximo isso antes da rodada (de onde cada um saiu); só os primeiros encontros.
 const REPLAY_BEFORE_ROUND_MS: i64 = 2_000;
-const REPLAY_STEP_MS: i64 = 200;
 const MAX_REPLAYS: usize = 10;
-/// Foto dos bosses até esta distância do encontro.
-const SNAPSHOT_MAX_MS: i64 = 5_000;
 /// Tick que não bate com um número inteiro de stacks (± isso) não conta.
 const TICK_FIT: f64 = 0.15;
 
@@ -72,9 +66,6 @@ pub struct PairLog {
     holding: HashSet<String>,
     /// (t, guid, dano base)
     ticks: Vec<(i64, String, i64)>,
-    /// fotos (bosses) tiradas nos encontros com soma errada
-    snapshots: Vec<Positions>,
-    want_snapshot: bool,
 }
 
 impl PairLog {
@@ -97,7 +88,6 @@ impl PairLog {
         } else if self.holding.insert(guid.to_string()) {
             None
         } else {
-            self.want_snapshot = true;
             Some(stacks)
         };
         self.auras.push((t, guid.to_string(), ev));
@@ -108,15 +98,6 @@ impl PairLog {
         if spell_id == cfg.tick_id && base > 0 {
             self.ticks.push((t, guid.to_string(), base));
         }
-    }
-
-    /// Encontro com soma errada agora: a análise quer a foto dos bosses (uma vez).
-    pub fn take_snapshot_request(&mut self) -> bool {
-        std::mem::take(&mut self.want_snapshot)
-    }
-
-    pub fn add_snapshot(&mut self, snap: Positions) {
-        self.snapshots.push(snap);
     }
 
     pub fn name(&self, guid: &str) -> &str {
@@ -479,31 +460,21 @@ pub fn faults(cfg: &PairDetect, log: &PairLog) -> Vec<PairFault> {
         let f = &out[i];
         let round = spans.iter().find(|s| s.guid == f.members[0].guid && s.start <= f.t && s.end.is_none_or(|e| e + SAME_MS >= f.t)).map(|s| s.round);
         let Some(round) = round else { continue };
-        let from = (f.t - REPLAY_BEFORE_MS).max(f.round_start - REPLAY_BEFORE_ROUND_MS);
-        let to = f.t + REPLAY_AFTER_MS;
-        let focus: HashSet<&str> = f.members.iter().map(|m| m.guid.as_str()).collect();
-        let mut tracks: Vec<PairTrack> = Vec::new();
-        for (s, sp) in spans.iter().enumerate().filter(|(_, sp)| sp.round == round) {
-            let pts: Vec<(i64, f32, f32)> = (from..=to)
-                .step_by(REPLAY_STEP_MS as usize)
-                .filter_map(|t| log.pos(&sp.guid, t).map(|(x, y)| (t, round1(x), round1(y))))
-                .collect();
-            if pts.is_empty() {
-                continue;
-            }
-            let mut stacks = vec![(sp.start, sp.v0.map_or(-1, |v| v as i32))];
-            stacks.extend(known_after[s].iter().map(|&(t, n)| (t, n as i32)));
-            stacks.extend(sp.end.map(|e| (e, 0)));
-            tracks.push(PairTrack { guid: sp.guid.clone(), name: log.name(&sp.guid).to_string(), focus: focus.contains(sp.guid.as_str()), pts, stacks });
-        }
-        let enemies = log
-            .snapshots
+        let mut r = crate::replay::around(f.t, crate::replay::AFTER_MS, f.members.iter().map(|m| m.guid.clone()).collect());
+        r.from = r.from.max(f.round_start - REPLAY_BEFORE_ROUND_MS);
+        // stacks de todo mundo da rodada (o inicial, cada soma e a limpeza)
+        r.stacks = spans
             .iter()
-            .filter(|s| (s.t - f.t).abs() <= SNAPSHOT_MAX_MS)
-            .min_by_key(|s| (s.t - f.t).abs())
-            .map(|s| s.units.iter().filter(|u| u.kind == "enemy").cloned().collect::<Vec<UnitPos>>())
-            .unwrap_or_default();
-        out[i].replay = Some(PairReplay { from, to, tracks, enemies });
+            .enumerate()
+            .filter(|(_, sp)| sp.round == round)
+            .map(|(s, sp)| {
+                let mut pts = vec![(sp.start, sp.v0.map_or(-1, |v| v as i32))];
+                pts.extend(known_after[s].iter().map(|&(t, n)| (t, n as i32)));
+                pts.extend(sp.end.map(|e| (e, 0)));
+                StackLine { guid: sp.guid.clone(), pts }
+            })
+            .collect();
+        out[i].replay = Some(r);
     }
     out
 }
@@ -592,7 +563,6 @@ mod tests {
         walk(&mut log, "D", (20.0, 10.0), (20.0, 10.0), 0, 6_000);
         log.on_aura(&c, 10, "A", "Alice", 6, 5_000);
         log.on_aura(&c, 10, "B", "Bob", 6, 5_000);
-        assert!(log.take_snapshot_request());
         let f = faults(&c, &log);
         assert_eq!(f.len(), 1);
         let x = &f[0];
@@ -604,8 +574,8 @@ mod tests {
         let hint = x.members[0].better.as_ref().unwrap();
         assert_eq!((hint.guid.as_str(), hint.stacks), ("D", 1));
         let replay = x.replay.as_ref().unwrap();
-        assert_eq!(replay.tracks.len(), 4);
-        assert_eq!(replay.tracks.iter().filter(|t| t.focus).count(), 2);
+        assert_eq!(replay.stacks.len(), 4);
+        assert_eq!(replay.focus, ["A", "B"]);
     }
 
     #[test]

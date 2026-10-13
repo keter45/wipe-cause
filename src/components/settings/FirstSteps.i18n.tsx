@@ -26,8 +26,7 @@ export const firstStepsMsg = defineMessages(
         Conectado como <strong>{name}</strong>.{' '}
       </>
     ),
-    wclText:
-      'Com a sua conta, o app vê os logs da sua guilda: mostra o que faltou no log do seu PC, liga o ao vivo sozinho quando a raid começa e traz o parse de cada um. Não precisa criar chave nem client.',
+    wclText: 'Com a sua conta, o app vê os logs da guilda: completa o que faltou no seu PC, liga o ao vivo sozinho e traz o parse de cada um.',
     optionalTitle: 'Opcional',
     seeOptions: 'Ver opções',
     optionalText: 'Ligar o ao vivo sozinho quando o WoW abrir, vídeos do Warcraft Recorder, aviso no Discord a cada pull e perguntas à IA.',
@@ -74,8 +73,7 @@ export const firstStepsMsg = defineMessages(
         Connected as <strong>{name}</strong>.{' '}
       </>
     ),
-    wclText:
-      "With your account, the app sees your guild's logs: it shows what's missing from your PC's log, turns live on by itself when the raid starts and brings everyone's parse. No key or client to create.",
+    wclText: 'With your account, the app sees your guild’s logs: fills in what your PC missed, turns live mode on by itself and brings everyone’s parse.',
     optionalTitle: 'Optional',
     seeOptions: 'See options',
     optionalText: 'Turn live on by itself when WoW opens, Warcraft Recorder videos, a Discord post on every pull and questions to the AI.',

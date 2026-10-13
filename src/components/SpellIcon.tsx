@@ -21,13 +21,15 @@ interface Props {
   icon?: string | null;
   /** nome da habilidade no tooltip, onde só cabe o ícone (marcas da linha do tempo) */
   title?: string;
+  /** abre a descrição do Wowhead com o mouse em cima (falso quando o nome ao lado já abre) */
+  hover?: boolean;
 }
 
 /**
  * Ícone da habilidade (Wowhead), carregado só quando entra na tela. Enquanto carrega, ou se o
  * spell não existe no Wowhead, fica um quadrado neutro do mesmo tamanho (sem pulo de layout).
  */
-export function SpellIcon({ spellId, size = 18, kind = 'spell', icon, title }: Props) {
+export function SpellIcon({ spellId, size = 18, kind = 'spell', icon, title, hover = true }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
   const eager = useContext(EagerIcons);
   const [visible, setVisible] = useState(eager);
@@ -54,6 +56,10 @@ export function SpellIcon({ spellId, size = 18, kind = 'spell', icon, title }: P
   const style = { width: size, height: size };
   // com `title` o ícone é o nome (leitor de tela e tooltip); sem, é enfeite ao lado do nome escrito
   const a11y = title ? { role: 'img', 'aria-label': title, title } : { 'aria-hidden': true };
+  // habilidade: a descrição do Wowhead abre no cartão (SpellHoverLayer), com o `title` como linha
+  // a mais em vez do tooltip nativo (senão abrem os dois)
+  const withHover = hover && kind === 'spell' && !special && spellId != null;
+  const hoverAttrs = withHover ? { 'data-spell-id': spellId, ...(title && { 'data-spell-extra': title }) } : {};
   if (spellId === MELEE)
     return (
       <span className="spell-icon glyph" style={style} {...a11y}>
@@ -67,7 +73,7 @@ export function SpellIcon({ spellId, size = 18, kind = 'spell', icon, title }: P
       </span>
     );
   return (
-    <span ref={ref} className={`spell-icon${title ? ' has-tip' : ''}`} style={style} {...a11y}>
+    <span ref={ref} className={`spell-icon${title ? ' has-tip' : ''}`} style={style} {...a11y} {...hoverAttrs} {...(withHover && title && { title: undefined })}>
       {iconName && (
         <img src={iconUrl(iconName)} alt="" width={size} height={size} loading={eager ? 'eager' : 'lazy'} decoding="async" crossOrigin="anonymous" />
       )}
@@ -78,9 +84,20 @@ export function SpellIcon({ spellId, size = 18, kind = 'spell', icon, title }: P
 /** Ícone + nome da habilidade numa linha. */
 export function SpellName({ spellId, name, size = 18, icon }: { spellId: number | null | undefined; name: string; size?: number; icon?: string | null }) {
   return (
-    <span className="spell-name">
-      <SpellIcon spellId={spellId} size={size} icon={icon} />
+    <span className="spell-name" {...(spellId != null && spellId > 1 && { 'data-spell-id': spellId })}>
+      <SpellIcon spellId={spellId} size={size} icon={icon} hover={false} />
       <span className="spell-name-text">{name}</span>
     </span>
+  );
+}
+
+/** Ícone da habilidade dentro de um SVG (mapa do replay); enquanto carrega, um quadrado neutro. */
+export function SvgSpellIcon({ spellId, x, y, size, title }: { spellId: number; x: number; y: number; size: number; title?: string }) {
+  const tip = useTooltip(spellId, true);
+  return (
+    <g data-spell-id={spellId} {...(title && { role: 'img', 'aria-label': title })}>
+      <rect x={x - 1} y={y - 1} width={size + 2} height={size + 2} rx={3} className="svg-spell-frame" />
+      {tip?.icon && <image href={iconUrl(tip.icon)} x={x} y={y} width={size} height={size} preserveAspectRatio="xMidYMid slice" />}
+    </g>
   );
 }

@@ -3,6 +3,7 @@ import { Check, CircleDashed } from 'lucide-react';
 import { missingRequired, useSetup, type SettingsSection } from '../../lib/setup';
 import { useMessages } from '../../i18n';
 import { firstStepsMsg } from './FirstSteps.i18n';
+import { Hint } from '../ui/Hint';
 
 /**
  * Passo a passo do app: aberto na primeira vez (a tela inicial é esta) e, depois, recolhido em
@@ -49,8 +50,7 @@ export function FirstSteps({ firstRun, onStart, onOpen }: { firstRun: boolean; o
   }
   return (
     <section className="first-steps panel open">
-      <h2>{t.firstSteps}</h2>
-      <p className="muted small">{t.intro}</p>
+      <h2>{t.firstSteps} <Hint>{t.intro}</Hint></h2>
       {body}
       <div className="set-actions">
         <button className="btn primary" onClick={onStart} disabled={!logsOk} title={logsOk ? undefined : t.missingLogs}>

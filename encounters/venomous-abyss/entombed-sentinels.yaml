@@ -160,6 +160,7 @@ mechanics:
     source_unit: blood
     severity: none
     detect: { damage_ids: [1303097], aura_id: 1288297 }
+    ground: { lingers_s: 6 }   # replay: poça que fica (a aura 1288297 entra e sai com quem pisa)
     tip: { pt: "Dano das poças deixadas pelo soak do Unstable Miasma.", en: "Damage from the pools left by the Unstable Miasma soak." }
     message: { pt: "Clinging Murk", en: "Clinging Murk" }
     notes: "Muitos hits por pull; confirmar se dá para evitar antes de culpar."
@@ -170,6 +171,7 @@ mechanics:
     source_unit: blood
     severity: none
     detect: { damage_ids: [1288282], aura_id: 1288260, cast_id: 1288232 }
+    ground: { lingers_s: 3 }   # replay: o círculo do soak, pelos players atingidos
     tip: { pt: "Todo mundo junto no soak perto da borda, depois espalhar.", en: "Everyone together for the soak near the edge, then spread." }
     message: { pt: "Unstable Miasma", en: "Unstable Miasma" }
     notes: "5-10 players por soak no log; poucos soakers deixam o hit mais forte."

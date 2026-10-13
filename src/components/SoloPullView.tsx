@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ShieldAlert, Skull, Target } from 'lucide-react';
+import { ChevronDown, Footprints, ShieldAlert, Skull, Target } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { mmss, num, shortName } from '../lib/format';
 import { candidates, defaultReference, detectCooldowns, isHealer, outputPerSec, type Sample } from '../lib/performance';
@@ -21,6 +21,12 @@ import { ShareMenu } from './share/ShareMenu';
 import { SoloShareCard } from './share/SoloCard';
 import { messagesOf, tr as trLoc, useMessages } from '../i18n';
 import { soloPullMsg } from './SoloPullView.i18n';
+import { Stat, StatGrid } from './ui/Stat';
+import { ReplayView } from './ReplayView';
+import { replayMsg } from './ReplayView.i18n';
+import { deathReplayExtras, decodeReplay, playerReplay } from '../lib/replay';
+import type { Death } from '../types';
+import { Clamp } from './ui/Clamp';
 
 /** Modo solo: o pull do ponto de vista de um player só, com o que ele pode corrigir. */
 export function SoloPullView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }) {
@@ -142,8 +148,8 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
         />
       </div>
 
-      <div className="solo-kpis">
-        <Kpi
+      <StatGrid>
+        <Stat
           tone={healer ? 'neutral' : diff == null ? 'neutral' : diff <= -15 ? 'bad' : diff < -3 ? 'warn' : 'good'}
           // healer: o mesmo HPS da luta que a referência usa (cura efetiva no tempo analisado)
           label={healer && healerCmp ? t.hpsEffective : t.perSecondAlive(healer)}
@@ -161,25 +167,25 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
           }
           extra={parse != null ? t.parseLine(parse) + (own.previous ? t.parseVsOwn(own.previous.percent, own.avg ?? own.previous.percent, own.kills) : '') : undefined}
         />
-        <Kpi
+        <Stat
           tone={r ? ({ good: 'good', mid: 'warn', bad: 'bad' } as const)[scoreTone(r.score)] : 'neutral'}
           label={t.rotation}
           value={r ? String(r.score) : t.underConstruction}
           sub={r ? t.idle(mmss(r.downtimeMs)) : specLabel(me.player.specId)}
         />
-        <Kpi
+        <Stat
           tone={deaths.length ? 'bad' : 'good'}
           label={t.survival}
           value={deaths.length ? t.diedAt(mmss(deaths[0].death.t)) : t.aliveToEnd}
           sub={t.resultIn(me.pull.success, mmss(me.pull.durationMs))}
         />
-        <Kpi
+        <Stat
           tone={!me.pull.rulesFile ? 'neutral' : mechCount === 0 ? 'good' : mechCount <= 2 ? 'warn' : 'bad'}
           label={t.mechErrors}
           value={String(mechCount)}
           sub={me.pull.rulesFile ? t.onlyYours : t.noRules}
         />
-      </div>
+      </StatGrid>
 
       <NextPull losses={ls} unit={unit} seek={seek} />
 
@@ -222,23 +228,6 @@ type SoloTab = 'mechanics' | 'main' | 'cooldowns' | 'guide';
  * Um número do resumo com a cor do que ele significa: verde bom, amarelo atenção, vermelho ruim,
  * cinza só contexto (o HPS do healer não é nota).
  */
-function Kpi({ tone, label, value, delta, sub, extra }: { tone: 'good' | 'warn' | 'bad' | 'neutral'; label: string; value: string; delta?: string; sub?: string; extra?: string }) {
-  return (
-    <div className={`kpi tone-${tone}`}>
-      <span className="kpi-label">
-        <span className="kpi-dot" aria-hidden />
-        {label}
-      </span>
-      <strong className="kpi-value tabular">
-        {value}
-        {delta && <span className="kpi-delta">{delta}</span>}
-      </strong>
-      {sub && <span className="muted small">{sub}</span>}
-      {extra && <span className="muted small">{extra}</span>}
-    </div>
-  );
-}
-
 /** Momento do pull: o horário sempre, e o ▶ quando o pull tem vídeo. */
 function At({ t, seek }: { t: number; seek: ((t: number) => void) | null }) {
   return (
@@ -286,7 +275,9 @@ function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; se
                 </div>
                 {l.tip && (
                   <p className="muted small">
-                    <Colored text={l.tip} />
+                    <Clamp lines={2}>
+                      <Colored text={l.tip} />
+                    </Clamp>
                   </p>
                 )}
                 {l.times.length > 0 && (
@@ -324,9 +315,20 @@ const costLabel = (l: Loss) => {
 /** Mortes, erros nas mecânicas cadastradas e os defensivos que os tops da spec usam nas mecânicas do boss. */
 function Mechanics({ me, bench, seek }: { me: Sample; bench: BenchView | null; seek: ((t: number) => void) | null }) {
   const t = useMessages(soloPullMsg);
+  const rt = useMessages(replayMsg);
   const fails = myMechanicFailures(me);
   const deaths = myDeaths(me);
   const defs = bench?.defensives ?? [];
+  // replay aberto: "death:<t>" ou "mech:<chave>"
+  const [open, setOpen] = useState<string | null>(null);
+  const data = useMemo(() => decodeReplay(me.pull), [me.pull]);
+  const classes = useMemo(() => new Map(me.pull.players.map((x) => [x.guid, x.class] as const)), [me.pull]);
+  const hasData = data.units.size > 0;
+  const toggle = (k: string) => (
+    <button className={`link small replay-link ${open === k ? 'active' : ''}`} onClick={() => setOpen(open === k ? null : k)} aria-expanded={open === k}>
+      <Footprints size={13} strokeWidth={1.75} aria-hidden /> {rt.open(open === k)}
+    </button>
+  );
   return (
     <section className="perf-section">
       <h4>
@@ -348,24 +350,34 @@ function Mechanics({ me, bench, seek }: { me: Sample; bench: BenchView | null; s
               {!d.usedHealthPotion && t.noPotion}
               {d.healthstoneKnown && !d.usedHealthstone && t.noHealthstone}
             </p>
+            {hasData && d.replay && toggle(`death:${d.t}`)}
+            {open === `death:${d.t}` && d.replay && <DeathReplay death={d} data={data} classes={classes} />}
           </div>
           <At t={d.t} seek={seek} />
         </div>
       ))}
-      {fails.map(({ mechanic: m, player: p, times }) => (
+      {fails.map(({ mechanic: m, player: p, times }) => {
+        const rp = playerReplay(m, me.player.guid);
+        const k = `mech:${m.key}`;
+        return (
         <div key={m.key} className="solo-mech">
           {m.spellId != null ? <SpellIcon spellId={m.spellId} size={18} /> : <ShieldAlert size={16} strokeWidth={1.5} aria-hidden />}
           <div>
             <strong>{m.name}</strong> <span className="muted small">{trLoc(p.message) || t.errors(p.count)}</span>
             {trLoc(m.tip) && (
               <p className="muted small">
-                <Colored text={trLoc(m.tip)} />
+                <Clamp>
+                  <Colored text={trLoc(m.tip)} />
+                </Clamp>
               </p>
             )}
+            {rp && (hasData || rp.data) && toggle(k)}
+            {open === k && rp && <ReplayView key={k} data={rp.data ?? data} replay={rp.replay} classes={classes} moment={rp.moment} />}
           </div>
           {(times[0] ?? p.firstT) != null && <At t={(times[0] ?? p.firstT)!} seek={seek} />}
         </div>
-      ))}
+        );
+      })}
       {defs.length > 0 && (
         <>
           <h5 className="muted small">{t.defensives}</h5>
@@ -381,4 +393,10 @@ function Mechanics({ me, bench, seek }: { me: Sample; bench: BenchView | null; s
       )}
     </section>
   );
+}
+
+/** Replay da morte do player (golpes tomados e vida ao longo dele). */
+function DeathReplay({ death, data, classes }: { death: Death; data: ReturnType<typeof decodeReplay>; classes: Map<string, string | null> }) {
+  const { hits, hp } = useMemo(() => deathReplayExtras(death), [death]);
+  return <ReplayView data={data} replay={death.replay!} classes={classes} moment="death" hp={hp} dies={death.guid} hits={hits} />;
 }

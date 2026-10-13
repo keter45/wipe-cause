@@ -5,7 +5,7 @@ const s = (n: number, one: string, many: string) => (n === 1 ? one : many);
 export const headerMsg = defineMessages(
   {
     cutoffMissingLog: 'O log original não existe mais: esta análise salva usa o corte com que foi feita.',
-    cutoffHint: 'Depois de algumas mortes o wipe já está decidido: nada depois da N-ésima morte conta (dano, cura, erros, falhas, interrupts). Em kill não há corte: a raid seguiu e matou o boss. 0 = conta tudo. Mudar reanalisa o log.',
+    cutoffHint: 'Depois da N-ésima morte o wipe já está decidido: o resto do pull não conta. Kill não tem corte; 0 = conta tudo.',
     cutoffBrowser: 'No navegador o corte vem do JSON (wipe-cli analyze --cutoff N)',
     tonight: 'Desta noite',
     discordAria: 'Envio automático ao Discord',
@@ -48,7 +48,7 @@ export const headerMsg = defineMessages(
   },
   {
     cutoffMissingLog: 'The original log no longer exists: this saved analysis uses the cutoff it was made with.',
-    cutoffHint: 'After a few deaths the wipe is already decided: nothing after the Nth death counts (damage, healing, mistakes, failures, interrupts). Kills have no cutoff: the raid kept going and killed the boss. 0 = count everything. Changing it re-analyzes the log.',
+    cutoffHint: 'After the Nth death the wipe is already decided: the rest of the pull doesn’t count. Kills have no cutoff; 0 = count everything.',
     cutoffBrowser: 'In the browser the cutoff comes from the JSON (wipe-cli analyze --cutoff N)',
     tonight: 'Tonight',
     discordAria: 'Automatic posting to Discord',
