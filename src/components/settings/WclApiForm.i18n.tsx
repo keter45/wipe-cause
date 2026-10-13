@@ -27,8 +27,7 @@ export const wclApiMsg = defineMessages(
     secretSaved: '•••••••• (cole de novo para trocar)',
     checking: 'Conferindo…',
     saveConnect: 'Salvar e conectar',
-    privacy:
-      'Sem login, a API só mostra reports públicos. O secret fica no cofre de credenciais do Windows e as consultas só enviam boss, spec e código de report: nada do seu log sai do PC.',
+    privacy: 'Sem login, só reports públicos. O secret fica no cofre do Windows e nada do seu log sai do PC.',
   },
   {
     continueInBrowser: 'Continue in the browser: authorize Wipe Cause on Warcraft Logs and come back here.',
@@ -55,7 +54,6 @@ export const wclApiMsg = defineMessages(
     secretSaved: '•••••••• (paste again to change it)',
     checking: 'Checking…',
     saveConnect: 'Save and connect',
-    privacy:
-      "Without signing in, the API only shows public reports. The secret stays in the Windows credential vault and queries only send the boss, spec and report code: nothing from your log leaves the PC.",
+    privacy: 'Without signing in, only public reports. The secret stays in the Windows vault and nothing from your log leaves the PC.',
   },
 );

@@ -11,6 +11,7 @@ import { spellIndex } from '../lib/spells';
 import { BossName } from './Names';
 import { messagesOf, useMessages } from '../i18n';
 import { trendsViewMsg } from './TrendsView.i18n';
+import { Hint } from './ui/Hint';
 
 /**
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
@@ -96,7 +97,7 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
       )}
 
       <section className="panel">
-        <h3>{m.progress}</h3>
+        <h3>{m.progress} <Hint>{m.progressHint}</Hint></h3>
         <div className="night-cols">
           {t.nights.map((n) => {
             const s = n.summary;
@@ -113,11 +114,10 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
             );
           })}
         </div>
-        <p className="muted small">{m.progressHint}</p>
       </section>
 
       <section className="panel">
-        <h3>{m.triggers}</h3>
+        <h3>{m.triggers} <Hint>{m.triggersHint}</Hint></h3>
         {t.causes.length === 0 ? (
           <p className="muted small">{m.noTriggers}</p>
         ) : (
@@ -154,7 +154,6 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
             </table>
           </div>
         )}
-        <p className="muted small">{m.triggersHint}</p>
       </section>
 
       {t.progression && <ProgressionPanel pr={t.progression} />}
@@ -162,10 +161,9 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
       {t.nights.length >= 2 && (
         <section className="panel">
           <div className="two-col moves">
-            <Moves title={m.improving} icon="up" list={t.improving} />
+            <Moves title={m.improving} icon="up" list={t.improving} hint={m.movesHint} />
             <Moves title={m.worsening} icon="down" list={t.worsening} />
           </div>
-          <p className="muted small">{m.movesHint}</p>
         </section>
       )}
 
@@ -251,7 +249,7 @@ function ProgressionPanel({ pr }: { pr: Progression }) {
     <section className="panel">
       <h3>
         <Trophy size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {m.progression}
-      </h3>
+       <Hint>{m.progressionHint(pr.minPulls)}</Hint></h3>
       <p className="muted small">{pr.killedOn ? m.progressionKilled(pr.pulls, pr.killedOn) : m.progressionOngoing(pr.pulls)}</p>
       <div className="progression-cards">
         {card(m.bestScore, pr.best, 'score', 'good')}
@@ -259,19 +257,19 @@ function ProgressionPanel({ pr }: { pr: Progression }) {
         {card(m.bestPerf, pr.bestPerf, 'perf', 'good')}
         {card(m.worstPerf, pr.worstPerf, 'perf', 'bad')}
       </div>
-      <p className="muted small">{m.progressionHint(pr.minPulls)}</p>
     </section>
   );
 }
 
 /** Quem subiu (ou caiu) de nota entre o começo e o fim das noites, com o desempenho junto. */
-function Moves({ title, icon, list }: { title: string; icon: 'up' | 'down'; list: PlayerMove[] }) {
+function Moves({ title, icon, list, hint }: { title: string; icon: 'up' | 'down'; list: PlayerMove[]; hint?: string }) {
   const m = useMessages(trendsViewMsg);
   const Icon = icon === 'up' ? TrendingUp : TrendingDown;
   return (
     <div>
       <h3>
         <Icon size={16} strokeWidth={1.5} className={`inline-icon ${icon === 'up' ? 'good' : 'bad'}`} aria-hidden /> {title}
+        {hint && <Hint>{hint}</Hint>}
       </h3>
       {list.length === 0 ? (
         <p className="muted small">{m.noMoves}</p>

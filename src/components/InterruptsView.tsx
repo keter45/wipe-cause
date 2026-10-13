@@ -5,6 +5,7 @@ import { SpellIcon, SpellName } from './SpellIcon';
 import { AssignmentsPanel } from './AssignmentsPanel';
 import { useMessages } from '../i18n';
 import { interruptsMsg } from './InterruptsView.i18n';
+import { Hint } from './ui/Hint';
 
 /** Casts interrompíveis (cortados ao menos uma vez no log) e quem cortou / quem não. */
 export function InterruptsView({ pull }: { pull: Pull }) {
@@ -69,7 +70,9 @@ export function InterruptsView({ pull }: { pull: Pull }) {
             <th>{t.player}</th>
             <th className="num">{t.kicks}</th>
             <th className="num">{t.tries}</th>
-            <th className="num">{t.wasted}</th>
+            <th className="num">
+              {t.wasted} <Hint>{t.wastedNote}</Hint>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -78,7 +81,6 @@ export function InterruptsView({ pull }: { pull: Pull }) {
           ))}
         </tbody>
       </table>
-      <p className="muted small">{t.wastedNote}</p>
     </div>
   );
 }

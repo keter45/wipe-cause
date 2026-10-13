@@ -5,6 +5,7 @@ import { mmss, pct, shortName, damageSource } from './format';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { spellIdByName } from './spells';
 import { getMarks } from './marks';
+import { PERSONAL_BLAME } from './blame';
 import { messagesOf, tr } from '../i18n';
 import { verdictMsg } from './verdict.i18n';
 
@@ -22,7 +23,13 @@ export interface Finding {
   focus?: boolean;
   /** importância da mecânica dentro do boss (regra) */
   priority?: number;
+  /** como evitar (dica da regra): fica atrás de um (i), não na linha */
+  tip?: string;
 }
+
+/** Até quantos culpados a mensagem de cada um vale a linha; acima disso, só os nomes. */
+const DETAIL_MESSAGES_MAX = 2;
+const DETAIL_NAMES_MAX = 4;
 
 export interface Verdict {
   headline: string;
@@ -76,19 +83,25 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   // 0. Regras do boss: falhas de mecânica graves entram primeiro (e as do foco, mesmo leves)
   for (const m of p.mechanics) {
     if (m.failures === 0 || m.severity === 'none' || (m.severity === 'minor' && !m.focus)) continue;
-    const blamed = m.players.filter((x) => !x.credit);
+    // nas coletivas (soak, enrage...) a lista é de quem foi atingido, não de quem errou
+    const blamed = PERSONAL_BLAME.has(m.kind) ? m.players.filter((x) => !x.credit) : [];
     findings.push({
       severity: m.severity === 'minor' ? 'major' : m.severity,
       focus: m.focus,
       priority: m.priority,
       spellId: m.spellId,
       title: tr(m.summary) || t.mechanicPlayers(m.name, blamed.length),
-      detail: tr(m.summary)
-        ? tr(m.tip)
-        : blamed
-            .slice(0, 4)
-            .map((x) => tr(x.message) || shortName(x.name))
-            .join(' · ') + (blamed.length > 4 ? ` · +${blamed.length - 4}` : ''),
+      // poucos culpados: a mensagem de cada um (é específica); muitos: só os nomes
+      detail:
+        blamed.length === 0
+          ? undefined
+          : blamed.length <= DETAIL_MESSAGES_MAX
+            ? blamed.map((x) => tr(x.message) || shortName(x.name)).join(' · ')
+            : blamed
+                .slice(0, DETAIL_NAMES_MAX)
+                .map((x) => (x.count > 1 ? `${shortName(x.name)} (${x.count})` : shortName(x.name)))
+                .join(', ') + (blamed.length > DETAIL_NAMES_MAX ? ` +${blamed.length - DETAIL_NAMES_MAX}` : ''),
+      tip: tr(m.tip) || undefined,
     });
   }
 

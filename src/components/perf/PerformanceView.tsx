@@ -22,6 +22,7 @@ import { soloPullMsg } from '../SoloPullView.i18n';
 import { TrendingDown } from 'lucide-react';
 import { messagesOf, useMessages } from '../../i18n';
 import { perfViewMsg } from './perf.i18n';
+import { Hint } from '../ui/Hint';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
 
@@ -244,8 +245,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
       {picker}
       <div className="perf-bar">
         <p className="muted small perf-note">
-          {mode === 'tops' ? m.noteTops : m.noteRaid}
-          {m.noteRest}
+          {mode === 'tops' ? m.noteTops : m.noteRaid} <Hint>{m.noteRest}</Hint>
         </p>
         <ShareMenu
           card={(detail) => <PerfShareCard me={me} ref_={ref} refName={refName} cds={cds} links={links} detail={detail} />}
@@ -253,8 +253,8 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
         />
       </div>
 
-      <div className="death-stats perf-stats">
-        <Stat label={m.perSecondAlive(healer)} mine={num(mo)} ref={num(ro)} tone={diff <= -15 ? 'bad' : diff < -3 ? 'warn' : ''} extra={ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : undefined} />
+      <div className="kpis">
+        <Stat label={m.perSecondAlive(healer)} mine={num(mo)} ref={num(ro)} tone={healer || ro <= 0 ? '' : diff <= -15 ? 'bad' : diff < -3 ? 'warn' : 'good'} extra={ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : undefined} />
         <Stat label={m.timeAlive} mine={mmss(me.player.aliveMs ?? 0)} ref={mmss(ref.player.aliveMs ?? 0)} />
         <Stat label={m.cpm} mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref).toFixed(1)} />
         <Stat label={m.itemLevel} mine={me.player.setup?.itemLevel.toFixed(1) ?? '—'} ref={ref.player.setup?.itemLevel.toFixed(1) ?? '—'} />
@@ -276,15 +276,14 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
 
       <section className="perf-section">
         <h4>
-          <TrendingDown size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {messagesOf(soloPullMsg).advantage}
+          <TrendingDown size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {messagesOf(soloPullMsg).advantage} <Hint>{messagesOf(soloPullMsg).alignedHint}</Hint>
         </h4>
         <Advantage me={me} ref_={ref} refLabel={refName} unit={unit} casts wcl={{ mine: mineWcl, ref: refWcl, type: wclType }} />
       </section>
       {decisions.length > 0 && (
         <section className="perf-section">
-          <h4>{m.decisions}</h4>
+          <h4>{m.decisions} <Hint>{m.decisionsHint}</Hint></h4>
           <DecisionList list={decisions} who={mode === 'tops' && topSample ? topSample.source.name : shortName(ref.player.name)} />
-          <p className="muted small">{m.decisionsHint}</p>
         </section>
       )}
       <Bursts me={me} ref_={ref} cds={cds} />

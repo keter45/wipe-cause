@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronRight, ExternalLink, FlaskConical, Gem, Shield } from 'lucide-react';
 import type { Death, DeathAura, RecapEntry } from '../types';
 import { classColor, mmss, num, relSeconds, shortName, damageSource } from '../lib/format';
-import { useTooltip, wowheadUrl } from '../lib/wowhead';
+import { useSpellDescription, useTooltip, wowheadUrl } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { openExternal } from '../lib/api';
 import { useSeek } from '../lib/wcr';
 import { PlayAt } from './VideoPanel';
 import { PositionMap, dist, mainEnemy } from './PositionMap';
+import { ReplayView } from './ReplayView';
+import { Stat, StatGrid } from './ui/Stat';
+import { deathReplayExtras, type ReplayData } from '../lib/replay';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from '../lib/massDeaths';
 import { messagesOf, tr, useMessages } from '../i18n';
 import { deathMsg } from './DeathList.i18n';
+import { Hint } from './ui/Hint';
 
 interface Props {
   deaths: Death[];
@@ -24,12 +28,14 @@ interface Props {
   mechanicSpells: Map<string, number>;
   /** "marcar como erro": vira uma marca manual do pull */
   onMark?: (d: Death) => void;
+  /** posições do pull para o replay de cada morte */
+  replayData?: ReplayData;
 }
 
 /** Tipo da morte (rótulo e explicação) no idioma atual. */
 export const deathKind = (k: Death['deathKind']) => messagesOf(deathMsg).kind[k];
 
-export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, onMark }: Props) {
+export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, onMark, replayData }: Props) {
   const t = useMessages(deathMsg);
   const [open, setOpen] = useState<string | null>(null);
   const seek = useSeek();
@@ -106,7 +112,7 @@ export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, 
               </button>
               <PlayAt t={d.t} seek={seek} />
             </div>
-            {isOpen && <DeathDetail death={d} classes={classes} mechanicSpells={mechanicSpells} onMark={onMark} />}
+            {isOpen && <DeathDetail death={d} classes={classes} mechanicSpells={mechanicSpells} onMark={onMark} replayData={replayData} />}
           </div>
         );
       })}
@@ -141,11 +147,13 @@ function DeathDetail({
   classes,
   mechanicSpells,
   onMark,
+  replayData,
 }: {
   death: Death;
   classes: Map<string, string | null>;
   mechanicSpells: Map<string, number>;
   onMark?: (d: Death) => void;
+  replayData?: ReplayData;
 }) {
   const t = useMessages(deathMsg);
   const [marked, setMarked] = useState(false);
@@ -174,17 +182,17 @@ function DeathDetail({
           </button>
         </p>
       )}
-      <div className="death-stats">
-        <Stat label={t.type} value={t.kind[death.deathKind].label} title={t.kind[death.deathKind].title} />
+      <StatGrid compact>
+        <Stat label={t.type} value={t.kind[death.deathKind].label} hint={t.kind[death.deathKind].title} />
         <Stat label={t.belowHalf} value={s.belowHalfMs != null ? `${(s.belowHalfMs / 1000).toFixed(1)}s` : '—'} />
         <Stat label={t.maxHp} value={s.maxHpPctLast3s != null ? `${Math.round(s.maxHpPctLast3s)}%` : '—'} />
         <Stat label={t.damage10} value={num(s.damageTaken10s)} />
         <Stat
           label={t.heal10}
           value={`${num(s.healingReceived10s)}${s.healingPctOfMax10s != null ? t.ofHp(Math.round(s.healingPctOfMax10s)) : ''}`}
-          bad={s.underhealed}
+          tone={s.underhealed ? 'bad' : 'neutral'}
         />
-      </div>
+      </StatGrid>
 
       {(death.mechanicDamage.length > 0 || (death.defensivesAvailable.length > 0 && death.defensivesRecent.length === 0)) && (
         <div className="recap-notes">
@@ -223,7 +231,7 @@ function DeathDetail({
         </>
       )}
 
-      {death.positions && <DeathPosition death={death} classes={classes} />}
+      {death.positions && <DeathPosition death={death} classes={classes} replayData={replayData} />}
 
       <div className="recap-toolbar">
         <h4 className="recap-title">
@@ -270,8 +278,9 @@ function DeathDetail({
 const NEAR_YD = 8;
 
 /** Mini mapa da hora da morte + distâncias (boss, quem estava perto). */
-function DeathPosition({ death, classes }: { death: Death; classes: Map<string, string | null> }) {
+function DeathPosition({ death, classes, replayData }: { death: Death; classes: Map<string, string | null>; replayData?: ReplayData }) {
   const t = useMessages(deathMsg);
+  const { hits, hp } = useMemo(() => deathReplayExtras(death), [death]);
   const snap = death.positions!;
   const me = snap.units.find((u) => u.guid === death.guid);
   const boss = mainEnemy(snap);
@@ -284,9 +293,13 @@ function DeathPosition({ death, classes }: { death: Death; classes: Map<string, 
     : [];
   return (
     <div className="death-pos">
-      <PositionMap snap={snap} classes={classes} marks={new Map([[death.guid, 'dead']])} size={220} />
+      {replayData?.units.size && death.replay ? (
+        <ReplayView data={replayData} replay={death.replay} classes={classes} moment="death" autoplay={false} hp={hp} dies={death.guid} hits={hits} />
+      ) : (
+        <PositionMap snap={snap} classes={classes} marks={new Map([[death.guid, 'dead']])} size={220} />
+      )}
       <div className="death-pos-facts">
-        <h4 className="recap-title">{t.where}</h4>
+        <h4 className="recap-title">{t.where} <Hint>{t.mapHint}</Hint></h4>
         {!me ? (
           <p className="muted small">{t.noPosition}</p>
         ) : (
@@ -311,17 +324,7 @@ function DeathPosition({ death, classes }: { death: Death; classes: Map<string, 
             </p>
           </>
         )}
-        <p className="muted small">{t.mapHint}</p>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, title, bad }: { label: string; value: string; title?: string; bad?: boolean }) {
-  return (
-    <div className="stat" title={title}>
-      <span className="stat-label">{label}</span>
-      <strong className={bad ? 'bad' : ''}>{value}</strong>
     </div>
   );
 }
@@ -330,6 +333,7 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
   const t = useMessages(deathMsg);
   const [show, setShow] = useState(false);
   const tip = useTooltip(a.spellId, show);
+  const desc = useSpellDescription(a.spellId, show);
   return (
     <li className="debuff">
       <button className="debuff-head" onClick={() => setShow(!show)} aria-expanded={show}>
@@ -347,7 +351,7 @@ function DebuffRow({ a, deathT }: { a: DeathAura; deathT: number }) {
           {a.tip && <p>{t.howToAvoid(tr(a.tip))}</p>}
           {tip === undefined && <p className="muted">{t.fetching}</p>}
           {tip === null && <p className="muted">{t.noDesc}</p>}
-          {tip && <p className="tooltip-text">{tip.text}</p>}
+          {tip && desc && <p className="tooltip-text">{desc}</p>}
           <button className="link" onClick={() => openExternal(wowheadUrl(a.spellId))}>
             Wowhead #{a.spellId} <ExternalLink size={12} strokeWidth={1.5} className="inline-icon" aria-hidden />
           </button>

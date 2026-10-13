@@ -3,6 +3,7 @@
 
 use crate::data::{Consumable, GameData};
 use crate::report::*;
+use crate::replay::{self, Trails};
 use crate::rotation::{RotationBook, RotationTracker};
 use crate::rules::{RuleBook, RuleTracker};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -40,6 +41,15 @@ const AFFILIATION_MINE: u32 = 0x1;
 pub const TIMELINE_MS: i64 = 5_000;
 const REACTION_HOSTILE_OR_NEUTRAL: u32 = 0x40 | 0x20;
 const TYPE_PLAYER: u32 = 0x400;
+/// Marca no chão: o mesmo player tomando a mesma mecânica no mesmo lugar há menos disso é a
+/// mesma poça (ticks), não outra.
+const GROUND_REPEAT_MS: i64 = 1_500;
+const GROUND_REPEAT_YD: f32 = 2.0;
+/// Replay: spell que o boss repete mais que uma vez a cada isto (em média) é ruído (pulso,
+/// energia), não um cast para mostrar.
+const CAST_SPAM_MS: i64 = 3_000;
+/// Marcas um pouco antes da janela do replay ainda podem estar no chão quando ele começa.
+const GROUND_BEFORE_MS: i64 = 10_000;
 /// Tamanhos conhecidos do bloco advanced: 19 no 12.x, 17 em versões anteriores.
 const ADVANCED_LENS: [usize; 5] = [19, 17, 20, 21, 18];
 
@@ -271,6 +281,16 @@ pub(crate) struct PullBuilder {
     /// players vivos abaixo de INJURED_PCT agora, e os segundos do pull com alguém assim
     injured: HashSet<String>,
     injured_secs: Vec<bool>,
+    /// posições de players e bosses ao longo do pull (para os replays)
+    trails: Trails,
+    /// acertos de mecânicas "de chão": onde a vítima estava (t, x, y, tipo)
+    ground_kinds: Vec<GroundKind>,
+    ground_marks: Vec<(i64, f32, f32, usize)>,
+    /// última marca de cada (player, tipo), para não repetir os ticks de quem ficou parado na poça
+    ground_last: HashMap<(String, usize), (i64, f32, f32)>,
+    /// casts dos inimigos (para o replay) e o cast com tempo ainda aberto de cada inimigo
+    boss_casts: Vec<BossCast>,
+    open_casts: HashMap<String, usize>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -312,6 +332,12 @@ impl PullBuilder {
             raid_active: Vec::new(),
             injured: HashSet::new(),
             injured_secs: Vec::new(),
+            trails: Trails::default(),
+            ground_kinds: Vec::new(),
+            ground_marks: Vec::new(),
+            ground_last: HashMap::new(),
+            boss_casts: Vec::new(),
+            open_casts: HashMap::new(),
         }
     }
 
@@ -393,6 +419,7 @@ impl PullBuilder {
         let rel = self.last_ms - self.start_ms;
         if let Some(p) = self.players.get_mut(adv.info_guid) {
             p.pos = Some((adv.x, adv.y, rel));
+            self.trails.on_pos(adv.info_guid, &p.name, false, adv.max_hp, adv.x, adv.y, rel);
             if self.cutoff_t.is_none() {
                 if let Some(r) = self.rules.as_mut().filter(|r| r.wants_positions()) {
                     r.on_player_pos(adv.info_guid, adv.x, adv.y, rel);
@@ -431,6 +458,7 @@ impl PullBuilder {
             e.hp = adv.hp;
             e.max_hp = adv.max_hp;
             e.pos = Some((adv.x, adv.y, rel));
+            self.trails.on_pos(adv.info_guid, name, true, adv.max_hp, adv.x, adv.y, rel);
         }
     }
 
@@ -517,6 +545,16 @@ impl PullBuilder {
                 }
             }
             "SPELL_CAST_START" | "SPELL_EMPOWER_START" => {
+                if self.counting() && Self::is_enemy(f[1], hex(f[3])) {
+                    if let Some(a) = advanced_at(f, 12) {
+                        self.track_advanced(&a, f);
+                    }
+                    let rel = self.rel(t);
+                    let (guid, id, name) = (f[1].to_string(), f[9].parse().unwrap_or(0), f[10].to_string());
+                    // um cast novo fecha o anterior que não terminou (cortado sem SPELL_INTERRUPT, stun...)
+                    self.open_casts.insert(guid.clone(), self.boss_casts.len());
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false });
+                }
                 // começo de um cast com tempo de cast ou de um empower (a leitura da rotação mede o tempo parado)
                 if self.counting() && Self::is_group_player(f[1], hex(f[3])) {
                     let (rel, id) = (self.rel(t), f[9].parse().unwrap_or(0));
@@ -585,13 +623,6 @@ impl PullBuilder {
             if let Some(r) = self.rules.as_mut() {
                 r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
             }
-            // encontro com soma errada num debuff de parear: onde estavam os bosses
-            if self.rules.as_mut().is_some_and(|r| r.wants_pair_snapshot()) {
-                let snap = self.snapshot(rel);
-                if let Some(r) = self.rules.as_mut() {
-                    r.add_pair_snapshot(snap);
-                }
-            }
         }
         if !is_player || f.get(12) != Some(&"DEBUFF") {
             return;
@@ -624,6 +655,7 @@ impl PullBuilder {
                     overkill: 0,
                     absorbed: 0,
                     hp_pct: None,
+                    mechanic: None,
                 },
             );
         }
@@ -637,6 +669,11 @@ impl PullBuilder {
         let rel = self.rel(t);
         let Some(cut_id) = f.get(12).and_then(|v| v.parse::<u32>().ok()) else { return };
         let cut_name = f.get(13).unwrap_or(&"").to_string();
+        if let Some(i) = self.open_casts.remove(f[5]).filter(|&i| self.boss_casts[i].spell_id == cut_id) {
+            let c = &mut self.boss_casts[i];
+            c.end = Some(rel);
+            c.interrupted = true;
+        }
         // o nome vem daqui também: se todo cast foi cortado, nunca houve SPELL_CAST_SUCCESS
         let e = self.enemy_spells.entry(cut_id).or_default();
         e.interrupted += 1;
@@ -779,6 +816,9 @@ impl PullBuilder {
                 if let Some(r) = self.rules.as_mut() {
                     r.on_tick(spell_id, dst_guid, num(f.get(s + 1)), rel);
                 }
+                if let Some(a) = adv.as_ref().filter(|a| a.info_guid == dst_guid) {
+                    self.ground_hit(spell_id, dst_guid, a.x, a.y, rel);
+                }
                 let failed = self.rules.as_mut().map(|r| r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel)).unwrap_or_default();
                 // falha coletiva nova: guarda onde cada um estava
                 if !failed.is_empty() {
@@ -812,9 +852,28 @@ impl PullBuilder {
                     overkill,
                     absorbed,
                     hp_pct,
+                    mechanic: None,
                 },
             );
         }
+    }
+
+    /// Acerto de mecânica "de chão": marca onde a vítima estava (o log não mostra a poça/gota).
+    fn ground_hit(&mut self, spell_id: u32, guid: &str, x: f32, y: f32, rel: i64) {
+        let Some((key, name, linger_ms)) = self.rules.as_ref().and_then(|r| r.ground_for(spell_id)) else { return };
+        let kind = match self.ground_kinds.iter().position(|k| k.key == key) {
+            Some(i) => i,
+            None => {
+                self.ground_kinds.push(GroundKind { key: key.to_string(), name: name.to_string(), spell_id, linger_ms });
+                self.ground_kinds.len() - 1
+            }
+        };
+        let last = self.ground_last.entry((guid.to_string(), kind)).or_insert((i64::MIN / 2, 0.0, 0.0));
+        if rel - last.0 < GROUND_REPEAT_MS && (x - last.1).hypot(y - last.2) < GROUND_REPEAT_YD {
+            return;
+        }
+        *last = (rel, x, y);
+        self.ground_marks.push((rel, x, y, kind));
     }
 
     fn heal(&mut self, f: &[&str], t: i64) {
@@ -874,6 +933,7 @@ impl PullBuilder {
                     overkill: 0,
                     absorbed: 0,
                     hp_pct,
+                    mechanic: None,
                 },
             );
         }
@@ -925,6 +985,15 @@ impl PullBuilder {
                 if let Some(a) = adv.as_ref().filter(|a| a.info_guid == src_guid) {
                     r.on_enemy_cast_at(spell_id, src_guid, npc_id(src_guid), a.x, a.y, a.facing, rel);
                 }
+            }
+            let facing = adv.as_ref().filter(|a| a.info_guid == src_guid).map(|a| a.facing);
+            match self.open_casts.remove(src_guid).filter(|&i| self.boss_casts[i].spell_id == spell_id) {
+                Some(i) => {
+                    let c = &mut self.boss_casts[i];
+                    c.end = Some(rel);
+                    c.facing = facing;
+                }
+                None => self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, interrupted: false }),
             }
             let e = self.enemy_spells.entry(spell_id).or_default();
             e.name = spell_name;
@@ -987,6 +1056,7 @@ impl PullBuilder {
                     overkill: 0,
                     absorbed: 0,
                     hp_pct: None,
+                    mechanic: None,
                 },
             );
         } else if consumable.is_some() {
@@ -1003,6 +1073,7 @@ impl PullBuilder {
                     overkill: 0,
                     absorbed: 0,
                     hp_pct: None,
+                    mechanic: None,
                 },
             );
         }
@@ -1040,6 +1111,7 @@ impl PullBuilder {
                 overkill: 0,
                 absorbed: 0,
                 hp_pct: None,
+                mechanic: None,
             },
         );
     }
@@ -1049,6 +1121,7 @@ impl PullBuilder {
         // inimigo morto: fecha os DoTs que os players tinham nele
         if Self::is_enemy(dst_guid, dst_flags) {
             let rel = self.rel(t);
+            self.trails.on_enemy_died(dst_guid, rel);
             for p in self.players.values_mut() {
                 if let Some(r) = p.rotation.as_mut() {
                     r.on_enemy_died(rel, dst_guid);
@@ -1124,6 +1197,7 @@ impl PullBuilder {
             used_healthstone: p.healthstones.iter().any(|&x| x <= rel),
             healthstone_known: false,
             positions,
+            replay: None,
         };
         p.recap.clear();
         p.debuffs.clear();
@@ -1273,6 +1347,41 @@ impl PullBuilder {
             })
             .unwrap_or_default();
 
+        // replays: os segundos antes de cada morte (antes do corte) e de cada falha de mecânica
+        for d in pending.iter_mut().filter(|d| !d.death.ignored) {
+            d.death.replay = Some(replay::around(d.death.t, replay::DEATH_AFTER_MS, vec![d.death.guid.clone()]));
+        }
+        for ps in &players {
+            self.trails.set_name(&ps.guid, &ps.name);
+        }
+        let refs: Vec<&ReplayRef> = pending
+            .iter()
+            .filter_map(|d| d.death.replay.as_ref())
+            .chain(mechanics.iter().flat_map(|m| m.replays.iter().chain(m.pairings.iter().filter_map(|f| f.replay.as_ref()))))
+            .collect();
+        let tracks = self.trails.build(&refs);
+        let arena = tracks.as_ref().and_then(|_| self.trails.arena());
+        let casts = {
+            let bosses: HashSet<&str> = tracks.iter().flat_map(|t| t.units.iter()).filter(|u| u.kind == "enemy").map(|u| u.guid.as_str()).collect();
+            let mut per_spell: HashMap<u32, u32> = HashMap::new();
+            for c in self.boss_casts.iter().filter(|c| bosses.contains(c.guid.as_str())) {
+                *per_spell.entry(c.spell_id).or_default() += 1;
+            }
+            let max_casts = (duration_ms / CAST_SPAM_MS).max(1) as u32;
+            let inside = |c: &BossCast| refs.iter().any(|r| c.end.unwrap_or(c.t) >= r.from && c.t <= r.to);
+            self.boss_casts
+                .iter()
+                .filter(|c| bosses.contains(c.guid.as_str()) && per_spell.get(&c.spell_id).is_some_and(|&n| n <= max_casts) && inside(c))
+                .cloned()
+                .collect::<Vec<_>>()
+        };
+        let ground = {
+            let inside = |t: i64| refs.iter().any(|r| t >= r.from - GROUND_BEFORE_MS && t <= r.to);
+            let marks: Vec<(i64, i32, i32, usize)> =
+                self.ground_marks.iter().filter(|m| inside(m.0)).map(|&(t, x, y, k)| (t, (x * 10.0).round() as i32, (y * 10.0).round() as i32, k)).collect();
+            (!marks.is_empty()).then_some(PullGround { kinds: self.ground_kinds, marks })
+        };
+
         let mut enemy_spells: Vec<EnemySpell> = self
             .enemy_spells
             .into_iter()
@@ -1321,6 +1430,10 @@ impl PullBuilder {
                 mechanics,
                 trigger,
                 owner_guid: self.owner,
+                tracks,
+                ground,
+                arena,
+                casts,
             },
             pending_deaths: pending,
             defensives_by_player,
@@ -1374,6 +1487,12 @@ fn classify_death(s: &DeathStats) -> &'static str {
 
 /// Liga a morte às mecânicas com falha cujo dano aparece no recap.
 fn attribute_death(d: &mut Death, rules: &RuleTracker) {
+    for e in d.recap.iter_mut().filter(|e| e.kind == RecapKind::Damage) {
+        e.mechanic = rules.mechanic_for_damage(e.spell_id).map(|(k, _)| k.to_string());
+    }
+    if let Some(kb) = d.killing_blow.as_mut() {
+        kb.mechanic = rules.mechanic_for_damage(kb.spell_id).map(|(k, _)| k.to_string());
+    }
     let dmg = |e: &RecapEntry| e.amount + e.absorbed;
     let total: i64 = d.recap.iter().filter(|e| e.kind == RecapKind::Damage).map(dmg).sum();
     let mut by_mech: Vec<(String, String, i64)> = Vec::new();

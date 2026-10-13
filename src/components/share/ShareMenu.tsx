@@ -8,6 +8,7 @@ import { PlayerClassesContext, usePlayerClasses } from '../../lib/players';
 import { useSetup } from '../../lib/setup';
 import { useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
+import { Hint } from '../ui/Hint';
 
 type Action = 'copy' | 'png' | 'html' | 'pdf' | 'discord' | 'discordText';
 
@@ -79,8 +80,7 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
         </button>
       }
     >
-      <h4>{t.share}</h4>
-      <p className="muted small">{t.menuHint}</p>
+      <h4>{t.share} <Hint>{t.menuHint}</Hint></h4>
       <div className="segmented sm share-detail" role="radiogroup" aria-label={t.versionAria}>
         {(
           [

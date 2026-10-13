@@ -1,5 +1,4 @@
 import { Fragment } from 'react';
-import { Info } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { compareHealer, type Band, type CdMoments, type HealTip } from '../lib/healer';
 import { mmss, uniqueSeconds } from '../lib/format';
@@ -9,6 +8,7 @@ import { SpellIcon, SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
 import { healerMsg } from './HealerPanel.i18n';
 import { Colored, useMentionsSpell } from './Names';
+import { Hint } from './ui/Hint';
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 /** Distância até o cast do boss: "+3 s", "−2 s". */
@@ -89,9 +89,9 @@ export function HealerPanel({ pull, me, part = 'all' }: { pull: Pull; me: Player
         </details>
       </div>
 
-      <h5 title={t.contextHint}>
-        {t.context} <Info size={12} strokeWidth={1.75} className="muted inline-icon" aria-hidden />
-      </h5>
+      <h5>
+          {t.context} <Hint>{t.contextHint}</Hint>
+        </h5>
       <div className="healer-context">
         <Ctx label={t.hps} you={c.you.hps} band={c.hps} fmt={num} />
         <Ctx label={t.share} you={c.you.share} band={c.share} fmt={pct} />
@@ -147,9 +147,9 @@ export function HealerPanel({ pull, me, part = 'all' }: { pull: Pull; me: Player
 
       {c.mix.length > 0 && (
         <>
-          <h5 title={t.mixHint}>
-            {t.mix} <Info size={12} strokeWidth={1.75} className="muted inline-icon" aria-hidden />
-          </h5>
+          <h5>
+          {t.mix} <Hint>{t.mixHint}</Hint>
+        </h5>
           <table className="perf-table small healer-mix">
             <thead>
               <tr>
@@ -198,9 +198,9 @@ export function HealerPanel({ pull, me, part = 'all' }: { pull: Pull; me: Player
         <>
       {c.moments.length > 0 && (
         <>
-          <h5 title={t.momentsHint}>
-            {t.moments} <Info size={12} strokeWidth={1.75} className="muted inline-icon" aria-hidden />
-          </h5>
+          <h5>
+          {t.moments} <Hint>{t.momentsHint}</Hint>
+        </h5>
           <ul className="plain small healer-moments">
             {c.moments.map((m) =>
               m.anchored ? (

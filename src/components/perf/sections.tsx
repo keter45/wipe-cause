@@ -12,18 +12,13 @@ import { SpellIcon, SpellName } from '../SpellIcon';
 import { signedSec } from './CooldownCompare';
 import { messagesOf, useMessages } from '../../i18n';
 import { perfViewMsg } from './perf.i18n';
+import { Stat as StatCard, type Tone } from '../ui/Stat';
 
 
+/** Número seu × da referência, no cartão comum de números. */
 export function Stat({ label, mine, ref, tone = '', extra }: { label: string; mine: string; ref: string; tone?: string; extra?: string }) {
-  return (
-    <div className="stat">
-      <span className="stat-label">{label}</span>
-      <strong className={tone}>
-        {mine} {extra && <span className="small">({extra})</span>}
-      </strong>
-      <span className="muted small">{messagesOf(perfViewMsg).refValue(ref)}</span>
-    </div>
-  );
+  const t: Tone = tone === 'bad' ? 'bad' : tone === 'warn' ? 'warn' : tone === 'good' ? 'good' : 'neutral';
+  return <StatCard label={label} value={mine} delta={extra} sub={messagesOf(perfViewMsg).refValue(ref)} tone={t} />;
 }
 
 // ---- janelas de burst

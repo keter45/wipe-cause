@@ -13,6 +13,8 @@ import { DecisionList } from './DecisionList';
 import { tr, useMessages } from '../i18n';
 import { rotationMsg } from './RotationPanel.i18n';
 import { Colored, useMentionsSpell } from './Names';
+import { Hint } from './ui/Hint';
+import { Clamp } from './ui/Clamp';
 
 export { uniqueSeconds };
 
@@ -82,7 +84,9 @@ export function RotationPanel({
                 <Colored text={tr(f.detail)} />
               </p>
               <p className="muted small">
-                <Colored text={tr(f.tip)} />
+                <Clamp lines={2}>
+                  <Colored text={tr(f.tip)} />
+                </Clamp>
               </p>
               <div className="rot-rate" aria-label={t.rateAria(Math.round(f.rate * 100))}>
                 <span style={{ transform: `scaleX(${f.rate})` }} />
@@ -111,7 +115,7 @@ export function RotationPanel({
 
       {bench?.opener ? (
         <>
-          <h4>{t.opener}</h4>
+          <h4>{t.opener} <Hint>{t.bossOpenerNote(Math.round(bench.opener.support * 100), bench.opener.n, bench.opener.tree)}</Hint></h4>
           <p className={`small ${bench.opener.missing && bench.opener.missing.length === 0 ? 'ok-text' : ''}`}>
             {bench.opener.missing == null
               ? bench.opener.support < OPENER_MIN_SUPPORT
@@ -135,7 +139,6 @@ export function RotationPanel({
               ))}
             </div>
           )}
-          <p className="muted small">{t.bossOpenerNote(Math.round(bench.opener.support * 100), bench.opener.n, bench.opener.tree)}</p>
         </>
       ) : r.opener && (
         <>
@@ -165,7 +168,7 @@ export function RotationPanel({
     <>
       {bench && bench.context && bench.context.length > 0 && (
         <>
-          <h4>{t.context}</h4>
+          <h4>{t.context} <Hint>{t.contextHint}</Hint></h4>
           <ul className="plain bench-list small">
             {bench.context.slice(0, 6).map((c) => (
               <li key={`${c.kind}-${c.kind === 'mix' ? `${c.ctx}-${c.spellId}` : c.id}`}>
@@ -181,13 +184,12 @@ export function RotationPanel({
               </li>
             ))}
           </ul>
-          <p className="muted small">{t.contextHint}</p>
         </>
       )}
 
       {bench && bench.context == null && bench.mix.length > 0 && (
         <>
-          <h4>{t.mix}</h4>
+          <h4>{t.mix} <Hint>{t.mixHint}</Hint></h4>
           <ul className="plain bench-list small">
             {bench.mix.slice(0, 4).map((m) => (
               <li key={m.spellId}>
@@ -196,13 +198,12 @@ export function RotationPanel({
               </li>
             ))}
           </ul>
-          <p className="muted small">{t.mixHint}</p>
         </>
       )}
 
       {bench && bench.windows.length > 0 && (
         <>
-          <h4>{t.windows}</h4>
+          <h4>{t.windows} <Hint>{t.windowsHint(ANCHOR_WINDOW_MS / 1000)}</Hint></h4>
           <ul className="plain bench-list small">
             {bench.windows.map((w) => (
               <li key={`${w.spellId}-${w.k}`}>
@@ -221,15 +222,13 @@ export function RotationPanel({
               </li>
             ))}
           </ul>
-          <p className="muted small">{t.windowsHint(ANCHOR_WINDOW_MS / 1000)}</p>
         </>
       )}
 
       {bench && bench.decisions.length > 0 && (
         <>
-          <h4>{t.decisions}</h4>
+          <h4>{t.decisions} <Hint>{t.decisionsHint}</Hint></h4>
           <DecisionList list={bench.decisions} />
-          <p className="muted small">{t.decisionsHint}</p>
         </>
       )}
 
@@ -239,7 +238,7 @@ export function RotationPanel({
     <>
       {r.cooldowns.length > 0 && (
         <>
-          <h4>{t.cooldowns}</h4>
+          <h4>{t.cooldowns} <Hint>{t.cdHint}</Hint></h4>
           <table className="rot-cds small">
             <tbody>
               {r.cooldowns.map((c) => (
@@ -260,7 +259,6 @@ export function RotationPanel({
               ))}
             </tbody>
           </table>
-          <p className="muted small">{t.cdHint}</p>
         </>
       )}
       {bench && (bench.cooldowns.length > 0 || bench.potion) && (

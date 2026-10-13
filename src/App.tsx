@@ -33,6 +33,7 @@ import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { fetchMissingKillParses } from './lib/wclParses';
 import { PullView } from './components/PullView';
+import { SpellHoverLayer } from './components/SpellHover';
 import { SoloBossView, SoloNightView, SoloTrendsView } from './components/SoloNight';
 import { useMode } from './lib/mode';
 import { Header } from './components/Header';
@@ -403,6 +404,7 @@ export default function App() {
         </div>
       )}
       <UpdateBanner state={updateState} onInstall={updater.install} onDismiss={updater.dismiss} />
+      <SpellHoverLayer />
       {status.kind === 'error' && <div className="error">Erro: {status.message}</div>}
       {report && report.ruleErrors?.length > 0 && (
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>

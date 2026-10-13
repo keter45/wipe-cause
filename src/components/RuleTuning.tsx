@@ -20,6 +20,7 @@ import { mechanicSpellId } from '../lib/spells';
 import { SpellIcon } from './SpellIcon';
 import { messagesOf, useMessages } from '../i18n';
 import { tuningMsg } from './RuleTuning.i18n';
+import { Hint } from './ui/Hint';
 
 /** Nome do tipo de regra no idioma atual. */
 export const kindLabel = (kind: string) => messagesOf(tuningMsg).kinds[kind] ?? kind;
@@ -109,8 +110,7 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
     <div className="rule-tuning">
       <header className="rule-tuning-head">
         <div>
-          <h3>{t.title(rules.name)}</h3>
-          <p className="muted small">{t.intro}</p>
+          <h3>{t.title(rules.name)} <Hint>{t.intro}</Hint></h3>
         </div>
         <div className="rule-tuning-actions">
           <button
@@ -166,8 +166,7 @@ export function RuleTuning({ pull, onSaved, onClose }: { pull: Pull; onSaved: ()
 
       {draft.custom.length > 0 && (
         <section className="custom-rules">
-          <h4>{t.yourRules}</h4>
-          <p className="muted small">{t.yourRulesHint}</p>
+          <h4>{t.yourRules} <Hint>{t.yourRulesHint}</Hint></h4>
           <ul className="plain">
             {draft.custom.map((c) => (
               <li key={c.key} className="custom-rule">

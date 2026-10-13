@@ -3,6 +3,7 @@
 // e guardamos no localStorage.
 
 import { useEffect, useState } from 'react';
+import { useLocale } from '../i18n';
 
 export interface SpellTooltip {
   name: string;
@@ -14,8 +15,15 @@ export interface SpellTooltip {
 }
 
 export type TooltipKind = 'spell' | 'item';
-/** Spells guardados só pelo número (cache antigo); itens com prefixo. */
-const keyOf = (id: number, kind: TooltipKind) => (kind === 'spell' ? String(id) : `item:${id}`);
+/**
+ * Idioma do texto: o nome e o ícone vêm sempre do inglês (nomes de habilidade ficam em inglês no
+ * app); a descrição pode vir em português.
+ */
+export type TooltipLang = 'en' | 'pt';
+/** Código de idioma do endpoint de tooltips do Wowhead. */
+const LOCALE_ID: Record<TooltipLang, number> = { en: 0, pt: 8 };
+/** Spells em inglês guardados só pelo número (cache antigo); itens e outros idiomas com prefixo. */
+const keyOf = (id: number, kind: TooltipKind, lang: TooltipLang = 'en') => (lang === 'en' ? '' : `${lang}:`) + (kind === 'spell' ? String(id) : `item:${id}`);
 
 const CACHE_KEY = 'wipe-cause:wowhead:';
 /** buscas simultâneas no Wowhead (um recap tem dezenas de spells) */
@@ -44,8 +52,8 @@ export function tooltipText(html: string): string {
 }
 
 /** undefined = ainda não sabemos; null = o Wowhead não tem esse spell. */
-export function cachedTooltip(id: number, kind: TooltipKind = 'spell'): SpellTooltip | null | undefined {
-  const key = keyOf(id, kind);
+export function cachedTooltip(id: number, kind: TooltipKind = 'spell', lang: TooltipLang = 'en'): SpellTooltip | null | undefined {
+  const key = keyOf(id, kind, lang);
   if (memory.has(key)) return memory.get(key);
   try {
     const raw = localStorage.getItem(CACHE_KEY + key);
@@ -86,14 +94,14 @@ function schedule<T>(job: () => Promise<T>): Promise<T> {
   });
 }
 
-export function fetchTooltip(id: number, kind: TooltipKind = 'spell'): Promise<SpellTooltip | null> {
-  const cached = cachedTooltip(id, kind);
+export function fetchTooltip(id: number, kind: TooltipKind = 'spell', lang: TooltipLang = 'en'): Promise<SpellTooltip | null> {
+  const cached = cachedTooltip(id, kind, lang);
   if (cached !== undefined) return Promise.resolve(cached);
-  const key = keyOf(id, kind);
+  const key = keyOf(id, kind, lang);
   let p = inflight.get(key);
   if (!p) {
     p = schedule(() =>
-      fetch(`https://nether.wowhead.com/tooltip/${kind}/${id}?dataEnv=1&locale=0`)
+      fetch(`https://nether.wowhead.com/tooltip/${kind}/${id}?dataEnv=1&locale=${LOCALE_ID[lang]}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((j: { name?: string; icon?: string; tooltip?: string; quality?: number } | null) => {
           const t: SpellTooltip | null = j?.tooltip
@@ -124,4 +132,29 @@ export function useTooltip(id: number, enabled = true, kind: TooltipKind = 'spel
     };
   }, [id, kind, enabled, tip]);
   return tip;
+}
+
+/**
+ * Descrição de um spell no idioma do app (português quando o app está em português). Enquanto o
+ * texto traduzido não chega, ou se o Wowhead não tiver tradução, fica o inglês.
+ * undefined = ainda buscando; null = o Wowhead não tem esse spell.
+ */
+export function useSpellDescription(id: number, enabled = true, kind: TooltipKind = 'spell'): string | null | undefined {
+  const lang: TooltipLang = useLocale() === 'pt' ? 'pt' : 'en';
+  const en = useTooltip(id, enabled, kind);
+  const [local, setLocal] = useState<SpellTooltip | null | undefined>(() => (lang === 'en' ? undefined : cachedTooltip(id, kind, lang)));
+  useEffect(() => {
+    if (lang === 'en' || !enabled) return;
+    const cached = cachedTooltip(id, kind, lang);
+    setLocal(cached);
+    if (cached !== undefined) return;
+    let alive = true;
+    fetchTooltip(id, kind, lang).then((t) => alive && setLocal(t));
+    return () => {
+      alive = false;
+    };
+  }, [id, kind, lang, enabled]);
+  if (en === undefined) return lang === 'en' ? undefined : (local?.text ?? undefined);
+  if (en === null) return local?.text ?? null;
+  return (lang !== 'en' && local?.text) || en.text;
 }

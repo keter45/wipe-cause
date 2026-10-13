@@ -18,6 +18,7 @@ export interface AdvantageWcl {
 import { OutputChart } from '../SoloCharts';
 import { messagesOf, useMessages } from '../../i18n';
 import { soloPullMsg } from '../SoloPullView.i18n';
+import { Hint } from '../ui/Hint';
 
 // Comparação com uma referência (top do Warcraft Logs, alguém da raid ou você em outro pull): o
 // dano ao longo do pull, os trechos em que a referência abriu vantagem e o dano tomado a mais.
@@ -45,7 +46,6 @@ export function Advantage({ me, ref_, refLabel, unit, casts, wcl }: { me: Sample
   return (
     <>
       <OutputChart mine={mine} ref={ref} windows={windows} unit={unit} refLabel={refLabel} />
-      <p className="muted small">{t.alignedHint}</p>
       {windows.length === 0 ? (
         <p className="muted small">{t.neverAhead}</p>
       ) : (
@@ -135,7 +135,7 @@ export function TakenMore({ me, ref_ }: { me: Sample; ref_: Sample }) {
   if (!taken.length) return null;
   return (
     <section className="perf-section">
-      <h4>{t.takenMore}</h4>
+      <h4>{t.takenMore} <Hint>{t.avoidableHint}</Hint></h4>
       <div className="table-scroll">
         <table className="perf-table">
           <thead>
@@ -160,7 +160,6 @@ export function TakenMore({ me, ref_ }: { me: Sample; ref_: Sample }) {
           </tbody>
         </table>
       </div>
-      <p className="muted small">{t.avoidableHint}</p>
     </section>
   );
 }

@@ -7,6 +7,8 @@ import { Popover } from './Popover';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { tr, useMessages } from '../i18n';
 import { bossMetricsMsg } from './BossMetrics.i18n';
+import { Hint } from './ui/Hint';
+import { Clamp } from './ui/Clamp';
 
 /** Quantas pessoas cada lista mostra antes do "+ N". */
 const TOP = 5;
@@ -39,8 +41,7 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
     <section className="panel boss-metrics">
       <header className="boss-metrics-head">
         <div>
-          <h3>{t.title}</h3>
-          <p className="muted small">{t.hint}</p>
+          <h3>{t.title} <Hint>{t.hint}</Hint></h3>
         </div>
         <AddMetric options={options} chosen={keys} onToggle={toggle} />
       </header>
@@ -101,8 +102,7 @@ function AddMetric({ options, chosen, onToggle }: { options: MetricOption[]; cho
         </button>
       }
     >
-      <h4>{t.addTitle}</h4>
-      <p className="muted small">{t.addHint}</p>
+      <h4>{t.addTitle} <Hint>{t.addHint}</Hint></h4>
       {options.length > 8 && <input className="text-input sm" autoFocus placeholder={t.search} aria-label={t.search} value={q} onChange={(e) => setQ(e.target.value)} />}
       <ul className="plain metric-options">
         {shown.map((o) => {
@@ -185,7 +185,11 @@ function MetricCard({
       {/* nas falhas do raid a lista é de quem foi atingido; em failure_event, de quem causou */}
       {m.players.length > 0 && <PeopleList title={m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} tone="bad" />}
       {m.helpers.length > 0 && <PeopleList title={t.helpers} people={m.helpers} tone="good" />}
-      {tr(m.tip) && <p className="muted small metric-tip">{tr(m.tip)}</p>}
+      {tr(m.tip) && (
+        <p className="muted small metric-tip">
+          <Clamp>{tr(m.tip)}</Clamp>
+        </p>
+      )}
     </article>
   );
 }

@@ -94,7 +94,7 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
   const marks = getMarks(p);
   if (marks.length) out.push(t.marks(marks.map((m) => `${shortName(m.name)} — ${m.what}${m.t != null ? ` (${mmss(m.t)})` : ''}`).join('; ')));
   out.push(t.verdict(v.headline));
-  if (v.findings.length) out.push(`${t.findings}\n` + v.findings.slice(0, 12).map((f) => `- [${sev(f.severity)}] ${f.title}${f.detail ? ` — ${f.detail}` : ''}`).join('\n'));
+  if (v.findings.length) out.push(`${t.findings}\n` + v.findings.slice(0, 12).map((f) => `- [${sev(f.severity)}] ${f.title}${f.detail || f.tip ? ` — ${[f.detail, f.tip].filter(Boolean).join(' · ')}` : ''}`).join('\n'));
 
   // mecânicas do boss (regras): o que é cada uma e o que aconteceu neste pull
   if (p.mechanics.length) {

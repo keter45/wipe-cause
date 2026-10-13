@@ -178,7 +178,7 @@ To use the tops, create a free client at [warcraftlogs.com/api/clients](https://
 At the top, **Guild / Solo** switches the app's focus. In guild mode, the question is why the raid wiped. In solo, it's how **you** can improve. "You" is whoever recorded the log; when analyzing from Warcraft Logs, or to look at another character, choose on the screen itself.
 
 - **Pull → You tab**: at the top, four colored cards (green good, yellow attention, red bad, gray context only): output, rotation, survival and mechanic mistakes. Then **For the next pull**: your mistakes sorted by what they cost, each with the moment (▶ in the video) and what to do. Below, tabs:
-  - **Mechanics:** your deaths and mechanic mistakes, and the defensives the spec's tops use on this boss's mechanics.
+  - **Mechanics:** your deaths and mechanic mistakes, each with a **replay** of the seconds before (your path, the hits you took, what was on the ground), and the defensives the spec's tops use on this boss's mechanics.
   - **Rotation** (or **Healing**, for healers): the reading of the [spec's base rotation](#-rotation), with the tops on the same boss on every item; for healers, the [healing comparison](#-healers).
   - **Cooldowns:** cooldown usage and, for healers, on which boss mechanic the reference uses each big cooldown.
   - **Spec guide:** key points, priority and sources.
@@ -238,7 +238,7 @@ The rules also cover:
 
 ### 📍 Positions
 
-With Advanced Combat Logging, each death (before the cutoff) keeps where everyone was: the death details show a mini map, the distance to the boss and who was within 8 yards. Collective mechanic failures (e.g. the purple orb's detonation, Guillotine's Execution) also keep a snapshot of the moment.
+With Advanced Combat Logging, each death (before the cutoff) comes with a **replay** of the 15 seconds before it: the player's path, health, every big hit they took (with the mechanic that killed them highlighted), the distance to the nearest boss and everyone around, plus who was within 8 yards at the moment. Mechanics that depend on movement or stacks get the same replay: one per culprit for avoidable damage, positioning, stacking debuffs and the double mark (with every hit marked as a red ring), and one per failure for collective ones (soaks, explosions, the purple orb's detonation). The log doesn't record pools or droplets, but it does record where each player was when one hit them: every replay draws those spots on the ground (droplets, pools, soak circles, projectiles), colored by mechanic. The map draws the arena floor from wherever someone stood during the pull (the log has no map), with a 10-yard grid and scale, and switches between the whole arena and a zoom on who the replay follows. Boss casts show up too: the spell icon and a cast bar next to the boss while it casts, an arrow for where it was facing when it finished (frontals), and a strip under the map with every boss's casts over the replay.
 
 On Mythic Coiled Altar, the app rebuilds where every orb was (who carried it, where each one was dropped, which ones Sever broke) and, at each detonation, points out who took an orb to another one sitting on the ground: "Rainface took the purple within 7 yards of a green on the ground". When nobody got close (e.g. a purple was left at the timer), it blames no one.
 

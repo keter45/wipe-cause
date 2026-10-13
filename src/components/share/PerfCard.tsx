@@ -57,7 +57,7 @@ export function PerfShareCard({
         <div className={`share-big ${diff < -3 ? 'warn' : ''}`}>{ro > 0 ? `${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%` : ''}</div>
       </header>
 
-      <div className="death-stats perf-stats">
+      <div className="kpis">
         <Stat label={t.perSecondAlive(healer)} mine={num(mo)} ref={num(ro)} />
         <Stat label={t.timeAlive} mine={mmss(me.player.aliveMs ?? 0)} ref={mmss(ref_.player.aliveMs ?? 0)} />
         <Stat label={t.cpm} mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref_).toFixed(1)} />

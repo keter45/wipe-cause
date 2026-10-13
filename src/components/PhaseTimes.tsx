@@ -6,6 +6,8 @@ import { SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
 import { intlLocale, messagesOf, tr, useMessages } from '../i18n';
 import { phaseMsg } from './PhaseTimes.i18n';
+import { Hint } from './ui/Hint';
+import { Clamp } from './ui/Clamp';
 
 const ordinal = (i: number) => messagesOf(phaseMsg).ordinal(i + 1);
 const oneDecimal = (n: number) => n.toLocaleString(intlLocale(), { maximumFractionDigits: 1 });
@@ -70,7 +72,11 @@ function PhaseCard({ m }: { m: MechanicResult }) {
           );
         })}
       </ol>
-      {tr(m.tip) && <p className="muted small">{tr(m.tip)}</p>}
+      {tr(m.tip) && (
+        <p className="muted small">
+          <Clamp>{tr(m.tip)}</Clamp>
+        </p>
+      )}
     </section>
   );
 }
@@ -92,6 +98,7 @@ export function NightPhaseTimes({ pulls, onSelectPull }: { pulls: Pull[]; onSele
               {t.nightHead(secs(n.targetMs), secs(n.maxMs))}
               {n.avg != null && t.nightAvg(oneDecimal(n.avg))}
             </span>
+            <Hint>{t.legend}</Hint>
           </header>
           <div className="table-scroll">
             <table className="perf-table phase-table">
@@ -140,7 +147,6 @@ export function NightPhaseTimes({ pulls, onSelectPull }: { pulls: Pull[]; onSele
               </tbody>
             </table>
           </div>
-          <p className="muted small">{t.legend}</p>
         </section>
       ))}
     </>

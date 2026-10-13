@@ -51,6 +51,60 @@ export interface Pull {
   trigger: PullTrigger | null;
   /** quem gravou o log (flag "meu" do combat log); no Warcraft Logs não tem */
   ownerGuid?: string;
+  /** posições de players e bosses nos trechos dos replays */
+  tracks?: PullTracks;
+  /** onde caiu cada acerto de mecânica "de chão" (gota, poça, soak), nos trechos dos replays */
+  ground?: PullGround;
+  /** chão da arena: células em que algum player pisou no pull (o log não tem o mapa) */
+  arena?: { cellYd: number; cells: [number, number][] };
+  /** casts dos bosses nos trechos dos replays */
+  casts?: BossCast[];
+}
+
+/** Cast de um boss: começo, fim (cast com tempo) e para onde ele olhava ao terminar. */
+export interface BossCast {
+  t: number;
+  end?: number;
+  guid: string;
+  spellId: number;
+  name: string;
+  /** radianos, no mesmo sistema das posições */
+  facing?: number;
+  interrupted?: boolean;
+}
+
+/** Marcas no chão: o log não mostra poças nem gotas, só onde estava quem foi atingido. */
+export interface PullGround {
+  kinds: { key: string; name: string; spellId: number; lingerMs: number }[];
+  /** [t, x, y em décimos de jarda, índice em kinds] */
+  marks: [number, number, number, number][];
+}
+
+/** Posições guardadas só nos trechos que algum replay usa. */
+export interface PullTracks {
+  stepMs: number;
+  units: UnitTrack[];
+}
+
+export interface UnitTrack {
+  guid: string;
+  name: string;
+  kind: 'player' | 'enemy';
+  /** trechos contínuos: posições a cada `stepMs` a partir de `t0`, em décimos de jarda (x, y, x, y...) */
+  segs: { t0: number; xy: number[] }[];
+}
+
+/** Replay de um momento do pull (morte, falha, encontro); as posições vêm de `Pull.tracks`. */
+export interface ReplayRef {
+  t: number;
+  from: number;
+  to: number;
+  /** quem acompanhar (vazio = falha coletiva) */
+  focus: string[];
+  /** stacks do debuff da mecânica: [t, stacks] a cada mudança (0 = sem, -1 = desconhecido) */
+  stacks?: { guid: string; pts: [number, number][] }[];
+  /** acertos da mecânica em quem o replay acompanha */
+  marks?: { t: number; guid: string }[];
 }
 
 export interface PullTrigger {
@@ -229,6 +283,8 @@ export interface Death {
   healthstoneKnown: boolean;
   /** onde cada um estava na hora da morte (só mortes antes do corte, com Advanced Logging) */
   positions?: Positions;
+  /** replay dos segundos antes da morte (posições em `Pull.tracks`) */
+  replay?: ReplayRef;
 }
 
 export interface AvailableSpell {
@@ -247,6 +303,8 @@ export interface RecapEntry {
   overkill: number;
   absorbed: number;
   hpPct: number | null;
+  /** mecânica do boss a que o golpe pertence (chave da regra) */
+  mechanic?: string;
 }
 
 export interface EnemySpell {
@@ -302,6 +360,8 @@ export interface MechanicResult {
   stackOrigins?: PlayerStackOrigins[];
   /** debuff de parear (Helical Toxins): cada encontro com soma errada */
   pairings?: PairFault[];
+  /** replays das falhas (um por culpado, ou por falha coletiva) */
+  replays?: ReplayRef[];
 }
 
 /** Encontro de players com soma errada num debuff de parear (ex.: Helical Toxins, soma 4). */
@@ -323,7 +383,8 @@ export interface PairFault {
   counted: boolean;
   /** guid de quem andou até o outro (null = os dois, ou já estavam juntos) */
   culprit: string | null;
-  replay?: PairReplay;
+  /** v0.21.0 guardava as posições dentro do replay (`LegacyPairReplay`) */
+  replay?: ReplayRef | LegacyPairReplay;
 }
 
 export interface PairMember {
@@ -339,7 +400,8 @@ export interface PairMember {
   better?: { guid: string; name: string; stacks: number; distYd: number };
 }
 
-export interface PairReplay {
+/** Replay do Helical Toxins da v0.21.0, com as posições dentro. */
+export interface LegacyPairReplay {
   from: number;
   to: number;
   tracks: PairTrack[];

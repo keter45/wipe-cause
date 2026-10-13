@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { SlidersHorizontal, Star } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Footprints, SlidersHorizontal, Star } from 'lucide-react';
 import { RuleTuning, kindLabel } from './RuleTuning';
 import { Colored, PlayerName } from './Names';
 import type { MechanicResult, Pull } from '../types';
@@ -10,13 +10,19 @@ import { SpellName } from './SpellIcon';
 import { PositionMap, type Mark } from './PositionMap';
 import { PullPhaseTimes } from './PhaseTimes';
 import { PairingFaults } from './PairingFaults';
+import { ReplayView } from './ReplayView';
+import { replayMsg } from './ReplayView.i18n';
+import { decodeReplay, type ReplayData } from '../lib/replay';
 import { tr, useMessages } from '../i18n';
 import { mechMsg } from './MechanicsView.i18n';
+import { Hint } from './ui/Hint';
+import { Clamp } from './ui/Clamp';
 
 /** `onRulesChanged`: os ajustes foram salvos; reanalisar o log aberto. */
 export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesChanged?: () => void }) {
   const t = useMessages(mechMsg);
   const [tuning, setTuning] = useState(false);
+  const data = useMemo(() => decodeReplay(pull), [pull]);
   if (tuning) return <RuleTuning pull={pull} onSaved={() => onRulesChanged?.()} onClose={() => setTuning(false)} />;
   const tuneButton = (
     <button className="btn sm" onClick={() => setTuning(true)}>
@@ -51,7 +57,7 @@ export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesCha
       <PullPhaseTimes pull={pull} />
       {failed.length === 0 && <p className="muted pad">{t.noFailures}</p>}
       {failed.map((m) => (
-        <MechanicCard key={m.key} m={m} classes={classes} />
+        <MechanicCard key={m.key} m={m} classes={classes} data={data} />
       ))}
       {clean.length > 0 && (
         <p className="muted small">{t.clean(clean.map((m) => m.name).join(', '))}</p>
@@ -64,8 +70,19 @@ export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesCha
   );
 }
 
-function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, string | null> }) {
+/** Mecânicas em que o replay acompanha cada culpado (as outras têm um replay por falha). */
+const PER_PLAYER = new Set(['avoidable_damage', 'positioning', 'tank_range', 'exclusive_auras', 'stack_limit']);
+
+function MechanicCard({ m, classes, data }: { m: MechanicResult; classes: Map<string, string | null>; data: ReplayData }) {
   const t = useMessages(mechMsg);
+  const rt = useMessages(replayMsg);
+  // replay aberto: guid do culpado (por player) ou índice da falha
+  const [open, setOpen] = useState<string | number | null>(null);
+  const replays = data.units.size ? (m.replays ?? []) : [];
+  const perPlayer = PER_PLAYER.has(m.kind);
+  const playerReplay = (guid: string) => (perPlayer ? replays.find((r) => r.focus.length === 1 && r.focus[0] === guid) : undefined);
+  const openReplay = typeof open === 'string' ? playerReplay(open) : typeof open === 'number' ? replays[open] : undefined;
+  const moment = perPlayer ? 'hit' : 'failure';
   const [showEvents, setShowEvents] = useState(false);
   const [snapIdx, setSnapIdx] = useState<number | null>(null);
   const snaps = m.snapshots ?? [];
@@ -100,7 +117,11 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           <Colored text={tr(m.summary)} />
         </p>
       )}
-      {tr(m.tip) && <p className="muted small">{t.howToAvoid(tr(m.tip))}</p>}
+      {tr(m.tip) && (
+        <p className="muted small">
+          <Clamp>{t.howToAvoid(tr(m.tip))}</Clamp>
+        </p>
+      )}
 
       {blamed.length > 0 && (
         <table className="mechanic-players">
@@ -117,6 +138,13 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
                     <>
                       {t.firstTime(mmss(p.firstT))} <PlayAt t={p.firstT} seek={seek} />
                     </>
+                  )}
+                </td>
+                <td>
+                  {playerReplay(p.guid) && (
+                    <button className={`link small replay-link ${open === p.guid ? 'active' : ''}`} onClick={() => setOpen(open === p.guid ? null : p.guid)} aria-expanded={open === p.guid}>
+                      <Footprints size={13} strokeWidth={1.75} aria-hidden /> {rt.open(open === p.guid)}
+                    </button>
                   )}
                 </td>
               </tr>
@@ -152,8 +180,20 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           ))}
         </p>
       )}
-      <PairingFaults m={m} classes={classes} />
-      {snaps.length > 0 && (
+      {openReplay && typeof open === 'string' && <ReplayView key={open} data={data} replay={openReplay} classes={classes} moment={moment} />}
+      <PairingFaults m={m} classes={classes} data={data} />
+      {!perPlayer && replays.length > 0 && (
+        <div className="mechanic-snaps">
+          <span className="muted small">{rt.replaysTitle}</span>
+          {replays.map((r, i) => (
+            <button key={r.t} className={`link small replay-link ${open === i ? 'active' : ''}`} onClick={() => setOpen(open === i ? null : i)} aria-expanded={open === i}>
+              <Footprints size={13} strokeWidth={1.75} aria-hidden /> {mmss(r.t)}
+            </button>
+          ))}
+        </div>
+      )}
+      {openReplay && typeof open === 'number' && <ReplayView key={open} data={data} replay={openReplay} classes={classes} moment={moment} />}
+      {replays.length === 0 && !m.pairings?.length && snaps.length > 0 && (
         <div className="mechanic-snaps">
           <span className="muted small">{t.positionsAt}</span>
           {snaps.map((sn, i) => (
@@ -168,9 +208,8 @@ function MechanicCard({ m, classes }: { m: MechanicResult; classes: Map<string, 
           <PositionMap snap={snaps[snapIdx]} classes={classes} marks={culpritMarks(m)} size={240} />
           <div className="death-pos-facts">
             <p className="small">
-              {m.kind === 'failure_event' && blamed.length > 0 ? t.culpritRing : t.whereAtFailure} <PlayAt t={snaps[snapIdx].t} seek={seek} label={t.watchVideo} />
+              {m.kind === 'failure_event' && blamed.length > 0 ? t.culpritRing : t.whereAtFailure} <Hint>{t.mapHint}</Hint> <PlayAt t={snaps[snapIdx].t} seek={seek} label={t.watchVideo} />
             </p>
-            <p className="muted small">{t.mapHint}</p>
           </div>
         </div>
       )}
