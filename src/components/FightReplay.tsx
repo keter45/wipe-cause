@@ -88,7 +88,8 @@ function FightReplayInner({ pull }: { pull: Pull }) {
     const names = new Map(pull.players.map((p) => [p.guid, p.name] as const));
     return (view.data.zones ?? []).map((z) => {
       const caster = view.data.players[z.caster];
-      return { ...z, caster, casterName: names.get(caster) ?? caster, name: view.data.spells[z.spellId] ?? String(z.spellId) };
+      // no mapa com o norte para cima, como o resto do replay
+      return { ...z, x: -z.y, y: z.x, caster, casterName: names.get(caster) ?? caster, name: view.data.spells[z.spellId] ?? String(z.spellId) };
     });
   }, [view, pull]);
   // debuffs na cabeça: o usuário escolhe quais (os cruciais do pull, todos ligados no começo)
@@ -115,9 +116,11 @@ function FightReplayInner({ pull }: { pull: Pull }) {
 
   // medidor aberto (como no Warcraft Logs: categorias no canto; clicar na vida de um boss abre o dano nele)
   const [meter, setMeter] = useState<MeterChoice | null>(null);
+  const t = useMessages(fightMsg);
 
   return (
     <div className="fight">
+      <p className="small muted fight-beta">{t.beta}</p>
       <ReplayView
         data={data}
         replay={replay}

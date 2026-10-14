@@ -101,6 +101,28 @@ pub struct Pull {
     /// replay completo: áreas das habilidades do boss (regra com `area`)
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub areas: Vec<AreaView>,
+    /// soaks (regra com `soak`): onde cada um caiu e quantos entraram
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub soaks: Vec<SoakView>,
+}
+
+/// Um soak no replay: aparece em `from` (começo do cast que o anuncia) e cai em `at`, no meio de quem
+/// foi atingido.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoakView {
+    pub key: String,
+    pub name: String,
+    pub spell_id: u32,
+    pub from: i64,
+    pub at: i64,
+    pub x: f32,
+    pub y: f32,
+    pub radius: f32,
+    /// quantos precisavam entrar (regra) e quantos entraram
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub needs: Option<u32>,
+    pub hit: u32,
 }
 
 /// Orbs no replay completo.
@@ -238,6 +260,16 @@ pub struct BossCast {
     /// frontal: o alvo do boss (o cone aponta para ele durante o cast); sem alvo, vale `facing`
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target: Option<String>,
+    /// linha do lançador até o alvo (regra do boss): o replay desenha durante o cast
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<LineShape>,
+}
+
+/// Linha: largura (jardas).
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LineShape {
+    pub width: f32,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]

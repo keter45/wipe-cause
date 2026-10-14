@@ -70,6 +70,8 @@ export interface Pull {
   orbs?: OrbTracks;
   /** replay completo: áreas das habilidades do boss */
   areas?: AreaView[];
+  /** soaks (regra com `soak`): onde cada um caiu e quantos entraram */
+  soaks?: SoakView[];
 }
 
 /** Orbs no replay completo: no chão [de, até, x, y em décimos de jarda, tipo] e carregados [player, de, até, tipo]. */
@@ -82,6 +84,22 @@ export interface OrbTracks {
 }
 
 /** Área de uma habilidade do boss: em volta de quem tem um debuff (`aura`) ou de uma unidade (`npc`). */
+/** Um soak no replay: aparece em `from` e cai em `at`, no meio de quem foi atingido (coordenadas do log). */
+export interface SoakView {
+  key: string;
+  name: string;
+  spellId: number;
+  from: number;
+  at: number;
+  x: number;
+  y: number;
+  radius: number;
+  /** quantos precisavam entrar (regra) */
+  needs?: number;
+  /** quantos entraram */
+  hit: number;
+}
+
 export interface AreaView {
   key: string;
   name: string;
@@ -154,6 +172,8 @@ export interface BossCast {
   cone?: { halfAngle: number; range: number };
   /** frontal: o alvo do boss (o cone aponta para ele durante o cast); sem alvo, vale `facing` */
   target?: string;
+  /** linha do lançador até o alvo (regra do boss), largura em jardas */
+  line?: { width: number };
 }
 
 /** Marcas no chão: o log não mostra poças nem gotas, só onde estava quem foi atingido. */

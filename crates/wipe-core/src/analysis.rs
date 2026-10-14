@@ -6,7 +6,7 @@ use crate::fight::{self, FightCapture};
 use crate::report::*;
 use crate::replay::{self, Trails};
 use crate::rotation::{RotationBook, RotationTracker};
-use crate::rules::{RuleBook, RuleTracker};
+use crate::rules::{RuleBook, RuleTracker, SoakInfo};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Janela do death recap.
@@ -65,7 +65,7 @@ fn num(s: Option<&&str>) -> i64 {
 fn is_guid_like(s: &str) -> bool {
     s == NIL_GUID || (s.len() > 8 && s.contains('-'))
 }
-fn npc_id(guid: &str) -> Option<u32> {
+pub(crate) fn npc_id(guid: &str) -> Option<u32> {
     // Creature-0-3767-2769-12345-257361-0000ABCDEF -> penúltimo segmento
     if !(guid.starts_with("Creature-") || guid.starts_with("Vehicle-")) {
         return None;
@@ -74,20 +74,20 @@ fn npc_id(guid: &str) -> Option<u32> {
 }
 
 /// Bloco do advanced combat logging.
-struct Advanced<'a> {
-    info_guid: &'a str,
+pub(crate) struct Advanced<'a> {
+    pub(crate) info_guid: &'a str,
     owner_guid: &'a str,
     hp: i64,
     max_hp: i64,
     /// posição no mundo (jardas)
-    x: f32,
-    y: f32,
+    pub(crate) x: f32,
+    pub(crate) y: f32,
     /// direção para onde a unidade olha (radianos)
     facing: f32,
     /// recurso principal da unidade: (tipo, atual, máximo); 0 = mana
     power: Option<(u32, i64, i64)>,
     /// quantidade de campos do bloco (varia entre patches)
-    len: usize,
+    pub(crate) len: usize,
 }
 
 fn is_decimal(s: &str) -> bool {
@@ -96,7 +96,7 @@ fn is_decimal(s: &str) -> bool {
 
 /// O bloco começa com guid,owner,hp,maxHp e termina com posX,posY,uiMapID,facing,level.
 /// Os campos do meio mudam entre patches, então o tamanho é descoberto pelo formato do final.
-fn advanced_at<'a>(f: &[&'a str], at: usize) -> Option<Advanced<'a>> {
+pub(crate) fn advanced_at<'a>(f: &[&'a str], at: usize) -> Option<Advanced<'a>> {
     if f.len() < at + 17 || !is_guid_like(f[at]) {
         return None;
     }
@@ -289,6 +289,8 @@ pub(crate) struct PullBuilder {
     /// acertos de mecânicas "de chão": onde a vítima estava (t, x, y, tipo)
     ground_kinds: Vec<GroundKind>,
     ground_marks: Vec<(i64, f32, f32, usize)>,
+    /// acertos de soak (regra com `soak`): (t, x, y, mecânica, player)
+    soak_hits: Vec<(i64, f32, f32, usize, String)>,
     /// última marca de cada (player, tipo), para não repetir os ticks de quem ficou parado na poça
     ground_last: HashMap<(String, usize), (i64, f32, f32)>,
     /// casts dos inimigos (para o replay) e o cast com tempo ainda aberto de cada inimigo
@@ -342,6 +344,7 @@ impl PullBuilder {
             trails: Trails::default(),
             ground_kinds: Vec::new(),
             ground_marks: Vec::new(),
+            soak_hits: Vec::new(),
             ground_last: HashMap::new(),
             boss_casts: Vec::new(),
             boss_target: HashMap::new(),
@@ -591,8 +594,10 @@ impl PullBuilder {
                     // um cast novo fecha o anterior que não terminou (cortado sem SPELL_INTERRUPT, stun...)
                     self.open_casts.insert(guid.clone(), self.boss_casts.len());
                     let cone = self.rules.as_ref().and_then(|r| r.cone_for(id));
-                    let target = cone.and(self.boss_target.get(&guid).cloned());
-                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false, cone, target });
+                    // linha: o alvo vem da aura que o lançador põe nele logo depois (ou é o alvo do boss)
+                    let line = self.rules.as_ref().and_then(|r| r.line_for(id));
+                    let target = (cone.is_some() || line.is_some_and(|l| l.1.is_none())).then(|| self.boss_target.get(&guid).cloned()).flatten();
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false, cone, target, line: line.map(|l| l.0) });
                 }
                 // começo de um cast com tempo de cast ou de um empower (a leitura da rotação mede o tempo parado)
                 if self.counting() && Self::is_group_player(f[1], hex(f[3])) {
@@ -644,6 +649,14 @@ impl PullBuilder {
         };
         let (dst_guid, dst_name) = (f[5], f[6]);
         let is_player = Self::is_group_player(dst_guid, hex(f[7]));
+        // linha (regra com `line.target_aura`): o lançador marca o alvo logo depois de começar o cast
+        if is_player && f[0] == "SPELL_AURA_APPLIED" && self.rules.as_ref().is_some_and(|r| r.is_line_target_aura(spell_id)) {
+            if let Some(&i) = self.open_casts.get(f[1]) {
+                if self.boss_casts[i].line.is_some() {
+                    self.boss_casts[i].target = Some(dst_guid.to_string());
+                }
+            }
+        }
         // replay completo: debuffs de inimigo e defensivos nos players
         if is_player {
             if f[0] == "SPELL_AURA_APPLIED" {
@@ -912,6 +925,13 @@ impl PullBuilder {
                 if let Some(a) = adv.as_ref().filter(|a| a.info_guid == dst_guid && !dot_tick) {
                     self.ground_hit(spell_id, dst_guid, a.x, a.y, rel);
                 }
+                // soak: onde cada um que entrou estava
+                if let Some(i) = self.rules.as_ref().and_then(|r| r.soak_for(spell_id)).filter(|_| !dot_tick) {
+                    let here = adv.as_ref().filter(|a| a.info_guid == dst_guid).map(|a| (a.x, a.y)).or_else(|| self.players.get(dst_guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= GROUND_POS_MAX_AGE_MS).map(|p| (p.0, p.1)));
+                    if let Some((x, y)) = here {
+                        self.soak_hits.push((rel, x, y, i, dst_guid.to_string()));
+                    }
+                }
                 let failed = self.rules.as_mut().map(|r| r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel)).unwrap_or_default();
                 // falha coletiva nova: guarda onde cada um estava
                 if !failed.is_empty() {
@@ -1122,7 +1142,7 @@ impl PullBuilder {
                     i
                 }
                 None => {
-                    self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, interrupted: false, cone: None, target: None });
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, interrupted: false, cone: None, target: None, line: None });
                     self.boss_casts.len() - 1
                 }
             };
@@ -1490,6 +1510,21 @@ impl PullBuilder {
         let orbs = self.rules.as_ref().filter(|_| full).and_then(|r| r.orb_tracks(duration_ms));
         let areas = self.rules.as_ref().filter(|_| full).map(|r| r.areas()).unwrap_or_default();
         let rule_spells = self.rules.as_ref().map(|r| r.rule_spells()).unwrap_or_default();
+        // soaks: dados de cada mecânica com `soak` (antes de a regra ser consumida)
+        let soak_meta: HashMap<usize, SoakInfo> = self
+            .rules
+            .as_ref()
+            .map(|r| {
+                self.soak_hits
+                    .iter()
+                    .map(|h| h.3)
+                    .collect::<HashSet<usize>>()
+                    .into_iter()
+                    .filter_map(|i| r.soak_info(i).map(|s| (i, s)))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let replay_npcs: HashSet<u32> = self.rules.as_ref().map(|r| r.replay_npcs().iter().copied().collect()).unwrap_or_default();
         let interrupt_casters: Vec<String> = self.rules.as_ref().map(|r| self.boss_casts.iter().filter(|c| r.is_interrupt_cast(c.spell_id)).map(|c| c.guid.clone()).collect()).unwrap_or_default();
         let mechanics = self
             .rules
@@ -1519,7 +1554,11 @@ impl PullBuilder {
         let mut cone_casters: HashSet<String> = self.boss_casts.iter().filter(|c| c.cone.is_some()).map(|c| c.guid.clone()).collect();
         // unidades das áreas (ex.: os machados) também entram, mesmo sem HP de boss
         // quem solta um cast que tem que ser interrompido (ex.: os adds do Gloombomb) também
-        cone_casters.extend(interrupt_casters);
+        cone_casters.extend(interrupt_casters.iter().cloned());
+        // adds marcados na regra (`units` com `replay: true`)
+        if !replay_npcs.is_empty() {
+            cone_casters.extend(self.trails.guids().filter(|g| npc_id(g).is_some_and(|n| replay_npcs.contains(&n))).cloned());
+        }
         let area_npcs: HashSet<u32> = areas.iter().filter_map(|a| a.npc).collect();
         let area_units: HashSet<String> = self.trails.guids().filter(|g| npc_id(g).is_some_and(|n| area_npcs.contains(&n))).cloned().collect();
         cone_casters.extend(area_units.iter().cloned());
@@ -1527,6 +1566,23 @@ impl PullBuilder {
         if let (Some(t), Some((name, paths))) = (tracks.as_mut(), &ghosts) {
             t.units.extend(replay::ghost_tracks(paths, &refs, name));
         }
+        // add que só entra por causa do interrupt (ex.: o Broodling): some logo depois do último cast
+        // (cortado ou não), mesmo sem morrer no log
+        if let Some(t) = tracks.as_mut() {
+            let bosses: HashSet<&str> = self.enemies.iter().filter(|(_, e)| e.max_hp > 0).map(|(g, _)| g.as_str()).collect();
+            let top = self.enemies.values().map(|e| e.max_hp).max().unwrap_or(0);
+            for g in interrupt_casters.iter().filter(|g| !npc_id(g).is_some_and(|n| replay_npcs.contains(&n))) {
+                let big = bosses.contains(g.as_str()) && self.enemies.get(g).is_some_and(|e| e.max_hp as f64 >= top as f64 * 0.3);
+                if big {
+                    continue;
+                }
+                let Some(last) = self.boss_casts.iter().filter(|c| &c.guid == g).map(|c| c.end.unwrap_or(c.t)).max() else { continue };
+                if let Some(u) = t.units.iter_mut().find(|u| &u.guid == g) {
+                    replay::cut_after(u, last + INTERRUPT_ADD_LINGER_MS, t.step_ms);
+                }
+            }
+        }
+        let soaks = build_soaks(&self.soak_hits, &soak_meta, &self.boss_casts, &refs);
         let arena = tracks.as_ref().and_then(|_| self.trails.arena());
         let casts = {
             let bosses: HashSet<&str> = tracks.iter().flat_map(|t| t.units.iter()).filter(|u| u.kind == "enemy").map(|u| u.guid.as_str()).collect();
@@ -1607,6 +1663,7 @@ impl PullBuilder {
                 fight: self.fight.take().map(|fc| fc.finish(duration_ms, rule_spells)),
                 orbs,
                 areas,
+                soaks,
             },
             pending_deaths: pending,
             defensives_by_player,
@@ -1699,6 +1756,68 @@ fn attribute_death(d: &mut Death, rules: &RuleTracker) {
         Some(k) => d.mechanic_damage.iter().find(|m| m.key == k).cloned(),
         None => d.mechanic_damage.first().filter(|m| m.pct >= CAUSE_MIN_PCT).cloned(),
     };
+}
+
+/// Acertos do mesmo soak: até isto depois do primeiro, e até tantos raios do centro.
+const SOAK_HIT_WINDOW_MS: i64 = 600;
+const SOAK_JOIN_RADII: f32 = 1.6;
+/// Sem cast que anuncie, o círculo aparece isto antes de cair.
+const SOAK_LEAD_MS: i64 = 3_000;
+/// O cast que anuncia o soak vem até isto antes dele cair.
+const SOAK_CAST_MAX_MS: i64 = 12_000;
+/// Add de interrupt fica no mapa até isto depois do último cast.
+const INTERRUPT_ADD_LINGER_MS: i64 = 1_000;
+
+/// Soaks do pull: os acertos da mesma mecânica no mesmo instante, juntados por perto (vários círculos
+/// ao mesmo tempo viram vários soaks); o centro é o meio de quem entrou. Só os que algum replay mostra.
+fn build_soaks(hits: &[(i64, f32, f32, usize, String)], meta: &HashMap<usize, SoakInfo>, casts: &[BossCast], refs: &[&ReplayRef]) -> Vec<SoakView> {
+    let mut out = Vec::new();
+    let mut by_mech: HashMap<usize, Vec<(i64, f32, f32, &str)>> = HashMap::new();
+    for (t, x, y, i, g) in hits {
+        by_mech.entry(*i).or_default().push((*t, *x, *y, g.as_str()));
+    }
+    for (i, mut hs) in by_mech {
+        let Some(m) = meta.get(&i) else { continue };
+        let radius = m.radius;
+        hs.sort_by_key(|h| h.0);
+        let mut k = 0;
+        // vários impactos do mesmo cast (o boss salta de novo): o próximo aparece quando o anterior cai
+        let mut prev_at = i64::MIN;
+        while k < hs.len() {
+            let t0 = hs[k].0;
+            let end = hs[k..].iter().position(|h| h.0 - t0 > SOAK_HIT_WINDOW_MS).map_or(hs.len(), |p| k + p);
+            // círculos do mesmo instante: junta cada acerto ao centro mais perto (ou abre outro)
+            // cada player conta uma vez (dois ticks, ou dois spells do mesmo soak)
+            let mut seen: HashSet<&str> = HashSet::new();
+            let mut groups: Vec<(f32, f32, u32)> = Vec::new();
+            for &(_, x, y, g) in &hs[k..end] {
+                if !seen.insert(g) {
+                    continue;
+                }
+                match groups.iter_mut().find(|g| (g.0 / g.2 as f32 - x).hypot(g.1 / g.2 as f32 - y) <= radius * SOAK_JOIN_RADII) {
+                    Some(g) => {
+                        g.0 += x;
+                        g.1 += y;
+                        g.2 += 1;
+                    }
+                    None => groups.push((x, y, 1)),
+                }
+            }
+            let from = m.cast_id
+                .and_then(|c| casts.iter().filter(|b| b.spell_id == c && b.t <= t0 && t0 - b.t <= SOAK_CAST_MAX_MS).map(|b| b.t).max())
+                .unwrap_or(t0 - SOAK_LEAD_MS)
+                .max(prev_at);
+            prev_at = t0;
+            if refs.iter().any(|r| t0 >= r.from && from <= r.to) {
+                for (sx, sy, n) in groups {
+                    out.push(SoakView { key: m.key.clone(), name: m.name.clone(), spell_id: m.spell_id, from, at: t0, x: sx / n as f32, y: sy / n as f32, radius, needs: m.players, hit: n });
+                }
+            }
+            k = end;
+        }
+    }
+    out.sort_by_key(|s| s.at);
+    out
 }
 
 /// Mecânica que puxou as mortes: a mais cedo entre as que causaram 2+ mortes;

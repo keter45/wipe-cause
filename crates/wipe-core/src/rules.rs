@@ -178,6 +178,35 @@ pub struct VanishSpec {
     pub from: Option<String>,
 }
 
+/// Linha do lançador até o alvo: o cast, a largura (jardas) e a aura que o lançador põe no alvo
+/// (sem ela, o alvo é o do boss).
+#[derive(Debug, Clone, Deserialize)]
+pub struct LineSpec {
+    pub cast_id: u32,
+    pub width: f32,
+    #[serde(default)]
+    pub target_aura: Option<u32>,
+}
+
+/// Soak: raio do círculo e quantos players precisam entrar.
+#[derive(Debug, Clone, Deserialize)]
+pub struct SoakSpec {
+    pub radius: f32,
+    #[serde(default)]
+    pub players: Option<u32>,
+}
+
+/// Soak de uma mecânica, para o replay: chave, nome, spell (ícone), cast que o anuncia, raio e quantos.
+#[derive(Debug, Clone)]
+pub struct SoakInfo {
+    pub key: String,
+    pub name: String,
+    pub spell_id: u32,
+    pub cast_id: Option<u32>,
+    pub radius: f32,
+    pub players: Option<u32>,
+}
+
 /// Frontal em cone: o cast que o solta e o tamanho.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConeSpec {
@@ -244,6 +273,10 @@ pub struct Mechanic {
     pub cone: Option<ConeSpec>,
     /// replay completo: área da habilidade (em volta de quem tem um debuff, ou de uma unidade do boss)
     pub area: Option<AreaSpec>,
+    /// replay: linha do lançador até o alvo durante o cast (ex.: o cuspe do add até quem ele marcou)
+    pub line: Option<LineSpec>,
+    /// replay: o círculo do soak onde ele cai (no meio de quem foi atingido), com quantos entraram
+    pub soak: Option<SoakSpec>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -303,6 +336,8 @@ pub struct RuleSet {
     mechanics: Vec<Value>,
     /// fases do boss: (key, nome, mecânica cujo cast abre a fase; None = começa no pull)
     phases: Vec<(String, String, Option<String>)>,
+    /// npcs das unidades com `replay: true` (adds que importam: entram no replay mesmo sem HP de boss)
+    replay_npcs: Vec<u32>,
 }
 
 impl RuleSet {
@@ -326,7 +361,17 @@ impl RuleSet {
                     .collect()
             })
             .unwrap_or_default();
-        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics, phases };
+        let replay_npcs = doc
+            .get("units")
+            .and_then(Value::as_sequence)
+            .map(|us| {
+                us.iter()
+                    .filter(|u| u.get("replay").and_then(Value::as_bool) == Some(true))
+                    .filter_map(|u| u.get("npc_id").and_then(Value::as_u64).map(|n| n as u32))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics, phases, replay_npcs };
         // valida já na carga, para erro de YAML aparecer cedo
         for diff in [14, 15, 16] {
             set.mechanics_for(diff)?;
@@ -511,6 +556,7 @@ impl RuleBook {
             global: false,
             mechanics: Vec::new(),
             phases: Vec::new(),
+            replay_npcs: Vec::new(),
         });
         match base.tuned(t) {
             Ok(set) => {
@@ -653,6 +699,7 @@ pub struct RuleTracker {
     gaze: Option<(usize, GazeLog)>,
     /// fases do boss (keys), o cast que abre cada uma e a fase atual
     phase_keys: Vec<String>,
+    replay_npcs: Vec<u32>,
     phase_names: Vec<String>,
     phase_starts: HashMap<u32, usize>,
     phase: usize,
@@ -716,7 +763,9 @@ impl RuleTracker {
                 }
             }
         }
+        let replay_npcs = sets.first().map(|s| s.replay_npcs.clone()).unwrap_or_default();
         Ok(RuleTracker {
+            replay_npcs,
             phase_keys,
             phase_names,
             phase_starts,
@@ -1094,6 +1143,34 @@ impl RuleTracker {
     /// Cast que a regra manda interromper (quem solta entra no replay, com a barra de cast).
     pub fn is_interrupt_cast(&self, spell_id: u32) -> bool {
         self.mechs.iter().any(|m| m.kind == MechanicType::Interrupt && m.detect.cast_id == Some(spell_id))
+    }
+
+/// Linha que este cast solta: a forma e a aura que marca o alvo.
+    pub fn line_for(&self, cast_id: u32) -> Option<(crate::report::LineShape, Option<u32>)> {
+        self.mechs.iter().find_map(|m| m.line.as_ref().filter(|l| l.cast_id == cast_id).map(|l| (crate::report::LineShape { width: l.width }, l.target_aura)))
+    }
+
+    /// Aura que um lançador de linha põe no alvo dele.
+    pub fn is_line_target_aura(&self, spell_id: u32) -> bool {
+        self.mechs.iter().any(|m| m.line.as_ref().is_some_and(|l| l.target_aura == Some(spell_id)))
+    }
+
+    /// Mecânica com soak cujo dano é este spell: índice.
+    pub fn soak_for(&self, spell_id: u32) -> Option<usize> {
+        self.mechs.iter().position(|m| m.soak.is_some() && m.detect.damage_ids.iter().flatten().any(|&d| d == spell_id))
+    }
+
+    /// Dados do soak da mecânica `i` (para o replay).
+    pub fn soak_info(&self, i: usize) -> Option<SoakInfo> {
+        let m = self.mechs.get(i)?;
+        let s = m.soak.as_ref()?;
+        let spell_id = m.detect.damage_ids.iter().flatten().next().copied().unwrap_or(0);
+        Some(SoakInfo { key: m.key.clone(), name: m.name.clone(), spell_id, cast_id: m.detect.cast_id, radius: s.radius, players: s.players })
+    }
+
+    /// npcs que entram no replay por regra (`units` com `replay: true`).
+    pub fn replay_npcs(&self) -> &[u32] {
+        &self.replay_npcs
     }
 
     /// Frontal em cone que este cast solta.

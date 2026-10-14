@@ -172,7 +172,7 @@ mechanics:
     source_unit: blood
     severity: none
     detect: { damage_ids: [1288282], aura_id: 1288260, cast_id: 1288232 }
-    ground: { lingers_s: 3 }   # replay: o círculo do soak, pelos players atingidos
+    soak: { radius: 6 }   # 06/10: 7-10 por soak, 90% a até 5,8 jd do meio
     tip: { pt: "Todo mundo junto no soak perto da borda, depois espalhar.", en: "Everyone together for the soak near the edge, then spread." }
     message: { pt: "Unstable Miasma", en: "Unstable Miasma" }
     notes: "5-10 players por soak no log; poucos soakers deixam o hit mais forte."
@@ -205,6 +205,7 @@ mechanics:
     difficulty: [mythic]
     severity: minor
     detect: { damage_ids: [1296962], excludes_aura: 1296880 }
+    area: { aura: 1296880, radius: 9 }   # em volta dos marcados; wipe-cli radius (06/10, 57 golpes): de 1 a 9 jd e nada na 10 — confirmar com mais logs míticos
     tip: { pt: "Sem o debuff, ficar longe dos marcados.", en: "Without the debuff, stay away from the marked players." }
     message: { pt: "{player} foi pego por Protovenom Eruption ({count}x)", en: "{player} was caught by Protovenom Eruption ({count}x)" }
     notes: "Hipótese: a erupção é o esbarrão num player sem debuff. Confirmar no vídeo."

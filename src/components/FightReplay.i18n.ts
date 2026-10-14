@@ -7,6 +7,7 @@ export const fightMsg = defineMessages(
   {
     noLog: 'O replay completo relê o pull no combat log do PC, e este pull não diz onde ele está: veio do Warcraft Logs ou de uma análise feita antes desta versão. Abra de novo o log da noite para ver.',
     loading: 'Relendo o pull no log…',
+    beta: 'Replay ainda em construção: alguns bosses podem ter inconsistências.',
     error: (msg: string) => `Não foi possível montar o replay: ${msg}`,
     retry: 'Tentar de novo',
     framesAria: 'Quadro do raid: clique num player para segui-lo',
@@ -48,6 +49,7 @@ export const fightMsg = defineMessages(
   {
     noLog: "The full replay re-reads the pull from the combat log on this PC, and this pull doesn't say where that is: it came from Warcraft Logs or from an analysis made before this version. Open the night's log again to see it.",
     loading: 'Re-reading the pull from the log…',
+    beta: 'Replay still under construction: some bosses may have inconsistencies.',
     error: (msg: string) => `Could not build the replay: ${msg}`,
     retry: 'Try again',
     framesAria: 'Raid frames: click a player to follow them',

@@ -42,14 +42,14 @@ export const mainEnemy = (snap: Positions) => snap.units.find((u) => u.kind === 
 
 /**
  * Mini mapa visto de cima: players (cor da classe), bosses (losango) e anéis de 10 jardas em
- * volta do boss. Coordenadas relativas: a orientação pode não bater com a do jogo, mas as
- * distâncias batem.
+ * volta do boss, com o norte para cima (como o mapa do jogo e o replay).
  */
 export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
   const t = useMessages(positionMapMsg);
-  const units = snap.units;
+  // no mapa com o norte para cima (ver arenas.ts)
+  const units = snap.units.map((u) => ({ ...u, x: -u.y, y: u.x }));
   if (units.length === 0) return null;
-  const boss = mainEnemy(snap);
+  const boss = units.find((u) => u.kind === 'enemy') ?? null;
 
   const xs = units.map((u) => u.x);
   const ys = units.map((u) => u.y);

@@ -6939,3 +6939,109 @@ button.kpi:hover {
   text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 1px #000;
   pointer-events: none;
 }
+
+/* arena do boss (data/arenas.json): imagem de fundo, fora do chão escurecido, borda do chão */
+.replay-map-image {
+  opacity: 0.55;
+}
+.replay-map-out {
+  fill: var(--bg);
+  fill-opacity: 0.55;
+}
+.replay-map-edge {
+  fill: none;
+  stroke: var(--text);
+  stroke-opacity: 0.35;
+  stroke-width: 1.25;
+  stroke-dasharray: 5 4;
+}
+
+/* replay completo: linha do tempo e controles numa grade só (esquerda, trilho, direita) */
+.replay-left,
+.replay-right {
+  display: contents;
+}
+.replay-dock {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 8px;
+  row-gap: 2px;
+}
+.replay-dock > .fight-timeline {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  column-gap: 8px;
+  row-gap: 2px;
+}
+.replay-dock .fight-axis,
+.replay-dock .fight-lane {
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  column-gap: 8px;
+}
+.replay-dock > .replay-controls {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+.replay-dock .replay-left,
+.replay-dock .replay-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.replay-dock .replay-clock {
+  min-width: 5ch;
+}
+
+/* linha do lançador até o alvo (ex.: Corrosive Spit) */
+.replay-line {
+  fill: var(--wipe);
+  fill-opacity: 0.18;
+  stroke: var(--wipe);
+  stroke-opacity: 0.7;
+  stroke-width: 1;
+}
+.replay-line.casting {
+  fill-opacity: 0.08;
+  stroke-dasharray: 4 3;
+}
+/* soak: verde com gente suficiente, vermelho com menos do que precisa */
+.replay-soak circle {
+  fill: var(--kill);
+  fill-opacity: 0.1;
+  stroke: var(--kill);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
+.replay-soak.done circle {
+  fill-opacity: 0.22;
+  stroke-dasharray: none;
+}
+.replay-soak.short circle {
+  fill: var(--wipe);
+  stroke: var(--wipe);
+}
+.replay-soak-count {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--text);
+  stroke: var(--bg);
+  stroke-width: 3px;
+  paint-order: stroke;
+  pointer-events: none;
+}
+/* o tempo no slider vai do centro da bolinha numa ponta ao centro na outra: o trilho da linha do tempo
+   acompanha (sem a margem do input, com meia bolinha de cada lado) */
+.replay-dock .replay-controls input[type='range'] {
+  margin: 0;
+}
+.replay-dock .fight-track {
+  margin-inline: 8px;
+}
+
+/* aviso de que o replay completo ainda está em construção */
+.fight-beta {
+  margin: 0 0 6px;
+}
