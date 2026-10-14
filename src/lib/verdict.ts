@@ -1,6 +1,6 @@
 // Heurísticas genéricas de "por que deu wipe". Regras específicas de boss virão de encounters/*.yaml.
 
-import type { Death, Pull } from '../types';
+import type { Death, Pull, PullTrigger } from '../types';
 import { mmss, pct, shortName, damageSource } from './format';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { spellIdByName } from './spells';
@@ -63,6 +63,16 @@ export function lowestBossHp(p: Pull): number | null {
   if (p.success) return 0;
   const hps = p.bosses.map((b) => (p.cutoffT != null ? b.hpPctAtCutoff ?? b.hpPct : b.hpPct)).filter((x): x is number => x != null);
   return hps.length ? Math.min(...hps) : null;
+}
+
+/**
+ * O que puxou o wipe, para o ícone na lista de pulls: o gatilho, quando ele explica as mortes
+ * (2+ mortes ligadas a ele, ou a única morte). Mortes separadas sem uma causa comum: null.
+ */
+export function wipeCause(p: Pull): PullTrigger | null {
+  if (p.success || !p.trigger) return null;
+  const deaths = p.deaths.filter((d) => !d.ignored).length;
+  return p.trigger.deaths >= 2 || deaths <= 1 ? p.trigger : null;
 }
 
 /** HP do boss mais baixo no fim do pull (depois da cascata), para referência. */

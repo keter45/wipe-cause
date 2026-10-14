@@ -2,6 +2,7 @@
 //! que no ENCOUNTER_END vira um `Pull`. Nada do log fica em memória além do estado agregado.
 
 use crate::data::{Consumable, GameData};
+use crate::fight::{self, FightCapture};
 use crate::report::*;
 use crate::replay::{self, Trails};
 use crate::rotation::{RotationBook, RotationTracker};
@@ -295,6 +296,8 @@ pub(crate) struct PullBuilder {
     /// alvo de cada inimigo: o último player que ele acertou corpo a corpo (ou com um spell de alvo da regra)
     boss_target: HashMap<String, String>,
     open_casts: HashMap<String, usize>,
+    /// replay completo: vida, debuffs e eventos de cada player (só ao reler um pull sozinho)
+    fight: Option<FightCapture>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -343,7 +346,16 @@ impl PullBuilder {
             boss_casts: Vec::new(),
             boss_target: HashMap::new(),
             open_casts: HashMap::new(),
+            fight: None,
         }
+    }
+
+    /// Replay completo: guarda a vida, os debuffs e os eventos de cada player, e as posições do
+    /// pull inteiro (não só das janelas das mortes e falhas).
+    pub fn capture_fight(mut self, data: &GameData) -> Self {
+        let zones = data.defensives.values().filter_map(|d| Some((d.id, d.zone.clone()?))).collect();
+        self.fight = Some(FightCapture::new(data.defensives.keys().copied().collect()).with_zones(zones));
+        self
     }
 
     /// Dono de um pet conhecido de antemão (o Warcraft Logs já diz de quem é cada pet).
@@ -432,6 +444,9 @@ impl PullBuilder {
             }
             p.last_hp_pct = Some(pct);
             p.max_hp = Some(adv.max_hp);
+            if let Some(fc) = self.fight.as_mut() {
+                fc.hp(adv.info_guid, pct, rel);
+            }
             if pct < INJURED_PCT && adv.hp > 0 {
                 self.injured.insert(adv.info_guid.to_string());
             } else {
@@ -460,10 +475,21 @@ impl PullBuilder {
                 max_hp: adv.max_hp,
                 pos: None,
             });
+            // vida chegou a 0 agora (boss que vira outra fase sem morrer no log, ex.: o Zul'jan no fim da P1)
+            // (a vida pode parar em 1 ponto, imune na troca de fase: conta abaixo de 0,1%)
+            let zeroed = e.hp * 1000 > e.max_hp && adv.hp * 1000 <= adv.max_hp;
             e.hp = adv.hp;
             e.max_hp = adv.max_hp;
             e.pos = Some((adv.x, adv.y, rel));
+            if zeroed {
+                if let Some(r) = self.rules.as_mut() {
+                    r.on_enemy_zero(npc_id(adv.info_guid), rel);
+                }
+            }
             self.trails.on_pos(adv.info_guid, name, true, adv.max_hp, adv.x, adv.y, rel);
+            if let Some(fc) = self.fight.as_mut() {
+                fc.enemy_hp(adv.info_guid, name, adv.hp, adv.max_hp, rel);
+            }
         }
     }
 
@@ -582,10 +608,22 @@ impl PullBuilder {
             }
             "SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE" => self.aura_state(f, t),
             "SPELL_INTERRUPT" => self.interrupt(f, t),
+            "SPELL_RESURRECT" => {
+                if Self::is_group_player(f[5], hex(f[7])) {
+                    let rel = self.rel(t);
+                    if let Some(fc) = self.fight.as_mut() {
+                        fc.event(rel, fight::EV_RESURRECT, f[5], f[9].parse().unwrap_or(0), f[10], 0, f[2]);
+                    }
+                }
+            }
             "SPELL_DISPEL" => self.dispel(f, t),
             "SPELL_SUMMON" => {
                 if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
                     self.pet_owner.insert(f[5].to_string(), owner);
+                }
+                // totem de defensivo em área: a área fica onde ele aparecer
+                if let Some(fc) = self.fight.as_mut() {
+                    fc.zone_summon(f[9].parse().unwrap_or(0), f[5]);
                 }
             }
             "UNIT_DIED" => self.unit_died(f, t),
@@ -606,6 +644,19 @@ impl PullBuilder {
         };
         let (dst_guid, dst_name) = (f[5], f[6]);
         let is_player = Self::is_group_player(dst_guid, hex(f[7]));
+        // replay completo: debuffs de inimigo e defensivos nos players
+        if is_player {
+            if f[0] == "SPELL_AURA_APPLIED" {
+                let pos = self.players.get(dst_guid).and_then(|p| p.pos).map(|p| (p.0, p.1));
+                if let Some(fc) = self.fight.as_mut() {
+                    fc.zone_buff(rel, spell_id, pos);
+                }
+            }
+            if let Some(fc) = self.fight.as_mut() {
+                let enemy = Self::is_enemy(f[1], hex(f[3])) || f[1] == NIL_GUID;
+                fc.aura(rel, dst_guid, spell_id, f[10], f.get(12) == Some(&"DEBUFF"), enemy, stacks);
+            }
+        }
         // debuffs do player (ou do pet) num inimigo: uptime de DoT da rotação
         if !is_player && self.counting() && matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") && f.get(12) == Some(&"DEBUFF") && Self::is_enemy(dst_guid, hex(f[7])) {
             if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
@@ -715,6 +766,10 @@ impl PullBuilder {
         }
         let kick = f[10].to_string();
         let kick_id: u32 = f[9].parse().unwrap_or(0);
+        if let Some(fc) = self.fight.as_mut() {
+            fc.name_spell(cut_id, &cut_name);
+            fc.event(rel, fight::EV_INTERRUPT, &owner, kick_id, &kick, cut_id as i64, f[6]);
+        }
         let p = self.player(&owner, owner_name);
         // a tentativa (SPELL_CAST_SUCCESS) vem logo antes: completa ela em vez de duplicar
         match p.interrupt_log.iter_mut().rev().find(|u| u.target_spell_id.is_none() && rel - u.t <= 500) {
@@ -743,6 +798,10 @@ impl PullBuilder {
         let name = self.players.get(&owner).map(|p| p.name.clone()).filter(|n| !n.is_empty()).unwrap_or_else(|| f[2].to_string());
         if let Some(r) = self.rules.as_mut() {
             r.on_dispel(aura, f[5], &owner, &name, rel);
+        }
+        if let Some(fc) = self.fight.as_mut() {
+            fc.name_spell(aura, f.get(13).copied().unwrap_or(""));
+            fc.event(rel, fight::EV_DISPEL, &owner, f[9].parse().unwrap_or(0), f[10], aura as i64, f[6]);
         }
     }
 
@@ -807,6 +866,9 @@ impl PullBuilder {
                     self.raid_active.resize(s + 1, false);
                 }
                 self.raid_active[s] = true;
+                if let Some(fc) = self.fight.as_mut() {
+                    fc.damage_done(rel, &owner, dst_name, done);
+                }
                 let p = self.player(&owner, if pet { "" } else { src_name });
                 // alvos da rotação: só acerto direto do próprio player (pets e ticks de DoT espalhado inflariam a conta)
                 if !pet && f[0] != "SPELL_PERIODIC_DAMAGE" {
@@ -860,6 +922,9 @@ impl PullBuilder {
                         }
                     }
                 }
+            }
+            if let Some(fc) = self.fight.as_mut() {
+                fc.event(rel, fight::EV_DAMAGE, dst_guid, spell_id, &spell_name, amount + absorbed, &source_label);
             }
             let p = self.player(dst_guid, dst_name);
             if counting {
@@ -928,6 +993,9 @@ impl PullBuilder {
             if let Some(owner) = self.owner_of(src_guid, src_flags) {
                 let pet = owner != src_guid;
                 let rel = self.rel(t);
+                if let Some(fc) = self.fight.as_mut() {
+                    fc.healing_done(rel, &owner, effective);
+                }
                 let p = self.player(&owner, if pet { "" } else { src_name });
                 p.healing_done += effective;
                 add_at(&mut p.healing_timeline, rel, effective);
@@ -948,6 +1016,11 @@ impl PullBuilder {
                 _ => None,
             };
             let rel = self.rel(t);
+            if let Some(fc) = self.fight.as_mut() {
+                fc.healing_taken(rel, dst_guid, effective);
+                let max_hp = self.players.get(dst_guid).and_then(|p| p.max_hp);
+                fc.heal(rel, dst_guid, f[9].parse().unwrap_or(0), f[10], effective, max_hp, src_name);
+            }
             let p = self.player(dst_guid, dst_name);
             if hp_pct.is_some() {
                 p.last_hp_pct = hp_pct;
@@ -990,6 +1063,12 @@ impl PullBuilder {
         let Some(owner) = self.owner_of(caster, caster_flags) else { return };
         let pet = owner != caster;
         let rel = self.rel(t);
+        if let Some(fc) = self.fight.as_mut() {
+            fc.healing_done(rel, &owner, amount);
+            if Self::is_group_player(f[5], hex(f[7])) {
+                fc.healing_taken(rel, f[5], amount);
+            }
+        }
         let p = self.player(&owner, if pet { "" } else { f[at + 1] });
         p.healing_done += amount;
         add_at(&mut p.healing_timeline, rel, amount);
@@ -1005,21 +1084,38 @@ impl PullBuilder {
         let spell_id: u32 = f.get(9).and_then(|v| v.parse().ok()).unwrap_or(0);
         let spell_name = f.get(10).unwrap_or(&"").to_string();
         let rel = self.rel(t);
+        // replay completo: defensivos de raid em área (onde quem usou estava) e o totem deles aparecendo
+        if let Some(fc) = self.fight.as_mut() {
+            let here = adv.as_ref().filter(|a| a.info_guid == src_guid).map(|a| (a.x, a.y));
+            if Self::is_group_player(src_guid, src_flags) {
+                let pos = here.or_else(|| self.players.get(src_guid).and_then(|p| p.pos).map(|p| (p.0, p.1)));
+                fc.zone_cast(rel, src_guid, spell_id, &spell_name, pos);
+            } else if let Some((x, y)) = here {
+                fc.zone_unit_pos(src_guid, x, y);
+            }
+        }
 
         let counting = self.counting();
         if Self::is_enemy(src_guid, src_flags) {
+            if let Some(r) = self.rules.as_mut() {
+                r.on_phase_cast(spell_id, rel);
+            }
             if !counting {
                 return;
             }
             if let Some(r) = self.rules.as_mut() {
                 r.on_enemy_cast(spell_id, src_guid, src_name, rel);
                 if let Some(a) = adv.as_ref().filter(|a| a.info_guid == src_guid) {
-                    r.on_enemy_cast_at(spell_id, src_guid, npc_id(src_guid), a.x, a.y, a.facing, rel);
+                    let target = self.boss_target.get(src_guid).map(String::as_str);
+                    r.on_enemy_cast_at(spell_id, src_guid, npc_id(src_guid), a.x, a.y, a.facing, target, rel);
                 }
             }
             let facing = adv.as_ref().filter(|a| a.info_guid == src_guid).map(|a| a.facing);
-            let i = match self.open_casts.remove(src_guid).filter(|&i| self.boss_casts[i].spell_id == spell_id) {
+            // só fecha o cast aberto se for o mesmo spell (um instantâneo no meio, ex.: o do add ao ser cortado, não fecha)
+            let open = self.open_casts.get(src_guid).copied().filter(|&i| self.boss_casts[i].spell_id == spell_id);
+            let i = match open {
                 Some(i) => {
+                    self.open_casts.remove(src_guid);
                     let c = &mut self.boss_casts[i];
                     c.end = Some(rel);
                     c.facing = facing;
@@ -1055,6 +1151,9 @@ impl PullBuilder {
         }
         if !Self::is_group_player(src_guid, src_flags) {
             return;
+        }
+        if let Some(fc) = self.fight.as_mut() {
+            fc.event(rel, fight::EV_CAST, src_guid, spell_id, &spell_name, 0, f[6]);
         }
         let consumable = data.consumable(spell_id, &spell_name);
         let defensive = data.defensives.get(&spell_id).filter(|d| d.kind == "personal").map(|d| d.name.clone());
@@ -1176,6 +1275,9 @@ impl PullBuilder {
         }
         self.injured.remove(dst_guid);
         let rel = self.rel(t);
+        if let Some(fc) = self.fight.as_mut() {
+            fc.died(dst_guid, rel);
+        }
         let order = self.deaths.len() as u32 + 1;
         // depois do corte a morte fica registrada (recap), mas não conta em nada
         let ignored = !self.counting();
@@ -1382,6 +1484,13 @@ impl PullBuilder {
         let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).filter(|d| !d.ignored).collect();
         let trigger = pull_trigger(&deaths_view);
         let mut ghosts = None;
+        let phase_marks = self.rules.as_ref().map(|r| r.phase_marks()).unwrap_or_default();
+        // replay completo: orbs e áreas das habilidades
+        let full = self.fight.is_some();
+        let orbs = self.rules.as_ref().filter(|_| full).and_then(|r| r.orb_tracks(duration_ms));
+        let areas = self.rules.as_ref().filter(|_| full).map(|r| r.areas()).unwrap_or_default();
+        let rule_spells = self.rules.as_ref().map(|r| r.rule_spells()).unwrap_or_default();
+        let interrupt_casters: Vec<String> = self.rules.as_ref().map(|r| self.boss_casts.iter().filter(|c| r.is_interrupt_cast(c.spell_id)).map(|c| c.guid.clone()).collect()).unwrap_or_default();
         let mechanics = self
             .rules
             .map(|mut r| {
@@ -1399,14 +1508,22 @@ impl PullBuilder {
         for ps in &players {
             self.trails.set_name(&ps.guid, &ps.name);
         }
-        let refs: Vec<&ReplayRef> = pending
+        // replay completo: o pull inteiro é uma janela só
+        let whole = self.fight.is_some().then(|| ReplayRef { t: 0, from: 0, to: duration_ms, focus: Vec::new(), stacks: Vec::new(), marks: Vec::new() });
+        let refs: Vec<&ReplayRef> = whole
             .iter()
-            .filter_map(|d| d.death.replay.as_ref())
+            .chain(pending.iter().filter_map(|d| d.death.replay.as_ref()))
             .chain(mechanics.iter().flat_map(|m| m.replays.iter().chain(m.pairings.iter().filter_map(|f| f.replay.as_ref()))))
             .collect();
         // quem solta um frontal entra no replay mesmo sem HP de boss (o cone sai dele)
-        let cone_casters: HashSet<String> = self.boss_casts.iter().filter(|c| c.cone.is_some()).map(|c| c.guid.clone()).collect();
-        let mut tracks = self.trails.build(&refs, &cone_casters);
+        let mut cone_casters: HashSet<String> = self.boss_casts.iter().filter(|c| c.cone.is_some()).map(|c| c.guid.clone()).collect();
+        // unidades das áreas (ex.: os machados) também entram, mesmo sem HP de boss
+        // quem solta um cast que tem que ser interrompido (ex.: os adds do Gloombomb) também
+        cone_casters.extend(interrupt_casters);
+        let area_npcs: HashSet<u32> = areas.iter().filter_map(|a| a.npc).collect();
+        let area_units: HashSet<String> = self.trails.guids().filter(|g| npc_id(g).is_some_and(|n| area_npcs.contains(&n))).cloned().collect();
+        cone_casters.extend(area_units.iter().cloned());
+        let mut tracks = self.trails.build(&refs, &cone_casters, &area_units);
         if let (Some(t), Some((name, paths))) = (tracks.as_mut(), &ghosts) {
             t.units.extend(replay::ghost_tracks(paths, &refs, name));
         }
@@ -1484,6 +1601,12 @@ impl PullBuilder {
                 ground,
                 arena,
                 casts,
+                log_file: None,
+                log_offset: None,
+                phase_marks,
+                fight: self.fight.take().map(|fc| fc.finish(duration_ms, rule_spells)),
+                orbs,
+                areas,
             },
             pending_deaths: pending,
             defensives_by_player,

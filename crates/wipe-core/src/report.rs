@@ -84,7 +84,136 @@ pub struct Pull {
     /// casts dos bosses nas janelas dos replays
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub casts: Vec<BossCast>,
+    /// de onde o pull veio (para reler sozinho no replay completo); vazio no Warcraft Logs
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_offset: Option<u64>,
+    /// quando cada fase começou (regra do boss com `phases`)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub phase_marks: Vec<PhaseMark>,
+    /// replay completo (só quando o pull é relido sozinho)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fight: Option<FightData>,
+    /// replay completo: orbs no chão e carregados (regra com `orbs`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub orbs: Option<OrbTracks>,
+    /// replay completo: áreas das habilidades do boss (regra com `area`)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub areas: Vec<AreaView>,
 }
+
+/// Orbs no replay completo.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrbTracks {
+    pub kinds: Vec<OrbKindView>,
+    /// distância em que dois orbs se tocam (o raio do roxo mais a folga)
+    pub contact_yd: f32,
+    /// (de, até, x, y em décimos de jarda, tipo)
+    pub ground: Vec<(i64, i64, i32, i32, u8)>,
+    /// (player, de, até, tipo)
+    pub carries: Vec<(String, i64, i64, u8)>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrbKindView {
+    pub name: crate::i18n::Text,
+    /// explode quando outro orb chega perto (o roxo)
+    pub volatile: bool,
+}
+
+/// Área de uma habilidade do boss: em volta de quem tem um debuff, ou de uma unidade do boss.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AreaView {
+    /// chave e nome da mecânica
+    pub key: String,
+    pub name: String,
+    pub spell_id: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aura: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub npc: Option<u32>,
+    pub radius: f32,
+    /// a unidade some depois de tanto tempo sem acertar ninguém perto dela, a partir de `vanish_from` (ms)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vanish_idle_ms: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub vanish_from: Option<i64>,
+}
+
+/// Começo de uma fase do boss.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhaseMark {
+    pub t: i64,
+    pub key: String,
+    pub name: String,
+}
+
+/// Replay completo: o que o mapa, o quadro do raid e o painel do player focado precisam (ver `fight.rs`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FightData {
+    /// guids dos players, na ordem dos índices usados em `hp`, `auras` e `events`
+    pub players: Vec<String>,
+    /// nomes de fontes e alvos dos eventos
+    pub sources: Vec<String>,
+    /// nome de cada spell que aparece
+    pub spells: std::collections::BTreeMap<u32, String>,
+    /// spells das regras do boss -> chave da mecânica (debuff crucial, dano de mecânica)
+    pub rule_spells: std::collections::BTreeMap<u32, String>,
+    /// vida de cada player: (t, %)
+    pub hp: Vec<Vec<(i64, u8)>>,
+    pub auras: Vec<FightAura>,
+    /// mudanças de stack das auras: (player, spell, t, stacks); sem entrada, a aura tem 1 stack
+    pub stacks: Vec<(u16, u32, i64, u32)>,
+    pub events: Vec<FightEvent>,
+    /// vida dos bosses ao longo do pull
+    pub bosses: Vec<FightBoss>,
+    /// dano feito: (segundo, player, alvo em `sources`, valor), somado por segundo
+    pub done: Vec<(u32, u16, u16, i64)>,
+    /// cura feita e recebida: (segundo, player, valor)
+    pub healed: Vec<(u32, u16, i64)>,
+    pub heal_in: Vec<(u32, u16, i64)>,
+    /// defensivos de raid em área (AMZ, Darkness, Spirit Link...)
+    pub zones: Vec<FightZone>,
+}
+
+/// Defensivo em área no replay completo: onde ficou (coordenadas do log), raio e quando.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FightZone {
+    pub t: i64,
+    pub end: i64,
+    pub spell_id: u32,
+    /// índice em `players`
+    pub caster: u16,
+    pub x: f32,
+    pub y: f32,
+    pub radius: f32,
+}
+
+/// Vida de um boss no replay completo: (t, por mil da vida máxima).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FightBoss {
+    pub guid: String,
+    pub name: String,
+    pub max_hp: i64,
+    pub hp: Vec<(i64, u16)>,
+}
+
+/// (player, spell, início, fim, maior número de stacks, 1 = debuff de inimigo / 0 = defensivo)
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct FightAura(pub u16, pub u32, pub i64, pub i64, pub u32, pub u8);
+
+/// (t, tipo, player, spell, valor, fonte ou alvo) — tipos em `fight.rs` (EV_*); valor: dano/cura,
+/// ou o spell cortado (interrupt) / a aura tirada (dispel)
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct FightEvent(pub i64, pub u8, pub u16, pub u32, pub i64, pub u16);
 
 /// Cast de um boss (para o replay): começo, fim e para onde ele olhava quando terminou.
 #[derive(Debug, Clone, Serialize)]
@@ -173,6 +302,10 @@ pub struct UnitTrack {
     /// fantasma: daqui em diante o caminho foi puxado até onde o log diz que ele estava
     #[serde(skip_serializing_if = "Option::is_none")]
     pub estimated_from: Option<i64>,
+    /// unidade de área (machado): passos (t / step_ms) em que o log mostrou onde ela estava; entre um e
+    /// outro a posição é estimada
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seen: Option<Vec<u32>>,
 }
 
 /// Trecho contínuo: posições a cada `step_ms` a partir de `t0`, em décimos de jarda (x, y, x, y...).

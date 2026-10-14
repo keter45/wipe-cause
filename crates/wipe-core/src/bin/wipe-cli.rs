@@ -14,7 +14,7 @@ use wipe_core::{analyze_file, AnalyzeOptions, LogReport};
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let (Some(cmd), Some(path)) = (args.first(), args.get(1)) else {
-        eprintln!("uso: wipe-cli <analyze|spells|peek> <WoWCombatLog.txt> [--json]");
+        eprintln!("uso: wipe-cli <analyze|spells|peek|fight> <WoWCombatLog.txt> [--json] [--pull <id>]");
         return ExitCode::from(2);
     };
     let death_cutoff = args
@@ -47,6 +47,21 @@ fn main() -> ExitCode {
         }
     };
     match cmd.as_str() {
+        // replay completo de um pull (o mesmo que o app pede ao abrir a aba Replay)
+        "fight" => {
+            let id: usize = args.iter().position(|a| a == "--pull").and_then(|i| args.get(i + 1)).and_then(|v| v.parse().ok()).unwrap_or(0);
+            let Some(offset) = report.pulls.iter().find(|p| p.id == id).and_then(|p| p.log_offset) else {
+                eprintln!("pull {id} não encontrado");
+                return ExitCode::FAILURE;
+            };
+            match wipe_core::analyze_pull_full(&PathBuf::from(path), offset, &opts) {
+                Ok(p) => println!("{}", serde_json::to_string(&p).unwrap()),
+                Err(e) => {
+                    eprintln!("erro ao reler o pull: {e}");
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
         "analyze" | "wcl" if args.iter().any(|a| a == "--json") => {
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }

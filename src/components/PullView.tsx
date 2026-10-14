@@ -31,10 +31,11 @@ import { pullPayload } from '../lib/discord';
 import { scorePull } from '../lib/score';
 import { meIn, useMode, useSoloCharacter, type AppMode } from '../lib/mode';
 import { SoloPullView } from './SoloPullView';
+import { FightReplay } from './FightReplay';
 import { messagesOf, useMessages } from '../i18n';
 import { pullMsg } from './PullView.i18n';
 
-type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'ask';
+type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'replay' | 'ask';
 
 /** Aba aberta por último em cada modo: continua nela ao trocar de pull ou voltar das Configurações. */
 const lastTab: Record<AppMode, Tab> = { guild: 'deaths', solo: 'me' };
@@ -130,7 +131,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
             { key: 'players', label: t.tabs.players, count: pull.players.length },
           ],
         },
-        { label: t.groups.fight, tabs: [{ key: 'spells', label: t.tabs.spells }] },
+        { label: t.groups.fight, tabs: [{ key: 'replay', label: t.tabs.replay }, { key: 'spells', label: t.tabs.spells }] },
       ]
     : [
     {
@@ -148,7 +149,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
         { key: 'perf', label: t.tabs.perf },
       ],
     },
-    { label: t.groups.fight, tabs: [{ key: 'spells', label: t.tabs.spells }] },
+    { label: t.groups.fight, tabs: [{ key: 'replay', label: t.tabs.replay }, { key: 'spells', label: t.tabs.spells }] },
       ];
 
   return (
@@ -304,6 +305,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       {tab === 'me' && <SoloPullView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} defaultGuid={solo ? meIn(pull, chosen)?.guid : undefined} solo={solo && !!meIn(pull, chosen)} />}
       {tab === 'spells' && <EnemySpellsTable pull={pull} onRulesChanged={onRulesChanged} />}
+      {tab === 'replay' && <FightReplay key={pull.id} pull={pull} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       </ErrorBoundary>
     </div>

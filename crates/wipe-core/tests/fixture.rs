@@ -306,3 +306,27 @@ fn log_owner_and_damage_timeline() {
     let priest = p1.players.iter().find(|p| p.name == "Curandeira-Azralon").unwrap();
     assert_eq!(priest.healing_timeline.iter().sum::<i64>(), priest.healing_done);
 }
+
+#[test]
+fn full_replay_rereads_one_pull_with_hp_auras_and_events() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/twin-fangs.txt");
+    let r = report();
+    let first = &r.pulls[0];
+    assert_eq!(first.log_file.as_deref(), Some(path.display().to_string().as_str()));
+    let offset = first.log_offset.expect("cada pull guarda onde começa no log");
+    assert!(first.fight.is_none(), "a análise normal não guarda o replay completo");
+
+    let full = wipe_core::analyze_pull_full(&path, offset, &AnalyzeOptions::default()).expect("relê o pull");
+    assert_eq!(full.encounter_name, first.encounter_name);
+    assert_eq!(full.duration_ms, first.duration_ms);
+    assert_eq!(full.deaths.len(), first.deaths.len());
+    let f = full.fight.expect("replay completo");
+    assert!(!f.players.is_empty());
+    assert!(f.hp.iter().any(|h| !h.is_empty()), "vida de algum player ao longo do pull");
+    assert!(f.events.iter().any(|e| e.1 == wipe_core::fight::EV_DAMAGE), "dano recebido");
+    // as posições cobrem o pull inteiro, não só as janelas das mortes
+    let tracks = full.tracks.expect("posições");
+    let seg = &tracks.units.iter().find(|u| u.kind == "player").expect("player").segs[0];
+    let end = seg.t0 + (seg.xy.len() as i64 / 2 - 1) * tracks.step_ms;
+    assert!(seg.t0 <= 15_000 && end >= full.duration_ms - 5_000, "trecho {}..{}", seg.t0, end);
+}

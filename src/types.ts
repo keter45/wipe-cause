@@ -59,6 +59,85 @@ export interface Pull {
   arena?: { cellYd: number; cells: [number, number][] };
   /** casts dos bosses nos trechos dos replays */
   casts?: BossCast[];
+  /** de onde o pull veio no log (para o replay completo); vazio no Warcraft Logs */
+  logFile?: string;
+  logOffset?: number;
+  /** quando cada fase começou */
+  phaseMarks?: PhaseMark[];
+  /** replay completo (só no pull relido sozinho) */
+  fight?: FightData;
+  /** replay completo: orbs no chão e carregados */
+  orbs?: OrbTracks;
+  /** replay completo: áreas das habilidades do boss */
+  areas?: AreaView[];
+}
+
+/** Orbs no replay completo: no chão [de, até, x, y em décimos de jarda, tipo] e carregados [player, de, até, tipo]. */
+export interface OrbTracks {
+  kinds: { name: Loc; volatile: boolean }[];
+  /** distância em que dois orbs se tocam (o raio do roxo mais a folga) */
+  contactYd: number;
+  ground: [number, number, number, number, number][];
+  carries: [string, number, number, number][];
+}
+
+/** Área de uma habilidade do boss: em volta de quem tem um debuff (`aura`) ou de uma unidade (`npc`). */
+export interface AreaView {
+  key: string;
+  name: string;
+  spellId: number | null;
+  aura?: number;
+  npc?: number;
+  radius: number;
+  /** a unidade some depois de tanto tempo sem acertar ninguém perto dela, a partir de `vanishFrom` (ms) */
+  vanishIdleMs?: number;
+  vanishFrom?: number;
+}
+
+/** Começo de uma fase do boss. */
+export interface PhaseMark {
+  t: number;
+  key: string;
+  name: string;
+}
+
+/** Replay completo de um pull: vida, debuffs e eventos de cada player (índices em `players`). */
+/** Defensivo em área no replay completo: onde ficou (coordenadas do mapa), raio e quando. */
+export interface FightZone {
+  t: number;
+  end: number;
+  spellId: number;
+  /** índice em `FightData.players` */
+  caster: number;
+  x: number;
+  y: number;
+  radius: number;
+}
+
+export interface FightData {
+  players: string[];
+  /** nomes de fontes e alvos dos eventos */
+  sources: string[];
+  spells: Record<string, string>;
+  /** spell das regras do boss -> chave da mecânica */
+  ruleSpells: Record<string, string>;
+  /** vida de cada player: [t, %] */
+  hp: [number, number][][];
+  /** [player, spell, início, fim, maior número de stacks, 1 = debuff de inimigo / 0 = defensivo] */
+  auras: [number, number, number, number, number, number][];
+  /** mudanças de stack: [player, spell, t, stacks] (sem entrada, 1 stack; ausente nos replays antigos) */
+  stacks?: [number, number, number, number][];
+  /** [t, tipo, player, spell, valor, fonte/alvo (65535 = nenhum)]; tipos: 0 dano, 1 cura, 2 cast, 3 interrupt, 4 dispel, 5 ressurreição */
+  events: [number, number, number, number, number, number][];
+  /** vida dos bosses: [t, por mil] */
+  bosses: { guid: string; name: string; maxHp: number; hp: [number, number][] }[];
+  /** dano feito somado por segundo: [segundo, player, alvo em sources, valor] */
+  done: [number, number, number, number][];
+  /** cura feita e recebida somadas por segundo: [segundo, player, valor] */
+  healed: [number, number, number][];
+  healIn: [number, number, number][];
+  /** defensivos de raid em área (AMZ, Darkness, Spirit Link...); ausente nos replays antigos */
+  zones?: FightZone[];
 }
 
 /** Cast de um boss: começo, fim (cast com tempo) e para onde ele olhava ao terminar. */
@@ -99,6 +178,8 @@ export interface UnitTrack {
   owner?: string;
   /** fantasma: daqui em diante o caminho foi puxado até onde o log diz que ele estava */
   estimatedFrom?: number;
+  /** unidade de área (machado): passos (t / stepMs) em que o log mostrou onde ela estava; entre um e outro, estimada */
+  seen?: number[];
   /** trechos contínuos: posições a cada `stepMs` a partir de `t0`, em décimos de jarda (x, y, x, y...) */
   segs: { t0: number; xy: number[] }[];
 }

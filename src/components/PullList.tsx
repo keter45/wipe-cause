@@ -3,12 +3,15 @@ import { ChartColumn, ChevronDown, Skull } from 'lucide-react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { groupByBoss } from '../lib/night';
-import { lowestBossHp } from '../lib/verdict';
+import { lowestBossHp, wipeCause } from '../lib/verdict';
+import { mechanicSpellId } from '../lib/spells';
+import { SpellIcon } from './SpellIcon';
 import { useNote } from '../lib/notes';
 import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
 import { useMessages } from '../i18n';
 import { pullListMsg } from './PullList.i18n';
+import { reachedPhase } from '../lib/phases';
 
 const DUNGEONS_OPEN_KEY = 'wipe-cause:dungeons-open';
 
@@ -113,7 +116,12 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
             {isOpen &&
               ps.map((p) => {
                 const hp = lowestBossHp(p);
+                // boss de várias fases: até onde o try chegou (o HP é do boss da primeira fase)
+                const phase = p.success ? null : reachedPhase(p);
                 const deaths = p.deaths.filter((d) => !d.ignored).length;
+                // o que puxou o wipe (o gatilho que explica as mortes); sem causa comum, a caveira com o número
+                const cause = wipeCause(p);
+                const causeSpell = cause ? mechanicSpellId(p, cause.key) : null;
                 const activePull = summary == null && selected === p.id;
                 return (
                   <button
@@ -121,21 +129,27 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
                     className={`pull-row ${p.success ? 'kill' : 'wipe'} ${activePull ? 'active' : ''}`}
                     onClick={() => onSelect(p.id)}
                     aria-current={activePull ? 'page' : undefined}
-                    title={t.pullTitle(p.pullNumber, p.success ? null : pct(hp), mmss(p.durationMs), deaths)}
+                    title={t.pullTitle(p.pullNumber, p.success ? null : pct(hp), mmss(p.durationMs), deaths) + (phase ? t.reached(phase.name) : '') + (cause ? t.cause(cause.name, cause.deaths) : '')}
                   >
                     <span className="pull-num">
                       {p.pullNumber}
                       <NoteDot pull={p} />
                     </span>
-                    <span className="pull-result">{p.success ? 'Kill' : pct(hp)}</span>
-                    {/* progresso até o kill: quanto do HP do boss já foi */}
-                    <span className="pull-meter" aria-hidden>
-                      <span style={{ transform: `scaleX(${p.success ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
+                    <span className={`pull-result ${phase ? 'phase' : ''}`}>{p.success ? 'Kill' : phase ? phase.short : pct(hp)}</span>
+                    {/* progresso até o kill: quanto do HP do boss já foi (em outra fase, a barra cheia na cor da fase) */}
+                    <span className={`pull-meter ${phase ? 'phase' : ''}`} aria-hidden>
+                      <span style={{ transform: `scaleX(${p.success || phase ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
                     </span>
                     <span className="pull-meta">{mmss(p.durationMs)}</span>
                     <span className="pull-deaths">
-                      {deaths}
-                      <Skull size={12} strokeWidth={1.75} aria-label={t.deaths} />
+                      {cause && causeSpell != null ? (
+                        <SpellIcon spellId={causeSpell} size={16} title={t.causeIcon(cause.name, cause.deaths)} hover={false} />
+                      ) : (
+                        <>
+                          {deaths}
+                          <Skull size={12} strokeWidth={1.75} aria-label={t.deaths} />
+                        </>
+                      )}
                     </span>
                   </button>
                 );

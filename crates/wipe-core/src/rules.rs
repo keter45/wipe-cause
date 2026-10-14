@@ -158,6 +158,26 @@ pub struct Detect {
     pub gaze: Option<GazeDetect>,
 }
 
+/// Área de uma habilidade no replay: um círculo de `radius` jardas em volta de cada player com a
+/// aura `aura` (ex.: quem carrega o orb roxo) ou de cada unidade `npc` (ex.: os machados).
+#[derive(Debug, Clone, Deserialize)]
+pub struct AreaSpec {
+    pub aura: Option<u32>,
+    pub npc: Option<u32>,
+    pub radius: f32,
+    /// a unidade some depois de `idle_s` sem acertar ninguém perto dela (a partir da fase `from`)
+    #[serde(default)]
+    pub vanish: Option<VanishSpec>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct VanishSpec {
+    pub idle_s: f32,
+    /// chave da fase a partir da qual vale (sem: o pull todo)
+    #[serde(default)]
+    pub from: Option<String>,
+}
+
 /// Frontal em cone: o cast que o solta e o tamanho.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConeSpec {
@@ -222,6 +242,8 @@ pub struct Mechanic {
     pub ground: Option<GroundSpec>,
     /// replay: frontal do boss desenhado como triângulo, apontado para o alvo do boss durante o cast
     pub cone: Option<ConeSpec>,
+    /// replay completo: área da habilidade (em volta de quem tem um debuff, ou de uma unidade do boss)
+    pub area: Option<AreaSpec>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -279,8 +301,8 @@ pub struct RuleSet {
     /// `scope: global` = vale para todos os encontros
     pub global: bool,
     mechanics: Vec<Value>,
-    /// fases do boss: (key, mecânica cujo cast abre a fase; None = começa no pull)
-    phases: Vec<(String, Option<String>)>,
+    /// fases do boss: (key, nome, mecânica cujo cast abre a fase; None = começa no pull)
+    phases: Vec<(String, String, Option<String>)>,
 }
 
 impl RuleSet {
@@ -297,8 +319,9 @@ impl RuleSet {
                 ps.iter()
                     .filter_map(|p| {
                         let key = p.get("key")?.as_str()?.to_string();
+                        let name = p.get("name").and_then(Value::as_str).unwrap_or(&key).to_string();
                         let cast = p.get("start").and_then(|s| s.get("cast")).and_then(Value::as_str).map(str::to_string);
-                        Some((key, cast))
+                        Some((key, name, cast))
                     })
                     .collect()
             })
@@ -630,8 +653,11 @@ pub struct RuleTracker {
     gaze: Option<(usize, GazeLog)>,
     /// fases do boss (keys), o cast que abre cada uma e a fase atual
     phase_keys: Vec<String>,
+    phase_names: Vec<String>,
     phase_starts: HashMap<u32, usize>,
     phase: usize,
+    /// (t, fase) de cada troca de fase
+    phase_log: Vec<(i64, usize)>,
     /// spell de dano -> (mecânica, ms que a marca fica no chão) para o replay
     ground: HashMap<u32, (usize, i64)>,
 }
@@ -675,8 +701,9 @@ impl RuleTracker {
         let gaze = mechs.iter().position(|m| m.detect.gaze.is_some()).map(|i| (i, GazeLog::default()));
         // fases: o cast que abre cada uma (só as do boss, o primeiro arquivo)
         let phase_keys: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.0.clone()).collect()).unwrap_or_default();
+        let phase_names: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.1.clone()).collect()).unwrap_or_default();
         let mut phase_starts = HashMap::new();
-        for (pi, (_, cast)) in sets.first().map(|s| s.phases.as_slice()).unwrap_or(&[]).iter().enumerate() {
+        for (pi, (_, _, cast)) in sets.first().map(|s| s.phases.as_slice()).unwrap_or(&[]).iter().enumerate() {
             if let Some(id) = cast.as_ref().and_then(|k| mechs.iter().find(|m| &m.key == k)).and_then(|m| m.detect.cast_id) {
                 phase_starts.insert(id, pi);
             }
@@ -691,8 +718,10 @@ impl RuleTracker {
         }
         Ok(RuleTracker {
             phase_keys,
+            phase_names,
             phase_starts,
             phase: 0,
+            phase_log: Vec::new(),
             ground,
             orbs,
             pairing,
@@ -726,6 +755,28 @@ impl RuleTracker {
     }
 
     /// Acerto deste spell marca o chão no replay: (chave, nome da mecânica, ms que a marca fica).
+    /// Quando cada fase começou (a primeira no pull).
+    pub fn phase_marks(&self) -> Vec<crate::report::PhaseMark> {
+        let mark = |t: i64, i: usize| crate::report::PhaseMark { t, key: self.phase_keys[i].clone(), name: self.phase_names[i].clone() };
+        if self.phase_keys.is_empty() {
+            return Vec::new();
+        }
+        std::iter::once(mark(0, 0)).chain(self.phase_log.iter().map(|&(t, i)| mark(t, i))).collect()
+    }
+
+    /// Spells das mecânicas do boss (dano, debuffs, falhas) -> chave da mecânica.
+    pub fn rule_spells(&self) -> std::collections::BTreeMap<u32, String> {
+        let mut out = std::collections::BTreeMap::new();
+        for m in self.mechs.iter().filter(|m| m.kind != MechanicType::Unavoidable) {
+            let d = &m.detect;
+            let ids = d.damage_ids.iter().chain(&d.fail_ids).flatten().copied().chain(d.aura_id).chain(d.aura_ids.iter().copied()).chain(d.soak_aura_id).chain(d.hit_aura_id).chain(d.confirm_aura);
+            for id in ids {
+                out.entry(id).or_insert_with(|| m.key.clone());
+            }
+        }
+        out
+    }
+
     /// Mecânica "de chão" cujo dano é um DoT: marca na aplicação do debuff, não nos ticks.
     pub fn ground_is_dot(&self, spell_id: u32) -> bool {
         self.ground.get(&spell_id).is_some_and(|&(i, _)| matches!(self.mechs[i].ground, Some(GroundSpec::Spec { dot: true, .. })))
@@ -1031,6 +1082,20 @@ impl RuleTracker {
         self
     }
 
+    /// Vida de um inimigo chegou a 0 (orbs: boss que explode os que sobraram no chão).
+    pub fn on_enemy_zero(&mut self, npc_id: Option<u32>, t: i64) {
+        if let (Some((i, log)), Some(npc)) = (&mut self.orbs, npc_id) {
+            if let Some(cfg) = &self.mechs[*i].detect.orbs {
+                log.on_enemy_zero(cfg, npc, t);
+            }
+        }
+    }
+
+    /// Cast que a regra manda interromper (quem solta entra no replay, com a barra de cast).
+    pub fn is_interrupt_cast(&self, spell_id: u32) -> bool {
+        self.mechs.iter().any(|m| m.kind == MechanicType::Interrupt && m.detect.cast_id == Some(spell_id))
+    }
+
     /// Frontal em cone que este cast solta.
     pub fn cone_for(&self, cast_id: u32) -> Option<ConeShape> {
         self.mechs.iter().find_map(|m| m.cone.as_ref().filter(|c| c.cast_id == cast_id).map(|c| ConeShape { half_angle: c.half_angle, range: c.range }))
@@ -1079,10 +1144,14 @@ impl RuleTracker {
 
     /// Cast de uma unidade inimiga com a posição e a direção dela (advanced logging).
     #[allow(clippy::too_many_arguments)]
-    pub fn on_enemy_cast_at(&mut self, spell_id: u32, guid: &str, npc_id: Option<u32>, x: f32, y: f32, facing: f32, t: i64) {
+    /// `target`: alvo do boss (outra direção para o frontal que quebra orbs).
+    pub fn on_enemy_cast_at(&mut self, spell_id: u32, guid: &str, npc_id: Option<u32>, x: f32, y: f32, facing: f32, target: Option<&str>, t: i64) {
         if let Some((i, log)) = &mut self.orbs {
             if let Some(cfg) = &self.mechs[*i].detect.orbs {
                 log.on_enemy_cast(cfg, npc_id, guid, spell_id, x, y, facing, t);
+                if let Some(tg) = target {
+                    log.break_target(t, tg);
+                }
             }
         }
         if let Some((i, log)) = &mut self.gaze {
@@ -1101,9 +1170,59 @@ impl RuleTracker {
         }
     }
 
-    pub fn on_enemy_cast(&mut self, spell_id: u32, source_guid: &str, source: &str, t: i64) {
+    /// Cast de inimigo que pode abrir uma fase (vale mesmo depois do corte de mortes: a lista de
+    /// pulls mostra até onde cada try chegou).
+    pub fn on_phase_cast(&mut self, spell_id: u32, t: i64) {
         if let Some(&p) = self.phase_starts.get(&spell_id) {
-            self.phase = self.phase.max(p);
+            if p > self.phase {
+                self.phase = p;
+                self.phase_log.push((t, p));
+            }
+        }
+    }
+
+    /// Orbs do pull (regra com `orbs`), para o replay completo.
+    pub fn orb_tracks(&self, end: i64) -> Option<crate::report::OrbTracks> {
+        let (i, log) = self.orbs.as_ref()?;
+        Some(crate::orbs::tracks(self.mechs[*i].detect.orbs.as_ref()?, log, end))
+    }
+
+    /// Áreas das habilidades (regras com `area`), para o replay completo.
+    pub fn areas(&self) -> Vec<crate::report::AreaView> {
+        self.mechs
+            .iter()
+            .filter_map(|m| {
+                let a = m.area.as_ref()?;
+                // some sem acertar ninguém: a partir do começo da fase (fase que o pull não alcançou: nunca)
+                let vanish = a.vanish.as_ref().and_then(|v| {
+                    let from = match &v.from {
+                        None => 0,
+                        Some(k) => {
+                            let i = self.phase_keys.iter().position(|p| p == k)?;
+                            self.phase_log.iter().find(|&&(_, p)| p >= i).map(|&(t, _)| t)?
+                        }
+                    };
+                    Some(((v.idle_s * 1000.0) as i64, from))
+                });
+                Some(crate::report::AreaView {
+                    key: m.key.clone(),
+                    name: m.name.clone(),
+                    spell_id: m.detect.damage_ids.iter().flatten().next().copied().or(a.aura).or(m.detect.aura_id),
+                    aura: a.aura,
+                    npc: a.npc,
+                    radius: a.radius,
+                    vanish_idle_ms: vanish.map(|v| v.0),
+                    vanish_from: vanish.map(|v| v.1),
+                })
+            })
+            .collect()
+    }
+
+    pub fn on_enemy_cast(&mut self, spell_id: u32, source_guid: &str, source: &str, t: i64) {
+        if let Some((i, log)) = &mut self.orbs {
+            if let Some(cfg) = &self.mechs[*i].detect.orbs {
+                log.on_cast(cfg, spell_id, t);
+            }
         }
         let Some(hooks) = self.hooks.get(&spell_id) else { return };
         for &(i, hook) in hooks {
@@ -1696,6 +1815,28 @@ fn orb_culprits(m: &Mechanic, st: &mut MechState, log: &OrbLog) {
     let Some(cfg) = &m.detect.orbs else { return };
     for ft in st.fail_times.clone() {
         let Some(c) = crate::orbs::collision(cfg, log, ft) else {
+            // o boss explodiu o que sobrou no chão (orbs novos, troca de fase): faltou limpar no frontal
+            if let Some(left) = crate::orbs::leftovers(cfg, log, ft).filter(|l| l.iter().any(|&n| n > 0)) {
+                let list = |en: bool| {
+                    left.iter()
+                        .zip(&cfg.kinds)
+                        .filter(|(n, _)| **n > 0)
+                        .map(|(n, k)| format!("{} ×{n}", if en { &k.name.en } else { &k.name.pt }))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
+                let (pt, en) = (list(false), list(true));
+                push_event(
+                    st,
+                    ft,
+                    None,
+                    tx!(
+                        "O boss explodiu os orbs que sobraram no chão ({pt}) ao soltar orbs novos ou trocar de fase: o frontal não limpou todos",
+                        "The boss detonated the orbs left on the ground ({en}) when dropping new orbs or changing phase: the frontal didn't clear them all"
+                    ),
+                );
+                continue;
+            }
             push_event(
                 st,
                 ft,
@@ -2065,7 +2206,7 @@ mechanics:
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
         let mut tr = RuleTracker::new(&[&set], 16).unwrap();
         assert!(tr.wants_positions());
-        tr.on_enemy_cast_at(5, "G1", Some(2), 0.0, 0.0, 0.0, 100); // verde parado em (0,0)
+        tr.on_enemy_cast_at(5, "G1", Some(2), 0.0, 0.0, 0.0, None, 100); // verde parado em (0,0)
         // Alice pega o roxo e anda até 3 jardas do verde
         for (i, t) in (1_000..=4_000).step_by(250).enumerate() {
             tr.on_player_pos("A", 30.0 - i as f32 * 2.25, 0.0, 0.0, t);

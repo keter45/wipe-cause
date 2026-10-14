@@ -55,6 +55,11 @@ impl Trails {
         }
     }
 
+    /// Unidades com posição no pull.
+    pub fn guids(&self) -> impl Iterator<Item = &String> {
+        self.units.keys()
+    }
+
     /// Inimigo morto: some do replay a partir daqui.
     pub fn on_enemy_died(&mut self, guid: &str, t: i64) {
         if let Some(u) = self.units.get_mut(guid) {
@@ -87,7 +92,9 @@ impl Trails {
 
     /// Posições nos trechos de todos os replays, num passo fixo. `keep`: inimigos que entram mesmo
     /// sem HP de boss (quem solta um frontal, ex.: o Weakened Doomscale da Ula'tek).
-    pub fn build(&self, replays: &[&ReplayRef], keep: &HashSet<String>) -> Option<PullTracks> {
+    /// `keep`: inimigos que entram mesmo sem HP de boss; `seen_for`: os que levam os momentos em que
+    /// o log os viu (`UnitTrack.seen`).
+    pub fn build(&self, replays: &[&ReplayRef], keep: &HashSet<String>, seen_for: &HashSet<String>) -> Option<PullTracks> {
         let windows = merge(replays.iter().map(|r| (r.from, r.to)).collect());
         if windows.is_empty() {
             return None;
@@ -107,7 +114,8 @@ impl Trails {
             .into_iter()
             .filter_map(|(guid, u)| {
                 let segs: Vec<TrackSeg> = windows.iter().flat_map(|&(a, b)| sample(u, a, b)).collect();
-                (!segs.is_empty()).then(|| UnitTrack { guid: guid.clone(), name: u.name.clone(), kind: if u.enemy { "enemy" } else { "player" }.into(), segs, owner: None, estimated_from: None })
+                let seen = seen_for.contains(guid).then(|| seen_steps(u, &windows));
+                (!segs.is_empty()).then(|| UnitTrack { guid: guid.clone(), name: u.name.clone(), kind: if u.enemy { "enemy" } else { "player" }.into(), segs, owner: None, estimated_from: None, seen })
             })
             .collect();
         if units.iter().all(|u| u.kind == "enemy") {
@@ -145,9 +153,25 @@ pub fn ghost_tracks(paths: &[GhostPath], replays: &[&ReplayRef], name: &str) -> 
                 segs: vec![TrackSeg { t0, xy }],
                 owner: Some(p.owner.clone()),
                 estimated_from: p.estimated_from,
+                seen: None,
             }
         })
         .collect()
+}
+
+/// Passos (t / STEP_MS) com uma posição de verdade da unidade dentro das janelas, sem repetir.
+fn seen_steps(u: &Unit, windows: &[(i64, i64)]) -> Vec<u32> {
+    let mut out: Vec<u32> = Vec::new();
+    for &(t, ..) in &u.pts {
+        if !windows.iter().any(|&(a, b)| t >= a && t <= b) {
+            continue;
+        }
+        let s = ((t + STEP_MS / 2) / STEP_MS) as u32;
+        if out.last() != Some(&s) {
+            out.push(s);
+        }
+    }
+    out
 }
 
 /// Trechos de `[a, b]` em que a unidade tem posição (antes da primeira e depois de morrer, nada).
@@ -224,7 +248,7 @@ mod tests {
         tr.on_pos("A1", "Add", true, 100, 5.0, 5.0, 0); // HP pequeno: fica de fora
         let r1 = around(20_000, AFTER_MS, vec!["P1".into()]);
         let r2 = around(30_000, AFTER_MS, vec![]);
-        let out = tr.build(&[&r1, &r2], &HashSet::new()).unwrap();
+        let out = tr.build(&[&r1, &r2], &HashSet::new(), &HashSet::new()).unwrap();
         assert_eq!(out.units.iter().map(|u| u.guid.as_str()).collect::<Vec<_>>(), ["B1", "P1"]);
         let p = out.units.iter().find(|u| u.guid == "P1").unwrap();
         // 5s..22s e 15s..32s viram um trecho só: 5s..32s
@@ -242,7 +266,7 @@ mod tests {
             tr.on_pos("B1", "Boss", true, 10_000, 1.0, 1.0, t);
         }
         tr.on_enemy_died("B1", 10_000);
-        let out = tr.build(&[&around(15_000, AFTER_MS, vec![])], &HashSet::new()).unwrap();
+        let out = tr.build(&[&around(15_000, AFTER_MS, vec![])], &HashSet::new(), &HashSet::new()).unwrap();
         let b = out.units.iter().find(|u| u.guid == "B1").unwrap();
         assert_eq!(b.segs[0].t0 + (b.segs[0].xy.len() as i64 / 2 - 1) * STEP_MS, 10_000);
     }
