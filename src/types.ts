@@ -71,6 +71,10 @@ export interface BossCast {
   /** radianos, no mesmo sistema das posições */
   facing?: number;
   interrupted?: boolean;
+  /** frontal em cone (regra do boss): meio ângulo em graus e alcance em jardas */
+  cone?: { halfAngle: number; range: number };
+  /** frontal: o alvo do boss (o cone aponta para ele durante o cast); sem alvo, vale `facing` */
+  target?: string;
 }
 
 /** Marcas no chão: o log não mostra poças nem gotas, só onde estava quem foi atingido. */
@@ -89,7 +93,12 @@ export interface PullTracks {
 export interface UnitTrack {
   guid: string;
   name: string;
-  kind: 'player' | 'enemy';
+  /** ghost: caminho simulado de um fantasma que persegue um player (ver gaze.rs) */
+  kind: 'player' | 'enemy' | 'ghost';
+  /** fantasma: o player que ele persegue */
+  owner?: string;
+  /** fantasma: daqui em diante o caminho foi puxado até onde o log diz que ele estava */
+  estimatedFrom?: number;
   /** trechos contínuos: posições a cada `stepMs` a partir de `t0`, em décimos de jarda (x, y, x, y...) */
   segs: { t0: number; xy: number[] }[];
 }

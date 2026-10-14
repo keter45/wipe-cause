@@ -155,6 +155,7 @@ mechanics:
     roles: [healer, dps]
     severity: major
     detect: { damage_ids: [1299684], aura_id: 1301690, cast_id: 1299684 }
+    cone: { cast_id: 1299684, half_angle: 40, range: 40 }   # quebra os orbs no cone (mesmo tamanho do breaker); aponta para o alvo do boss
     tip: { pt: "Só o tank no frontal; ele é mirado nos orbs.", en: "Only the tank in the frontal; it is aimed at the orbs." }
     message: { pt: "{player} foi atingido pelo Sever ({count}x)", en: "{player} was hit by Sever ({count}x)" }
     notes: "Pull 3 de 28/09: Sever matou 3 não-tanks de uma vez."
@@ -251,8 +252,36 @@ mechanics:
     detect: { aura_id: 1285911 }
     tip: { pt: "Olhar para o seu fantasma para ele parar; não mover fantasma. No Mythic, dois fantasmas se encostando matam os dois alvos.", en: "Look at your ghost so it stops; don't move the ghost. On Mythic, two ghosts touching kill both targets." }
     message: { pt: "Manifestation of Dread", en: "Manifestation of Dread" }
-    notes: "Fantasma que alcança o alvo aplica Dreadmarch. Colisão de fantasmas no Mythic: ID ainda não visto em log."
-    needs_id: true
+    notes: "Fantasma que alcança o alvo aplica Dreadmarch. Colisão de fantasmas no Mythic: regra dread_collision."
+
+  # Dois fantasmas que se encostam: Malevolent Resonance nos dois alvos (quase sempre mata os
+  # dois). O fantasma só anda com o alvo de costas para ele.
+  - key: dread_collision
+    name: "Malevolent Resonance (ghosts touching)"
+    type: failure_event
+    source_unit: manifestation
+    difficulty: [mythic]
+    severity: major
+    detect:
+      fail_ids: [1312132]         # Malevolent Resonance (dano nos alvos)
+      confirm_aura: 1310744       # só o hit que aplica o debuff; o do fim dele (1s depois) não
+      gaze:
+        fixate_aura: 1285911      # Unnerving Fixation: fantasma -> alvo
+        fixate_cast: 1285911      # o cast mostra onde o fantasma começa a perseguir
+        hit_aura: 1310744         # Malevolent Resonance: os alvos dos dois fantasmas
+        half_angle: 45
+        window_ms: 5000
+        # caminho de cada fantasma no replay (calibrado nos alcances e colisões de 22/09 a 13/10)
+        sim: { name: "Manifestation of Dread", speed: 4, half_angle: 35, delay_ms: 2500, stun_ms: 1500, catch_aura: 1297445 }
+    tip: { pt: "Olhar para o próprio fantasma o tempo todo; de costas ele anda e, se encostar em outro, mata os dois alvos.", en: "Keep looking at your own ghost; with your back turned it walks, and if it touches another one it kills both targets." }
+    message: { pt: "{count} colisão(ões) de fantasmas (Malevolent Resonance)", en: "{count} ghost collision(s) (Malevolent Resonance)" }
+    notes: >
+      O log só mostra onde o fantasma começa a perseguir (cast de Unnerving Fixation) e de quem
+      ele é (a aura). Olhando, ele fica parado ali; de costas, ele vem em linha reta até o player,
+      então a direção até o ponto de início serve para saber se o player olhava. Culpado = alvo
+      de costas (fora de 45°) em pelo menos metade dos 5s antes da colisão. Calibrado em 9
+      colisões de 13/10: em 6 um dos dois (ou os dois) estava de costas quase o tempo todo.
+      Debuff em um só player = os dois fantasmas eram dele, ou o outro alvo morreu/estava imune.
 
   - key: soul_sever
     name: "Soul Sever"
@@ -261,6 +290,7 @@ mechanics:
     roles: [healer, dps]
     severity: major
     detect: { damage_ids: [1286620], aura_id: 1307959 }
+    cone: { cast_id: 1286620, half_angle: 30, range: 45, target_spells: [1307184] }   # limpa os fantasmas; mira no alvo (Malacrass não bate corpo a corpo: o Dread Bolt mostra o alvo)
     tip: { pt: "Só o tank no frontal; ele é mirado nos fantasmas.", en: "Only the tank in the frontal; it is aimed at the ghosts." }
     message: { pt: "{player} foi atingido pelo Soul Sever", en: "{player} was hit by Soul Sever" }
 
@@ -414,6 +444,7 @@ mechanics:
     roles: [healer, dps]
     severity: major
     detect: { damage_ids: [1307292], aura_id: 1307403 }
+    cone: { cast_id: 1307292, half_angle: 40, range: 40 }   # orbs e fantasmas; tamanho do Sever (sem log Mythic da P3 ainda)
     tip: { pt: "Só o tank no frontal; ele quebra orbs e fantasmas juntos.", en: "Only the tank in the frontal; it breaks orbs and ghosts together." }
     message: { pt: "{player} foi atingido pelo Blighted Sever", en: "{player} was hit by Blighted Sever" }
 

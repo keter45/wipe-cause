@@ -6,9 +6,13 @@ import type { BossCast, Death, LegacyPairReplay, MechanicResult, Pull, PullGroun
 export interface ReplayUnit {
   guid: string;
   name: string;
-  kind: 'player' | 'enemy';
+  kind: 'player' | 'enemy' | 'ghost';
   /** [t, x, y] em ordem (jardas) */
   pts: [number, number, number][];
+  /** fantasma: o player que ele persegue */
+  owner?: string;
+  /** fantasma: daqui em diante o caminho é estimado */
+  estimatedFrom?: number;
 }
 
 export type GroundKind = PullGround['kinds'][number];
@@ -52,7 +56,7 @@ function decodeTracks(tracks: PullTracks | undefined | null): Map<string, Replay
     for (const s of u.segs) {
       for (let i = 0; i + 1 < s.xy.length; i += 2) pts.push([s.t0 + (i / 2) * tracks.stepMs, s.xy[i] / 10, s.xy[i + 1] / 10]);
     }
-    out.set(u.guid, { guid: u.guid, name: u.name, kind: u.kind, pts });
+    out.set(u.guid, { guid: u.guid, name: u.name, kind: u.kind, pts, owner: u.owner, estimatedFrom: u.estimatedFrom });
   }
   return out;
 }
@@ -78,14 +82,14 @@ export function fromLegacy(r: LegacyPairReplay, t: number): { data: ReplayData; 
 
 /**
  * Posição em `t`, em linha reta entre as amostras. Antes da primeira: nada (ainda não apareceu);
- * depois da última: a última para players (corpo), nada para inimigos (morreu).
+ * depois da última: a última para players (corpo), nada para inimigos (morreu) e fantasmas (sumiu).
  */
 export function posAt(u: ReplayUnit, t: number, slackMs = 300): [number, number] | null {
   const p = u.pts;
   if (p.length === 0 || t < p[0][0] - slackMs) return null;
   if (t <= p[0][0]) return [p[0][1], p[0][2]];
   const last = p[p.length - 1];
-  if (t >= last[0]) return u.kind === 'enemy' && t > last[0] + slackMs ? null : [last[1], last[2]];
+  if (t >= last[0]) return u.kind !== 'player' && t > last[0] + slackMs ? null : [last[1], last[2]];
   let lo = 0;
   let hi = p.length - 1;
   while (hi - lo > 1) {
@@ -97,6 +101,17 @@ export function posAt(u: ReplayUnit, t: number, slackMs = 300): [number, number]
   const [t1, x1, y1] = p[hi];
   const k = t1 > t0 ? (t - t0) / (t1 - t0) : 0;
   return [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k];
+}
+
+/** Jardas que a unidade andou do começo do caminho até `t`. */
+export function movedUntil(u: ReplayUnit, t: number): number {
+  let d = 0;
+  const p = u.pts;
+  for (let i = 1; i < p.length && p[i - 1][0] < t; i++) {
+    const k = p[i][0] <= t ? 1 : (t - p[i - 1][0]) / (p[i][0] - p[i - 1][0]);
+    d += Math.hypot(p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]) * k;
+  }
+  return d;
 }
 
 /** Valor da série [t, v] em `t` (o último até ali), ou null antes do primeiro. */

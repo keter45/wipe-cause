@@ -3,10 +3,11 @@
 //! Formato documentado em `.claude/skills/boss-rules/references/schema.md`.
 
 use crate::i18n::Text;
+use crate::gaze::{GazeDetect, GazeLog};
 use crate::orbs::{OrbDetect, OrbLog};
 use crate::pairing::{PairDetect, PairLog};
 use crate::tx;
-use crate::report::{CastOutcome, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PairFault, PhaseWindow, PlayerStackOrigins, Positions, ReplayMark, ReplayRef, StackOrigin};
+use crate::report::{CastOutcome, ConeShape, DispelOutcome, MechanicEvent, MechanicPlayer, MechanicResult, PairFault, PhaseWindow, PlayerStackOrigins, Positions, ReplayMark, ReplayRef, StackOrigin};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
@@ -152,6 +153,21 @@ pub struct Detect {
     /// failure_event: debuff que os players somam encostando um no outro (ex.: Helical Toxins);
     /// a falha é o encontro com soma errada (ver `pairing.rs`)
     pub pairing: Option<PairDetect>,
+    /// failure_event: fantasmas que só param com o alvo olhando para eles; o culpado da colisão é
+    /// quem ficou de costas para o próprio fantasma (ver `gaze.rs`)
+    pub gaze: Option<GazeDetect>,
+}
+
+/// Frontal em cone: o cast que o solta e o tamanho.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConeSpec {
+    pub cast_id: u32,
+    /// meio ângulo (graus) e alcance (jardas)
+    pub half_angle: f32,
+    pub range: f32,
+    /// spells do boss que só vão no alvo dele (marcam quem é o alvo, para boss que não bate corpo a corpo)
+    #[serde(default)]
+    pub target_spells: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -204,6 +220,8 @@ pub struct Mechanic {
     /// replay: cada acerto marca o chão onde a vítima estava (gota, poça, soak, projétil). Sem o
     /// campo, vale para dano evitável, soak, posicionamento e spread; `false` desliga.
     pub ground: Option<GroundSpec>,
+    /// replay: frontal do boss desenhado como cone no fim do cast (mirado em quem ele acertou)
+    pub cone: Option<ConeSpec>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -585,6 +603,8 @@ pub struct RuleTracker {
     orbs: Option<(usize, OrbLog)>,
     /// mecânica com `pairing` (só uma por pull) e os stacks e posições de quem teve o debuff
     pairing: Option<(usize, PairLog)>,
+    /// mecânica com `gaze` (só uma por pull): fixações, posições e direção de cada player
+    gaze: Option<(usize, GazeLog)>,
     /// spell de dano -> (mecânica, ms que a marca fica no chão) para o replay
     ground: HashMap<u32, (usize, i64)>,
 }
@@ -625,6 +645,7 @@ impl RuleTracker {
             .collect();
         let orbs = mechs.iter().position(|m| m.detect.orbs.is_some()).map(|i| (i, OrbLog::default()));
         let pairing = mechs.iter().position(|m| m.detect.pairing.is_some()).map(|i| (i, PairLog::default()));
+        let gaze = mechs.iter().position(|m| m.detect.gaze.is_some()).map(|i| (i, GazeLog::default()));
         let mut ground = HashMap::new();
         for (i, m) in mechs.iter().enumerate() {
             if let Some(ms) = m.ground_linger_ms() {
@@ -637,6 +658,7 @@ impl RuleTracker {
             ground,
             orbs,
             pairing,
+            gaze,
             files,
             mechs,
             state,
@@ -958,12 +980,33 @@ impl RuleTracker {
         self
     }
 
-    /// A análise precisa da posição dos players a cada instante (orbs carregados)?
-    pub fn wants_positions(&self) -> bool {
-        self.orbs.is_some() || self.pairing.is_some()
+    /// Frontal em cone que este cast solta.
+    pub fn cone_for(&self, cast_id: u32) -> Option<ConeShape> {
+        self.mechs.iter().find_map(|m| m.cone.as_ref().filter(|c| c.cast_id == cast_id).map(|c| ConeShape { half_angle: c.half_angle, range: c.range }))
     }
 
-    pub fn on_player_pos(&mut self, guid: &str, x: f32, y: f32, t: i64) {
+    /// Spell que o boss só usa no alvo dele (mostra quem é o alvo do frontal).
+    pub fn is_target_spell(&self, spell_id: u32) -> bool {
+        self.mechs.iter().any(|m| m.cone.as_ref().is_some_and(|c| c.target_spells.contains(&spell_id)))
+    }
+
+    /// Caminho simulado de cada fantasma (mecânica com `gaze.sim`), para o replay: (nome, caminhos).
+    pub fn ghost_paths(&self) -> Option<(String, Vec<crate::gaze::GhostPath>)> {
+        let (i, log) = self.gaze.as_ref()?;
+        let cfg = self.mechs[*i].detect.gaze.as_ref()?;
+        let paths = crate::gaze::paths(cfg, log, &self.state[*i].fail_times);
+        (!paths.is_empty()).then(|| (cfg.sim.as_ref().map_or(String::new(), |s| s.name.clone()), paths))
+    }
+
+    /// A análise precisa da posição dos players a cada instante (orbs carregados)?
+    pub fn wants_positions(&self) -> bool {
+        self.orbs.is_some() || self.pairing.is_some() || self.gaze.is_some()
+    }
+
+    pub fn on_player_pos(&mut self, guid: &str, x: f32, y: f32, facing: f32, t: i64) {
+        if let Some((_, log)) = &mut self.gaze {
+            log.on_player_pos(guid, x, y, facing, t);
+        }
         if let Some((_, log)) = &mut self.orbs {
             log.on_player_pos(guid, x, y, t);
         }
@@ -989,6 +1032,20 @@ impl RuleTracker {
         if let Some((i, log)) = &mut self.orbs {
             if let Some(cfg) = &self.mechs[*i].detect.orbs {
                 log.on_enemy_cast(cfg, npc_id, guid, spell_id, x, y, facing, t);
+            }
+        }
+        if let Some((i, log)) = &mut self.gaze {
+            if let Some(cfg) = &self.mechs[*i].detect.gaze {
+                log.on_enemy_cast(cfg, guid, spell_id, x, y);
+            }
+        }
+    }
+
+    /// Aura aplicada ou removida num player, com quem aplicou (a fixação de um fantasma).
+    pub fn on_aura_from(&mut self, source: &str, spell_id: u32, guid: &str, name: &str, applied: bool, t: i64) {
+        if let Some((i, log)) = &mut self.gaze {
+            if let Some(cfg) = &self.mechs[*i].detect.gaze {
+                log.on_aura(cfg, source, spell_id, guid, name, applied, t);
             }
         }
     }
@@ -1085,6 +1142,9 @@ impl RuleTracker {
         }
         if let Some((i, log)) = &self.pairing {
             pair_culprits(&self.mechs[*i], &mut state[*i], log);
+        }
+        if let Some((i, log)) = &self.gaze {
+            gaze_culprits(&self.mechs[*i], &mut state[*i], log);
         }
         // acertos pela aura que a aura de confirmação mudou junto
         let mut touches = self.touches;
@@ -1526,6 +1586,57 @@ fn dispel_summary(name: &str, failures: u32, dispels: &[DispelOutcome]) -> Text 
     tx!("{failures} de {total} {name} sem dispel a tempo{avg_pt}", "{failures} of {total} {name} not dispelled in time{avg_en}")
 }
 
+/// Colisão de fantasmas: quem ficou de costas para o próprio fantasma nos segundos antes.
+fn gaze_culprits(m: &Mechanic, st: &mut MechState, log: &GazeLog) {
+    let Some(cfg) = &m.detect.gaze else { return };
+    let short = |g: &str| {
+        let n = log.name(g);
+        n.split('-').next().unwrap_or(n).to_string()
+    };
+    for ft in st.fail_times.clone() {
+        let victims = crate::gaze::judge(cfg, log, ft);
+        if victims.is_empty() {
+            push_event(st, ft, None, tx!("O debuff não chegou nos alvos: não dá para saber de quem eram os fantasmas", "The debuff didn't land on the targets: no way to tell whose ghosts they were"));
+            continue;
+        }
+        for v in &victims {
+            let me = short(&v.guid);
+            let others: Vec<String> = victims.iter().filter(|o| o.guid != v.guid).map(|o| short(&o.guid)).collect();
+            let other = others.join(" + ");
+            let (away_pt, away_en) = (fmt_secs(v.away_ms as f64 / 1000.0, false), fmt_secs(v.away_ms as f64 / 1000.0, true));
+            let (win_pt, win_en) = (fmt_secs(v.window_ms as f64 / 1000.0, false), fmt_secs(v.window_ms as f64 / 1000.0, true));
+            let name = log.name(&v.guid).to_string();
+            let text = match (v.culprit, others.is_empty()) {
+                (Some(true), false) => tx!(
+                    "{me} ficou de costas para o próprio fantasma {away_pt} dos {win_pt} antes de ele encostar no de {other}",
+                    "{me} had their back to their own ghost for {away_en} of the {win_en} before it touched {other}'s"
+                ),
+                (Some(true), true) => tx!(
+                    "{me} ficou de costas para o próprio fantasma {away_pt} dos {win_pt} antes de ele encostar em outro",
+                    "{me} had their back to their own ghost for {away_en} of the {win_en} before it touched another one"
+                ),
+                (Some(false), _) => tx!("{me} olhava para o próprio fantasma (de costas só {away_pt} dos {win_pt})", "{me} was looking at their own ghost (back turned only {away_en} of the {win_en})"),
+                (None, _) => tx!("{me}: sem dados de para onde olhava", "{me}: no data on where they were facing"),
+            };
+            if v.culprit == Some(true) {
+                let blame = if others.is_empty() {
+                    tx!("ficou de costas para o fantasma {away_pt} dos {win_pt} antes da colisão", "had their back to their ghost for {away_en} of the {win_en} before the collision")
+                } else {
+                    tx!("ficou de costas para o fantasma {away_pt} dos {win_pt} antes de ele encostar no de {other}", "had their back to their ghost for {away_en} of the {win_en} before it touched {other}'s")
+                };
+                bump(&mut st.players, &v.guid, &name, 0, ft);
+                st.blame_texts.entry(v.guid.clone()).or_insert(blame);
+                push_event(st, ft, Some(&name), text);
+            } else {
+                push_event(st, ft, None, text);
+            }
+        }
+        if victims.iter().all(|v| v.culprit != Some(true)) {
+            push_event(st, ft, None, tx!("Ninguém ficou de costas para o fantasma por muito tempo: sem culpado claro", "Nobody had their back to their ghost for long: no clear culprit"));
+        }
+    }
+}
+
 /// Explosão de orb: quem levou um orb até outro parado no chão logo antes de cada falha.
 fn orb_culprits(m: &Mechanic, st: &mut MechState, log: &OrbLog) {
     let Some(cfg) = &m.detect.orbs else { return };
@@ -1863,7 +1974,7 @@ mechanics:
             for t in (0..=5_000).step_by(250) {
                 // Alice anda de (0,0) até Bob em (0,20); os outros ficam parados
                 let y = if g == "A" { 19.0 * t as f32 / 5_000.0 } else { y };
-                tr.on_player_pos(g, 0.0, y, t);
+                tr.on_player_pos(g, 0.0, y, 0.0, t);
             }
         }
         tr.on_aura(10, "A", "Alice-R", 6, true, 5_000);
@@ -1903,7 +2014,7 @@ mechanics:
         tr.on_enemy_cast_at(5, "G1", Some(2), 0.0, 0.0, 0.0, 100); // verde parado em (0,0)
         // Alice pega o roxo e anda até 3 jardas do verde
         for (i, t) in (1_000..=4_000).step_by(250).enumerate() {
-            tr.on_player_pos("A", 30.0 - i as f32 * 2.25, 0.0, t);
+            tr.on_player_pos("A", 30.0 - i as f32 * 2.25, 0.0, 0.0, t);
         }
         tr.on_aura(10, "A", "Alice-R", 1, true, 1_000);
         // explosão: aplica o DoT e bate gigante; o tick seguinte do DoT não é outra explosão

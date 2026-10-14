@@ -2,6 +2,7 @@
 
 pub mod analysis;
 pub mod data;
+pub mod gaze;
 pub mod i18n;
 pub mod orbs;
 pub mod pairing;

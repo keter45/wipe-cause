@@ -6,6 +6,7 @@
 //! (momento, janela, quem acompanhar, stacks, acertos) e `Trails::build` amostra as posições nos
 //! trechos pedidos, num passo fixo, para o `Pull.tracks`.
 
+use crate::gaze::GhostPath;
 use crate::orbs::pos_at;
 use crate::report::{Arena, PullTracks, ReplayRef, StackLine, TrackSeg, UnitTrack};
 use std::collections::HashMap;
@@ -100,7 +101,7 @@ impl Trails {
             .into_iter()
             .filter_map(|(guid, u)| {
                 let segs: Vec<TrackSeg> = windows.iter().flat_map(|&(a, b)| sample(u, a, b)).collect();
-                (!segs.is_empty()).then(|| UnitTrack { guid: guid.clone(), name: u.name.clone(), kind: if u.enemy { "enemy" } else { "player" }.into(), segs })
+                (!segs.is_empty()).then(|| UnitTrack { guid: guid.clone(), name: u.name.clone(), kind: if u.enemy { "enemy" } else { "player" }.into(), segs, owner: None, estimated_from: None })
             })
             .collect();
         if units.iter().all(|u| u.kind == "enemy") {
@@ -109,6 +110,38 @@ impl Trails {
         units.sort_by(|a, b| a.guid.cmp(&b.guid));
         Some(PullTracks { step_ms: STEP_MS, units })
     }
+}
+
+/// Fantasmas (caminho simulado) que aparecem em algum replay: a vida inteira de cada um, para o
+/// replay mostrar quanto ele já tinha andado.
+pub fn ghost_tracks(paths: &[GhostPath], replays: &[&ReplayRef], name: &str) -> Vec<UnitTrack> {
+    paths
+        .iter()
+        .filter(|p| {
+            let (Some(a), Some(b)) = (p.pts.first(), p.pts.last()) else { return false };
+            replays.iter().any(|r| a.0 <= r.to && b.0 >= r.from)
+        })
+        .map(|p| {
+            let t0 = (p.pts[0].0 + STEP_MS - 1) / STEP_MS * STEP_MS;
+            let end = p.pts[p.pts.len() - 1].0;
+            let mut xy = Vec::new();
+            let mut t = t0;
+            while t <= end {
+                let i = p.pts.partition_point(|q| q.0 <= t).saturating_sub(1);
+                xy.push((p.pts[i].1 * 10.0).round() as i32);
+                xy.push((p.pts[i].2 * 10.0).round() as i32);
+                t += STEP_MS;
+            }
+            UnitTrack {
+                guid: p.ghost.clone(),
+                name: name.to_string(),
+                kind: "ghost".into(),
+                segs: vec![TrackSeg { t0, xy }],
+                owner: Some(p.owner.clone()),
+                estimated_from: p.estimated_from,
+            }
+        })
+        .collect()
 }
 
 /// Trechos de `[a, b]` em que a unidade tem posição (antes da primeira e depois de morrer, nada).
