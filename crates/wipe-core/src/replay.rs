@@ -9,7 +9,7 @@
 use crate::gaze::GhostPath;
 use crate::orbs::pos_at;
 use crate::report::{Arena, PullTracks, ReplayRef, StackLine, TrackSeg, UnitTrack};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Segundos antes do momento que o replay mostra, e depois (falha de mecânica / morte).
 pub const BEFORE_MS: i64 = 15_000;
@@ -85,8 +85,9 @@ impl Trails {
         (!cells.is_empty()).then_some(Arena { cell_yd: ARENA_CELL_YD, cells })
     }
 
-    /// Posições nos trechos de todos os replays, num passo fixo.
-    pub fn build(&self, replays: &[&ReplayRef]) -> Option<PullTracks> {
+    /// Posições nos trechos de todos os replays, num passo fixo. `keep`: inimigos que entram mesmo
+    /// sem HP de boss (quem solta um frontal, ex.: o Weakened Doomscale da Ula'tek).
+    pub fn build(&self, replays: &[&ReplayRef], keep: &HashSet<String>) -> Option<PullTracks> {
         let windows = merge(replays.iter().map(|r| (r.from, r.to)).collect());
         if windows.is_empty() {
             return None;
@@ -97,6 +98,11 @@ impl Trails {
         enemies.sort_by_key(|(_, u)| std::cmp::Reverse(u.max_hp));
         let mut chosen: Vec<(&String, &Unit)> = self.units.iter().filter(|(_, u)| !u.enemy).collect();
         chosen.extend(enemies.into_iter().take(MAX_ENEMIES));
+        for (g, u) in self.units.iter().filter(|(g, u)| u.enemy && keep.contains(*g)) {
+            if !chosen.iter().any(|(c, _)| *c == g) {
+                chosen.push((g, u));
+            }
+        }
         let mut units: Vec<UnitTrack> = chosen
             .into_iter()
             .filter_map(|(guid, u)| {
@@ -218,7 +224,7 @@ mod tests {
         tr.on_pos("A1", "Add", true, 100, 5.0, 5.0, 0); // HP pequeno: fica de fora
         let r1 = around(20_000, AFTER_MS, vec!["P1".into()]);
         let r2 = around(30_000, AFTER_MS, vec![]);
-        let out = tr.build(&[&r1, &r2]).unwrap();
+        let out = tr.build(&[&r1, &r2], &HashSet::new()).unwrap();
         assert_eq!(out.units.iter().map(|u| u.guid.as_str()).collect::<Vec<_>>(), ["B1", "P1"]);
         let p = out.units.iter().find(|u| u.guid == "P1").unwrap();
         // 5s..22s e 15s..32s viram um trecho só: 5s..32s
@@ -236,7 +242,7 @@ mod tests {
             tr.on_pos("B1", "Boss", true, 10_000, 1.0, 1.0, t);
         }
         tr.on_enemy_died("B1", 10_000);
-        let out = tr.build(&[&around(15_000, AFTER_MS, vec![])]).unwrap();
+        let out = tr.build(&[&around(15_000, AFTER_MS, vec![])], &HashSet::new()).unwrap();
         let b = out.units.iter().find(|u| u.guid == "B1").unwrap();
         assert_eq!(b.segs[0].t0 + (b.segs[0].xy.len() as i64 / 2 - 1) * STEP_MS, 10_000);
     }

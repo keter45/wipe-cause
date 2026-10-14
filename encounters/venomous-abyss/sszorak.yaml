@@ -103,6 +103,7 @@ mechanics:
     roles: [healer, dps]
     severity: major
     detect: { damage_ids: [1277101] }
+    cone: { cast_id: 1277002, half_angle: 20, range: 50 }   # estreito e longo: 97% dos atingidos a até 18°, até 50 jd (17/09)
     tip: { pt: "Tank aponta o Ravage para longe; ninguém além do tank no cone.", en: "The tank aims Ravage away; nobody but the tank in the cone." }
     message: { pt: "{player} foi pego pelo Ravage ({count}x)", en: "{player} was caught by Ravage ({count}x)" }
 

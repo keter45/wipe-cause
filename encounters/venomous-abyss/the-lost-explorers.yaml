@@ -91,6 +91,7 @@ mechanics:
     source_unit: nama
     severity: none
     detect: { damage_ids: [1300237, 1310500], cast_id: 1296095 }
+    ground: true   # os três círculos de soak (10-14 players por golpe) e o Aftershock
     tip: { pt: "Dividir o raid entre os três círculos de soak.", en: "Split the raid across the three soak circles." }
     message: { pt: "Mighty Thud", en: "Mighty Thud" }
     notes: "Sem ID de falha no log (não viu círculo sem soak)."
@@ -160,6 +161,7 @@ mechanics:
     source_unit: iku
     severity: none
     detect: { damage_ids: [1297648, 1297649] }
+    ground: true   # as poças de fogo e gelo
     tip: { pt: "Entrar numa poça oposta limpa o DoT: o dano é esperado.", en: "Stepping into an opposite pool clears the DoT: the damage is expected." }
     message: { pt: "Fire / Frost Patch", en: "Fire / Frost Patch" }
 

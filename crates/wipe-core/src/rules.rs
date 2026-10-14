@@ -220,7 +220,7 @@ pub struct Mechanic {
     /// replay: cada acerto marca o chão onde a vítima estava (gota, poça, soak, projétil). Sem o
     /// campo, vale para dano evitável, soak, posicionamento e spread; `false` desliga.
     pub ground: Option<GroundSpec>,
-    /// replay: frontal do boss desenhado como cone no fim do cast (mirado em quem ele acertou)
+    /// replay: frontal do boss desenhado como triângulo, apontado para o alvo do boss durante o cast
     pub cone: Option<ConeSpec>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
@@ -243,6 +243,13 @@ pub enum GroundSpec {
     Spec {
         /// segundos que a marca fica no chão (poça que dura; gota some logo)
         lingers_s: Option<f64>,
+        /// só nestas fases (keys de `phases`); vazio = o pull todo. Ex.: Axegrinder só tem machado no chão na P1
+        #[serde(default)]
+        phases: Vec<String>,
+        /// o dano é um DoT que segue o player: os ticks não marcam o chão, só a aplicação do
+        /// debuff (de mesmo ID), onde ele encostou na coisa
+        #[serde(default)]
+        dot: bool,
     },
 }
 
@@ -256,7 +263,7 @@ impl Mechanic {
         match &self.ground {
             Some(GroundSpec::On(false)) => None,
             Some(GroundSpec::On(true)) => Some(GROUND_LINGER_MS),
-            Some(GroundSpec::Spec { lingers_s }) => Some(lingers_s.map_or(GROUND_LINGER_MS, |s| (s * 1000.0) as i64)),
+            Some(GroundSpec::Spec { lingers_s, .. }) => Some(lingers_s.map_or(GROUND_LINGER_MS, |s| (s * 1000.0) as i64)),
             None => (!only_tanks
                 && matches!(self.kind, MechanicType::AvoidableDamage | MechanicType::Soak | MechanicType::Positioning | MechanicType::Spread))
             .then_some(GROUND_LINGER_MS),
@@ -272,6 +279,8 @@ pub struct RuleSet {
     /// `scope: global` = vale para todos os encontros
     pub global: bool,
     mechanics: Vec<Value>,
+    /// fases do boss: (key, mecânica cujo cast abre a fase; None = começa no pull)
+    phases: Vec<(String, Option<String>)>,
 }
 
 impl RuleSet {
@@ -281,7 +290,20 @@ impl RuleSet {
         let encounter_id = doc.get("encounter_id").and_then(Value::as_u64).map(|v| v as u32);
         let mechanics = doc.get("mechanics").and_then(Value::as_sequence).cloned().unwrap_or_default();
         let global = doc.get("scope").and_then(Value::as_str) == Some("global");
-        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics };
+        let phases = doc
+            .get("phases")
+            .and_then(Value::as_sequence)
+            .map(|ps| {
+                ps.iter()
+                    .filter_map(|p| {
+                        let key = p.get("key")?.as_str()?.to_string();
+                        let cast = p.get("start").and_then(|s| s.get("cast")).and_then(Value::as_str).map(str::to_string);
+                        Some((key, cast))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics, phases };
         // valida já na carga, para erro de YAML aparecer cedo
         for diff in [14, 15, 16] {
             set.mechanics_for(diff)?;
@@ -465,6 +487,7 @@ impl RuleBook {
             encounter_id: Some(t.encounter_id),
             global: false,
             mechanics: Vec::new(),
+            phases: Vec::new(),
         });
         match base.tuned(t) {
             Ok(set) => {
@@ -605,6 +628,10 @@ pub struct RuleTracker {
     pairing: Option<(usize, PairLog)>,
     /// mecânica com `gaze` (só uma por pull): fixações, posições e direção de cada player
     gaze: Option<(usize, GazeLog)>,
+    /// fases do boss (keys), o cast que abre cada uma e a fase atual
+    phase_keys: Vec<String>,
+    phase_starts: HashMap<u32, usize>,
+    phase: usize,
     /// spell de dano -> (mecânica, ms que a marca fica no chão) para o replay
     ground: HashMap<u32, (usize, i64)>,
 }
@@ -646,6 +673,14 @@ impl RuleTracker {
         let orbs = mechs.iter().position(|m| m.detect.orbs.is_some()).map(|i| (i, OrbLog::default()));
         let pairing = mechs.iter().position(|m| m.detect.pairing.is_some()).map(|i| (i, PairLog::default()));
         let gaze = mechs.iter().position(|m| m.detect.gaze.is_some()).map(|i| (i, GazeLog::default()));
+        // fases: o cast que abre cada uma (só as do boss, o primeiro arquivo)
+        let phase_keys: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.0.clone()).collect()).unwrap_or_default();
+        let mut phase_starts = HashMap::new();
+        for (pi, (_, cast)) in sets.first().map(|s| s.phases.as_slice()).unwrap_or(&[]).iter().enumerate() {
+            if let Some(id) = cast.as_ref().and_then(|k| mechs.iter().find(|m| &m.key == k)).and_then(|m| m.detect.cast_id) {
+                phase_starts.insert(id, pi);
+            }
+        }
         let mut ground = HashMap::new();
         for (i, m) in mechs.iter().enumerate() {
             if let Some(ms) = m.ground_linger_ms() {
@@ -655,6 +690,9 @@ impl RuleTracker {
             }
         }
         Ok(RuleTracker {
+            phase_keys,
+            phase_starts,
+            phase: 0,
             ground,
             orbs,
             pairing,
@@ -688,8 +726,21 @@ impl RuleTracker {
     }
 
     /// Acerto deste spell marca o chão no replay: (chave, nome da mecânica, ms que a marca fica).
+    /// Mecânica "de chão" cujo dano é um DoT: marca na aplicação do debuff, não nos ticks.
+    pub fn ground_is_dot(&self, spell_id: u32) -> bool {
+        self.ground.get(&spell_id).is_some_and(|&(i, _)| matches!(self.mechs[i].ground, Some(GroundSpec::Spec { dot: true, .. })))
+    }
+
     pub fn ground_for(&self, spell_id: u32) -> Option<(&str, &str, i64)> {
-        self.ground.get(&spell_id).map(|&(i, ms)| (self.mechs[i].key.as_str(), self.mechs[i].name.as_str(), ms))
+        let &(i, ms) = self.ground.get(&spell_id)?;
+        let m = &self.mechs[i];
+        // marca só nas fases da regra (ex.: o machado no chão é só da P1; depois é só o DoT)
+        if let Some(GroundSpec::Spec { phases, .. }) = &m.ground {
+            if !phases.is_empty() && !self.phase_keys.get(self.phase).is_some_and(|k| phases.contains(k)) {
+                return None;
+            }
+        }
+        Some((m.key.as_str(), m.name.as_str(), ms))
     }
 
     /// Chave e nome da mecânica que causa dano com este spell (para anotar golpes finais).
@@ -1051,6 +1102,9 @@ impl RuleTracker {
     }
 
     pub fn on_enemy_cast(&mut self, spell_id: u32, source_guid: &str, source: &str, t: i64) {
+        if let Some(&p) = self.phase_starts.get(&spell_id) {
+            self.phase = self.phase.max(p);
+        }
         let Some(hooks) = self.hooks.get(&spell_id) else { return };
         for &(i, hook) in hooks {
             if hook == Hook::Cast && self.mechs[i].kind == MechanicType::Interrupt {

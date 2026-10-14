@@ -1145,6 +1145,42 @@ ul.plain {
 .mechanic-head .badge {
   width: 72px;
 }
+/* cabeçalho do card é o botão de abrir/fechar */
+.mechanic-toggle {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mechanic-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+.mechanic-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.mechanic.open .mechanic-chevron {
+  transform: rotate(90deg);
+}
+.mechanic.closed {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.mechanic-body {
+  margin-top: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mechanic-chevron {
+    transition: none;
+  }
+}
 .mechanic-count {
   margin-left: auto;
   font-weight: 700;
@@ -2655,6 +2691,10 @@ table.heat td {
   flex-direction: column;
   gap: 8px;
   margin-top: 8px;
+}
+/* recebe foco para o teclado (setas e espaço); sem contorno, os controles já mostram o estado */
+.replay:focus {
+  outline: none;
 }
 .replay-map {
   display: block;
