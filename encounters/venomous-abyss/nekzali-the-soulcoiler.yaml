@@ -171,6 +171,7 @@ mechanics:
     difficulty: [mythic]
     severity: none
     detect: { damage_ids: [1300239] }
+    ground: true   # tick de quem está no poço (1-2 players por vez)
     tip: { pt: "Dano do Drowned Echo em quem está no poço.", en: "Drowned Echo damage to whoever is in the well." }
     message: { pt: "Swirling Spirit", en: "Swirling Spirit" }
 

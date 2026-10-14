@@ -90,6 +90,9 @@ function triangle(bx: number, by: number, a: number, h: number, len: number): st
   return `${bx.toFixed(1)},${by.toFixed(1)} ${pt(a - h)} ${pt(a + h)}`;
 }
 
+/** Setas: quanto voltar/avançar (ms); com Shift, o passo maior. */
+const KEY_STEP_MS = 1_000;
+const KEY_STEP_BIG_MS = 5_000;
 /** Câmera do usuário por cima do enquadramento automático: deslocamento (jardas) e zoom. */
 const NO_CAM = { x: 0, y: 0, zoom: 1 };
 const ZOOM_MIN = 0.5;
@@ -114,6 +117,11 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   const [dragging, setDragging] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragFrom = useRef<{ x: number; y: number } | null>(null);
+  // teclado: o replay em foco (abre focado e ganha foco ao clicar no mapa)
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    rootRef.current?.focus({ preventScroll: true });
+  }, []);
   const nowRef = useRef(now);
   nowRef.current = now;
 
@@ -321,6 +329,23 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   const clockMs = Math.round((now - r.t) / 100) * 100;
   const momentName = t.moment[moment];
   const clock = moment === 'touch' || moment === 'hit' ? t.clockMasc(clockMs, momentName) : t.clock(clockMs, momentName);
+  const onKey = (ev: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = ev.target as HTMLElement;
+    const range = el instanceof HTMLInputElement && el.type === 'range';
+    // espaço num botão ou caixa de seleção é o clique dele
+    if (ev.key === ' ' && !range && (el.tagName === 'BUTTON' || el.tagName === 'INPUT')) return;
+    if (ev.key === ' ') {
+      ev.preventDefault();
+      if (now >= r.to) restart();
+      else setPlaying(!playing);
+    } else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+      ev.preventDefault();
+      const step = (ev.shiftKey ? KEY_STEP_BIG_MS : KEY_STEP_MS) * (ev.key === 'ArrowLeft' ? -1 : 1);
+      const next = Math.min(r.to, Math.max(r.from, nowRef.current + step));
+      nowRef.current = next;
+      setNow(next);
+    }
+  };
   const restart = () => {
     setNow(r.from);
     setPlaying(true);
@@ -347,7 +372,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   const hpNow = hp ? valueAt(hp, now) : null;
 
   return (
-    <div className="replay">
+    <div className="replay" ref={rootRef} tabIndex={-1} onKeyDown={onKey} aria-keyshortcuts="Space ArrowLeft ArrowRight">
       <svg
         ref={svgRef}
         className={`posmap replay-map ${dragging ? 'dragging' : ''}`}
@@ -355,6 +380,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           dragFrom.current = toMap(ev.clientX, ev.clientY);
           setDragging(true);
           ev.currentTarget.setPointerCapture(ev.pointerId);
+          rootRef.current?.focus({ preventScroll: true });
         }}
         onPointerMove={(ev) => {
           const from = dragFrom.current;

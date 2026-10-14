@@ -44,6 +44,8 @@ const TYPE_PLAYER: u32 = 0x400;
 /// Marca no chão: o mesmo player tomando a mesma mecânica no mesmo lugar há menos disso é a
 /// mesma poça (ticks), não outra.
 const GROUND_REPEAT_MS: i64 = 1_500;
+/// Debuff aplicado marca o chão na última posição do player, se ela tiver até isto (ms).
+const GROUND_POS_MAX_AGE_MS: i64 = 1_000;
 const GROUND_REPEAT_YD: f32 = 2.0;
 /// Replay: spell que o boss repete mais que uma vez a cada isto (em média) é ruído (pulso,
 /// energia), não um cast para mostrar.
@@ -630,6 +632,14 @@ impl PullBuilder {
                 }
             }
         }
+        // DoT de uma mecânica "de chão" aplicado (ex.: encostar no machado): marca onde o player estava
+        if self.counting() && is_player && f[0] == "SPELL_AURA_APPLIED" && self.rules.as_ref().is_some_and(|r| r.ground_is_dot(spell_id) && r.ground_for(spell_id).is_some()) {
+            if let Some((x, y, pt)) = self.players.get(dst_guid).and_then(|p| p.pos) {
+                if rel - pt <= GROUND_POS_MAX_AGE_MS {
+                    self.ground_hit(spell_id, dst_guid, x, y, rel);
+                }
+            }
+        }
         if self.counting() {
             if let Some(r) = self.rules.as_mut() {
                 r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
@@ -835,7 +845,9 @@ impl PullBuilder {
                 if let Some(r) = self.rules.as_mut() {
                     r.on_tick(spell_id, dst_guid, num(f.get(s + 1)), rel);
                 }
-                if let Some(a) = adv.as_ref().filter(|a| a.info_guid == dst_guid) {
+                // regra com `ground.dot`: o tick segue o player e não marca o chão (a aplicação do debuff marca, em aura_state)
+                let dot_tick = f[0] == "SPELL_PERIODIC_DAMAGE" && self.rules.as_ref().is_some_and(|r| r.ground_is_dot(spell_id));
+                if let Some(a) = adv.as_ref().filter(|a| a.info_guid == dst_guid && !dot_tick) {
                     self.ground_hit(spell_id, dst_guid, a.x, a.y, rel);
                 }
                 let failed = self.rules.as_mut().map(|r| r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel)).unwrap_or_default();
@@ -1392,7 +1404,9 @@ impl PullBuilder {
             .filter_map(|d| d.death.replay.as_ref())
             .chain(mechanics.iter().flat_map(|m| m.replays.iter().chain(m.pairings.iter().filter_map(|f| f.replay.as_ref()))))
             .collect();
-        let mut tracks = self.trails.build(&refs);
+        // quem solta um frontal entra no replay mesmo sem HP de boss (o cone sai dele)
+        let cone_casters: HashSet<String> = self.boss_casts.iter().filter(|c| c.cone.is_some()).map(|c| c.guid.clone()).collect();
+        let mut tracks = self.trails.build(&refs, &cone_casters);
         if let (Some(t), Some((name, paths))) = (tracks.as_mut(), &ghosts) {
             t.units.extend(replay::ghost_tracks(paths, &refs, name));
         }

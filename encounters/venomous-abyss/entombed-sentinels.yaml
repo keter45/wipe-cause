@@ -150,6 +150,7 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: none
     detect: { damage_ids: [1284210], aura_id: 1284210 }
+    ground: true   # tick de quem está em cima da poça (a aura dura só enquanto está nela)
     tip: { pt: "Soltar as poças de sangue na borda e não ficar em cima delas.", en: "Drop the blood pools at the edge and don't stand in them." }
     message: { pt: "Blood Venom", en: "Blood Venom" }
     notes: "Como evitável marcava quase todo mundo até no kill (os ticks são do próprio debuff). Falta achar o ID do dano da poça no chão."

@@ -294,6 +294,7 @@ mechanics:
     severity: minor
     roles: [healer, dps]
     detect: { damage_ids: [1305709] }
+    cone: { cast_id: 1305709, half_angle: 60, range: 15 }   # largo e curto: atingidos até ~70°, a no máximo 13 jd (01/10 e 06/10)
     tolerance: 0
     tip: { pt: "O frontal do Doomscale vai no tank: ninguém mais na frente dele, nem na volta para a plataforma.", en: "The Doomscale's frontal goes on the tank: nobody else in front of it, also on the way back to the platform." }
     message: { pt: "{player} tomou Desperate Thrash ({count}x)", en: "{player} was hit by Desperate Thrash ({count}x)" }

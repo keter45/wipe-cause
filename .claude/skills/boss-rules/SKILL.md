@@ -32,7 +32,11 @@ Leia `references/schema.md` antes de escrever qualquer arquivo. `encounters/veno
    Se nenhum evento de log prova a falha, use `type: info` e explique em `notes` — não invente detecção.
 4. **Severidade**: `wipe` (falha sozinha acaba a try), `major` (mata alguém ou gasta CDs), `minor` (dano/stack evitável).
 5. **Resolver spell IDs** (ver abaixo). Nunca chute um ID.
-6. **Escrever o YAML**, validar mentalmente contra o schema (todo `type` com os campos obrigatórios; `difficulty` coerente) e mostrar ao usuário um resumo em tabela: mecânica → tipo → severidade → ID resolvido?
+6. **Mostrar no replay** (regra do projeto: as habilidades do boss aparecem sempre). Releia a descrição de cada habilidade:
+   - **frontal / cone / "na frente do boss"** → `cone: { cast_id, half_angle, range }` na mecânica. O cone aponta para o alvo do boss durante o cast; se o boss não bate corpo a corpo, ponha em `target_spells` um spell que só vai no alvo dele (ex.: o Dread Bolt do Malacrass). Sem tamanho no guia, comece em 40°/40yd e meça com os players atingidos num log (ângulo e distância até o boss no `SPELL_CAST_SUCCESS`).
+   - **deixa algo no chão** (poça, gota, área, rastro, círculo, projétil que cai) → `ground` ligado nos `damage_ids` (já é o padrão em `avoidable_damage`, `soak`, `positioning` e `spread`); para outro `type` (ex.: `unavoidable` que deixa poça), ponha `ground: true`, e `ground: { lingers_s: N }` quando a poça fica.
+   Só fica de fora o que não tem forma no chão (dano no raid inteiro, DoT que segue o player). Na dúvida, mostre.
+7. **Escrever o YAML**, validar mentalmente contra o schema (todo `type` com os campos obrigatórios; `difficulty` coerente) e mostrar ao usuário um resumo em tabela: mecânica → tipo → severidade → ID resolvido?
 
 ## Resolver spell IDs
 

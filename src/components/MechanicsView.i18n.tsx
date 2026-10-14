@@ -10,6 +10,7 @@ export const mechMsg = defineMessages(
       </>
     ),
     yourAdjustments: 'Regras com ajustes seus.',
+    expandAll: (open: boolean): string => (open ? 'Recolher todas' : 'Expandir todas'),
     cutoff: (t: string) => `Contando só até a morte que fechou o corte (${t}); o que veio depois é ignorado.`,
     noFailures: 'Nenhuma falha de mecânica detectada neste pull.',
     clean: (list: string) => `Sem falhas: ${list}`,
@@ -44,6 +45,7 @@ export const mechMsg = defineMessages(
       </>
     ),
     yourAdjustments: 'Rules with your adjustments.',
+    expandAll: (open: boolean): string => (open ? 'Collapse all' : 'Expand all'),
     cutoff: (t: string) => `Counting only up to the death that closed the cutoff (${t}); what came after is ignored.`,
     noFailures: 'No mechanic failures detected in this pull.',
     clean: (list: string) => `No failures: ${list}`,

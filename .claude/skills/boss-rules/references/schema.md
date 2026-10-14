@@ -126,6 +126,8 @@ Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A l
 
 Frontal em cone (qualquer tipo): `cone: { cast_id, half_angle, range, target_spells }` no nível da mecânica desenha um triângulo no replay, apontado para o alvo do boss durante o cast. O alvo é quem o boss acerta corpo a corpo; boss que não bate corpo a corpo precisa de `target_spells` (spells que só vão no alvo dele, ex.: Dread Bolt).
 
+Chão por fase e DoT: `ground: { phases: [p1] }` marca só nas fases listadas (keys de `phases`; o motor acompanha a fase pelo cast que abre cada uma). `ground: { dot: true }` diz que o dano é um DoT que segue o player: os ticks não marcam, só a aplicação do debuff de mesmo ID. Poça em que o player fica parado (aura só enquanto está nela) continua com os ticks.
+
 Hotfix que muda o raio dos orbs: `contact_yd` fica com o valor novo e o antigo vai em `before: [{ until: "AAAA-MM-DDTHH:MM", contact_yd: .. }]` (UTC). Pulls que começaram antes de `until` usam o raio antigo, então os logs velhos continuam certos.
 
 ### `dispel`
