@@ -1,5 +1,5 @@
 {
-  "_comment": "Defensivos por classe. cd em segundos, sem talentos (aproximado). kind: personal | external | raid. Embutido no build do wipe-core; edite e recompile.",
+  "_comment": "Defensivos por classe. cd em segundos, sem talentos (aproximado). kind: personal | external | raid. zone (defensivo em área, para o replay): raio (jd), duração (s) e onde fica: caster (onde quem usou estava), summon (onde caiu o totem), buffed (no meio de quem ganhou `buff` primeiro). Embutido no build do wipe-core; edite e recompile.",
   "specs": {
     "250": { "class": "DeathKnight", "role": "tank" },
     "251": { "class": "DeathKnight", "role": "dps" },
@@ -48,13 +48,13 @@
     { "id": 49039, "name": "Lichborne", "class": "DeathKnight", "cd": 120, "kind": "personal" },
     { "id": 48743, "name": "Death Pact", "class": "DeathKnight", "cd": 120, "kind": "personal" },
     { "id": 55233, "name": "Vampiric Blood", "class": "DeathKnight", "cd": 90, "kind": "personal" },
-    { "id": 51052, "name": "Anti-Magic Zone", "class": "DeathKnight", "cd": 240, "kind": "raid" },
+    { "id": 51052, "name": "Anti-Magic Zone", "class": "DeathKnight", "cd": 240, "kind": "raid", "zone": { "radius": 10, "duration": 8, "at": "caster" } },
 
     { "id": 198589, "name": "Blur", "class": "DemonHunter", "cd": 60, "kind": "personal" },
     { "id": 196555, "name": "Netherwalk", "class": "DemonHunter", "cd": 180, "kind": "personal" },
     { "id": 187827, "name": "Metamorphosis (Vengeance)", "class": "DemonHunter", "cd": 180, "kind": "personal" },
     { "id": 204021, "name": "Fiery Brand", "class": "DemonHunter", "cd": 60, "kind": "personal" },
-    { "id": 196718, "name": "Darkness", "class": "DemonHunter", "cd": 300, "kind": "raid" },
+    { "id": 196718, "name": "Darkness", "class": "DemonHunter", "cd": 300, "kind": "raid", "zone": { "radius": 8, "duration": 8, "at": "caster" } },
 
     { "id": 22812, "name": "Barkskin", "class": "Druid", "cd": 60, "kind": "personal" },
     { "id": 61336, "name": "Survival Instincts", "class": "Druid", "cd": 180, "kind": "personal" },
@@ -98,7 +98,7 @@
     { "id": 586, "name": "Fade", "class": "Priest", "cd": 30, "kind": "personal" },
     { "id": 33206, "name": "Pain Suppression", "class": "Priest", "cd": 180, "kind": "external" },
     { "id": 47788, "name": "Guardian Spirit", "class": "Priest", "cd": 180, "kind": "external" },
-    { "id": 62618, "name": "Power Word: Barrier", "class": "Priest", "cd": 180, "kind": "raid" },
+    { "id": 62618, "name": "Power Word: Barrier", "class": "Priest", "cd": 180, "kind": "raid", "zone": { "radius": 8, "duration": 10, "at": "buffed", "buff": 81782 } },
 
     { "id": 31224, "name": "Cloak of Shadows", "class": "Rogue", "cd": 120, "kind": "personal" },
     { "id": 5277, "name": "Evasion", "class": "Rogue", "cd": 120, "kind": "personal" },
@@ -106,7 +106,7 @@
     { "id": 185311, "name": "Crimson Vial", "class": "Rogue", "cd": 30, "kind": "personal" },
 
     { "id": 108271, "name": "Astral Shift", "class": "Shaman", "cd": 120, "kind": "personal" },
-    { "id": 98008, "name": "Spirit Link Totem", "class": "Shaman", "cd": 180, "kind": "raid" },
+    { "id": 98008, "name": "Spirit Link Totem", "class": "Shaman", "cd": 180, "kind": "raid", "zone": { "radius": 10, "duration": 6, "at": "summon" } },
 
     { "id": 104773, "name": "Unending Resolve", "class": "Warlock", "cd": 180, "kind": "personal" },
     { "id": 108416, "name": "Dark Pact", "class": "Warlock", "cd": 60, "kind": "personal" },

@@ -6378,3 +6378,564 @@ button.kpi:hover {
   border-radius: 50% 50% 2px 2px;
   opacity: 0.8;
 }
+
+/* ---- replay completo (aba Replay) ---- */
+.fight {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+.replay-map .replay-pickable {
+  cursor: pointer;
+}
+.replay-dead.small {
+  font-size: 10px;
+}
+/* quadro do raid: um botão por player, a vida pinta o fundo na cor da classe */
+.raid-frames {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 4px;
+}
+.raid-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-height: 34px;
+  padding: 4px 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.raid-frame:hover {
+  border-color: var(--muted);
+}
+.raid-frame.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.raid-frame:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.raid-frame-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  opacity: 0.18;
+  transition: width 0.15s linear;
+  pointer-events: none;
+}
+.raid-frame.dead {
+  opacity: 0.5;
+}
+.raid-frame-name {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.raid-frame-side {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.raid-frame-hp {
+  color: var(--muted);
+  font-size: 11px;
+}
+/* linha do tempo: uma faixa por tipo de ponto de interesse */
+.fight-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fight-axis,
+.fight-lane {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.fight-track {
+  position: relative;
+  height: 22px;
+}
+.fight-lane .fight-track {
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  cursor: pointer;
+}
+.fight-axis .fight-track {
+  height: 16px;
+}
+.fight-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.fight-now {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.fight-phase {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 0 6px;
+  overflow: hidden;
+  border-left: 2px solid var(--muted);
+  background: oklch(1 0 0 / 0.04);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 22px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fight-phase.alt {
+  background: oklch(1 0 0 / 0.08);
+}
+.fight-marker {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  height: 18px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.fight-marker.failure {
+  border-radius: 4px;
+  box-shadow: 0 0 0 1.5px var(--major);
+}
+.fight-marker.failure.wipe {
+  box-shadow: 0 0 0 1.5px var(--wipe);
+}
+.fight-marker.failure.minor {
+  box-shadow: 0 0 0 1.5px var(--minor);
+}
+.fight-marker.cast {
+  width: 3px;
+  min-width: 0;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--wipe);
+  opacity: 0.7;
+}
+.fight-marker.dim {
+  opacity: 0.3;
+}
+.fight-marker.mine {
+  z-index: 1;
+}
+.fight-marker:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* player selecionado: vida, debuffs e erros de um lado, o que aconteceu com ele do outro */
+.fight-focus-empty {
+  margin: 0;
+}
+.fight-focus {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 1.6fr);
+  gap: 16px 24px;
+  align-items: start;
+}
+.fight-focus-side,
+.fight-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.fight-focus-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fight-focus-head .btn {
+  margin-left: auto;
+}
+.fight-hpbar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--panel-2);
+}
+.fight-hpbar span {
+  display: block;
+  height: 100%;
+  transition: width 0.15s linear;
+}
+.fight-auras li,
+.fight-marks li,
+.fight-events li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+.fight-auras li.buff {
+  color: var(--muted);
+}
+.fight-marks li > .link {
+  min-width: 4ch;
+}
+.fight-feed-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fight-filters {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+}
+.fight-events {
+  max-height: 360px;
+  overflow-y: auto;
+}
+.fight-events li > .num:first-child {
+  min-width: 5ch;
+}
+.fight-events li.mech {
+  background: oklch(0.62 0.18 25 / 0.08);
+}
+.num.good {
+  color: var(--heal);
+}
+@media (max-width: 760px) {
+  .fight-focus {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .raid-frame-fill,
+  .fight-hpbar span {
+    transition: none;
+  }
+}
+/* replay completo: painéis por cima do mapa (como o replay do Warcraft Logs) */
+.replay-stage {
+  position: relative;
+}
+.fight .replay-map {
+  max-height: calc(100vh - 330px);
+  min-height: 380px;
+}
+.fight-overlay {
+  position: absolute;
+  z-index: 2;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: oklch(0.17 0.01 260 / 0.86);
+  box-shadow: var(--shadow-pop);
+}
+.fight .raid-frames {
+  right: 8px;
+  bottom: 8px;
+  grid-template-columns: repeat(5, 72px);
+  gap: 2px;
+  padding: 3px;
+}
+.fight .raid-frame {
+  min-height: 22px;
+  padding: 2px 4px;
+  font-size: 11px;
+}
+.fight .raid-frame-fill {
+  opacity: 0.32;
+}
+.fight-bosses {
+  top: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 230px;
+  padding: 6px;
+}
+.fight-boss-bar {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: oklch(0.3 0.08 25 / 0.45);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.fight-boss-bar:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.fight-boss-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--wipe);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.fight-boss-name,
+.fight-boss-hp {
+  position: relative;
+  white-space: nowrap;
+}
+.fight-boss-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.fight-boss-cast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 2px 6px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: oklch(0.25 0.01 260);
+  font-size: 11px;
+}
+.fight-boss-cast-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  opacity: 0.3;
+  pointer-events: none;
+}
+.fight-boss-cast > :not(.fight-boss-cast-fill) {
+  position: relative;
+}
+.fight-meters {
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  width: 270px;
+  max-height: 46%;
+  padding: 4px;
+}
+.fight-meters-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 4px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.fight-meter-cat,
+.fight-meter-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 6px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.fight-meter-cat:hover,
+.fight-meter-row:not(:disabled):hover {
+  background: oklch(1 0 0 / 0.06);
+}
+.fight-meter-row:disabled {
+  cursor: default;
+}
+.fight-meter-rows {
+  overflow-y: auto;
+}
+.fight-meter-fill {
+  position: absolute;
+  inset: 1px auto 1px 0;
+  border-radius: 3px;
+  background: var(--muted);
+  opacity: 0.22;
+  pointer-events: none;
+}
+.fight-meter-name,
+.fight-meter-num {
+  position: relative;
+  white-space: nowrap;
+}
+.fight-meter-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.fight .fight-timeline {
+  margin-top: 2px;
+}
+.fight .fight-track {
+  height: 18px;
+}
+.fight .fight-axis .fight-track {
+  height: 14px;
+}
+.fight .fight-phase {
+  line-height: 18px;
+}
+/* legendas que ligam e desligam o que aparece no mapa (chão, debuffs na cabeça) */
+.replay-legend-toggle {
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.replay-legend-toggle:hover {
+  border-color: var(--border);
+}
+.replay-legend-toggle.off {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.replay-legend-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.fight-meters-collapse {
+  margin-left: auto;
+}
+.fight-meters.collapsed {
+  width: auto;
+}
+/* filtros do mapa: um botão por grupo (chão, cabeça); a lista abre num balão para cima */
+.replay-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.map-filter .popover {
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: 280px;
+  padding: 8px;
+}
+.map-filter-btn .num {
+  font-size: 11px;
+}
+.map-filter-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px 6px;
+}
+.map-filter-head .muted {
+  margin-right: auto;
+}
+.map-filter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.map-filter-list .replay-legend-toggle {
+  width: 100%;
+  text-align: left;
+}
+/* nome embaixo da bolinha na visão geral */
+.replay-name {
+  font-size: 9px;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 2.5px;
+  pointer-events: none;
+}
+/* pull que passou da primeira fase (boss de várias fases): o rótulo da fase no lugar do HP */
+.pull-result.phase {
+  color: var(--info);
+}
+.pull-meter.phase span {
+  background: var(--info);
+}
+/* orbs e áreas das habilidades no replay */
+.replay-area circle,
+.replay-orb circle {
+  pointer-events: none;
+}
+.replay-carry {
+  pointer-events: none;
+  stroke-opacity: 0.9;
+}
+
+/* número de stacks no canto de baixo à direita do ícone do debuff (mapa e quadro do raid) */
+.svg-spell-stacks {
+  font-size: 9px;
+  font-weight: 700;
+  fill: #fff;
+  stroke: #000;
+  stroke-width: 2.5px;
+  paint-order: stroke;
+  pointer-events: none;
+}
+.stacked-icon {
+  position: relative;
+  display: inline-flex;
+}
+.icon-stacks {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 0 2px #000, 0 0 2px #000, 0 0 1px #000;
+  pointer-events: none;
+}

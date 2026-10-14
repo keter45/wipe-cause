@@ -191,6 +191,7 @@ mod tests {
 
     #[test]
     fn friendly_errors() {
+        wipe_core::i18n::set_english(false); // as mensagens conferidas são as em português
         assert!(http_error(401, String::new()).contains("client ID"));
         assert!(http_error(429, String::new()).contains("Limite"));
         assert!(http_error(500, "x".repeat(1000)).len() < 400);

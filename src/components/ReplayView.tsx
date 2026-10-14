@@ -1,12 +1,15 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Crosshair, Maximize2, Minimize2, Pause, Play, RotateCcw } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown, CircleDot, Crosshair, Maximize2, Minimize2, Pause, Play, Radius, RotateCcw, Tag } from 'lucide-react';
 import type { ReplayRef } from '../types';
-import { classColor, num, shortName } from '../lib/format';
-import { movedUntil, posAt, valueAt, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
+import { classColor, mmss, num, shortName } from '../lib/format';
+import { movedUntil, npcOf, posAt, valueAt, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
+import { tr } from '../i18n';
 import { useMessages } from '../i18n';
+import * as prefs from '../lib/replayPrefs';
 import { replayMsg, type ReplayMoment } from './ReplayView.i18n';
 import { SpellIcon, SpellName, SvgSpellIcon } from './SpellIcon';
 import { Hint } from './ui/Hint';
+import { Popover } from './Popover';
 
 export type { ReplayHit } from '../lib/replay';
 
@@ -26,6 +29,73 @@ interface Props {
   dies?: string;
   /** golpes tomados pelo primeiro acompanhado (morte) */
   hits?: ReplayHit[];
+  /** replay completo: tempo controlado de fora (linha do tempo, quadro do raid) */
+  playback?: Playback;
+  /** clicar num player no mapa seleciona ele */
+  onSelect?: (guid: string) => void;
+  /** replay da luta inteira: relógio em mm:ss, velocidades maiores, sem os painéis de baixo */
+  full?: boolean;
+  /** o player está morto neste instante (fica apagado, com um ✕) */
+  isDead?: (guid: string, t: number) => boolean;
+  /** debuff crucial no player neste instante (ícone em cima da bolinha) */
+  badge?: (guid: string, t: number) => { spellId: number; name: string; stacks?: number } | null;
+  /** unidade de área (machado) desmentida em `t`: desde quando (alguém passou ali sem levar dano), ou null */
+  vacated?: (guid: string, t: number) => number | null;
+  /** unidade de área que já sumiu em `t` (ex.: machado sem acertar ninguém na P2) */
+  vanished?: (guid: string, t: number) => boolean;
+  /** defensivos de raid em área (replay completo): o círculo onde valem, na cor de quem usou */
+  zones?: ZoneView[];
+  /** painéis por cima do mapa (replay completo: bosses, medidores, quadro do raid) */
+  overlay?: ReactNode;
+  /** entre o mapa e os controles (replay completo: a linha do tempo) */
+  belowMap?: ReactNode;
+  /** logo depois da legenda do chão (replay completo: os debuffs na cabeça) */
+  legendExtra?: ReactNode;
+  /** replay completo: quem tem esta aura neste instante (centros das áreas em volta de players) */
+  holders?: (auraId: number, t: number) => string[];
+}
+
+/** Tempo do replay: o instante, tocando ou parado, e a velocidade. */
+export interface Playback {
+  now: number;
+  setNow: (t: number) => void;
+  playing: boolean;
+  setPlaying: (p: boolean) => void;
+  speed: number;
+  setSpeed: (s: number) => void;
+  /** o instante mais recente (o intervalo da animação atualiza antes do React) */
+  nowRef: { current: number };
+}
+
+/** Passo da animação (ms). */
+const FRAME_MS = 33;
+
+/** Controle de tempo de um replay de `from` a `to`, começando em `start`. */
+export function usePlayback(from: number, to: number, start: number, autoplay: boolean): Playback {
+  const [now, setNowState] = useState(start);
+  const [playing, setPlaying] = useState(autoplay);
+  const [speed, setSpeed] = useState<number>(1);
+  const nowRef = useRef(now);
+  nowRef.current = now;
+  useEffect(() => {
+    if (!playing) return;
+    let last = performance.now();
+    const id = window.setInterval(() => {
+      const ts = performance.now();
+      const next = Math.min(to, nowRef.current + (ts - last) * speed);
+      last = ts;
+      nowRef.current = next;
+      setNowState(next);
+      if (next >= to) setPlaying(false);
+    }, FRAME_MS);
+    return () => window.clearInterval(id);
+  }, [playing, speed, to]);
+  const setNow = (t: number) => {
+    const v = Math.min(to, Math.max(from, t));
+    nowRef.current = v;
+    setNowState(v);
+  };
+  return { now, setNow, playing, setPlaying, speed, setSpeed, nowRef };
 }
 
 /** Mapa (viewBox): mais largo que alto, para ocupar a largura sem ficar alto demais. */
@@ -41,11 +111,17 @@ const SHOW_GAP_YD = 3;
 /** Quanto tempo o anel de um acerto fica na tela (ms). */
 const MARK_MS = 700;
 const SPEEDS = [0.5, 1, 2] as const;
+/** Luta inteira: dá para correr mais. */
+const FULL_SPEEDS = [1, 2, 4, 8] as const;
+/** Clique (sem arrastar) seleciona o player mais perto até esta distância (px do mapa). */
+const PICK_PX = 14;
+/** Centralizar no selecionado aproxima ao menos até este zoom. */
+const FOCUS_ZOOM = 2.5;
+/** Arrastar menos que isto (px do mapa) ainda conta como clique. */
+const CLICK_SLOP_PX = 4;
 /** Barra de vida de quem o replay acompanha (px). */
 const HPBAR_W = 44;
 const HPBAR_H = 5;
-/** Passo da animação (ms). */
-const FRAME_MS = 33;
 /** Trecho do caminho desenhado atrás de quem o replay acompanha (ms). */
 const TRAIL_MS = 15_000;
 /** Raio da marca de um acerto no chão (jardas): o log não diz o tamanho da poça/gota. */
@@ -80,8 +156,33 @@ const GHOST_PATH = 'M -6 7 L -6 -1 A 6 6 0 0 1 6 -1 L 6 7 L 4 5 L 2 7 L 0 5 L -2
 const GHOST_MOVING_YD = 0.3;
 /** Fantasma a até isto (jardas) do fantasma de quem o replay acompanha, no momento, também fica em destaque. */
 const GHOST_TOUCH_YD = 4;
+/** Orbs: roxo (o que explode) e verde, e o tamanho do orb no chão (jardas). */
+const ORB_COLORS = ['#b46cf5', '#4cc38a'];
+const ORB_YD = 1.6;
+/** Anel em volta de quem carrega um orb (jardas). */
+const CARRY_YD = 2.6;
 /** Cores das mecânicas no chão (vermelho fica para bosses e acertos). */
 const GROUND_COLORS = ['#e8904a', '#6ea8fe', '#4cc38a', '#d9c05a', '#c084fc', '#f472b6', '#2dd4bf'];
+/** Cor de cada área (na ordem da regra). */
+const AREA_COLORS = ['#f472b6', '#2dd4bf', '#d9c05a', '#6ea8fe', '#e8904a', '#c084fc'];
+const areaColor = (i: number) => AREA_COLORS[i % AREA_COLORS.length];
+/** Tempo para o machado desmentido sumir até ficar só o contorno apagado. */
+const VACATED_FADE_MS = 600;
+/** O defensivo em área aparece e some aos poucos (ms). */
+const ZONE_FADE_MS = 400;
+
+/** Defensivo em área no mapa. */
+export interface ZoneView {
+  t: number;
+  end: number;
+  spellId: number;
+  name: string;
+  caster: string;
+  casterName: string;
+  x: number;
+  y: number;
+  radius: number;
+}
 
 /** Triângulo do frontal na tela: do boss (bx, by) na direção `a` (radianos do mundo, y para cima), meio ângulo `h`, com a base a `len` px. */
 function triangle(bx: number, by: number, a: number, h: number, len: number): string {
@@ -102,48 +203,107 @@ const WHEEL_ZOOM = 0.0015;
 
 const inWindow = (u: ReplayUnit, r: ReplayRef) => u.pts.filter(([t]) => t >= r.from && t <= r.to);
 
-/** Replay das posições em volta de um momento (morte, acerto, falha, encontro). */
-export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits }: Props) {
+/** Item de um filtro do mapa (mecânica no chão, debuff na cabeça). */
+export interface MapFilterItem {
+  key: string;
+  spellId?: number;
+  name: string;
+  /** cor da marca no mapa (chão) */
+  color?: string;
+}
+
+/**
+ * Filtro compacto do que aparece no mapa: um botão com quantos estão ligados ("No chão · 8 de 9");
+ * clicar abre a lista para ligar e desligar cada um, com atalhos para todos e nenhum.
+ */
+export function MapFilter({ label, icon, items, hidden, onChange }: { label: string; icon?: ReactNode; items: MapFilterItem[]; hidden: Set<string>; onChange: (hidden: Set<string>) => void }) {
   const t = useMessages(replayMsg);
-  const [now, setNow] = useState(autoplay ? r.from : r.t);
-  const [playing, setPlaying] = useState(autoplay);
-  const [speed, setSpeed] = useState<number>(1);
+  const [open, setOpen] = useState(false);
+  const on = items.filter((i) => !hidden.has(i.key)).length;
+  const toggle = (key: string) => {
+    const next = new Set(hidden);
+    if (!next.delete(key)) next.add(key);
+    onChange(next);
+  };
+  return (
+    <span className="map-filter">
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        label={label}
+        trigger={
+          <button className={`btn sm ghost map-filter-btn ${open ? 'pressed' : ''}`} aria-expanded={open} onClick={() => setOpen(!open)}>
+            {icon}
+            {label} <span className="muted num">{t.countOf(on, items.length)}</span>
+            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+        }
+      >
+        <div className="map-filter-head small">
+          <span className="muted">{label}</span>
+          <button className="link small" onClick={() => onChange(new Set())}>
+            {t.all}
+          </button>
+          <button className="link small" onClick={() => onChange(new Set(items.map((i) => i.key)))}>
+            {t.none}
+          </button>
+        </div>
+        <ul className="plain map-filter-list">
+          {items.map((i) => {
+            const off = hidden.has(i.key);
+            return (
+              <li key={i.key}>
+                <button className={`replay-legend-item replay-legend-toggle ${off ? 'off' : ''}`} aria-pressed={!off} onClick={() => toggle(i.key)} title={off ? t.showOnMap : t.hideOnMap}>
+                  {i.color && <span className="replay-swatch" style={{ background: i.color }} aria-hidden />}
+                  {i.spellId != null ? <SpellName spellId={i.spellId} name={i.name} size={16} /> : <span>{i.name}</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </Popover>
+    </span>
+  );
+}
+
+/** Replay das posições em volta de um momento (morte, acerto, falha, encontro). */
+export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, vacated, vanished, zones = [] }: Props) {
+  const t = useMessages(replayMsg);
+  // tempo: o de fora (replay completo) ou o próprio
+  const own = usePlayback(r.from, r.to, autoplay ? r.from : r.t, !playback && autoplay);
+  const { now, setNow, playing, setPlaying, speed, setSpeed, nowRef } = playback ?? own;
   const [others, setOthers] = useState(true);
-  // enquadramento: a arena inteira (morte, falha coletiva) ou perto de quem o replay acompanha
-  const [wide, setWide] = useState(moment === 'death' || moment === 'failure');
+  // marcas de chão escondidas pela legenda (clique liga e desliga)
+  // áreas das habilidades e orbs (replay completo) e nomes embaixo das bolinhas: também ligam e desligam
+  const [hiddenAreas, setHiddenAreas] = useState<Set<string>>(prefs.hiddenAreas);
+  const [names, setNames] = useState(prefs.showNames);
+  // (vale para todos os replays e fica salvo entre sessões)
+  const [hiddenGround, setHiddenGround] = useState<Set<string>>(prefs.hiddenGround);
+  // enquadramento: a arena inteira (morte, falha coletiva, luta inteira) ou perto de quem o replay acompanha
+  const [wide, setWide] = useState(full || moment === 'death' || moment === 'failure');
   const floorId = useId().replace(/:/g, '');
   // arrastar move o mapa, a roda dá zoom; duplo clique (ou trocar o enquadramento) volta
   const [cam, setCam] = useState(NO_CAM);
   const [dragging, setDragging] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragFrom = useRef<{ x: number; y: number } | null>(null);
+  // onde o arrasto começou (pouco movimento = clique, que seleciona um player)
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
   // teclado: o replay em foco (abre focado e ganha foco ao clicar no mapa)
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     rootRef.current?.focus({ preventScroll: true });
   }, []);
-  const nowRef = useRef(now);
-  nowRef.current = now;
-
-  useEffect(() => {
-    if (!playing) return;
-    let last = performance.now();
-    const id = window.setInterval(() => {
-      const ts = performance.now();
-      const next = Math.min(r.to, nowRef.current + (ts - last) * speed);
-      last = ts;
-      nowRef.current = next;
-      setNow(next);
-      if (next >= r.to) setPlaying(false);
-    }, FRAME_MS);
-    return () => window.clearInterval(id);
-  }, [playing, speed, r.to]);
 
   const view = useMemo(() => {
     const units = [...data.units.values()];
     const players = units.filter((u) => u.kind === 'player' && inWindow(u, r).length > 0);
     const focus = r.focus.map((g) => data.units.get(g)).filter((u): u is ReplayUnit => !!u && inWindow(u, r).length > 0);
-    const enemies = units.filter((u) => u.kind === 'enemy' && inWindow(u, r).length > 0);
+    // unidades que são áreas (ex.: os machados) não viram losango de boss: aparecem como área
+    const areaNpcs = new Set(data.areas.map((a) => a.npc).filter((n): n is number => n != null));
+    const isAreaUnit = (u: ReplayUnit) => areaNpcs.size > 0 && areaNpcs.has(npcOf(u.guid) ?? -1);
+    const enemies = units.filter((u) => u.kind === 'enemy' && !isAreaUnit(u) && inWindow(u, r).length > 0);
+    const areaUnits = units.filter((u) => u.kind === 'enemy' && isAreaUnit(u) && inWindow(u, r).length > 0);
     // fantasmas (caminho simulado) que aparecem no replay, os que mais andaram primeiro
     const ghosts = units.filter((u) => u.kind === 'ghost' && inWindow(u, r).length > 0).sort((a, b) => movedUntil(b, r.to) - movedUntil(a, r.to));
     // área: o caminho de quem o replay acompanha (ou de todo mundo, numa falha coletiva) e os bosses perto
@@ -261,14 +421,15 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       .map((q) => [sx(q[0]), sy(q[1])]);
     const enemyLabel = new Map<string, boolean>();
     for (const e of enemies) {
-      const pe = posAt(e, r.t);
+      // quem aparece depois (adds) entra pelo primeiro ponto
+      const pe = posAt(e, Math.max(r.t, e.pts[0]?.[0] ?? r.t));
       if (!pe) continue;
       const q: [number, number] = [sx(pe[0]), sy(pe[1]) + BOSS_LABEL_DY]; // onde o nome fica
       const ok = !placed.some((o) => Math.abs(o[0] - q[0]) < 80 && Math.abs(o[1] - q[1]) < 28);
       if (ok) placed.push(q);
       enemyLabel.set(e.guid, ok);
     }
-    return { cx, cy, players, focus, enemies, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor: arena && arena.cells.length ? arena : null, casts, casters };
+    return { cx, cy, players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor: arena && arena.cells.length ? arena : null, casts, casters };
   }, [data, r, wide, cam]);
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -307,7 +468,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   }, [view === null]);
 
   if (!view || view.players.length === 0) return <p className="muted small">{t.noPositions}</p>;
-  const { players, focus, enemies, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor, casts, casters } = view;
+  const { players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor, casts, casters } = view;
   // cast de cada boss no instante: o que está castando, ou o que acabou de terminar
   const castEnd = (c: (typeof casts)[number]) => c.end ?? (c.facing == null ? c.t + CAST_OPEN_MS : c.t);
   const castNow = (guid: string) => [...casts].reverse().find((c) => c.guid === guid && now >= c.t && now <= castEnd(c) + CAST_SHOW_MS);
@@ -328,7 +489,8 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   const after = now >= r.t;
   const clockMs = Math.round((now - r.t) / 100) * 100;
   const momentName = t.moment[moment];
-  const clock = moment === 'touch' || moment === 'hit' ? t.clockMasc(clockMs, momentName) : t.clock(clockMs, momentName);
+  const clock = full ? mmss(now) : moment === 'touch' || moment === 'hit' ? t.clockMasc(clockMs, momentName) : t.clock(clockMs, momentName);
+  const deadNow = (guid: string) => !!isDead?.(guid, now);
   const onKey = (ev: React.KeyboardEvent<HTMLDivElement>) => {
     const el = ev.target as HTMLElement;
     const range = el instanceof HTMLInputElement && el.type === 'range';
@@ -340,7 +502,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       else setPlaying(!playing);
     } else if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
       ev.preventDefault();
-      const step = (ev.shiftKey ? KEY_STEP_BIG_MS : KEY_STEP_MS) * (ev.key === 'ArrowLeft' ? -1 : 1);
+      const step = (ev.shiftKey ? KEY_STEP_BIG_MS : KEY_STEP_MS) * (full ? 5 : 1) * (ev.key === 'ArrowLeft' ? -1 : 1);
       const next = Math.min(r.to, Math.max(r.from, nowRef.current + step));
       nowRef.current = next;
       setNow(next);
@@ -370,16 +532,29 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   };
   const ghostOwner = (g: ReplayUnit) => shortName(data.units.get(g.owner ?? '')?.name ?? '');
   const hpNow = hp ? valueAt(hp, now) : null;
+  // luta inteira: centraliza (e aproxima) a câmera em quem está selecionado, no instante
+  const centerOnFocus = () => {
+    const p = fp[0];
+    if (!p) return;
+    setCam((c) => ({ zoom: Math.max(c.zoom, FOCUS_ZOOM), x: c.x + p[0] - view.cx, y: c.y + p[1] - view.cy }));
+  };
 
   return (
     <div className="replay" ref={rootRef} tabIndex={-1} onKeyDown={onKey} aria-keyshortcuts="Space ArrowLeft ArrowRight">
+      <div className="replay-stage">
       <svg
         ref={svgRef}
         className={`posmap replay-map ${dragging ? 'dragging' : ''}`}
         onPointerDown={(ev) => {
           dragFrom.current = toMap(ev.clientX, ev.clientY);
+          dragStart.current = dragFrom.current;
           setDragging(true);
-          ev.currentTarget.setPointerCapture(ev.pointerId);
+          // sem captura (ponteiro que o navegador já soltou) o arrasto só para ao sair do mapa
+          try {
+            ev.currentTarget.setPointerCapture(ev.pointerId);
+          } catch {
+            /* segue sem captura */
+          }
           rootRef.current?.focus({ preventScroll: true });
         }}
         onPointerMove={(ev) => {
@@ -389,8 +564,22 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           dragFrom.current = m;
           setCam((c) => ({ ...c, x: c.x - (m.x - from.x) / scale, y: c.y + (m.y - from.y) / scale }));
         }}
-        onPointerUp={() => {
+        onPointerUp={(ev) => {
+          // clique sem arrastar: seleciona o player mais perto do ponteiro
+          const start = dragStart.current;
+          const m = toMap(ev.clientX, ev.clientY);
+          if (onSelect && start && m && Math.hypot(m.x - start.x, m.y - start.y) < CLICK_SLOP_PX) {
+            let best: { guid: string; d: number } | null = null;
+            for (const u of players) {
+              const p = posAt(u, now);
+              if (!p) continue;
+              const d = Math.hypot(sx(p[0]) - m.x, sy(p[1]) - m.y);
+              if (d <= PICK_PX && (!best || d < best.d)) best = { guid: u.guid, d };
+            }
+            if (best) onSelect(best.guid);
+          }
           dragFrom.current = null;
+          dragStart.current = null;
           setDragging(false);
         }}
         onPointerCancel={() => {
@@ -430,6 +619,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           ))}
         </g>
         {ground.map((g, i) => {
+          if (hiddenGround.has(data.groundKinds[g.kind]?.key)) return null;
           const linger = data.groundKinds[g.kind]?.lingerMs ?? 0;
           const age = now - g.t;
           if (age < 0 || age > linger) return null;
@@ -442,6 +632,61 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             </g>
           );
         })}
+        {data.areas.map((a, ai) => {
+          if (hiddenAreas.has(a.key)) return null;
+          const c = areaColor(ai);
+          const rad = a.radius * scale;
+          const centers: [string, [number, number]][] = [];
+          if (a.npc != null) {
+            for (const u of areaUnits) if (npcOf(u.guid) === a.npc && !vanished?.(u.guid, now)) { const q = posAt(u, now); if (q) centers.push([u.guid, q]); }
+          } else if (a.aura != null && holders) {
+            for (const g of holders(a.aura, now)) { const u = data.units.get(g); const q = u && posAt(u, now); if (q) centers.push([g, q]); }
+          }
+          return centers.map(([g, q]) => {
+            // machado desmentido: alguém passou ali sem levar dano; fica o contorno apagado de onde ele estava
+            const since = a.npc != null ? (vacated?.(g, now) ?? null) : null;
+            const fade = since == null ? 0 : Math.min(1, (now - since) / VACATED_FADE_MS);
+            return (
+              <g key={`area-${a.key}-${g}`} className={`replay-area ${since != null ? 'vacated' : ''}`} opacity={1 - 0.7 * fade}>
+                <circle cx={sx(q[0])} cy={sy(q[1])} r={rad} fill={c} fillOpacity={0.12 * (1 - fade)} stroke={c} strokeOpacity={0.7} strokeDasharray={a.npc != null && since == null ? undefined : '4 3'}>
+                  <title>{since != null ? t.vacated(a.name) : a.name}</title>
+                </circle>
+                {a.npc != null && a.spellId != null && <SvgSpellIcon spellId={a.spellId} x={sx(q[0]) - 6} y={sy(q[1]) - 6} size={12} title={since != null ? t.vacated(a.name) : a.name} />}
+              </g>
+            );
+          });
+        })}
+        {/* defensivos de raid em área (AMZ, Darkness, Spirit Link...): na cor de quem usou */}
+        {zones.map((z, i) => {
+          if (now < z.t || now >= z.end || hiddenAreas.has(`def:${z.spellId}`)) return null;
+          const c = color(z.caster);
+          const k = Math.min(1, (now - z.t) / ZONE_FADE_MS, (z.end - now) / ZONE_FADE_MS);
+          const label = t.zone(z.name, shortName(z.casterName), Math.ceil((z.end - now) / 1000));
+          return (
+            <g key={`zone-${i}`} className="replay-zone" opacity={0.35 + 0.65 * k}>
+              <circle cx={sx(z.x)} cy={sy(z.y)} r={z.radius * scale} fill={c} fillOpacity={0.1} stroke={c} strokeOpacity={0.8} strokeWidth={1.5}>
+                <title>{label}</title>
+              </circle>
+              {/* o ícone na borda de cima: o centro costuma estar cheio de gente */}
+              <SvgSpellIcon spellId={z.spellId} x={sx(z.x) - 8} y={sy(z.y) - z.radius * scale - 8} size={16} title={label} />
+            </g>
+          );
+        })}
+        {data.orbs &&
+          data.orbs.ground.map(([from, to, ox, oy, k], i) => {
+            if (now < from || now >= to || hiddenAreas.has(`orb:${k}`)) return null;
+            const kind = data.orbs!.kinds[k];
+            const c = ORB_COLORS[k] ?? ORB_COLORS[1];
+            const [x, y] = [sx(ox / 10), sy(oy / 10)];
+            return (
+              <g key={`orb-${i}`} className="replay-orb">
+                {kind?.volatile && <circle cx={x} cy={y} r={(data.orbs!.contactYd - 1) * scale} fill={c} fillOpacity={0.07} stroke={c} strokeOpacity={0.55} strokeDasharray="3 3" />}
+                <circle cx={x} cy={y} r={Math.max(3.5, ORB_YD * scale)} fill={c} stroke="var(--bg)" strokeWidth={1}>
+                  <title>{t.orb(tr(kind?.name ?? { pt: '', en: '' }))}</title>
+                </circle>
+              </g>
+            );
+          })}
         {enemies.map((e) => {
           const p = posAt(e, now);
           if (!p) return null;
@@ -524,6 +769,15 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             </g>
           );
         })}
+        {data.orbs &&
+          data.orbs.carries.map(([g, from, to, k], i) => {
+            if (now < from || now >= to || hiddenAreas.has(`orb:${k}`)) return null;
+            const u = data.units.get(g);
+            const q = u && posAt(u, now);
+            if (!q) return null;
+            const c = ORB_COLORS[k] ?? ORB_COLORS[1];
+            return <circle key={`carry-${i}`} cx={sx(q[0])} cy={sy(q[1])} r={Math.max(9, CARRY_YD * scale)} fill="none" stroke={c} strokeWidth={2.5} className="replay-carry" />;
+          })}
         {players
           .filter((u) => !focusSet.has(u.guid) && (others || !focus.length))
           .map((u) => {
@@ -532,14 +786,29 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             const line = stacks.get(u.guid);
             const n = line ? valueAt(line, now) : null;
             const dim = focus.length > 0 || (line && (n == null || n === 0));
+            const dead = deadNow(u.guid);
+            const b = !dead && badge?.(u.guid, now);
             return (
-              <g key={u.guid} opacity={dim ? (line && (n == null || n === 0) ? 0.3 : 0.55) : 1}>
+              <g key={u.guid} opacity={dead ? 0.3 : dim ? (line && (n == null || n === 0) ? 0.3 : 0.55) : 1} className={onSelect ? 'replay-pickable' : undefined}>
                 <circle cx={sx(p[0])} cy={sy(p[1])} r={dot} fill={color(u.guid)} className="posmap-player">
                   <title>{shortName(u.name)}</title>
                 </circle>
-                <text x={sx(p[0])} y={sy(p[1]) + 3} className="replay-dot-num" textAnchor="middle">
-                  {stackLabel(n)}
-                </text>
+                {dead ? (
+                  <text x={sx(p[0])} y={sy(p[1]) + 4} className="replay-dead small" textAnchor="middle">
+                    ✕
+                  </text>
+                ) : (
+                  <text x={sx(p[0])} y={sy(p[1]) + 3} className="replay-dot-num" textAnchor="middle">
+                    {stackLabel(n)}
+                  </text>
+                )}
+                {b && <SvgSpellIcon spellId={b.spellId} x={sx(p[0]) + dot - 2} y={sy(p[1]) - dot - 12} size={12} title={b.name} stacks={b.stacks} />}
+                {/* visão geral (ninguém em foco): o nome embaixo de cada um */}
+                {!focus.length && names && (
+                  <text x={sx(p[0])} y={sy(p[1]) + dot + 10} className="posmap-label replay-name" textAnchor="middle" style={{ fill: color(u.guid) }}>
+                    {shortName(u.name)}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -571,7 +840,8 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           const line = stacks.get(u.guid);
           const n = line ? valueAt(line, now) : null;
           const hit = (r.marks ?? []).some((m) => m.guid === u.guid && now >= m.t && now - m.t <= MARK_MS);
-          const dead = dies === u.guid && after;
+          const dead = (dies === u.guid && after) || deadNow(u.guid);
+          const b = !dead && badge?.(u.guid, now);
           // nomes para fora do par: o de cima em cima, o de baixo embaixo
           const other = fp[1 - i];
           const below = other ? sy(p[1]) >= sy(other[1]) : true;
@@ -590,6 +860,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                   {stackLabel(n)}
                 </text>
               )}
+              {b && <SvgSpellIcon spellId={b.spellId} x={sx(p[0]) + focusDot - 2} y={sy(p[1]) - focusDot - 16} size={16} title={b.name} stacks={b.stacks} />}
               <text x={sx(p[0])} y={nameY} className="posmap-label strong" textAnchor="middle" style={{ fill: color(u.guid) }}>
                 {shortName(u.name)}
               </text>
@@ -620,7 +891,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             </g>
           );
         })}
-        <g className="replay-scale" transform={`translate(${PAD} ${H - PAD})`}>
+        <g className="replay-scale" transform={`translate(${PAD} ${full ? PAD + 6 : H - PAD})`}>
           <line x1={0} y1={0} x2={scaleBarPx} y2={0} />
           <line x1={0} y1={-4} x2={0} y2={4} />
           <line x1={scaleBarPx} y1={-4} x2={scaleBarPx} y2={4} />
@@ -629,6 +900,9 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           </text>
         </g>
       </svg>
+      {overlay}
+      </div>
+      {belowMap}
       <div className="replay-controls">
         <button className="btn sm" onClick={() => (now >= r.to ? restart() : setPlaying(!playing))} aria-label={playing ? t.pause : t.play} title={playing ? t.pause : t.play}>
           {playing ? <Pause size={14} strokeWidth={1.75} aria-hidden /> : <Play size={14} strokeWidth={1.75} aria-hidden />}
@@ -636,17 +910,25 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
         <button className="btn sm ghost" onClick={restart} aria-label={t.restart} title={t.restart}>
           <RotateCcw size={14} strokeWidth={1.75} aria-hidden />
         </button>
-        <button
-          className="btn sm ghost"
-          onClick={() => {
-            setPlaying(false);
-            setNow(r.t);
-          }}
-          aria-label={t.toMoment}
-          title={t.toMoment}
-        >
-          <Crosshair size={14} strokeWidth={1.75} aria-hidden />
-        </button>
+        {full ? (
+          focus.length > 0 && (
+            <button className="btn sm ghost" onClick={centerOnFocus} aria-label={t.centerFocus} title={t.centerFocus}>
+              <Crosshair size={14} strokeWidth={1.75} aria-hidden />
+            </button>
+          )
+        ) : (
+          <button
+            className="btn sm ghost"
+            onClick={() => {
+              setPlaying(false);
+              setNow(r.t);
+            }}
+            aria-label={t.toMoment}
+            title={t.toMoment}
+          >
+            <Crosshair size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+        )}
         <input
           type="range"
           min={r.from}
@@ -660,8 +942,8 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             setNow(Number(e.target.value));
           }}
         />
-        <span className={`small num replay-clock ${after ? 'bad' : 'muted'}`}>{clock}</span>
-        {view.floor && (
+        <span className={`small num replay-clock ${after && !full ? 'bad' : 'muted'}`}>{clock}</span>
+        {view.floor && !full && (
           <button className={`btn sm ghost ${wide ? 'pressed' : ''}`} aria-pressed={wide} onClick={() => {
               setWide(!wide);
               setCam(NO_CAM);
@@ -670,7 +952,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           </button>
         )}
         <span className="replay-speeds" role="group" aria-label={t.speed}>
-          {SPEEDS.map((s) => (
+          {(full ? FULL_SPEEDS : SPEEDS).map((s) => (
             <button key={s} className={`btn sm ghost ${speed === s ? 'pressed' : ''}`} aria-pressed={speed === s} onClick={() => setSpeed(s)}>
               {s}×
             </button>
@@ -690,18 +972,54 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
         </Hint>
       </div>
       <div className="replay-panels">
-        {groundKinds.length > 0 && (
-          <p className="small replay-legend">
-            <span className="muted">{t.onGround}</span>
-            {groundKinds.map((k) => (
-              <span key={k} className="replay-legend-item">
-                <span className="replay-swatch" style={{ background: groundColor(k) }} aria-hidden />
-                <SpellName spellId={data.groundKinds[k].spellId} name={data.groundKinds[k].name} size={16} />
-              </span>
-            ))}
-          </p>
+        {(groundKinds.length > 0 || legendExtra || full) && (
+          <div className="replay-filters">
+            {groundKinds.length > 0 && (
+              <MapFilter
+                icon={<CircleDot size={14} strokeWidth={1.75} aria-hidden />}
+                label={t.onGround}
+                items={groundKinds.map((k) => ({ key: data.groundKinds[k].key, spellId: data.groundKinds[k].spellId, name: data.groundKinds[k].name, color: groundColor(k) }))}
+                hidden={hiddenGround}
+                onChange={(next) => {
+                  prefs.setHiddenGround(next);
+                  setHiddenGround(next);
+                }}
+              />
+            )}
+            {legendExtra}
+            {(data.areas.length > 0 || data.orbs || zones.length > 0) && (
+              <MapFilter
+                icon={<Radius size={14} strokeWidth={1.75} aria-hidden />}
+                label={t.areas}
+                items={[
+                  ...data.areas.map((a, ai) => ({ key: a.key, spellId: a.spellId ?? undefined, name: a.name, color: areaColor(ai) })),
+                  ...(data.orbs?.kinds ?? []).map((k, i) => ({ key: `orb:${i}`, name: t.orb(tr(k.name)), color: ORB_COLORS[i] ?? ORB_COLORS[1] })),
+                  // defensivos de raid em área, um por spell
+                  ...[...new Map(zones.map((z) => [z.spellId, z] as const)).values()].map((z) => ({ key: `def:${z.spellId}`, spellId: z.spellId, name: z.name })),
+                ]}
+                hidden={hiddenAreas}
+                onChange={(next) => {
+                  prefs.setHiddenAreas(next);
+                  setHiddenAreas(next);
+                }}
+              />
+            )}
+            {full && (
+              <button
+                className={`btn sm ghost ${names ? 'pressed' : ''}`}
+                aria-pressed={names}
+                onClick={() => {
+                  prefs.setShowNames(!names);
+                  setNames(!names);
+                }}
+                title={names ? t.hideNames : t.showNames}
+              >
+                <Tag size={14} strokeWidth={1.75} aria-hidden /> {t.names}
+              </button>
+            )}
+          </div>
         )}
-        {casters.length > 0 && (
+        {casters.length > 0 && !full && (
           <div className="replay-casts">
             <span className="muted small">{t.castsTitle}</span>
             {casters.map((e) => (
@@ -738,7 +1056,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             )}
           </div>
         )}
-        {shownGhosts.length > 0 && (
+        {shownGhosts.length > 0 && !full && (
           <div className="replay-ghosts">
             <span className="muted small">
               {t.ghostsTitle}
@@ -761,7 +1079,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             </ul>
           </div>
         )}
-        {hits && (
+        {hits && !full && (
           <div className="replay-feed">
             <span className="muted small">{t.hitsTitle}</span>
             {feed.length === 0 ? (

@@ -186,6 +186,7 @@ mod tests {
 
     #[test]
     fn friendly_errors() {
+        wipe_core::i18n::set_english(false); // as mensagens conferidas são as em português
         assert!(http_error(429, String::new()).contains("Limite do plano gratuito"));
         assert!(http_error(401, String::new()).contains("chave"));
     }

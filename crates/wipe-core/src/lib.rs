@@ -2,6 +2,7 @@
 
 pub mod analysis;
 pub mod data;
+pub mod fight;
 pub mod gaze;
 pub mod i18n;
 pub mod orbs;
@@ -44,6 +45,16 @@ pub struct AnalyzeOptions {
 pub fn analyze_file(path: &Path, opts: &AnalyzeOptions, progress: impl FnMut(u64, u64)) -> io::Result<LogReport> {
     let file = File::open(path)?;
     let total = file.metadata()?.len();
+    let book = rule_book(opts);
+    let mut report = analyze_reader(BufReader::with_capacity(1 << 20, file), total, &book, opts.death_cutoff, progress)?;
+    report.file = path.display().to_string();
+    for p in &mut report.pulls {
+        p.log_file = Some(report.file.clone());
+    }
+    Ok(report)
+}
+
+fn rule_book(opts: &AnalyzeOptions) -> RuleBook {
     let mut book = RuleBook::embedded();
     if let Some(dir) = &opts.rules_dir {
         book.load_dir(dir);
@@ -51,9 +62,50 @@ pub fn analyze_file(path: &Path, opts: &AnalyzeOptions, progress: impl FnMut(u64
     if let Some(dir) = &opts.tuning_dir {
         book.load_tuning_dir(dir);
     }
-    let mut report = analyze_reader(BufReader::with_capacity(1 << 20, file), total, &book, opts.death_cutoff, progress)?;
-    report.file = path.display().to_string();
-    Ok(report)
+    book
+}
+
+/// Replay completo de um pull: relê só ele, a partir do `ENCOUNTER_START` em `offset`, guardando as
+/// posições do pull inteiro, a vida, os debuffs e os eventos de cada player (`Pull.fight`). Sem o
+/// corte de mortes: o replay mostra a luta toda.
+pub fn analyze_pull_full(path: &Path, offset: u64, opts: &AnalyzeOptions) -> io::Result<Pull> {
+    let book = rule_book(opts);
+    let data = GameData::embedded();
+    let default_year = current_year();
+    let mut reader = BufReader::with_capacity(1 << 20, File::open(path)?);
+    reader.seek(SeekFrom::Start(offset))?;
+    let mut buf = Vec::with_capacity(4096);
+    let mut current: Option<PullBuilder> = None;
+    let mut end: Option<(Vec<String>, i64)> = None;
+    loop {
+        buf.clear();
+        if reader.read_until(b'\n', &mut buf)? == 0 {
+            break;
+        }
+        let line = String::from_utf8_lossy(&buf);
+        let Some((ts, rest)) = split_timestamp(&line) else { continue };
+        let Some(t) = parse_timestamp(ts, default_year) else { continue };
+        let mut f = Vec::with_capacity(48);
+        split_fields(rest, &mut f);
+        match (f[0], current.as_mut()) {
+            ("ENCOUNTER_START", None) => current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), &book, 0).capture_fight(&data)),
+            ("ENCOUNTER_START", Some(_)) => break,
+            ("ENCOUNTER_END", Some(_)) => {
+                end = Some((f.iter().map(|s| s.to_string()).collect(), t));
+                break;
+            }
+            (_, Some(b)) => b.feed(&f, t, &data),
+            _ => {}
+        }
+    }
+    let b = current.ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing ENCOUNTER_START at offset"))?;
+    let end_fields: Option<Vec<&str>> = end.as_ref().map(|(f, _)| f.iter().map(String::as_str).collect());
+    let fp = b.finish(end_fields.as_deref().zip(end.as_ref().map(|e| e.1)), 0, &data);
+    let (mut pulls, _) = finalize(vec![fp], &data);
+    let mut pull = pulls.pop().ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "pull too short"))?;
+    pull.log_file = Some(path.display().to_string());
+    pull.log_offset = Some(offset);
+    Ok(pull)
 }
 
 /** Relê um pull desde o `ENCOUNTER_START` em `offset` sem o corte de mortes, até o `ENCOUNTER_END` (sem consumi-lo). */
@@ -138,7 +190,9 @@ pub fn analyze_reader<R: BufRead + Seek>(
 
         if is_start {
             if let Some(prev) = current.take() {
-                finished.push(prev.finish(None, finished.len(), &data));
+                let mut fp = prev.finish(None, finished.len(), &data);
+                fp.pull.log_offset = Some(pull_offset);
+                finished.push(fp);
             }
             current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book, death_cutoff));
             pull_offset = line_start;
@@ -152,14 +206,18 @@ pub fn analyze_reader<R: BufRead + Seek>(
                 } else {
                     b
                 };
-                finished.push(b.finish(Some((f.as_slice(), t)), finished.len(), &data));
+                let mut fp = b.finish(Some((f.as_slice(), t)), finished.len(), &data);
+                fp.pull.log_offset = Some(pull_offset);
+                finished.push(fp);
             }
         } else if let Some(b) = current.as_mut() {
             b.feed(&f, t, &data);
         }
     }
     if let Some(b) = current.take() {
-        finished.push(b.finish(None, finished.len(), &data));
+        let mut fp = b.finish(None, finished.len(), &data);
+        fp.pull.log_offset = Some(pull_offset);
+        finished.push(fp);
     }
     progress(total, total);
 

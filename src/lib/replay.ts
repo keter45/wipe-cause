@@ -1,7 +1,7 @@
 // Replays: posições guardadas no pull (`Pull.tracks`, só nos trechos usados) e as contas do
 // player de replay (posição num instante, stacks num instante).
 
-import type { BossCast, Death, LegacyPairReplay, MechanicResult, Pull, PullGround, PullTracks, ReplayRef } from '../types';
+import type { AreaView, BossCast, Death, LegacyPairReplay, MechanicResult, OrbTracks, Pull, PullGround, PullTracks, ReplayRef } from '../types';
 
 export interface ReplayUnit {
   guid: string;
@@ -13,6 +13,8 @@ export interface ReplayUnit {
   owner?: string;
   /** fantasma: daqui em diante o caminho é estimado */
   estimatedFrom?: number;
+  /** unidade de área: momentos (ms) em que o log mostrou onde ela estava */
+  seen?: number[];
 }
 
 export type GroundKind = PullGround['kinds'][number];
@@ -35,11 +37,23 @@ export interface ReplayData {
   arena?: Pull['arena'];
   /** casts dos bosses, em ordem */
   casts: BossCast[];
+  /** replay completo: áreas das habilidades e orbs */
+  areas: AreaView[];
+  orbs?: OrbTracks;
 }
 
+/** npc id de um guid de criatura (Creature-0-...-<npc>-<spawn>). */
+export const npcOf = (guid: string): number | null => {
+  if (!guid.startsWith('Creature-') && !guid.startsWith('Vehicle-')) return null;
+  const n = Number(guid.split('-').at(-2));
+  return Number.isFinite(n) ? n : null;
+};
+
 /** Posições e marcas no chão de um pull (vazio em relatórios antigos). */
-export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts'>): ReplayData {
+export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs'>): ReplayData {
   return {
+    areas: pull.areas ?? [],
+    orbs: pull.orbs,
     arena: pull.arena,
     casts: [...(pull.casts ?? [])].sort((a, b) => a.t - b.t),
     units: decodeTracks(pull.tracks),
@@ -56,7 +70,7 @@ function decodeTracks(tracks: PullTracks | undefined | null): Map<string, Replay
     for (const s of u.segs) {
       for (let i = 0; i + 1 < s.xy.length; i += 2) pts.push([s.t0 + (i / 2) * tracks.stepMs, s.xy[i] / 10, s.xy[i + 1] / 10]);
     }
-    out.set(u.guid, { guid: u.guid, name: u.name, kind: u.kind, pts, owner: u.owner, estimatedFrom: u.estimatedFrom });
+    out.set(u.guid, { guid: u.guid, name: u.name, kind: u.kind, pts, owner: u.owner, estimatedFrom: u.estimatedFrom, seen: u.seen?.map((s) => s * tracks.stepMs) });
   }
   return out;
 }
@@ -69,7 +83,7 @@ export function fromLegacy(r: LegacyPairReplay, t: number): { data: ReplayData; 
   for (const tr of r.tracks) units.set(tr.guid, { guid: tr.guid, name: tr.name, kind: 'player', pts: tr.pts });
   for (const e of r.enemies) units.set(e.guid, { guid: e.guid, name: e.name, kind: 'enemy', pts: [[r.from, e.x, e.y], [r.to, e.x, e.y]] });
   return {
-    data: { units, groundKinds: [], ground: [], casts: [] },
+    data: { units, groundKinds: [], ground: [], casts: [], areas: [] },
     replay: {
       t,
       from: r.from,

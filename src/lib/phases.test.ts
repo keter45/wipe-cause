@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MechanicResult, PhaseWindow } from '../types';
-import { phaseLabel, phaseTone, phasesOfNight } from './phases';
+import { phaseLabel, phaseTone, phasesOfNight, reachedPhase } from './phases';
 import { pull } from './test-fixtures';
 
 const win = (start: number, secs: number | null, extra: Partial<PhaseWindow> = {}): PhaseWindow => ({ start, end: secs == null ? null : start + secs * 1000 + 8, ...extra });
@@ -39,5 +39,15 @@ describe('fases cronometradas', () => {
     expect(n.slots).toBe(2);
     expect(n.best).toEqual([11, 13]);
     expect(n.avg).toBe(14); // (18 + 13 + 11) / 3: a de 6s com 17 mortes fica de fora
+  });
+});
+
+describe('fase alcançada', () => {
+  const m = (key: string, t: number) => ({ key, name: key.toUpperCase(), t });
+  it('só aparece depois da primeira fase, com rótulo curto', () => {
+    expect(reachedPhase({ phaseMarks: [m('p1', 0)] })).toBeNull();
+    expect(reachedPhase({})).toBeNull();
+    expect(reachedPhase({ phaseMarks: [m('p1', 0), m('p2', 100)] })).toMatchObject({ short: 'P2', index: 1 });
+    expect(reachedPhase({ phaseMarks: [m('p1', 0), m('p2', 100), m('intermission', 200)] })?.short).toBe('Int.');
   });
 });

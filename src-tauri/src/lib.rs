@@ -71,6 +71,18 @@ async fn analyze_log(app: AppHandle, path: String, death_cutoff: Option<u32>, tz
     .map_err(|e| e.to_string())?
 }
 
+/// Replay completo de um pull: relê só ele no log (posições do pull inteiro, vida, debuffs e
+/// eventos de cada player).
+#[tauri::command]
+async fn fight_replay(app: AppHandle, path: String, offset: u64) -> Result<wipe_core::Pull, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let opts = wipe_core::AnalyzeOptions { rules_dir: user_rules_dir(&app), tuning_dir: tuning_dir(&app), death_cutoff: 0 };
+        wipe_core::analyze_pull_full(&PathBuf::from(&path), offset, &opts).map_err(|e| pick(format!("não foi possível reler o pull em {path}: {e}"), format!("could not re-read the pull in {path}: {e}")))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Grava um arquivo escolhido pelo usuário no diálogo "Salvar" (imagem ou HTML do resumo).
 #[tauri::command]
 fn save_file(path: String, data_b64: String) -> Result<(), String> {
@@ -139,6 +151,7 @@ pub fn run() {
         .on_window_event(tray::on_window_event)
         .invoke_handler(tauri::generate_handler![
             analyze_log,
+            fight_replay,
             set_locale,
             rules_dir,
             rule_tuning::rules_get,

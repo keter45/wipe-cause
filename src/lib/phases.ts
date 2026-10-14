@@ -76,3 +76,16 @@ export function phasesOfNight(pulls: Pull[]): PhaseNight[] {
   }
   return [...byKey.values()];
 }
+
+/**
+ * Fase a que o pull chegou (regra do boss com `phases`), quando passou da primeira: rótulo curto
+ * (P2, Int., P3) e o nome. Num boss de várias fases o HP do boss da primeira não diz até onde o try foi.
+ */
+export function reachedPhase(p: Pick<Pull, 'phaseMarks'>): { short: string; name: string; index: number } | null {
+  const marks = p.phaseMarks ?? [];
+  if (marks.length < 2) return null;
+  const last = marks[marks.length - 1];
+  const n = /^p(\d+)$/i.exec(last.key);
+  const short = n ? `P${n[1]}` : `${last.key.charAt(0).toUpperCase()}${last.key.slice(1, 3)}.`;
+  return { short, name: last.name, index: marks.length - 1 };
+}

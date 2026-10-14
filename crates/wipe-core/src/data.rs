@@ -20,6 +20,29 @@ pub struct Defensive {
     pub class: String,
     pub cd: u32,
     pub kind: String,
+    /// defensivo em área (para o replay): onde fica, raio e duração
+    #[serde(default)]
+    pub zone: Option<ZoneDef>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ZoneDef {
+    pub radius: f32,
+    /// segundos
+    pub duration: f32,
+    pub at: ZoneAt,
+    /// at = buffed: o buff que os players ganham dentro
+    #[serde(default)]
+    pub buff: Option<u32>,
+}
+
+/// Onde fica a área: onde quem usou estava, onde caiu o totem, ou no meio dos primeiros buffados.
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ZoneAt {
+    Caster,
+    Summon,
+    Buffed,
 }
 
 #[derive(Debug, Deserialize)]

@@ -52,7 +52,9 @@ mechanics:
         before:
           - { until: "2026-10-13T15:00", contact_yd: 9 }   # antes do hotfix: raio 8yd
         window_ms: 500
-        breaker: { cast_id: 1299684, half_angle: 40, range: 40 }   # Sever quebra os orbs no cone
+        breaker: { cast_id: 1299684, cast_ids: [1307292], count_aura: 1299838, half_angle: 40, range: 40 }   # Sever (e o Blighted Sever da P3) quebra os orbs no cone; o raid ganha 1 stack de Venom Rupture por orb quebrado
+        cleared_by: [1299960]          # orbs novos (Toxic Deluge): o boss explode os que sobraram no chão
+        cleared_on_zero: [257911]      # e quando o Zul'jan chega a 0 de vida (fim da P1, antes do Dreadmarch)
         kinds:
           - { npc_id: 271982, carry_aura: 1310498, volatile: true, name: { pt: roxo, en: purple } }   # Virulent Mutation / Mutagenic Venom
           - { npc_id: 268042, carry_aura: 1282419, name: { pt: verde, en: green } }                   # Coalesced Venom Stalker / Volatile Venom
@@ -76,6 +78,7 @@ mechanics:
     difficulty: [mythic]
     severity: minor
     detect: { damage_ids: [1310691], excludes_aura: 1310498 }
+    area: { aura: 1310498, radius: 6 }   # em volta de quem carrega o roxo (6 jd depois do hotfix de 13/10)
     tolerance: 1
     tip: { pt: "Ficar a mais de 6 jardas de quem carrega o roxo.", en: "Stay more than 6 yards from whoever carries the purple." }
     message: { pt: "{player} tomou {count} ticks de Mutagenic Venom de outro portador", en: "{player} took {count} ticks of Mutagenic Venom from another carrier" }
@@ -87,6 +90,7 @@ mechanics:
     source_unit: coalesced_venom
     severity: minor
     detect: { damage_ids: [1282288], excludes_aura: 1282419 }
+    area: { aura: 1282419, radius: 5 }   # em volta de quem carrega o verde
     tolerance: 2
     tip: { pt: "Quem não carrega orb verde fica a mais de 5 jardas de quem carrega.", en: "Whoever isn't carrying a green orb stays more than 5 yards from the carrier." }
     message: { pt: "{player} tomou {count} ticks de Volatile Venom de outro portador", en: "{player} took {count} ticks of Volatile Venom from another carrier" }
@@ -166,6 +170,7 @@ mechanics:
     source_unit: axegrinder
     severity: minor
     detect: { damage_ids: [1285017], cast_id: 1283832 }
+    area: { npc: 260474, radius: 4, vanish: { idle_s: 10, from: p2 } }   # os machados girando (os golpes começam a ~3,6 jd do machado, 13/10); na P2 eles somem (sem golpe por perto em 10 s)
     ground: { phases: [p1], dot: true }   # machado no chão só na P1 (depois é só o DoT); o dano é DoT: marca onde encostou
     tolerance: 4
     tip: { pt: "Desviar dos machados que giram pela sala (no Heroic+ eles não somem).", en: "Dodge the axes spinning around the room (on Heroic+ they don't disappear)." }
@@ -359,6 +364,7 @@ mechanics:
     source_unit: malacrass
     severity: minor
     detect: { damage_ids: [1310883], excludes_aura: 1310881 }
+    area: { aura: 1310881, radius: 15 }   # em volta de quem leva a bomba
     tip: { pt: "Marcados levam a bomba até o add (Mythic: quebra o Spirit Shield); o resto fica a 15 jardas.", en: "Marked players take the bomb to the add (Mythic: it breaks the Spirit Shield); everyone else stays 15 yards away." }
     message: { pt: "{player} foi atingido pelo Gloombomb de outro ({count}x)", en: "{player} was hit by someone else's Gloombomb ({count}x)" }
     notes: "Quem é atingido ganha Gravebound."

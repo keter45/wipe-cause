@@ -7,6 +7,10 @@
 //!   nova do orb, com posição, no mesmo instante (o primeiro cast dela);
 //! - pegar do chão = aura nova num player em cima de um orb parado;
 //! - o frontal do boss (`breaker`) quebra os orbs parados no cone (posição e direção do boss no cast).
+//!   Com `count_aura`, o raid ganha uma stack por orb quebrado: o salto de stacks diz quantos, e os
+//!   mais alinhados com o cone (pela direção do log ou pelo alvo do boss) são os quebrados.
+//!
+//! - `cleared_by`: casts do boss que explodem os orbs que sobraram no chão (orbs novos, troca de fase).
 //!
 //! Dois orbs carregados por players diferentes não explodem: só conta um orb no chão com outro
 //! chegando nele (carregado, ou largado em cima).
@@ -23,6 +27,12 @@ const DROP_AFTER_MS: i64 = 150;
 const DROP_MAX_YD: f32 = 5.0;
 /// Posições mais distantes que isso não são interpoladas (usa a última conhecida).
 const MAX_GAP_MS: i64 = 3_000;
+/// As stacks do `count_aura` entram até isto depois do frontal.
+const COUNT_WINDOW_MS: i64 = 500;
+/// Contando pelas stacks, o orb quebrado ainda tem que estar mais ou menos na frente do boss.
+const COUNT_MAX_ANGLE: f32 = 90.0;
+/// A explosão do que sobrou no chão sai junto com o cast (às vezes um pouco antes no log).
+const CLEAR_SLACK_MS: i64 = 200;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct OrbKind {
@@ -40,6 +50,12 @@ pub struct OrbKind {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Breaker {
     pub cast_id: u32,
+    /// outros frontais que também quebram (ex.: o da outra fase)
+    #[serde(default)]
+    pub cast_ids: Vec<u32>,
+    /// debuff que o raid ganha por orb quebrado: o salto de stacks no frontal diz quantos quebraram
+    #[serde(default)]
+    pub count_aura: Option<u32>,
     /// meio ângulo do cone (graus) e alcance (jardas)
     pub half_angle: f32,
     pub range: f32,
@@ -58,6 +74,12 @@ pub struct OrbDetect {
     #[serde(default = "default_window")]
     pub window_ms: i64,
     pub breaker: Option<Breaker>,
+    /// casts do boss que explodem os orbs que sobraram no chão (ex.: orbs novos, troca de fase)
+    #[serde(default)]
+    pub cleared_by: Vec<u32>,
+    /// npc ids de bosses que, ao chegar a 0 de vida, explodem os orbs que sobraram (ex.: o fim da P1)
+    #[serde(default)]
+    pub cleared_on_zero: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -99,8 +121,13 @@ pub struct OrbLog {
     sightings: Vec<(i64, usize, f32, f32)>,
     /// (guid, tipo, começo, fim)
     carries: Vec<(String, usize, i64, Option<i64>)>,
-    /// frontais: (t, x, y, direção em radianos)
-    breaks: Vec<(i64, f32, f32, f32)>,
+    /// frontais: (t, x, y, direção em radianos, alvo do boss)
+    breaks: Vec<(i64, f32, f32, f32, Option<String>)>,
+    /// stacks do `count_aura` nos players: (t, guid, stacks antes, stacks depois)
+    counts: Vec<(i64, String, u32, u32)>,
+    /// casts que explodem os orbs do chão
+    clears: Vec<i64>,
+    count_now: HashMap<String, u32>,
     /// quando o pull começou (epoch ms, UTC): escolhe o raio de antes ou depois de um hotfix
     pub start_ms: Option<i64>,
 }
@@ -121,13 +148,39 @@ impl OrbLog {
                 self.sightings.push((t, kind, x, y));
             }
         }
-        if cfg.breaker.as_ref().is_some_and(|b| b.cast_id == spell_id) {
-            self.breaks.push((t, x, y, facing));
+        if cfg.breaker.as_ref().is_some_and(|b| b.cast_id == spell_id || b.cast_ids.contains(&spell_id)) {
+            self.breaks.push((t, x, y, facing, None));
+        }
+    }
+
+    /// Cast de inimigo sem precisar de posição: os que limpam o chão (`cleared_by`).
+    pub fn on_cast(&mut self, cfg: &OrbDetect, spell_id: u32, t: i64) {
+        if cfg.cleared_by.contains(&spell_id) {
+            self.clears.push(t);
+        }
+    }
+
+    /// Vida de um inimigo chegou a 0: os de  explodem o que sobrou no chão.
+    pub fn on_enemy_zero(&mut self, cfg: &OrbDetect, npc_id: u32, t: i64) {
+        if cfg.cleared_on_zero.contains(&npc_id) {
+            self.clears.push(t);
+        }
+    }
+
+    /// Alvo do boss no frontal que acabou de entrar (`on_enemy_cast`): outra direção para o cone.
+    pub fn break_target(&mut self, t: i64, target: &str) {
+        if let Some(b) = self.breaks.last_mut().filter(|b| b.0 == t) {
+            b.4 = Some(target.to_string());
         }
     }
 
     /// Aura aplicada (stacks > 0) ou removida num player.
     pub fn on_aura(&mut self, cfg: &OrbDetect, spell_id: u32, guid: &str, name: &str, stacks: u32, t: i64) {
+        if cfg.breaker.as_ref().and_then(|b| b.count_aura) == Some(spell_id) {
+            let before = if stacks == 0 { self.count_now.remove(guid) } else { self.count_now.insert(guid.to_string(), stacks) }.unwrap_or(0);
+            self.counts.push((t, guid.to_string(), before, stacks));
+            return;
+        }
         let Some(kind) = cfg.kinds.iter().position(|k| k.carry_aura == spell_id) else { return };
         self.names.entry(guid.to_string()).or_insert_with(|| name.to_string());
         let open = self.carries.iter_mut().rev().find(|c| c.0 == guid && c.1 == kind && c.3.is_none());
@@ -228,17 +281,31 @@ fn alive(g: &Ground, t: i64) -> bool {
     g.from <= t && g.to.is_none_or(|e| e > t)
 }
 
+/// Quantos orbs o frontal em `t` quebrou: o maior salto de stacks do `count_aura` num player logo
+/// depois (None = a regra não tem `count_aura`).
+fn broken_count(b: &Breaker, log: &OrbLog, t: i64) -> Option<usize> {
+    b.count_aura?;
+    let mut per: HashMap<&str, (u32, u32)> = HashMap::new();
+    for (_, g, before, after) in log.counts.iter().filter(|c| c.0 >= t && c.0 <= t + COUNT_WINDOW_MS) {
+        let e = per.entry(g.as_str()).or_insert((*before, *after));
+        e.1 = *after;
+    }
+    Some(per.values().map(|&(a, b)| b.saturating_sub(a) as usize).max().unwrap_or(0))
+}
+
 /// Os orbs no chão até `until`, com quem largou cada um.
 fn ground_orbs(cfg: &OrbDetect, log: &OrbLog, until: i64) -> Vec<Ground> {
     enum Ev<'a> {
         Seen(usize, f32, f32),
         Pick(&'a str, usize),
-        Break(f32, f32, f32),
+        Break(usize),
+        Clear,
     }
     let mut evs: Vec<(i64, Ev)> = Vec::new();
     evs.extend(log.sightings.iter().map(|&(t, k, x, y)| (t, Ev::Seen(k, x, y))));
     evs.extend(log.carries.iter().map(|c| (c.2, Ev::Pick(c.0.as_str(), c.1))));
-    evs.extend(log.breaks.iter().map(|&(t, x, y, f)| (t, Ev::Break(x, y, f))));
+    evs.extend(log.breaks.iter().enumerate().map(|(i, b)| (b.0, Ev::Break(i))));
+    evs.extend(log.clears.iter().map(|&t| (t, Ev::Clear)));
     evs.retain(|e| e.0 <= until);
     evs.sort_by_key(|e| e.0);
 
@@ -272,20 +339,82 @@ fn ground_orbs(cfg: &OrbDetect, log: &OrbLog, until: i64) -> Vec<Ground> {
                     g.to = Some(t);
                 }
             }
-            Ev::Break(bx, by, facing) => {
-                let Some(b) = &cfg.breaker else { continue };
+            // o boss explodiu o que sobrou no chão
+            Ev::Clear => {
                 for g in out.iter_mut().filter(|g| alive(g, t)) {
-                    let (dx, dy) = (g.x - bx, g.y - by);
-                    let a = dy.atan2(dx) - facing;
-                    let a = a.sin().atan2(a.cos()).abs().to_degrees();
-                    if a <= b.half_angle && dx.hypot(dy) <= b.range {
-                        g.to = Some(t);
+                    g.to = Some(t);
+                }
+            }
+            Ev::Break(i) => {
+                let Some(b) = &cfg.breaker else { continue };
+                let (_, bx, by, facing, target) = &log.breaks[i];
+                // direções do cone: a do log no fim do cast e a do alvo do boss (às vezes o log erra a direção)
+                let mut dirs = vec![*facing];
+                if let Some(p) = target.as_deref().and_then(|g| log.pos(g, t)) {
+                    if (p.0 - bx).hypot(p.1 - by) > 0.5 {
+                        dirs.push((p.1 - by).atan2(p.0 - bx));
                     }
+                }
+                let angle = |g: &Ground| {
+                    let a = (g.y - by).atan2(g.x - bx);
+                    dirs.iter().map(|d| (a - d).sin().atan2((a - d).cos()).abs().to_degrees()).fold(f32::MAX, f32::min)
+                };
+                // (orb, ângulo, quão perto da borda do cone: no ângulo ou no alcance, 1 = na borda)
+                let mut hit: Vec<(usize, f32, f32)> = out
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, g)| alive(g, t) && (g.x - bx).hypot(g.y - by) <= b.range)
+                    .map(|(j, g)| {
+                        let a = angle(g);
+                        (j, a, (a / b.half_angle).max((g.x - bx).hypot(g.y - by) / b.range))
+                    })
+                    .collect();
+                let front = hit.iter().filter(|h| h.1 <= COUNT_MAX_ANGLE).count();
+                match broken_count(b, log, t) {
+                    // quantos quebraram vem das stacks: os mais alinhados com o cone (salto maior que os
+                    // orbs na frente do boss, ex.: logo depois de uma detonação, não serve: vale o cone)
+                    Some(n) if n <= front => {
+                        hit.retain(|h| h.1 <= COUNT_MAX_ANGLE);
+                        hit.sort_by(|a, b| a.2.total_cmp(&b.2));
+                        hit.truncate(n);
+                    }
+                    _ => hit.retain(|h| h.1 <= b.half_angle),
+                }
+                for (j, ..) in hit {
+                    out[j].to = Some(t);
                 }
             }
         }
     }
     out
+}
+
+/// Orbs do pull inteiro para o replay completo: os que ficaram no chão (de quando caíram até
+/// serem pegos ou quebrados) e quem carregou cada um.
+pub fn tracks(cfg: &OrbDetect, log: &OrbLog, end: i64) -> crate::report::OrbTracks {
+    let ground = ground_orbs(cfg, log, end)
+        .into_iter()
+        .map(|g| (g.from, g.to.unwrap_or(end), (g.x * 10.0).round() as i32, (g.y * 10.0).round() as i32, g.kind as u8))
+        .collect();
+    let carries = log.carries.iter().map(|c| (c.0.clone(), c.2, c.3.unwrap_or(end), c.1 as u8)).collect();
+    crate::report::OrbTracks {
+        kinds: cfg.kinds.iter().map(|k| crate::report::OrbKindView { name: k.name.clone(), volatile: k.volatile }).collect(),
+        contact_yd: cfg.contact_at(log.start_ms),
+        ground,
+        carries,
+    }
+}
+
+/// A explosão em `boom` veio de um cast que limpa o chão (`cleared_by`)? Devolve quantos orbs de cada
+/// tipo tinham sobrado ali (o frontal não limpou).
+pub fn leftovers(cfg: &OrbDetect, log: &OrbLog, boom: i64) -> Option<Vec<usize>> {
+    // o primeiro gatilho da janela é o que explodiu o chão (um segundo logo depois já acha o chão vazio)
+    let clear = *log.clears.iter().filter(|&&c| c <= boom + CLEAR_SLACK_MS && boom - c <= cfg.window_ms).min()?;
+    let mut n = vec![0; cfg.kinds.len()];
+    for g in ground_orbs(cfg, log, clear - 1).iter().filter(|g| alive(g, clear - 1)) {
+        n[g.kind] += 1;
+    }
+    Some(n)
 }
 
 /// Quem levou um orb até outro no chão nos instantes antes da explosão em `boom` (None = ninguém
@@ -338,7 +467,9 @@ mod tests {
             contact_yd: 9.0,
             before: Vec::new(),
             window_ms: 500,
-            breaker: Some(Breaker { cast_id: 99, half_angle: 40.0, range: 40.0 }),
+            breaker: Some(Breaker { cast_id: 99, cast_ids: Vec::new(), count_aura: None, half_angle: 40.0, range: 40.0 }),
+            cleared_by: vec![55],
+            cleared_on_zero: Vec::new(),
         }
     }
 
@@ -417,6 +548,35 @@ mod tests {
         walk(&mut log, "A", (10.0, 20.0), (10.0, 1.0), 1000, 4000);
         log.on_aura(&c, 10, "A", "Alice", 1, 1000);
         assert_eq!(collision(&c, &log, 4000), None);
+    }
+
+    #[test]
+    fn stacks_do_raid_dizem_quantos_quebraram_e_o_alvo_corrige_a_direcao() {
+        let mut c = cfg();
+        c.breaker.as_mut().unwrap().count_aura = Some(77);
+        let mut log = OrbLog::default();
+        // dois orbs na frente do alvo (+x), um atrás; o log diz que o boss olhava para +y
+        log.on_enemy_cast(&c, Some(2), "G1", 5, 10.0, 0.0, 0.0, 100);
+        log.on_enemy_cast(&c, Some(1), "P1", 5, 15.0, 2.0, 0.0, 100);
+        log.on_enemy_cast(&c, Some(2), "G2", 5, -10.0, 0.0, 0.0, 100);
+        walk(&mut log, "T", (5.0, 0.0), (5.0, 0.0), 0, 1000);
+        log.on_enemy_cast(&c, None, "BOSS", 99, 0.0, 0.0, std::f32::consts::FRAC_PI_2, 500);
+        log.break_target(500, "T");
+        // o raid ganha 2 stacks: 2 orbs quebrados
+        log.on_aura(&c, 77, "X", "Xis", 1, 500);
+        log.on_aura(&c, 77, "X", "Xis", 2, 500);
+        let alive: Vec<usize> = ground_orbs(&c, &log, 2000).iter().filter(|g| g.to.is_none()).map(|g| g.kind).collect();
+        assert_eq!(alive, vec![1]); // só o verde de trás sobrou (tipo 1 = verde)
+        // orbs novos: o boss explode o que sobrou
+        log.on_cast(&c, 55, 3000);
+        assert!(ground_orbs(&c, &log, 4000).iter().all(|g| g.to.is_some()));
+        assert_eq!(leftovers(&c, &log, 3010), Some(vec![0, 1])); // o verde de trás tinha sobrado
+        assert_eq!(leftovers(&c, &log, 900), None);
+        // sem stacks no frontal: nada quebra, mesmo no cone
+        let mut log2 = OrbLog::default();
+        log2.on_enemy_cast(&c, Some(2), "G1", 5, 10.0, 0.0, 0.0, 100);
+        log2.on_enemy_cast(&c, None, "BOSS", 99, 0.0, 0.0, 0.0, 500);
+        assert!(ground_orbs(&c, &log2, 2000).iter().all(|g| g.to.is_none()));
     }
 
     #[test]

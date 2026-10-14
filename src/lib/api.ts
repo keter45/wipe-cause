@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
-import type { LogReport } from '../types';
+import type { LogReport, Pull } from '../types';
 
 /** Rodando dentro do app Tauri (e não no navegador durante o desenvolvimento da UI). */
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -14,6 +14,19 @@ export async function pickLogFile(): Promise<string | null> {
     filters: [{ name: 'Combat log', extensions: ['txt'] }],
   });
   return typeof picked === 'string' ? picked : null;
+}
+
+/**
+ * Replay completo de um pull: o app relê só ele no log. No navegador (desenvolvimento da UI),
+ * `?fight=/samples/x.json` carrega um gerado com `wipe-cli fight`.
+ */
+export async function loadFight(pull: Pull): Promise<Pull> {
+  if (!inTauri) {
+    const url = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('fight') : null;
+    if (!url) throw new Error('missing ?fight= sample');
+    return (await fetch(url)).json();
+  }
+  return invoke<Pull>('fight_replay', { path: pull.logFile, offset: pull.logOffset });
 }
 
 export async function analyzeLog(path: string, deathCutoff: number, onProgress: (fraction: number) => void): Promise<LogReport> {

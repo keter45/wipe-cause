@@ -92,12 +92,18 @@ export function SpellName({ spellId, name, size = 18, icon }: { spellId: number 
 }
 
 /** Ícone da habilidade dentro de um SVG (mapa do replay); enquanto carrega, um quadrado neutro. */
-export function SvgSpellIcon({ spellId, x, y, size, title }: { spellId: number; x: number; y: number; size: number; title?: string }) {
+/** `stacks`: acima de 1, o número no canto de baixo à direita (como no jogo). */
+export function SvgSpellIcon({ spellId, x, y, size, title, stacks }: { spellId: number; x: number; y: number; size: number; title?: string; stacks?: number }) {
   const tip = useTooltip(spellId, true);
   return (
     <g data-spell-id={spellId} {...(title && { role: 'img', 'aria-label': title })}>
       <rect x={x - 1} y={y - 1} width={size + 2} height={size + 2} rx={3} className="svg-spell-frame" />
       {tip?.icon && <image href={iconUrl(tip.icon)} x={x} y={y} width={size} height={size} preserveAspectRatio="xMidYMid slice" />}
+      {stacks != null && stacks > 1 && (
+        <text x={x + size + 1} y={y + size + 1} className="svg-spell-stacks" textAnchor="end">
+          {stacks}
+        </text>
+      )}
     </g>
   );
 }

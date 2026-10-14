@@ -11,6 +11,9 @@ export const pullListMsg = defineMessages(
     togglePulls: (open: boolean): string => (open ? 'Esconder os pulls' : 'Mostrar os pulls'),
     pullTitle: (n: number, result: string | null, dur: string, deaths: number) => `Pull ${n} · ${result == null ? 'kill' : `boss em ${result}`} · ${dur} · ${deaths} mortes`,
     deaths: 'mortes',
+    reached: (phase: string) => ` · chegou em ${phase}`,
+    cause: (name: string, linked: number) => ` · gatilho: ${name} (${linked} ${linked === 1 ? 'morte ligada' : 'mortes ligadas'})`,
+    causeIcon: (name: string, linked: number) => `Gatilho do wipe: ${name} (${linked} ${linked === 1 ? 'morte ligada' : 'mortes ligadas'})`,
     note: (note: string) => `Anotação: ${note}`,
   },
   {
@@ -23,6 +26,9 @@ export const pullListMsg = defineMessages(
     togglePulls: (open: boolean) => (open ? 'Hide the pulls' : 'Show the pulls'),
     pullTitle: (n: number, result: string | null, dur: string, deaths: number) => `Pull ${n} · ${result == null ? 'kill' : `boss at ${result}`} · ${dur} · ${deaths} deaths`,
     deaths: 'deaths',
+    reached: (phase: string) => ` · reached ${phase}`,
+    cause: (name: string, linked: number) => ` · trigger: ${name} (${linked} ${linked === 1 ? 'linked death' : 'linked deaths'})`,
+    causeIcon: (name: string, linked: number) => `Wipe trigger: ${name} (${linked} ${linked === 1 ? 'linked death' : 'linked deaths'})`,
     note: (note: string) => `Note: ${note}`,
   },
 );
