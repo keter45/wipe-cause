@@ -1454,7 +1454,7 @@ mod tests {
     }
 
     #[test]
-    fn precise_shots_spent_wasted_and_eaten_by_rapid_fire() {
+    fn precise_shots_spent_wasted_and_rapid_fire_needs_a_spender() {
         let mut r = RotationTracker::new(mm());
         // 1) Aimed -> Precise Shots -> Arcane Shot: gasto
         r.on_cast(3000, 19434);
@@ -1466,14 +1466,19 @@ mod tests {
         r.on_aura(6100, 260242, 1);
         r.on_cast(9000, 19434);
         r.on_aura(9100, 260242, 0);
-        // 3) Rapid Fire (Unload) gasta o próprio durante o canal
+        // 3) Rapid Fire gera Precise Shots e o Arcane Shot gasta
         r.on_cast(12000, 257044);
         r.on_aura(12500, 260242, 1);
-        r.on_aura(13500, 260242, 0);
-        let res = r.finish(20000, &[true; 40]);
+        r.on_cast(14500, 185358);
+        r.on_aura(14500, 260242, 0);
+        // 4) desde a 12.1.5 (sem Unload) o Rapid Fire não gasta sozinho: cair durante o canal é desperdício
+        r.on_cast(17000, 257044);
+        r.on_aura(17500, 260242, 1);
+        r.on_aura(18500, 260242, 0);
+        let res = r.finish(25000, &[true; 40]);
         let ps = res.findings.iter().find(|f| f.id == "precise_shots").unwrap();
-        assert_eq!((ps.count, ps.times.clone()), (1, vec![9100]));
-        assert!((ps.rate - 2.0 / 3.0).abs() < 0.01);
+        assert_eq!((ps.count, ps.times.clone()), (2, vec![9100, 18500]));
+        assert!((ps.rate - 0.5).abs() < 0.01);
         assert_eq!(res.tree.as_deref(), Some("Sentinel"));
     }
 

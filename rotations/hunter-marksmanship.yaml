@@ -1,10 +1,15 @@
-# Marksmanship Hunter — rotação base (Midnight Season 2, patch 12.1).
+# Marksmanship Hunter — rotação base (Midnight Season 2, patch 12.1.5).
 # Escrita a partir do guia de rotação do Wowhead (TheAzortharion, 2026-08-24) e da APL do
 # SimulationCraft (branch midnight). Os textos são nossos; os números (cooldowns, cargas) vêm
 # dos tooltips do Wowhead. Validada no log de 29/09 (Kuraa, Antithesis, Bettaozor — Sentinel).
+# 12.1.5: o Unload saiu (o Blood Fletching, passivo, entrou no lugar). O Rapid Fire não solta mais Arcane
+# Shot no começo e no fim do canal, então não gasta mais o Precise Shots (nem o que já estava, nem o que
+# ele mesmo gera): no Sentinel, volta a gastar o Precise Shots antes de cada gerador, e só pode perder um
+# com o Rapid Fire durante o Trueshot. No Dark Ranger nada muda: Rapid Fire no cooldown. Conferida no
+# log de 13/10 (build 12.1.5).
 spec: 254
 name: Marksmanship Hunter
-patch: "12.1"
+patch: "12.1.5"
 sources:
   - title: Wowhead — Marksmanship Hunter Rotation Guide (Midnight)
     url: https://www.wowhead.com/guide/classes/hunter/marksmanship/rotation-cooldowns-pve-dps
@@ -14,7 +19,7 @@ sources:
 # O que mais pesa no dano, em ordem (aparece no app como "pontos principais")
 key_points:
   - { pt: "Sempre castando: tempo parado é a maior perda de dano. Steady Shot preenche e dá para castar andando.", en: "Always casting: idle time is the biggest damage loss. Steady Shot fills and can be cast while moving." }
-  - { pt: "Todo Precise Shots é gasto: depois de cada Aimed Shot vem um spender (Arcane Shot; Multi-Shot com 2+ alvos; Kill Shot no Sentinel, Black Arrow no Dark Ranger). Rapid Fire gasta o próprio (Unload).", en: "Every Precise Shots is spent: each Aimed Shot is followed by a spender (Arcane Shot; Multi-Shot on 2+ targets; Kill Shot for Sentinel, Black Arrow for Dark Ranger). Rapid Fire spends its own (Unload)." }
+  - { pt: "Todo Precise Shots é gasto à mão: depois de cada Aimed Shot e de cada Rapid Fire vem um spender (Arcane Shot; Multi-Shot com 2+ alvos; Kill Shot no Sentinel, Black Arrow no Dark Ranger). Desde a 12.1.5 (sem Unload) o Rapid Fire não gasta mais o Precise Shots sozinho. Sentinel: gastar antes de cada gerador; só no Trueshot pode perder um com o Rapid Fire.", en: "Every Precise Shots is spent manually: each Aimed Shot and each Rapid Fire is followed by a spender (Arcane Shot; Multi-Shot on 2+ targets; Kill Shot for Sentinel, Black Arrow for Dark Ranger). Since 12.1.5 (no Unload) Rapid Fire no longer spends Precise Shots on its own. Sentinel: spend it before every generator; only during Trueshot is it fine to waste one with Rapid Fire." }
   - { pt: "Aimed Shot, Rapid Fire, Explosive Shot (duas vezes seguidas, Unstable Trigger), Volley e Trueshot no cooldown.", en: "Aimed Shot, Rapid Fire, Explosive Shot (twice in a row, Unstable Trigger), Volley and Trueshot on cooldown." }
   - { pt: "Em AoE com Trick Shots: nunca Aimed Shot ou Rapid Fire sem o buff Trick Shots (o Multi-Shot coloca).", en: "In AoE with Trick Shots: never Aimed Shot or Rapid Fire without the Trick Shots buff (Multi-Shot applies it)." }
   - { pt: "Trueshot: o último da luta espera 30 stacks de Bullseye. Sentinel: Moonlight Chakram com ~5 s de Trueshot restando.", en: "Trueshot: the last one of the fight waits for 30 Bullseye stacks. Sentinel: Moonlight Chakram with ~5 s of Trueshot left." }
@@ -59,10 +64,10 @@ priority:
       - { spell: volley, note: { pt: "no cooldown", en: "on cooldown" } }
       - { spell: trueshot, note: { pt: "no cooldown; o último da luta com 30 stacks de Bullseye", en: "on cooldown; the last one of the fight at 30 Bullseye stacks" } }
       - { spell: moonlight_chakram, note: { pt: "com ~5 s de Trueshot restando", en: "with ~5 s of Trueshot left" } }
-      - { spell: rapid_fire, note: { pt: "no cooldown", en: "on cooldown" } }
-      - { spell: kill_shot, note: { pt: "para gastar Precise Shots", en: "to spend Precise Shots" } }
-      - { spell: arcane_shot, note: { pt: "para gastar Precise Shots", en: "to spend Precise Shots" } }
-      - { spell: aimed_shot, note: { pt: "no cooldown", en: "on cooldown" } }
+      - { spell: kill_shot, note: { pt: "para gastar Precise Shots antes do próximo gerador", en: "to spend Precise Shots before the next generator" } }
+      - { spell: arcane_shot, note: { pt: "para gastar Precise Shots antes do próximo gerador", en: "to spend Precise Shots before the next generator" } }
+      - { spell: rapid_fire, note: { pt: "no cooldown, sem Precise Shots (no Trueshot pode ir com ele)", en: "on cooldown, without Precise Shots (during Trueshot it can go with it)" } }
+      - { spell: aimed_shot, note: { pt: "no cooldown, sem Precise Shots", en: "on cooldown, without Precise Shots" } }
       - { spell: moonlight_chakram, note: { pt: "quando nada acima estiver pronto", en: "when nothing above is ready" } }
       - { spell: steady_shot, note: { pt: "preenche; nunca ficar parado", en: "filler; never stand still" } }
     aoe:
@@ -116,11 +121,10 @@ checks:
     id: precise_shots
     buff: precise_shots
     spenders: [arcane_shot, multishot, kill_shot, black_arrow]
-    # com Unload, o Rapid Fire gasta o próprio Precise Shots durante o canal
-    channel: { spell: rapid_fire, ms: 3500 }
+    # sem Unload (12.1.5), o Rapid Fire não gasta mais o Precise Shots: nada de exceção para o canal
     importance: high
     title: { pt: "Precise Shots desperdiçado", en: "Precise Shots wasted" }
-    tip: { pt: "Depois de cada Aimed Shot, gaste o Precise Shots (Arcane Shot, ou Multi-Shot com 2+ alvos) antes do próximo Aimed Shot.", en: "After each Aimed Shot, spend Precise Shots (Arcane Shot, or Multi-Shot on 2+ targets) before the next Aimed Shot." }
+    tip: { pt: "Depois de cada Aimed Shot e de cada Rapid Fire, gaste o Precise Shots (Arcane Shot, ou Multi-Shot com 2+ alvos) antes do próximo gerador: o Rapid Fire não gasta mais sozinho (12.1.5).", en: "After each Aimed Shot and each Rapid Fire, spend Precise Shots (Arcane Shot, or Multi-Shot on 2+ targets) before the next generator: Rapid Fire no longer spends it on its own (12.1.5)." }
   - kind: proc
     id: unstable_trigger
     buff: unstable_trigger
