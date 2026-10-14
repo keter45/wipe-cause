@@ -1,27 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, Crosshair, Settings } from 'lucide-react';
 import type { LogReport, Pull } from './types';
-import {
-  analyzeLog,
-  historyDelete,
-  historyDeleteUnpinned,
-  historyList,
-  historyLoad,
-  historySetPinned,
-  discordGetConfig,
-  inTauri,
-  pickLogFile,
-  rememberFile,
-  sameLog,
-  sourceName,
-  setBackendLocale,
-  type HistoryEntry,
-} from './lib/api';
+import { analyzeLog, historyDelete, historyDeleteUnpinned, historyList, historyLoad, historySetPinned, discordGetConfig, hasBackend, pickLogFile, rememberFile, sameLog, sourceName, setBackendLocale, type HistoryEntry, inDesktop, inWeb, rememberDroppedFile } from './lib/api';
 import { BossSummary, NightOverview } from './components/NightSummary';
 import { LogBrowser } from './components/LogBrowser';
 import { UpdateBanner } from './components/UpdateBanner';
 import { useUpdater, type UpdateState } from './lib/updater';
-import { listen } from '@tauri-apps/api/event';
+import { listen } from './lib/backend';
 import { useLive } from './lib/live';
 import { savedGuildId } from './lib/guildNights';
 import { useAutoLive } from './lib/autoLive';
@@ -121,7 +106,7 @@ export default function App() {
 
   // parse do Warcraft Logs dos kills (entra na nota): busca o que falta uma vez e salva; com parse
   // novo, refaz as contas da noite (os resumos recalculam quando a lista de pulls muda)
-  const wclReady = inTauri && !!setup.status?.wcl?.configured;
+  const wclReady = hasBackend && !!setup.status?.wcl?.configured;
   useEffect(() => {
     if (!wclReady || !wclCode || !report) return;
     let alive = true;
@@ -137,7 +122,7 @@ export default function App() {
   const liveRef = useRef({ active: live.status.active, start: live.start, cutoff: deathCutoff });
   liveRef.current = { active: live.status.active, start: live.start, cutoff: deathCutoff };
   useEffect(() => {
-    if (!inTauri) return;
+    if (!inDesktop) return;
     const off = listen('wow-started', () => {
       const l = liveRef.current;
       if (!l.active) void l.start(l.cutoff, { local: true });
@@ -204,7 +189,7 @@ export default function App() {
         setHistory(h);
         if (!onboarded()) {
           markOnboarded();
-          if (h.length === 0 && inTauri) {
+          if (h.length === 0 && inDesktop) {
             setFirstRun(true);
             setPage('settings');
           }
@@ -228,7 +213,7 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const url = params.get('report');
-    if (import.meta.env.DEV && !inTauri && url) {
+    if (import.meta.env.DEV && !hasBackend && url) {
       fetch(url)
         .then((r) => r.json())
         .then(async (r: LogReport) => {
@@ -244,7 +229,7 @@ export default function App() {
   }, []);
 
   async function load(path: string, keepView = false, cutoff = deathCutoff) {
-    if (!inTauri) {
+    if (!hasBackend) {
       setStatus({ kind: 'error', message: needsApp() });
       return;
     }
@@ -284,7 +269,7 @@ export default function App() {
 
   /** "Analisar todos": um log depois do outro, sem abrir; cada análise vai para o histórico. */
   async function analyzeAll(paths: string[]) {
-    if (!inTauri) {
+    if (!hasBackend) {
       setStatus({ kind: 'error', message: needsApp() });
       return;
     }
@@ -303,8 +288,31 @@ export default function App() {
     setStatus(failed.length ? { kind: 'error', message: messagesOf(appMsg).batchFailed(failed.join(', ')) } : { kind: 'idle' });
   }
 
+  // site: arrastar o log para a página também abre
+  const analyzeRef = useRef(analyzePath);
+  analyzeRef.current = analyzePath;
+  useEffect(() => {
+    if (!inWeb) return;
+    const over = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+    };
+    const drop = async (e: DragEvent) => {
+      const file = e.dataTransfer?.files?.[0];
+      if (!file) return;
+      e.preventDefault();
+      const path = await rememberDroppedFile(file);
+      if (path) await analyzeRef.current(path);
+    };
+    window.addEventListener('dragover', over);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('drop', drop);
+    };
+  }, []);
+
   async function openFile() {
-    if (!inTauri) {
+    if (!hasBackend) {
       setStatus({ kind: 'error', message: needsApp() });
       return;
     }
@@ -314,8 +322,8 @@ export default function App() {
 
   /** Regras do boss ajustadas: reanalisa o log aberto (ao vivo, reinicia o acompanhamento). */
   function rulesChanged() {
-    if (inTauri && live.status.active) live.start(deathCutoff);
-    else if (inTauri && report) void load(report.file, true, deathCutoff);
+    if (hasBackend && live.status.active) live.start(deathCutoff);
+    else if (hasBackend && report) void load(report.file, true, deathCutoff);
   }
 
   /** Mudou o N: salva como preferência e reanalisa o log aberto (o corte é feito no núcleo). */
@@ -324,8 +332,8 @@ export default function App() {
     saveDeathCutoff(n);
     window.clearTimeout(cutoffTimer.current);
     // ao vivo: reinicia o acompanhamento com o corte novo (ele já reanalisa o log)
-    if (inTauri && live.status.active) cutoffTimer.current = window.setTimeout(() => live.start(n), 600);
-    else if (inTauri && report) cutoffTimer.current = window.setTimeout(() => load(report.file, true, n), 600);
+    if (hasBackend && live.status.active) cutoffTimer.current = window.setTimeout(() => live.start(n), 600);
+    else if (hasBackend && report) cutoffTimer.current = window.setTimeout(() => load(report.file, true, n), 600);
   }
 
   async function openEntry(e: HistoryEntry) {
@@ -334,7 +342,7 @@ export default function App() {
       setSummary(NIGHT);
       return;
     }
-    if (!inTauri) return; // navegador: o histórico de exemplo é só visual
+    if (!hasBackend) return; // navegador: o histórico de exemplo é só visual
     try {
       showReport(await historyLoad(e.id));
       setStatus({ kind: 'idle' });
@@ -387,7 +395,7 @@ export default function App() {
         onWcl={setWclCode}
         onVideos={setVideos}
         live={demoLive ? { active: true, state: 'in_combat', file: 'WoWCombatLog-092826_204129.txt', encounter: 'The Coiled Altar', analyzed: 3, message: null } : live.status}
-        showLive={inTauri || demoLive}
+        showLive={inDesktop || demoLive}
         liveError={live.error}
         onLiveStart={() => live.start(deathCutoff)}
         onLiveStop={live.stop}
@@ -468,7 +476,7 @@ export default function App() {
           ) : page === 'trends' ? (
             solo ? <SoloTrendsView /> : <TrendsView />
           ) : browsing ? (
-            inTauri || demoLogs ? (
+            hasBackend || demoLogs ? (
               <>
                 {!report && <Intro />}
                 <LogBrowser history={history} busy={status.kind === 'loading'} onAnalyze={analyzePath} onAnalyzeAll={analyzeAll} onOpenFile={openFile} />
@@ -533,11 +541,12 @@ function Intro() {
       <div>
         <h1>{t.title}</h1>
         <p className="muted">{t.intro()}</p>
+        {inWeb && <p className="muted small">{t.webNote()}</p>}
         {status && optional.done < optional.total && (
           <button className="intro-setup" onClick={() => openSettings()}>
             <Settings size={14} strokeWidth={1.5} aria-hidden />
             <span>
-              <span className="tabular">{t.outOf(optional.done, optional.total)}</span> {t.integrations}
+              <span className="tabular">{t.outOf(optional.done, optional.total)}</span> {inWeb ? t.webIntegrations : t.integrations}
             </span>
             <ChevronRight size={14} strokeWidth={1.5} aria-hidden />
           </button>

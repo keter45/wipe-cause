@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FolderOpen, FolderSearch } from 'lucide-react';
-import { inTauri, pickFolder } from '../../lib/api';
+import { pickFolder, inDesktop } from '../../lib/api';
 import { useMessages } from '../../i18n';
 import { folderMsg } from './FolderForm.i18n';
 
@@ -33,7 +33,7 @@ export function FolderForm({ api, pickTitle, placeholder, detectedLabel, onSaved
       .catch((e) => setError(String(e)));
 
   useEffect(() => {
-    if (!inTauri) return;
+    if (!inDesktop) return;
     api.get().then((d) => {
       setSaved(d);
       setPath(d ?? '');
@@ -62,7 +62,7 @@ export function FolderForm({ api, pickTitle, placeholder, detectedLabel, onSaved
     if (dir) await save(dir);
   }
 
-  if (!inTauri) return <p className="muted small">{t.appOnly}</p>;
+  if (!inDesktop) return <p className="muted small">{t.appOnly}</p>;
 
   const using = saved ? t.chosen : scan?.dir ? t.detected(detectedLabel) : null;
   return (

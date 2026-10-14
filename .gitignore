@@ -19,3 +19,7 @@ Thumbs.db
 # Claude Code local
 .claude/settings.local.json
 *.tsbuildinfo
+
+# núcleo em WASM da versão web (npm run wasm)
+src/web/pkg/
+dist-web/

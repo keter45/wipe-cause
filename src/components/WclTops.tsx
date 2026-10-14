@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, Settings2, Trophy } from 'lucide-react';
 import type { Pull } from '../types';
-import { inTauri, openExternal } from '../lib/api';
+import { hasBackend, openExternal } from '../lib/api';
 import { shortName } from '../lib/format';
 import { fetchRankings, healerCompCandidates, ownFight, pickTops, TOPS_SHOWN, withoutExternalPI, profileUrls, wclCompareUrl, wclRangeUrl, wowAnalyzerUrl, type TopRanking, type WclFightRef, type WclView } from '../lib/wclApi';
 import { useSetup } from '../lib/setup';
@@ -25,13 +25,13 @@ export function WclTopsButton({ me, onTops }: { me: Sample; onTops: (tops: TopRa
   const [searched, setSearched] = useState(false);
 
   useEffect(() => {
-    if (inTauri && configured && !searched) {
+    if (hasBackend && configured && !searched) {
       setSearched(true);
       void search();
     }
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!inTauri) return <p className="muted small">{t.appOnly}</p>;
+  if (!hasBackend) return <p className="muted small">{t.appOnly}</p>;
   if (!status) return null;
   if (!configured)
     return (
@@ -103,7 +103,7 @@ export function useWclFight(pull: Pull, playerName: string, wclCode?: string): W
   const name = shortName(playerName);
   useEffect(() => {
     setFound(null);
-    if (!inTauri || !wclCode || !name) return;
+    if (!hasBackend || !wclCode || !name) return;
     let alive = true;
     Promise.resolve(configured ? ownFight(wclCode, pull) : null)
       .then((f) => {

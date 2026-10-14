@@ -2,7 +2,7 @@
 // noite. Vários reports da mesma noite viram uma análise só (`wcl:A,B`); o núcleo fica com
 // uma cópia de cada pull, vinda do report mais completo.
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from './backend';
 import { WCL_SOURCE } from './api';
 import type { Pull } from '../types';
 import { WCL_DIFFICULTY } from './wcl';

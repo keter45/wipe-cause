@@ -5461,7 +5461,18 @@ version = "0.27.0"
 dependencies = [
  "serde",
  "serde_json",
+ "web-time",
  "yaml_serde",
+]
+
+[[package]]
+name = "wipe-wasm"
+version = "0.27.0"
+dependencies = [
+ "js-sys",
+ "serde_json",
+ "wasm-bindgen",
+ "wipe-core",
 ]
 
 [[package]]

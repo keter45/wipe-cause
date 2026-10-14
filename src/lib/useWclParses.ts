@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Pull } from '../types';
-import { inTauri } from './api';
+import { hasBackend } from './api';
 import { useSetup } from './setup';
 import { fetchHistory, fetchKillParses, type PlayerParse } from './wclParses';
 import { messagesOf } from '../i18n';
@@ -20,7 +20,7 @@ export function useWclParses(pull: Pull, wclCode: string | undefined): ParseStat
   const configured = !!useSetup().status?.wcl?.configured;
   const [state, setState] = useState<ParseState>({ kind: 'loading' });
   useEffect(() => {
-    if (!inTauri) return setState({ kind: 'off', reason: messagesOf(wclMsg).parsesOnlyInApp });
+    if (!hasBackend) return setState({ kind: 'off', reason: messagesOf(wclMsg).parsesOnlyInApp });
     if (!configured) return setState({ kind: 'off', reason: messagesOf(wclMsg).parsesConnect });
     if (pull.success && !wclCode) return setState({ kind: 'off', reason: messagesOf(wclMsg).parsesNeedLink });
     let alive = true;

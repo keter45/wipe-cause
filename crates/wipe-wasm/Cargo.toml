@@ -1,0 +1,15 @@
+[package]
+name = "wipe-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "O wipe-core no navegador (versão web do Wipe Cause)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wipe-core = { path = "../wipe-core" }
+serde_json.workspace = true
+wasm-bindgen = "=0.2.129"
+js-sys = "0.3.106"

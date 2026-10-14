@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState } from 'react';
 import { Clapperboard, ImageDown, MessageSquare } from 'lucide-react';
 import type { Pull } from '../types';
-import { inTauri } from '../lib/api';
+import { hasBackend } from '../lib/api';
 import { fileSlug, saveClip, sendToDiscord } from '../lib/share';
 import type { ClipMoment } from '../lib/replayClip';
 import { useSetup } from '../lib/setup';
@@ -103,7 +103,7 @@ export function ClipButton({ pull, moment, title, span }: { pull: Pull; moment: 
               <button className="btn sm" onClick={() => void act('save')}>
                 <ImageDown size={14} strokeWidth={1.75} aria-hidden /> {t.save}
               </button>
-              {inTauri && status?.discord?.webhook && (
+              {hasBackend && status?.discord?.webhook && (
                 <button className="btn sm" onClick={() => void act('discord')}>
                   <MessageSquare size={14} strokeWidth={1.75} aria-hidden /> {t.discord}
                 </button>

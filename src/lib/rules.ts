@@ -1,8 +1,8 @@
 // Ajustes do usuário nas regras de boss: uma camada por cima da regra do app (só o que mudou),
 // salva por boss. No navegador (desenvolvimento da UI) fica no localStorage.
 
-import { invoke } from '@tauri-apps/api/core';
-import { inTauri } from './api';
+import { invoke } from './backend';
+import { hasBackend } from './api';
 import type { MechanicSeverity, Pull } from '../types';
 import { messagesOf, tr, type Loc } from '../i18n';
 import { wclMsg } from './wcl.i18n';
@@ -83,12 +83,12 @@ function demoRules(pull: Pull): BossRules {
 }
 
 export async function rulesGet(pull: Pull): Promise<BossRules> {
-  if (!inTauri) return demoRules(pull);
+  if (!hasBackend) return demoRules(pull);
   return invoke<BossRules>('rules_get', { encounterId: pull.encounterId, name: pull.encounterName });
 }
 
 export async function rulesSaveTuning(tuning: Tuning): Promise<void> {
-  if (!inTauri) {
+  if (!hasBackend) {
     localStorage.setItem(DEMO_KEY + tuning.encounter_id, JSON.stringify(tuning));
     return;
   }
@@ -96,7 +96,7 @@ export async function rulesSaveTuning(tuning: Tuning): Promise<void> {
 }
 
 export async function rulesResetTuning(encounterId: number): Promise<void> {
-  if (!inTauri) {
+  if (!hasBackend) {
     localStorage.removeItem(DEMO_KEY + encounterId);
     return;
   }

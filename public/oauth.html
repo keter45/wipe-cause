@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Wipe Cause</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f1115; color: #e6e8ee; display: grid; place-items: center; height: 100vh; margin: 0; text-align: center; padding: 16px; box-sizing: border-box; }
+</style>
+<body>
+  <p id="msg"></p>
+  <script>
+    // Volta do login do Warcraft Logs (versão web): entrega a resposta à aba do Wipe Cause pelo
+    // BroadcastChannel (o Warcraft Logs isola a janela, então window.opener não existe mais) e fecha.
+    new BroadcastChannel('wipe-cause-oauth').postMessage({ query: location.search.slice(1) });
+    const pt = (navigator.language || '').toLowerCase().startsWith('pt');
+    document.getElementById('msg').textContent = pt ? 'Pronto. Pode fechar esta janela e voltar ao Wipe Cause.' : 'Done. You can close this window and go back to Wipe Cause.';
+    setTimeout(() => window.close(), 300);
+  </script>
+</body>

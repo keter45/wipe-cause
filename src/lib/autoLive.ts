@@ -3,7 +3,7 @@
 // log deste PC, se o WoW estiver escrevendo um). Desligado à mão, não volta na mesma noite.
 
 import { useEffect, useRef } from 'react';
-import { inTauri } from './api';
+import { inDesktop } from './api';
 import { fetchGuildReports, groupNights } from './guildNights';
 import type { WclGuild } from './wclApi';
 
@@ -40,7 +40,7 @@ export function useAutoLive(guild: WclGuild | null, active: boolean, start: () =
   }, [active]);
 
   useEffect(() => {
-    if (!inTauri || !guild || active) return;
+    if (!inDesktop || !guild || active) return;
     let alive = true;
     const check = async () => {
       if (!autoLiveEnabled() || Date.now() - dismissedAt.current < DISMISS_MS) return;

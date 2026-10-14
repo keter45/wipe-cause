@@ -8,13 +8,13 @@
 
 use crate::wcl::api_query;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 use wipe_core::rules::RuleBook;
-use wipe_core::wcl::{covered_by, dedupe, is_short_wipe, WclAnalyzer};
+use wipe_core::wcl::{covered_by, dedupe, is_short_wipe, slim_events, WclAnalyzer};
 use wipe_core::{merge_pulls, AnalyzeOptions, LogReport, Pull};
 use wipe_core::i18n::pick;
 
@@ -50,76 +50,6 @@ const EVENTS_QUERY: &str = "query E($code: String!, $fight: Int!, $start: Float!
     events(fightIDs: [$fight], startTime: $start, endTime: $end, includeResources: true, limit: 10000) { data nextPageTimestamp }
   } }
 }";
-
-/// Tipos de evento que o motor não usa (fora daqui, só o que vira linha do log).
-const SKIP_TYPES: &[&str] = &[
-    "refreshbuff",
-    "refreshdebuff",
-    "begincast",
-    "absorbed",
-    "healabsorbed",
-    "extraattacks",
-    "empowerstart",
-    "empowerend",
-    "create",
-    "resurrect",
-    "encounterstart",
-    "encounterend",
-];
-
-/// Campos que o conversor lê (o resto — classResources, buffs, ... — é descartado).
-const KEEP_FIELDS: &[&str] = &[
-    "timestamp",
-    "type",
-    "sourceID",
-    "targetID",
-    "sourceInstance",
-    "targetInstance",
-    "abilityGameID",
-    "extraAbilityGameID",
-    "amount",
-    "overkill",
-    "absorbed",
-    "overheal",
-    "unmitigatedAmount",
-    "resisted",
-    "blocked",
-    "hitType",
-    "tick",
-    "stack",
-    "isBuff",
-    "resourceActor",
-    "hitPoints",
-    "maxHitPoints",
-    "attackPower",
-    "spellPower",
-    "armor",
-    "absorb",
-    "x",
-    "y",
-    "facing",
-    "mapID",
-    "itemLevel",
-    // resourcechange (recurso da rotação: ganho e desperdício)
-    "resourceChange",
-    "resourceChangeType",
-    "waste",
-    "maxResourceAmount",
-];
-
-/// Só o que interessa de uma página de eventos.
-fn slim(events: Vec<Value>) -> Vec<Value> {
-    events
-        .into_iter()
-        .filter(|e| !SKIP_TYPES.contains(&e["type"].as_str().unwrap_or("")))
-        .map(|e| match e {
-            Value::Object(o) if o.get("type").and_then(Value::as_str) != Some("combatantinfo") => {
-                Value::Object(o.into_iter().filter(|(k, _)| KEEP_FIELDS.contains(&k.as_str())).collect::<Map<_, _>>())
-            }
-            other => other,
-        })
-        .collect()
-}
 
 fn cache_dir(app: &AppHandle, code: &str) -> Option<PathBuf> {
     Some(app.path().app_data_dir().ok()?.join("wcl-events-v2").join(code))
@@ -239,7 +169,7 @@ pub fn analyze(
             let mut page = api_query(EVENTS_QUERY, &vars)?;
             let events = &mut page["reportData"]["report"]["events"];
             from = events["nextPageTimestamp"].as_f64();
-            let data = slim(match events["data"].take() {
+            let data = slim_events(match events["data"].take() {
                 Value::Array(v) => v,
                 _ => Vec::new(),
             });
@@ -291,17 +221,5 @@ mod tests {
         assert_eq!(codes_of("wcl:abc12345,def67890"), vec!["abc12345", "def67890"]);
         assert!(codes_of("wcl:").is_empty());
         assert!(codes_of("C:/logs/x.txt").is_empty());
-    }
-
-    #[test]
-    fn slim_keeps_only_what_the_engine_reads() {
-        let v = slim(vec![
-            serde_json::json!({ "type": "refreshbuff", "timestamp": 1 }),
-            serde_json::json!({ "type": "damage", "timestamp": 2, "amount": 5, "classResources": [1], "fight": 3 }),
-            serde_json::json!({ "type": "combatantinfo", "timestamp": 3, "gear": [] }),
-        ]);
-        assert_eq!(v.len(), 2);
-        assert_eq!(v[0], serde_json::json!({ "type": "damage", "timestamp": 2, "amount": 5 }));
-        assert!(v[1].get("gear").is_some(), "combatantinfo fica inteiro");
     }
 }

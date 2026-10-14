@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CloudDownload, FileText, FolderOpen, FolderSearch, HardDrive, LoaderCircle, Play, RefreshCw, Users, X } from 'lucide-react';
-import { inTauri, logsDetectDir, logsList, logsPeek, logsSetDir, pickFolder, sameLog, type HistoryEntry, type LogPeek, type LogsScan } from '../lib/api';
+import { hasBackend, inWeb, logsDetectDir, logsList, logsPeek, logsSetDir, pickFolder, sameLog, type HistoryEntry, type LogPeek, type LogsScan } from '../lib/api';
 import { useSetup } from '../lib/setup';
 import { fetchGuildReports, groupNights, saveGuildId, savedGuildId, type GuildNight } from '../lib/guildNights';
 import { buildNights, completePath, downloadMinutes, pendingLogs, type Night } from '../lib/nights';
@@ -53,7 +53,7 @@ export function LogBrowser({ history, busy, onAnalyze, onAnalyzeAll, onOpenFile 
 
   // lê os encontros dos logs que ainda não estão no índice, um de cada vez (do mais novo)
   useEffect(() => {
-    if (!scan || !inTauri) return;
+    if (!scan || !hasBackend) return;
     let alive = true;
     (async () => {
       for (const f of scan.files.filter((f) => !f.peek)) {
@@ -91,7 +91,7 @@ export function LogBrowser({ history, busy, onAnalyze, onAnalyzeAll, onOpenFile 
   const shown = useMemo(() => filterNights(nights, active), [nights, active.encounterId, active.difficultyId, active.group]);
 
   async function chooseFolder() {
-    if (!inTauri) return setError(t.browserNoFolders);
+    if (!hasBackend) return setError(t.browserNoFolders);
     const dir = await pickFolder(t.pickTitle);
     if (!dir) return;
     await logsSetDir(dir);
@@ -101,14 +101,14 @@ export function LogBrowser({ history, busy, onAnalyze, onAnalyzeAll, onOpenFile 
   }
 
   async function useDetected() {
-    if (!inTauri) return;
+    if (!hasBackend) return;
     await logsSetDir(null);
     setPeeks(new Map());
     refresh();
     setup.reload();
   }
 
-  if (!inTauri && !scan?.files.length) {
+  if (!hasBackend && !scan?.files.length) {
     return (
       <div className="logs">
         <p className="muted small">{t.browserMode()}</p>
@@ -130,7 +130,7 @@ export function LogBrowser({ history, busy, onAnalyze, onAnalyzeAll, onOpenFile 
               <span>{scan.source === 'detected' ? t.detected : t.chosen}</span>
             </p>
           ) : (
-            scan && <p className="muted small">{t.noFolder}</p>
+            scan && !inWeb && <p className="muted small">{t.noFolder}</p>
           )}
           {guild.current && (
             <p className="muted small logs-dir">
@@ -157,14 +157,16 @@ export function LogBrowser({ history, busy, onAnalyze, onAnalyzeAll, onOpenFile 
           <button className="btn ghost sm" onClick={refresh} title={t.refresh} aria-label={t.refresh}>
             <RefreshCw size={14} strokeWidth={1.5} aria-hidden />
           </button>
-          {scan?.source === 'settings' && (
+          {scan?.source === 'settings' && !inWeb && (
             <button className="btn ghost sm" onClick={useDetected} title={t.detectTitle}>
               <FolderSearch size={14} strokeWidth={1.5} aria-hidden /> {t.detect}
             </button>
           )}
-          <button className="btn ghost sm" onClick={chooseFolder}>
-            <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> {scan?.dir ? t.changeFolder : t.chooseFolder}
-          </button>
+          {!inWeb && (
+            <button className="btn ghost sm" onClick={chooseFolder}>
+              <FolderOpen size={14} strokeWidth={1.5} aria-hidden /> {scan?.dir ? t.changeFolder : t.chooseFolder}
+            </button>
+          )}
           {pending.length > 0 && (
             <button className="btn sm" disabled={busy} onClick={() => onAnalyzeAll(pending)} title={t.analyzeAllTitle}>
               <Play size={14} strokeWidth={1.5} aria-hidden /> {t.analyzeAll(pending.length)}
@@ -179,7 +181,7 @@ export function LogBrowser({ history, busy, onAnalyze, onAnalyzeAll, onOpenFile 
       {error && <div className="error">{t.error(error)}</div>}
       {guild.error && <div className="error">Warcraft Logs: {guild.error}</div>}
       {scan?.warning && <p className="logs-warning small">{scan.warning}</p>}
-      {scan && !scan.dir && <NoFolder onChoose={chooseFolder} />}
+      {scan && !scan.dir && (inWeb ? <WebOpenFile onOpen={onOpenFile} /> : <NoFolder onChoose={chooseFolder} />)}
 
       {groups.pug > 0 && (
         <div className="logs-filter-row">
@@ -228,7 +230,7 @@ function useGuild() {
 
   // dev no navegador (?demoLogs=1): uma noite da guilda com 2 bosses que o log de exemplo não tem
   useEffect(() => {
-    if (!import.meta.env.DEV || inTauri || !new URLSearchParams(window.location.search).has('demoLogs')) return;
+    if (!import.meta.env.DEV || hasBackend || !new URLSearchParams(window.location.search).has('demoLogs')) return;
     const h = 3_600_000;
     const t = Date.now() - 2.5 * h;
     const fight = (id: number, encounterID: number, name: string, start: number, kill: boolean) => ({ id, encounterID, name, difficulty: 5, kill, startTime: start, endTime: start + 6 * 60_000 });
@@ -251,7 +253,7 @@ function useGuild() {
   }, []);
 
   useEffect(() => {
-    if (!current || !inTauri) return;
+    if (!current || !hasBackend) return;
     let alive = true;
     setLoading(true);
     setError(null);
@@ -341,6 +343,20 @@ function NoFolder({ onChoose }: { onChoose: () => void }) {
       <button className="btn primary" onClick={onChoose}>
         <FolderOpen size={16} strokeWidth={2} aria-hidden /> {t.chooseLogsFolder}
       </button>
+    </div>
+  );
+}
+
+/** Site: sem pasta, o log é escolhido (ou arrastado) a cada análise. */
+function WebOpenFile({ onOpen }: { onOpen: () => void }) {
+  const t = useMessages(logsMsg);
+  return (
+    <div className="panel logs-setup">
+      <p>{t.webOpenText()}</p>
+      <button className="btn primary" onClick={onOpen}>
+        <FileText size={16} strokeWidth={2} aria-hidden /> {t.webOpenButton}
+      </button>
+      <p className="muted small">{t.webDrop}</p>
     </div>
   );
 }

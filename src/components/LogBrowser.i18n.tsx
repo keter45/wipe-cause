@@ -45,6 +45,14 @@ export const logsMsg = defineMessages(
       </>
     ),
     chooseLogsFolder: 'Escolher pasta de logs',
+    webOpenText: () => (
+      <>
+        Abra o combat log da raid: o <code>WoWCombatLog-….txt</code> na pasta <code>World of Warcraft\_retail_\Logs</code>. A análise roda neste navegador; o arquivo não é
+        enviado para lugar nenhum.
+      </>
+    ),
+    webOpenButton: 'Abrir combat log',
+    webDrop: 'Ou arraste o arquivo para esta página.',
     readingEncounters: 'lendo encontros…',
     noRaidBosses: 'sem bosses de raid',
     onlyWclTitle: 'Só no Warcraft Logs: não está no log do seu PC',
@@ -121,6 +129,14 @@ export const logsMsg = defineMessages(
       </>
     ),
     chooseLogsFolder: 'Choose logs folder',
+    webOpenText: () => (
+      <>
+        Open the raid's combat log: the <code>WoWCombatLog-….txt</code> in the <code>World of Warcraft\_retail_\Logs</code> folder. The analysis runs in this browser; the file
+        isn't sent anywhere.
+      </>
+    ),
+    webOpenButton: 'Open combat log',
+    webDrop: 'Or drag the file onto this page.',
     readingEncounters: 'reading encounters…',
     noRaidBosses: 'no raid bosses',
     onlyWclTitle: "Only on Warcraft Logs: it's not in your PC's log",

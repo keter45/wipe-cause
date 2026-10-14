@@ -1,12 +1,21 @@
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { inDesktop, inWeb, invoke, listen } from './backend';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { LogReport, Pull } from '../types';
 
-/** Rodando dentro do app Tauri (e não no navegador durante o desenvolvimento da UI). */
-export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+export { inDesktop, inWeb };
+/**
+ * Há backend para analisar: o app (Tauri) ou o site (o núcleo em WASM no navegador). Sem ele é
+ * o desenvolvimento da UI no navegador, com dados de exemplo.
+ */
+export const hasBackend = inDesktop || inWeb;
 
+/** Escolhe um combat log. No site o "caminho" é o nome do arquivo (o navegador guarda o arquivo). */
 export async function pickLogFile(): Promise<string | null> {
+  if (import.meta.env.VITE_TARGET === 'web') {
+    const { chooseFile, rememberFile } = await import('../web/files');
+    const file = await chooseFile();
+    return file ? rememberFile(file) : null;
+  }
   const picked = await open({
     multiple: false,
     directory: false,
@@ -16,12 +25,19 @@ export async function pickLogFile(): Promise<string | null> {
   return typeof picked === 'string' ? picked : null;
 }
 
+/** Site: um log arrastado para a página vira um "caminho" para analisar. */
+export async function rememberDroppedFile(file: File): Promise<string | null> {
+  if (import.meta.env.VITE_TARGET !== 'web') return null;
+  const { rememberFile } = await import('../web/files');
+  return rememberFile(file);
+}
+
 /**
  * Replay completo de um pull: o app relê só ele no log. No navegador (desenvolvimento da UI),
  * `?fight=/samples/x.json` carrega um gerado com `wipe-cli fight`.
  */
 export async function loadFight(pull: Pull): Promise<Pull> {
-  if (!inTauri) {
+  if (!hasBackend) {
     const url = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('fight') : null;
     if (!url) throw new Error('missing ?fight= sample');
     return (await fetch(url)).json();
@@ -68,7 +84,7 @@ export function rememberFile(path: string) {
 
 /** Abre no navegador padrão (no app) ou numa aba nova (no navegador). */
 export async function openExternal(url: string) {
-  if (inTauri) {
+  if (inDesktop) {
     const { openUrl } = await import('@tauri-apps/plugin-opener');
     await openUrl(url);
   } else {
@@ -170,10 +186,10 @@ export interface WcrCloudConfig {
   user: string | null;
   guild: string | null;
 }
-export const wcrCloudGetConfig = () => (inTauri ? invoke<WcrCloudConfig>('wcr_cloud_get_config') : Promise.resolve<WcrCloudConfig>({ configured: false, user: null, guild: null }));
+export const wcrCloudGetConfig = () => (hasBackend ? invoke<WcrCloudConfig>('wcr_cloud_get_config') : Promise.resolve<WcrCloudConfig>({ configured: false, user: null, guild: null }));
 /** Devolve as guildas da conta (para escolher quando a guilda veio vazia). Usuário vazio desconecta. */
 export const wcrCloudSetConfig = (user: string, pass: string, guild: string) => invoke<string[]>('wcr_cloud_set_config', { user, pass, guild });
-export const wcrCloudVideos = () => (inTauri ? invoke<WcrVideo[]>('wcr_cloud_videos') : Promise.resolve<WcrVideo[]>([]));
+export const wcrCloudVideos = () => (hasBackend ? invoke<WcrVideo[]>('wcr_cloud_videos') : Promise.resolve<WcrVideo[]>([]));
 /** Pasta cadastrada pelo usuário (null = detecção automática). Fica no settings.json do app. */
 export const wcrGetDir = () => invoke<string | null>('wcr_get_dir');
 export const wcrSetDir = (dir: string | null) => invoke<void>('wcr_set_dir', { dir });
@@ -182,7 +198,7 @@ export const wcrDetectDir = () => invoke<string | null>('wcr_detect_dir');
 
 export async function videoSrc(path: string): Promise<string> {
   if (/^https:\/\//.test(path)) return path; // nuvem do Warcraft Recorder: link assinado
-  if (!inTauri) return `/__video?path=${encodeURIComponent(path)}`; // dev no navegador (vite.config.ts)
+  if (!inDesktop) return `/__video?path=${encodeURIComponent(path)}`; // dev no navegador (vite.config.ts)
   const { convertFileSrc } = await import('@tauri-apps/api/core');
   return convertFileSrc(path);
 }
@@ -272,7 +288,7 @@ const demoLogs = (): LogsScan | null => {
 export const logsList = () => {
   const demo = demoLogs();
   if (demo) return Promise.resolve(demo);
-  return inTauri ? invoke<LogsScan>('logs_list') : Promise.resolve<LogsScan>({ dir: null, source: 'none', files: [], warning: null });
+  return hasBackend ? invoke<LogsScan>('logs_list') : Promise.resolve<LogsScan>({ dir: null, source: 'none', files: [], warning: null });
 };
 export const logsPeek = (path: string) => invoke<LogPeek>('logs_peek', { path });
 /** Pasta cadastrada (null = detecção automática). Fica no settings.json do app. */
@@ -351,20 +367,20 @@ const demoHistory = (): HistoryEntry[] =>
 
 /** Análises salvas, enxutas (sem recap/eventos), da mais antiga para a mais nova — para a Evolução. */
 export async function historyTrends(): Promise<{ id: string; title: string; raidStartMs: number | null; report: LogReport }[]> {
-  if (import.meta.env.DEV && !inTauri && new URLSearchParams(window.location.search).has('demoTrends')) {
+  if (import.meta.env.DEV && !hasBackend && new URLSearchParams(window.location.search).has('demoTrends')) {
     // dev no navegador: relatórios gerados com wipe-cli em samples/trends/n1..n3.json
     const { logTitle } = await import('./format');
     const reports = await Promise.all([1, 2, 3].map((i) => fetch(`/samples/trends/n${i}.json`).then((r) => r.json() as Promise<LogReport>)));
     return reports.map((r, i) => ({ id: `n${i}`, title: logTitle(r.pulls), raidStartMs: r.pulls[0]?.startMs ?? null, report: r }));
   }
-  return inTauri ? invoke('history_trends') : [];
+  return hasBackend ? invoke('history_trends') : [];
 }
 
-export const historyList = () => (inTauri ? invoke<HistoryEntry[]>('history_list') : Promise.resolve(demoHistory()));
+export const historyList = () => (hasBackend ? invoke<HistoryEntry[]>('history_list') : Promise.resolve(demoHistory()));
 export const historyLoad = (id: string) => invoke<LogReport>('history_load', { id });
-export const historySetPinned = (id: string, pinned: boolean) => (inTauri ? invoke<void>('history_set_pinned', { id, pinned }) : Promise.resolve());
-export const historyDelete = (id: string) => (inTauri ? invoke<void>('history_delete', { id }) : Promise.resolve());
-export const historyDeleteUnpinned = () => (inTauri ? invoke<number>('history_delete_unpinned') : Promise.resolve(0));
+export const historySetPinned = (id: string, pinned: boolean) => (hasBackend ? invoke<void>('history_set_pinned', { id, pinned }) : Promise.resolve());
+export const historyDelete = (id: string) => (hasBackend ? invoke<void>('history_delete', { id }) : Promise.resolve());
+export const historyDeleteUnpinned = () => (hasBackend ? invoke<number>('history_delete_unpinned') : Promise.resolve(0));
 
 /** O relatório aberto é esta entrada do histórico? (mesmo arquivo de log) */
 const normPath = (p: string) => p.replaceAll('\\', '/').toLowerCase();
@@ -372,17 +388,17 @@ export const sameLog = (a: string, b: string) => normPath(a) === normPath(b);
 
 /** Pasta onde o usuário pode pôr regras de boss (*.yaml) que substituem as embutidas. */
 /** "Abrir o Wipe Cause quando o WoW abrir" (inicia com o Windows, na bandeja). */
-export const startupGet = () => (inTauri ? invoke<boolean>('startup_get') : Promise.resolve(false));
+export const startupGet = () => (hasBackend ? invoke<boolean>('startup_get') : Promise.resolve(false));
 export const startupSet = (enabled: boolean) => invoke<void>('startup_set', { enabled });
-export const rulesDir = () => (inTauri ? invoke<string | null>('rules_dir') : Promise.resolve(null));
+export const rulesDir = () => (hasBackend ? invoke<string | null>('rules_dir') : Promise.resolve(null));
 
 /** Mostra o arquivo ou pasta no Explorador de Arquivos (permitido pelo opener:default). */
 export async function revealInExplorer(path: string) {
-  if (!inTauri) return;
+  if (!inDesktop) return;
   const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
   await revealItemInDir(path);
 }
 
 /** Idioma da UI para o backend (mensagens de erro, menu da bandeja, avisos do Windows). */
 /** `chosen`: escolha do usuário (fica salva); sem ela o backend segue o idioma do sistema ao abrir. */
-export const setBackendLocale = (locale: string, chosen: boolean) => (inTauri ? invoke<void>('set_locale', { locale, chosen }).catch(() => {}) : Promise.resolve());
+export const setBackendLocale = (locale: string, chosen: boolean) => (hasBackend ? invoke<void>('set_locale', { locale, chosen }).catch(() => {}) : Promise.resolve());

@@ -17,6 +17,7 @@
 
 <p align="center">
   <a href="https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?style=for-the-badge&label=Download%20for%20Windows&logo=windows&logoColor=white&color=d4a54a" alt="Download for Windows" height="40"></a>
+  <a href="https://keter45.github.io/wipe-cause/"><img src="https://img.shields.io/badge/Use%20online-no%20install-4cc38a?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Use online, no install" height="40"></a>
 </p>
 <p align="center">
   <a href="https://github.com/keter45/wipe-cause/releases/latest">What's new</a>
@@ -58,6 +59,10 @@ With live mode on, the reason for the wipe shows up seconds after the pull — a
 1. **[Download the installer](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`, ~4 MB).
 2. Open the file. The first time, Windows may show *"Windows protected your PC"*: click **More info → Run anyway** (the app doesn't have a paid signing certificate yet).
 3. Done. The app **updates itself** when a new version comes out; no need to download it again.
+
+### Or use it online
+
+**[Open Wipe Cause in the browser](https://keter45.github.io/wipe-cause/)**, no install: drag the `WoWCombatLog.txt` onto the page or open a Warcraft Logs report. It's the same analysis as the app, running inside your browser — the log never leaves your PC. Live mode, Warcraft Recorder videos and automatic Discord posts need the app. Best in Chrome or Edge.
 
 > [!TIP]
 > There's no Wipe Cause server: everything runs on your PC. The Warcraft Logs account is optional and only used to see the guild's logs and fill in what your log missed.

@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const REPO = path.resolve(__dirname, '../..');
-const DIRS = ['crates/wipe-core/src', 'src-tauri/src'];
+const DIRS = ['crates/wipe-core/src', 'crates/wipe-wasm/src', 'src-tauri/src'];
 const SKIP = /[\\/]bin[\\/]/;
 
 const ACCENT = /[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/;

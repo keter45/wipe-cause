@@ -2,7 +2,7 @@
 // no GitHub, baixa o instalador novo, confere a assinatura e reinstala sozinho.
 
 import { useCallback, useEffect, useState } from 'react';
-import { inTauri } from './api';
+import { inDesktop, inWeb } from './api';
 
 type Update = Awaited<ReturnType<typeof import('@tauri-apps/plugin-updater').check>>;
 
@@ -20,10 +20,10 @@ const RECHECK_MS = 6 * 3_600_000;
 export function useUpdater() {
   const [state, setState] = useState<UpdateState>({ kind: 'idle' });
   const [update, setUpdate] = useState<Update>(null);
-  const [version, setVersion] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(inWeb ? __APP_VERSION__ : null);
 
   const checkNow = useCallback(async (manual = false) => {
-    if (!inTauri) return;
+    if (!inDesktop) return;
     setState((s) => (manual || s.kind === 'idle' ? { kind: 'checking' } : s));
     try {
       const { check } = await import('@tauri-apps/plugin-updater');
@@ -37,7 +37,7 @@ export function useUpdater() {
   }, []);
 
   useEffect(() => {
-    if (!inTauri) return;
+    if (!inDesktop) return;
     import('@tauri-apps/api/app').then(({ getVersion }) => getVersion().then(setVersion)).catch(() => {});
     // em dev (npm run tauri dev) não procura sozinho: a versão local é sempre "velha"
     if (import.meta.env.DEV) return;

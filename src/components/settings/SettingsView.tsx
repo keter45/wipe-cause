@@ -1,20 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Bot, Check, ChevronDown, CircleAlert, FolderOpen, Gamepad2, Info, MessageSquare, Power, RefreshCw, Skull, Trophy, Video, type LucideIcon } from 'lucide-react';
 import type { LogReport } from '../../types';
-import {
-  inTauri,
-  logsDetectDir,
-  logsGetDir,
-  logsList,
-  logsSetDir,
-  migrateWcrDir,
-  revealInExplorer,
-  rulesDir,
-  wcrDetectDir,
-  wcrGetDir,
-  wcrSetDir,
-  wcrVideos,
-} from '../../lib/api';
+import { hasBackend, logsDetectDir, logsGetDir, logsList, logsSetDir, migrateWcrDir, revealInExplorer, rulesDir, wcrDetectDir, wcrGetDir, wcrSetDir, wcrVideos, inDesktop, inWeb } from '../../lib/api';
 import { PRESETS } from '../../lib/ai';
 import { savedDeathCutoff, saveDeathCutoff } from '../../lib/cutoff';
 import { missingRequired, optionalDone, useSetup, type SettingsSection } from '../../lib/setup';
@@ -122,7 +109,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           <h1>{t.title}</h1>
           <LanguageSelect label={t.language} />
         </div>
-        <p className="muted">{t.intro}</p>
+        <p className="muted">{inWeb ? t.introWeb : t.intro}</p>
         {status && (
           <div className="set-summary">
             <span className={`set-chip ${logsMissing ? 'todo' : 'ok'}`}>
@@ -136,7 +123,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
       <FirstSteps firstRun={firstRun} onStart={onStart} onOpen={openSection} />
 
       <SettingsGroup title={t.groups.essential} hint={t.groups.essentialHint}>
-        {card(
+        {!inWeb && card(
           'logs',
           FolderOpen,
           t.logs.title,
@@ -160,7 +147,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
         )}
       </SettingsGroup>
 
-      <SettingsGroup title={t.groups.startup}>
+      {!inWeb && <SettingsGroup title={t.groups.startup}>
         {card(
           'startup',
           Power,
@@ -168,9 +155,9 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           t.startup.desc,
           status?.openWithWow ? 'ok' : 'off',
           status?.openWithWow ? t.on : t.off,
-          inTauri ? <StartupForm enabled={!!status?.openWithWow} onSaved={reload} /> : <OnlyInApp />,
+          inDesktop ? <StartupForm enabled={!!status?.openWithWow} onSaved={reload} /> : <OnlyInApp />,
         )}
-      </SettingsGroup>
+      </SettingsGroup>}
 
       <SettingsGroup title={t.groups.analysis}>
         {card(
@@ -203,9 +190,9 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           t.wcl.desc,
           status?.wcl?.configured ? 'ok' : 'off',
           status?.wcl?.user ? t.wcl.connectedAs(status.wcl.user.name) : status?.wcl?.configured ? t.wcl.connected : t.wcl.notConnected,
-          inTauri ? <WclApiForm current={status?.wcl ?? null} onSaved={reload} /> : <OnlyInApp />,
+          hasBackend ? <WclApiForm current={status?.wcl ?? null} onSaved={reload} /> : <OnlyInApp />,
         )}
-        {card(
+        {!inWeb && card(
           'videos',
           Video,
           t.videos.title,
@@ -214,7 +201,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           [status?.wcrDir ? t.videos.folderFound : null, status?.wcrCloud?.configured ? t.videos.cloud(status.wcrCloud.guild ?? '') : null].filter(Boolean).join(' · ') || t.videos.noFolder,
           <>
             <FolderForm api={VIDEOS_API} pickTitle={t.videos.pickTitle} placeholder="D:\WarcraftRecorder" detectedLabel={t.videos.detectedLabel} onSaved={reload} />
-            {inTauri && <WcrCloudForm current={status?.wcrCloud ?? null} onSaved={reload} />}
+            {inDesktop && <WcrCloudForm current={status?.wcrCloud ?? null} onSaved={reload} />}
           </>,
         )}
         {card(
@@ -224,7 +211,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           t.discord.desc,
           status?.discord?.webhook ? 'ok' : 'off',
           status?.discord?.webhook ? t.on : t.off,
-          inTauri ? <DiscordForm current={status?.discord ?? null} onSaved={reload} /> : <OnlyInApp />,
+          hasBackend ? <DiscordForm current={status?.discord ?? null} onSaved={reload} /> : <OnlyInApp />,
         )}
         {card(
           'ai',
@@ -233,7 +220,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           t.ai.desc,
           status?.ai ? 'ok' : 'off',
           status?.ai ? (aiPreset?.label ?? t.ai.configured) : t.ai.notConfigured,
-          inTauri ? <AiForm current={status?.ai ?? null} onSaved={reload} /> : <OnlyInApp />,
+          hasBackend ? <AiForm current={status?.ai ?? null} onSaved={reload} /> : <OnlyInApp />,
         )}
       </SettingsGroup>
 
@@ -359,7 +346,7 @@ function About({ version, state, onCheck }: { version: string | null; state: Upd
         <span className="muted">{t.version}</span>
         <span className="tabular">{version ? `v${version}` : t.browserDev}</span>
       </div>
-      {inTauri && (
+      {inDesktop && (
         <div className="set-actions left">
           <button className="btn" onClick={onCheck} disabled={state.kind === 'checking' || state.kind === 'downloading'}>
             <RefreshCw size={14} strokeWidth={1.5} className={state.kind === 'checking' ? 'spin' : ''} aria-hidden /> {t.check}

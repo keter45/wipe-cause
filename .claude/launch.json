@@ -21,6 +21,30 @@
       "env": {
         "WIPE_DEV_VIDEO_DIR": "D:/WowRecorder"
       }
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:web"
+      ],
+      "port": 1430
+    },
+    {
+      "name": "web-dist",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--mode",
+        "web",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173,
+      "url": "http://localhost:4173"
     }
   ]
 }

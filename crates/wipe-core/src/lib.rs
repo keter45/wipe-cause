@@ -15,6 +15,7 @@ pub mod report;
 pub mod rotation;
 pub mod rules;
 pub mod setup;
+pub mod summary;
 pub mod timestamp;
 pub mod tokenizer;
 pub mod wcl;
@@ -26,7 +27,11 @@ pub use report::*;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Seek, SeekFrom};
 use std::path::Path;
-use std::time::Instant;
+// no navegador (wasm) o std não tem relógio
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+#[cfg(target_arch = "wasm32")]
+use web_time::{Instant, SystemTime, UNIX_EPOCH};
 use timestamp::{parse_timestamp, tz_offset_hours};
 use tokenizer::{split_fields, split_timestamp};
 
@@ -71,10 +76,16 @@ fn rule_book(opts: &AnalyzeOptions) -> RuleBook {
 /// posições do pull inteiro, a vida, os debuffs e os eventos de cada player (`Pull.fight`). Sem o
 /// corte de mortes: o replay mostra a luta toda.
 pub fn analyze_pull_full(path: &Path, offset: u64, opts: &AnalyzeOptions) -> io::Result<Pull> {
-    let book = rule_book(opts);
+    let reader = BufReader::with_capacity(1 << 20, File::open(path)?);
+    let mut pull = analyze_pull_reader(reader, offset, &rule_book(opts))?;
+    pull.log_file = Some(path.display().to_string());
+    Ok(pull)
+}
+
+/// `analyze_pull_full` sobre qualquer leitor (no site, o arquivo escolhido no navegador).
+pub fn analyze_pull_reader<R: BufRead + Seek>(mut reader: R, offset: u64, book: &RuleBook) -> io::Result<Pull> {
     let data = GameData::embedded();
     let default_year = current_year();
-    let mut reader = BufReader::with_capacity(1 << 20, File::open(path)?);
     reader.seek(SeekFrom::Start(offset))?;
     let mut buf = Vec::with_capacity(4096);
     let mut current: Option<PullBuilder> = None;
@@ -90,7 +101,7 @@ pub fn analyze_pull_full(path: &Path, offset: u64, opts: &AnalyzeOptions) -> io:
         let mut f = Vec::with_capacity(48);
         split_fields(rest, &mut f);
         match (f[0], current.as_mut()) {
-            ("ENCOUNTER_START", None) => current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), &book, 0).capture_fight(&data)),
+            ("ENCOUNTER_START", None) => current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book, 0).capture_fight(&data)),
             ("ENCOUNTER_START", Some(_)) => break,
             ("ENCOUNTER_END", Some(_)) => {
                 end = Some((f.iter().map(|s| s.to_string()).collect(), t));
@@ -105,7 +116,6 @@ pub fn analyze_pull_full(path: &Path, offset: u64, opts: &AnalyzeOptions) -> io:
     let fp = b.finish(end_fields.as_deref().zip(end.as_ref().map(|e| e.1)), 0, &data);
     let (mut pulls, _) = finalize(vec![fp], &data);
     let mut pull = pulls.pop().ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "pull too short"))?;
-    pull.log_file = Some(path.display().to_string());
     pull.log_offset = Some(offset);
     Ok(pull)
 }
@@ -265,8 +275,8 @@ pub fn merge_pulls(mut pulls: Vec<Pull>) -> Vec<Pull> {
 }
 
 pub(crate) fn current_year() -> i32 {
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
     1970 + (secs as f64 / 86_400.0 / 365.2425) as i32

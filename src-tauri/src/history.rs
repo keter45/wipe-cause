@@ -4,11 +4,11 @@
 
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
+use wipe_core::summary::{best_hp, has_raid, main_encounter, title_of};
 use wipe_core::LogReport;
 use wipe_core::i18n::pick;
 
@@ -43,11 +43,6 @@ pub struct HistoryEntry {
     pub raid: Option<bool>,
 }
 
-/// O app é para raid: log só de masmorra (M+) não entra no histórico.
-fn has_raid(report: &LogReport) -> bool {
-    report.pulls.iter().any(|p| !p.dungeon)
-}
-
 fn history_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("history");
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -80,37 +75,6 @@ pub fn entry_id(log_path: &str) -> String {
     format!("{h:016x}")
 }
 
-/// "24/09 · The Twin Fangs Mythic +1": data do 1º pull + boss de raid com mais pulls (masmorras
-/// só entram no título se o log não tiver raid).
-pub fn title_of(report: &LogReport) -> String {
-    let Some(first) = report.pulls.first() else { return pick("Log sem pulls", "Log without pulls") };
-    let date = first.start_local.split(' ').next().unwrap_or("");
-    let mut parts = date.split('/');
-    let (m, d) = (parts.next().unwrap_or("?"), parts.next().unwrap_or("?"));
-    let raid: Vec<_> = report.pulls.iter().filter(|p| !p.dungeon).collect();
-    let pulls = if raid.is_empty() { report.pulls.iter().collect() } else { raid };
-    let mut count: HashMap<String, usize> = HashMap::new();
-    for p in pulls {
-        *count.entry(format!("{} {}", p.encounter_name, p.difficulty_name)).or_default() += 1;
-    }
-    let mut ranked: Vec<(String, usize)> = count.into_iter().collect();
-    ranked.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
-    let others = ranked.len().saturating_sub(1);
-    let main = &ranked[0].0;
-    format!("{d:0>2}/{m:0>2} · {main}{}", if others > 0 { format!(" +{others}") } else { String::new() })
-}
-
-/// Encontro do título: o boss de raid com mais pulls (masmorra só se não houver raid).
-pub fn main_encounter(report: &LogReport) -> Option<u32> {
-    let raid: Vec<_> = report.pulls.iter().filter(|p| !p.dungeon).collect();
-    let pulls = if raid.is_empty() { report.pulls.iter().collect() } else { raid };
-    let mut count: HashMap<u32, usize> = HashMap::new();
-    for p in pulls {
-        *count.entry(p.encounter_id).or_default() += 1;
-    }
-    count.into_iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(&a.0))).map(|(id, _)| id)
-}
-
 fn now_ms() -> i64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0)
 }
@@ -140,15 +104,6 @@ fn save_in(dir: &Path, report: &LogReport, log_path: &str) -> Result<(), String>
     let mut index = load_index(dir);
     let pinned = index.iter().find(|e| e.id == id).is_some_and(|e| e.pinned);
     index.retain(|e| e.id != id);
-    let wipes = report.pulls.iter().filter(|p| !p.success);
-    let best_hp = wipes
-        .filter_map(|p| {
-            p.bosses
-                .iter()
-                .filter_map(|b| if p.cutoff_t.is_some() { b.hp_pct_at_cutoff.or(b.hp_pct) } else { b.hp_pct })
-                .reduce(f32::min)
-        })
-        .reduce(f32::min);
     index.push(HistoryEntry {
         id,
         saved_at: now_ms(),
@@ -158,7 +113,7 @@ fn save_in(dir: &Path, report: &LogReport, log_path: &str) -> Result<(), String>
         log_path: log_path.to_string(),
         pulls: report.pulls.len(),
         kills: report.pulls.iter().filter(|p| p.success).count(),
-        best_hp,
+        best_hp: best_hp(report),
         death_cutoff: report.death_cutoff,
         pinned,
         size: bytes.len() as u64,

@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LogReport, Pull } from '../types';
-import { analyzeLog, inTauri, liveStart, liveStatus, liveStop, logsList, onLiveReport, onLiveStatus, type LiveStatus } from './api';
+import { analyzeLog, liveStart, liveStatus, liveStop, logsList, onLiveReport, onLiveStatus, type LiveStatus, inDesktop } from './api';
 import { fetchGuildReports, groupNights, uniquePulls, LIVE_MS } from './guildNights';
 import type { WclGuild } from './wclApi';
 import { messagesOf } from '../i18n';
@@ -41,7 +41,7 @@ export function useLive(onReport: (r: LogReport, newPulls: Pull[]) => void, guil
   }, []);
 
   useEffect(() => {
-    if (!inTauri) return;
+    if (!inDesktop) return;
     liveStatus().then(setStatus).catch(() => {});
     const offStatus = onLiveStatus((s) => {
       if (!wcl.current) setStatus(s);
