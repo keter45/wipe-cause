@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Crosshair, Maximize2, Minimize2, Pause, Play, RotateCcw } from 'lucide-react';
 import type { ReplayRef } from '../types';
 import { classColor, num, shortName } from '../lib/format';
-import { posAt, valueAt, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
+import { movedUntil, posAt, valueAt, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
 import { useMessages } from '../i18n';
 import { replayMsg, type ReplayMoment } from './ReplayView.i18n';
 import { SpellIcon, SpellName, SvgSpellIcon } from './SpellIcon';
@@ -28,7 +28,9 @@ interface Props {
   hits?: ReplayHit[];
 }
 
-const SIZE = 400;
+/** Mapa (viewBox): mais largo que alto, para ocupar a largura sem ficar alto demais. */
+const W = 720;
+const H = 440;
 const PAD = 14;
 /** Menor área mostrada (jardas), para quem ficou parado não virar um ponto só. */
 const MIN_SPAN = 40;
@@ -53,7 +55,9 @@ const GROUND_MAX_PX = 7;
 /** Grade do chão (jardas) e régua de escala. */
 const GRID_YD = 10;
 /** Folga em volta da arena (jardas). */
-const ARENA_PAD_YD = 9;
+const ARENA_PAD_YD = 6;
+/** Vista aberta: deixa de fora esta parte das posições em cada ponta (quem ficou longe de todo mundo). */
+const WIDE_TRIM = 0.05;
 /** Nome do boss: este tanto abaixo do losango (px). */
 const BOSS_LABEL_DY = 22;
 /** Trecho recente do caminho, desenhado mais forte (ms). */
@@ -71,8 +75,27 @@ const FACING_MAX_PX = 70;
 const CASTS_MAX = 3;
 /** Lista de golpes: os últimos N até o instante. */
 const FEED_MAX = 5;
+/** Fantasma: contorno (px, centrado no ponto) e quanto ele precisa andar num quarto de segundo para contar como andando (jardas). */
+const GHOST_PATH = 'M -6 7 L -6 -1 A 6 6 0 0 1 6 -1 L 6 7 L 4 5 L 2 7 L 0 5 L -2 7 L -4 5 Z';
+const GHOST_MOVING_YD = 0.3;
+/** Fantasma a até isto (jardas) do fantasma de quem o replay acompanha, no momento, também fica em destaque. */
+const GHOST_TOUCH_YD = 4;
 /** Cores das mecânicas no chão (vermelho fica para bosses e acertos). */
 const GROUND_COLORS = ['#e8904a', '#6ea8fe', '#4cc38a', '#d9c05a', '#c084fc', '#f472b6', '#2dd4bf'];
+
+/** Triângulo do frontal na tela: do boss (bx, by) na direção `a` (radianos do mundo, y para cima), meio ângulo `h`, com a base a `len` px. */
+function triangle(bx: number, by: number, a: number, h: number, len: number): string {
+  const side = len / Math.cos(h);
+  const pt = (ang: number) => `${(bx + Math.cos(ang) * side).toFixed(1)},${(by - Math.sin(ang) * side).toFixed(1)}`;
+  return `${bx.toFixed(1)},${by.toFixed(1)} ${pt(a - h)} ${pt(a + h)}`;
+}
+
+/** Câmera do usuário por cima do enquadramento automático: deslocamento (jardas) e zoom. */
+const NO_CAM = { x: 0, y: 0, zoom: 1 };
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 10;
+/** Quanto a roda do mouse aproxima por unidade de deltaY. */
+const WHEEL_ZOOM = 0.0015;
 
 const inWindow = (u: ReplayUnit, r: ReplayRef) => u.pts.filter(([t]) => t >= r.from && t <= r.to);
 
@@ -86,6 +109,11 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   // enquadramento: a arena inteira (morte, falha coletiva) ou perto de quem o replay acompanha
   const [wide, setWide] = useState(moment === 'death' || moment === 'failure');
   const floorId = useId().replace(/:/g, '');
+  // arrastar move o mapa, a roda dá zoom; duplo clique (ou trocar o enquadramento) volta
+  const [cam, setCam] = useState(NO_CAM);
+  const [dragging, setDragging] = useState(false);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragFrom = useRef<{ x: number; y: number } | null>(null);
   const nowRef = useRef(now);
   nowRef.current = now;
 
@@ -108,12 +136,32 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     const players = units.filter((u) => u.kind === 'player' && inWindow(u, r).length > 0);
     const focus = r.focus.map((g) => data.units.get(g)).filter((u): u is ReplayUnit => !!u && inWindow(u, r).length > 0);
     const enemies = units.filter((u) => u.kind === 'enemy' && inWindow(u, r).length > 0);
+    // fantasmas (caminho simulado) que aparecem no replay, os que mais andaram primeiro
+    const ghosts = units.filter((u) => u.kind === 'ghost' && inWindow(u, r).length > 0).sort((a, b) => movedUntil(b, r.to) - movedUntil(a, r.to));
     // área: o caminho de quem o replay acompanha (ou de todo mundo, numa falha coletiva) e os bosses perto
     const core = focus.length ? focus : players;
     const xs: number[] = [];
     const ys: number[] = [];
     for (const u of core) {
       for (const [, x, y] of inWindow(u, r)) {
+        xs.push(x);
+        ys.push(y);
+      }
+    }
+    // em destaque: os fantasmas de quem o replay acompanha e os que encostaram neles no momento
+    const mine = ghosts.filter((g) => g.owner && focus.some((u) => u.guid === g.owner));
+    const keyGhosts = new Set(mine.map((g) => g.guid));
+    for (const g of ghosts) {
+      const p = posAt(g, r.t);
+      const touching = (m: ReplayUnit) => {
+        const q = posAt(m, r.t);
+        return !!p && !!q && Math.hypot(p[0] - q[0], p[1] - q[1]) <= GHOST_TOUCH_YD;
+      };
+      if (mine.some(touching)) keyGhosts.add(g.guid);
+    }
+    // e entram na área
+    for (const g of ghosts.filter((g) => keyGhosts.has(g.guid))) {
+      for (const [, x, y] of inWindow(g, r)) {
         xs.push(x);
         ys.push(y);
       }
@@ -132,23 +180,56 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     }
     const arena = data.arena;
     const useArena = wide && !!arena && arena.cells.length > 0;
-    let cx: number, cy: number, reach: number;
+    let cx: number, cy: number, reachX: number, reachY: number;
     if (useArena) {
-      const cs = arena!.cellYd;
-      const ax = arena!.cells.map(([c]) => c * cs);
-      const ay = arena!.cells.map(([, l]) => l * cs);
-      const [x0, x1, y0, y1] = [Math.min(...ax), Math.max(...ax) + cs, Math.min(...ay), Math.max(...ay) + cs];
+      // vista aberta: onde a raid (e os bosses e fantasmas) esteve durante o replay, não a sala toda do pull
+      // (sem os poucos que ficaram longe de todo mundo; quem o replay acompanha, os bosses e os fantasmas em destaque sempre entram)
+      const rx: number[] = [];
+      const ry: number[] = [];
+      for (const u of players) {
+        for (const [, x, y] of inWindow(u, r)) {
+          rx.push(x);
+          ry.push(y);
+        }
+      }
+      const cut = (v: number[]) => {
+        const s = [...v].sort((a, b) => a - b);
+        return [s[Math.floor((s.length - 1) * WIDE_TRIM)], s[Math.ceil((s.length - 1) * (1 - WIDE_TRIM))]];
+      };
+      const [px0, px1] = cut(rx);
+      const [py0, py1] = cut(ry);
+      const ax = [px0, px1];
+      const ay = [py0, py1];
+      for (const u of [...focus, ...ghosts.filter((g) => keyGhosts.has(g.guid))]) {
+        for (const [, x, y] of inWindow(u, r)) {
+          ax.push(x);
+          ay.push(y);
+        }
+      }
+      for (const e of enemies) {
+        const p = posAt(e, r.t);
+        if (p) {
+          ax.push(p[0]);
+          ay.push(p[1]);
+        }
+      }
+      const [x0, x1, y0, y1] = [Math.min(...ax), Math.max(...ax), Math.min(...ay), Math.max(...ay)];
       cx = (x0 + x1) / 2;
       cy = (y0 + y1) / 2;
-      reach = Math.max(x1 - x0, y1 - y0) / 2 + ARENA_PAD_YD;
+      reachX = Math.max(MIN_SPAN / 2, (x1 - x0) / 2 + ARENA_PAD_YD);
+      reachY = Math.max(MIN_SPAN / 2, (y1 - y0) / 2 + ARENA_PAD_YD);
     } else {
       cx = (Math.min(...xs) + Math.max(...xs)) / 2;
       cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-      reach = Math.max(MIN_SPAN / 2, (Math.max(...xs) - Math.min(...xs)) / 2, (Math.max(...ys) - Math.min(...ys)) / 2) * 1.1;
+      reachX = Math.max(MIN_SPAN / 2, (Math.max(...xs) - Math.min(...xs)) / 2) * 1.1;
+      reachY = Math.max(MIN_SPAN / 2, (Math.max(...ys) - Math.min(...ys)) / 2) * 1.1;
     }
-    const scale = (SIZE / 2 - PAD) / reach;
-    const sx = (x: number) => SIZE / 2 + (x - cx) * scale;
-    const sy = (y: number) => SIZE / 2 - (y - cy) * scale;
+    // a mesma escala nos dois eixos: o lado que mais precisa manda
+    const scale = Math.min((W / 2 - PAD) / reachX, (H / 2 - PAD) / reachY) * cam.zoom;
+    cx += cam.x;
+    cy += cam.y;
+    const sx = (x: number) => W / 2 + (x - cx) * scale;
+    const sy = (y: number) => H / 2 - (y - cy) * scale;
     const stacks = new Map((r.stacks ?? []).map((s) => [s.guid, s.pts] as const));
     // marcas no chão que podem aparecer no replay, e as mecânicas delas (legenda)
     const ground = data.ground.filter((g) => g.t <= r.to && g.t + (data.groundKinds[g.kind]?.lingerMs ?? 0) >= r.from);
@@ -156,10 +237,10 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     const casts = data.casts.filter((c) => (c.end ?? c.t) + CAST_SHOW_MS >= r.from && c.t <= r.to);
     const casters = enemies.filter((e) => casts.some((c) => c.guid === e.guid));
     // grade de GRID_YD presa ao mundo (a mesma em todos os replays)
-    const wx0 = cx - (SIZE / 2) / scale;
-    const wx1 = cx + (SIZE / 2) / scale;
-    const wy0 = cy - (SIZE / 2) / scale;
-    const wy1 = cy + (SIZE / 2) / scale;
+    const wx0 = cx - (W / 2) / scale;
+    const wx1 = cx + (W / 2) / scale;
+    const wy0 = cy - (H / 2) / scale;
+    const wy1 = cy + (H / 2) / scale;
     const gridX: number[] = [];
     const gridY: number[] = [];
     for (let g = Math.ceil(wx0 / GRID_YD) * GRID_YD; g <= wx1; g += GRID_YD) gridX.push(sx(g));
@@ -179,11 +260,46 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       if (ok) placed.push(q);
       enemyLabel.set(e.guid, ok);
     }
-    return { players, focus, enemies, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor: arena && arena.cells.length ? arena : null, casts, casters };
-  }, [data, r, wide]);
+    return { cx, cy, players, focus, enemies, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor: arena && arena.cells.length ? arena : null, casts, casters };
+  }, [data, r, wide, cam]);
+  const viewRef = useRef(view);
+  viewRef.current = view;
+
+  // ponto da tela em coordenadas do mapa (viewBox)
+  const toMap = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    const m = svg?.getScreenCTM();
+    if (!svg || !m) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const q = pt.matrixTransform(m.inverse());
+    return { x: q.x, y: q.y };
+  };
+
+  // roda: zoom em volta do ponto sob o cursor (listener próprio: o do React é passivo e não segura a rolagem da página)
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const onWheel = (ev: WheelEvent) => {
+      const v = viewRef.current;
+      const m = toMap(ev.clientX, ev.clientY);
+      if (!v || !m) return;
+      ev.preventDefault();
+      setCam((c) => {
+        const zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, c.zoom * Math.exp(-ev.deltaY * WHEEL_ZOOM)));
+        const s2 = (v.scale / c.zoom) * zoom;
+        const wx = v.cx + (m.x - W / 2) / v.scale;
+        const wy = v.cy - (m.y - H / 2) / v.scale;
+        return { zoom, x: c.x + (wx - (m.x - W / 2) / s2 - v.cx), y: c.y + (wy + (m.y - H / 2) / s2 - v.cy) };
+      });
+    };
+    svg.addEventListener('wheel', onWheel, { passive: false });
+    return () => svg.removeEventListener('wheel', onWheel);
+  }, [view === null]);
 
   if (!view || view.players.length === 0) return <p className="muted small">{t.noPositions}</p>;
-  const { players, focus, enemies, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor, casts, casters } = view;
+  const { players, focus, enemies, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor, casts, casters } = view;
   // cast de cada boss no instante: o que está castando, ou o que acabou de terminar
   const castEnd = (c: (typeof casts)[number]) => c.end ?? (c.facing == null ? c.t + CAST_OPEN_MS : c.t);
   const castNow = (guid: string) => [...casts].reverse().find((c) => c.guid === guid && now >= c.t && now <= castEnd(c) + CAST_SHOW_MS);
@@ -219,12 +335,45 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           .sort((a, b) => a.d - b.d)[0]
       : undefined;
   const gap = fp.length === 2 && fp[0] && fp[1] ? Math.hypot(fp[0][0] - fp[1][0], fp[0][1] - fp[1][1]) : null;
+  // fantasmas: os dos outros somem com "Mostrar os outros" desligado; os em destaque por cima
+  const shownGhosts = ghosts.filter((g) => others || !focus.length || keyGhosts.has(g.guid));
+  const ghostLayer = [...shownGhosts].sort((a, b) => Number(keyGhosts.has(a.guid)) - Number(keyGhosts.has(b.guid)));
+  const ghostMoving = (g: ReplayUnit) => {
+    const a = posAt(g, now);
+    const b = posAt(g, now - 250);
+    return !!a && !!b && Math.hypot(a[0] - b[0], a[1] - b[1]) >= GHOST_MOVING_YD;
+  };
+  const ghostOwner = (g: ReplayUnit) => shortName(data.units.get(g.owner ?? '')?.name ?? '');
   const hpNow = hp ? valueAt(hp, now) : null;
 
   return (
     <div className="replay">
-      <svg className="posmap replay-map" viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={t.aria(focus.length ? focus.map((u) => shortName(u.name)).join(', ') : t.everyone)}>
-        <rect width={SIZE} height={SIZE} className="replay-void" />
+      <svg
+        ref={svgRef}
+        className={`posmap replay-map ${dragging ? 'dragging' : ''}`}
+        onPointerDown={(ev) => {
+          dragFrom.current = toMap(ev.clientX, ev.clientY);
+          setDragging(true);
+          ev.currentTarget.setPointerCapture(ev.pointerId);
+        }}
+        onPointerMove={(ev) => {
+          const from = dragFrom.current;
+          const m = from && toMap(ev.clientX, ev.clientY);
+          if (!from || !m) return;
+          dragFrom.current = m;
+          setCam((c) => ({ ...c, x: c.x - (m.x - from.x) / scale, y: c.y + (m.y - from.y) / scale }));
+        }}
+        onPointerUp={() => {
+          dragFrom.current = null;
+          setDragging(false);
+        }}
+        onPointerCancel={() => {
+          dragFrom.current = null;
+          setDragging(false);
+        }}
+        onDoubleClick={() => setCam(NO_CAM)}
+        viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.aria(focus.length ? focus.map((u) => shortName(u.name)).join(', ') : t.everyone)}>
+        <rect width={W} height={H} className="replay-void" />
         <defs>
           <marker id={`${floorId}-arrow`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" className="replay-facing-head" />
@@ -248,10 +397,10 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
         )}
         <g className="replay-grid">
           {gridX.map((x) => (
-            <line key={`x${x}`} x1={x} y1={0} x2={x} y2={SIZE} />
+            <line key={`x${x}`} x1={x} y1={0} x2={x} y2={H} />
           ))}
           {gridY.map((y) => (
-            <line key={`y${y}`} x1={0} y1={y} x2={SIZE} y2={y} />
+            <line key={`y${y}`} x1={0} y1={y} x2={W} y2={y} />
           ))}
         </g>
         {ground.map((g, i) => {
@@ -290,7 +439,22 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                 const len = Math.min(FACING_MAX_PX, FACING_YD * scale);
                 return (
                   <g opacity={done ? 1 - Math.min(1, (now - end) / CAST_SHOW_MS) * 0.6 : 1}>
-                    {done && c.facing != null && !c.interrupted && (
+                    {(() => {
+                      // frontal: aponta para o alvo do boss durante o cast e fica travado na direção do fim
+                      if (!c.cone || c.interrupted) return null;
+                      const at = done ? end : now;
+                      const tu = c.target ? data.units.get(c.target) : undefined;
+                      const tp = tu ? posAt(tu, at) : null;
+                      const bp = posAt(e, at) ?? p;
+                      const dir = tp ? Math.atan2(tp[1] - bp[1], tp[0] - bp[0]) : done ? c.facing : undefined;
+                      if (dir == null) return null;
+                      return (
+                        <polygon points={triangle(bx, by, dir, (c.cone.halfAngle * Math.PI) / 180, c.cone.range * scale)} className={`replay-cone ${done ? '' : 'casting'}`}>
+                          <title>{c.name}</title>
+                        </polygon>
+                      );
+                    })()}
+                    {done && !c.cone && c.facing != null && !c.interrupted && (
                       <line x1={bx} y1={by} x2={bx + Math.cos(c.facing) * len} y2={by - Math.sin(c.facing) * len} className="replay-facing" markerEnd={`url(#${floorId}-arrow)`} />
                     )}
                     {/* ícone e barra ao lado do boss: o centro fica livre para a seta */}
@@ -312,6 +476,28 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             </text>
           </g>
         )}
+        {ghostLayer.map((g) => {
+          const p = posAt(g, now);
+          if (!p) return null;
+          const c = color(g.owner ?? '');
+          const owner = g.owner ? data.units.get(g.owner) : undefined;
+          const op = owner ? posAt(owner, now) : null;
+          const est = g.estimatedFrom ?? Infinity;
+          const xy = (x: number, y: number) => `${sx(x)},${sy(y)}`;
+          const here = xy(p[0], p[1]);
+          const sure = [...g.pts.filter(([pt]) => pt <= Math.min(now, est)).map(([, x, y]) => xy(x, y)), ...(now <= est ? [here] : [])];
+          const guess = now > est ? [...g.pts.filter(([pt]) => pt >= est && pt <= now).map(([, x, y]) => xy(x, y)), here] : [];
+          return (
+            <g key={g.guid} className="replay-ghost" opacity={focus.length > 0 && !keyGhosts.has(g.guid) ? 0.45 : 1}>
+              {op && <line x1={sx(p[0])} y1={sy(p[1])} x2={sx(op[0])} y2={sy(op[1])} stroke={c} className="replay-ghost-tether" />}
+              {sure.length > 1 && <polyline points={sure.join(' ')} stroke={c} className="replay-ghost-trail" />}
+              {guess.length > 1 && <polyline points={guess.join(' ')} stroke={c} className="replay-ghost-trail guess" />}
+              <path d={GHOST_PATH} transform={`translate(${sx(p[0])} ${sy(p[1])})`} fill={c} stroke={c} className={`replay-ghost-body ${ghostMoving(g) ? 'moving' : ''}`}>
+                <title>{t.ghostTitle(g.name, ghostOwner(g))}</title>
+              </path>
+            </g>
+          );
+        })}
         {players
           .filter((u) => !focusSet.has(u.guid) && (others || !focus.length))
           .map((u) => {
@@ -408,7 +594,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             </g>
           );
         })}
-        <g className="replay-scale" transform={`translate(${PAD} ${SIZE - PAD})`}>
+        <g className="replay-scale" transform={`translate(${PAD} ${H - PAD})`}>
           <line x1={0} y1={0} x2={scaleBarPx} y2={0} />
           <line x1={0} y1={-4} x2={0} y2={4} />
           <line x1={scaleBarPx} y1={-4} x2={scaleBarPx} y2={4} />
@@ -417,73 +603,6 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           </text>
         </g>
       </svg>
-      {casters.length > 0 && (
-        <div className="replay-casts">
-          <span className="muted small">{t.castsTitle}</span>
-          {casters.map((e) => (
-            <div key={e.guid} className="replay-cast-row">
-              <span className="small muted replay-cast-boss">{e.name}</span>
-              <div className="replay-cast-track">
-                <span className="replay-cast-moment" style={{ left: `${pctOf(r.t)}%` }} aria-hidden />
-                {casts
-                  .filter((c) => c.guid === e.guid)
-                  .map((c, i) => (
-                    <span
-                      key={`${c.t}-${i}`}
-                      className={`replay-cast-mark ${c.t <= now ? 'past' : ''}`}
-                      style={{ left: `${pctOf(c.t)}%`, width: `max(16px, ${pctOf(castEnd(c)) - pctOf(c.t)}%)` }}
-                    >
-                      <SpellIcon spellId={c.spellId} size={16} title={t.castTitle(c.name, e.name, t.relTime(c.t - r.t))} />
-                    </span>
-                  ))}
-                <span className="replay-cast-now" style={{ left: `${pctOf(now)}%` }} aria-hidden />
-              </div>
-            </div>
-          ))}
-          {recentCasts.length > 0 && (
-            <ul className="plain small replay-cast-list">
-              {recentCasts.map((c, i) => (
-                <li key={`${c.t}-${i}`}>
-                  <span className="muted num">{t.relTime(c.t - r.t)}</span>
-                  <span className="muted">{bossName(c.guid)}</span>
-                  <SpellName spellId={c.spellId} name={c.name} size={16} />
-                  {c.interrupted && <span className="chip">{t.interrupted}</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-      {groundKinds.length > 0 && (
-        <p className="small replay-legend">
-          <span className="muted">{t.onGround}</span>
-          {groundKinds.map((k) => (
-            <span key={k} className="replay-legend-item">
-              <span className="replay-swatch" style={{ background: groundColor(k) }} aria-hidden />
-              <SpellName spellId={data.groundKinds[k].spellId} name={data.groundKinds[k].name} size={16} />
-            </span>
-          ))}
-        </p>
-      )}
-      {hits && (
-        <div className="replay-feed">
-          <span className="muted small">{t.hitsTitle}</span>
-          {feed.length === 0 ? (
-            <span className="muted small">{t.noHits}</span>
-          ) : (
-            <ul className="plain small">
-              {feed.map((h, i) => (
-                <li key={`${h.t}-${i}`} className={h.cause ? 'cause' : ''}>
-                  <span className="muted num">{t.relTime(h.t - r.t)}</span>
-                  <SpellName spellId={h.spellId} name={h.name} size={16} />
-                  <span className="num">-{num(h.amount)}</span>
-                  {h.cause && <span className="chip bad">{t.cause}</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
       <div className="replay-controls">
         <button className="btn sm" onClick={() => (now >= r.to ? restart() : setPlaying(!playing))} aria-label={playing ? t.pause : t.play} title={playing ? t.pause : t.play}>
           {playing ? <Pause size={14} strokeWidth={1.75} aria-hidden /> : <Play size={14} strokeWidth={1.75} aria-hidden />}
@@ -517,7 +636,10 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
         />
         <span className={`small num replay-clock ${after ? 'bad' : 'muted'}`}>{clock}</span>
         {view.floor && (
-          <button className={`btn sm ghost ${wide ? 'pressed' : ''}`} aria-pressed={wide} onClick={() => setWide(!wide)} title={wide ? t.zoomFocus : t.zoomArena} aria-label={wide ? t.zoomFocus : t.zoomArena}>
+          <button className={`btn sm ghost ${wide ? 'pressed' : ''}`} aria-pressed={wide} onClick={() => {
+              setWide(!wide);
+              setCam(NO_CAM);
+            }} title={wide ? t.zoomFocus : t.zoomArena} aria-label={wide ? t.zoomFocus : t.zoomArena}>
             {wide ? <Minimize2 size={14} strokeWidth={1.75} aria-hidden /> : <Maximize2 size={14} strokeWidth={1.75} aria-hidden />}
           </button>
         )}
@@ -540,6 +662,98 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             ))}
           </ul>
         </Hint>
+      </div>
+      <div className="replay-panels">
+        {groundKinds.length > 0 && (
+          <p className="small replay-legend">
+            <span className="muted">{t.onGround}</span>
+            {groundKinds.map((k) => (
+              <span key={k} className="replay-legend-item">
+                <span className="replay-swatch" style={{ background: groundColor(k) }} aria-hidden />
+                <SpellName spellId={data.groundKinds[k].spellId} name={data.groundKinds[k].name} size={16} />
+              </span>
+            ))}
+          </p>
+        )}
+        {casters.length > 0 && (
+          <div className="replay-casts">
+            <span className="muted small">{t.castsTitle}</span>
+            {casters.map((e) => (
+              <div key={e.guid} className="replay-cast-row">
+                <span className="small muted replay-cast-boss">{e.name}</span>
+                <div className="replay-cast-track">
+                  <span className="replay-cast-moment" style={{ left: `${pctOf(r.t)}%` }} aria-hidden />
+                  {casts
+                    .filter((c) => c.guid === e.guid)
+                    .map((c, i) => (
+                      <span
+                        key={`${c.t}-${i}`}
+                        className={`replay-cast-mark ${c.t <= now ? 'past' : ''}`}
+                        style={{ left: `${pctOf(c.t)}%`, width: `max(16px, ${pctOf(castEnd(c)) - pctOf(c.t)}%)` }}
+                      >
+                        <SpellIcon spellId={c.spellId} size={16} title={t.castTitle(c.name, e.name, t.relTime(c.t - r.t))} />
+                      </span>
+                    ))}
+                  <span className="replay-cast-now" style={{ left: `${pctOf(now)}%` }} aria-hidden />
+                </div>
+              </div>
+            ))}
+            {recentCasts.length > 0 && (
+              <ul className="plain small replay-cast-list">
+                {recentCasts.map((c, i) => (
+                  <li key={`${c.t}-${i}`}>
+                    <span className="muted num">{t.relTime(c.t - r.t)}</span>
+                    <span className="muted">{bossName(c.guid)}</span>
+                    <SpellName spellId={c.spellId} name={c.name} size={16} />
+                    {c.interrupted && <span className="chip">{t.interrupted}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        {shownGhosts.length > 0 && (
+          <div className="replay-ghosts">
+            <span className="muted small">
+              {t.ghostsTitle}
+              <Hint label={t.ghostsHow}>{t.ghostsHint}</Hint>
+            </span>
+            <ul className="plain small">
+              {shownGhosts.map((g) => {
+                const alive = !!posAt(g, now);
+                const state = now < g.pts[0][0] ? t.ghostNotYet : !alive ? t.ghostGone : ghostMoving(g) ? t.ghostWalking : t.ghostStill;
+                return (
+                  <li key={g.guid} className={alive ? '' : 'muted'}>
+                    <span className="replay-ghost-swatch" style={{ background: color(g.owner ?? '') }} aria-hidden />
+                    <span style={{ color: color(g.owner ?? '') }}>{ghostOwner(g)}</span>
+                    <span className="num">{t.ghostMoved(Math.round(movedUntil(g, now)), Math.round(movedUntil(g, Infinity)))}</span>
+                    <span className="muted">{state}</span>
+                    {g.estimatedFrom != null && now >= g.estimatedFrom && alive && <span className="chip">{t.ghostEstimated}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+        {hits && (
+          <div className="replay-feed">
+            <span className="muted small">{t.hitsTitle}</span>
+            {feed.length === 0 ? (
+              <span className="muted small">{t.noHits}</span>
+            ) : (
+              <ul className="plain small">
+                {feed.map((h, i) => (
+                  <li key={`${h.t}-${i}`} className={h.cause ? 'cause' : ''}>
+                    <span className="muted num">{t.relTime(h.t - r.t)}</span>
+                    <SpellName spellId={h.spellId} name={h.name} size={16} />
+                    <span className="num">-{num(h.amount)}</span>
+                    {h.cause && <span className="chip bad">{t.cause}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

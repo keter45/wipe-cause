@@ -290,6 +290,8 @@ pub(crate) struct PullBuilder {
     ground_last: HashMap<(String, usize), (i64, f32, f32)>,
     /// casts dos inimigos (para o replay) e o cast com tempo ainda aberto de cada inimigo
     boss_casts: Vec<BossCast>,
+    /// alvo de cada inimigo: o último player que ele acertou corpo a corpo (ou com um spell de alvo da regra)
+    boss_target: HashMap<String, String>,
     open_casts: HashMap<String, usize>,
 }
 
@@ -337,6 +339,7 @@ impl PullBuilder {
             ground_marks: Vec::new(),
             ground_last: HashMap::new(),
             boss_casts: Vec::new(),
+            boss_target: HashMap::new(),
             open_casts: HashMap::new(),
         }
     }
@@ -422,7 +425,7 @@ impl PullBuilder {
             self.trails.on_pos(adv.info_guid, &p.name, false, adv.max_hp, adv.x, adv.y, rel);
             if self.cutoff_t.is_none() {
                 if let Some(r) = self.rules.as_mut().filter(|r| r.wants_positions()) {
-                    r.on_player_pos(adv.info_guid, adv.x, adv.y, rel);
+                    r.on_player_pos(adv.info_guid, adv.x, adv.y, adv.facing, rel);
                 }
             }
             p.last_hp_pct = Some(pct);
@@ -525,6 +528,12 @@ impl PullBuilder {
                     }
                 }
             }
+            // golpe corpo a corpo que errou também mostra o alvo do inimigo
+            "SWING_MISSED" => {
+                if Self::is_enemy(f[1], hex(f[3])) && Self::is_group_player(f[5], hex(f[7])) {
+                    self.boss_target.insert(f[1].to_string(), f[5].to_string());
+                }
+            }
             "SWING_DAMAGE_LANDED" => {
                 if let Some(adv) = advanced_at(f, 9) {
                     self.track_advanced(&adv, f);
@@ -553,7 +562,9 @@ impl PullBuilder {
                     let (guid, id, name) = (f[1].to_string(), f[9].parse().unwrap_or(0), f[10].to_string());
                     // um cast novo fecha o anterior que não terminou (cortado sem SPELL_INTERRUPT, stun...)
                     self.open_casts.insert(guid.clone(), self.boss_casts.len());
-                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false });
+                    let cone = self.rules.as_ref().and_then(|r| r.cone_for(id));
+                    let target = cone.and(self.boss_target.get(&guid).cloned());
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false, cone, target });
                 }
                 // começo de um cast com tempo de cast ou de um empower (a leitura da rotação mede o tempo parado)
                 if self.counting() && Self::is_group_player(f[1], hex(f[3])) {
@@ -622,6 +633,10 @@ impl PullBuilder {
         if self.counting() {
             if let Some(r) = self.rules.as_mut() {
                 r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
+                // possuído (Dreadmarch) aparece como hostil, mas ainda é player
+                if dst_guid.starts_with("Player-") && matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") {
+                    r.on_aura_from(f[1], spell_id, dst_guid, dst_name, f[0] == "SPELL_AURA_APPLIED", rel);
+                }
             }
         }
         if !is_player || f.get(12) != Some(&"DEBUFF") {
@@ -766,6 +781,10 @@ impl PullBuilder {
         };
 
         let counting = self.counting();
+        // alvo do inimigo: quem ele acerta corpo a corpo (ou com um spell que só vai no alvo, ex.: Dread Bolt)
+        if Self::is_enemy(src_guid, src_flags) && Self::is_group_player(dst_guid, dst_flags) && (f[0] == "SWING_DAMAGE" || self.rules.as_ref().is_some_and(|r| r.is_target_spell(spell_id))) {
+            self.boss_target.insert(src_guid.to_string(), dst_guid.to_string());
+        }
         // dano causado por player (ou pet) em inimigo
         if counting && Self::is_enemy(dst_guid, dst_flags) {
             if let Some(owner) = self.owner_of(src_guid, src_flags) {
@@ -987,13 +1006,25 @@ impl PullBuilder {
                 }
             }
             let facing = adv.as_ref().filter(|a| a.info_guid == src_guid).map(|a| a.facing);
-            match self.open_casts.remove(src_guid).filter(|&i| self.boss_casts[i].spell_id == spell_id) {
+            let i = match self.open_casts.remove(src_guid).filter(|&i| self.boss_casts[i].spell_id == spell_id) {
                 Some(i) => {
                     let c = &mut self.boss_casts[i];
                     c.end = Some(rel);
                     c.facing = facing;
+                    i
                 }
-                None => self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, interrupted: false }),
+                None => {
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, interrupted: false, cone: None, target: None });
+                    self.boss_casts.len() - 1
+                }
+            };
+            // frontal em cone: aponta para o alvo do boss (o mais recente, se trocou durante o cast)
+            if let Some(cone) = self.rules.as_ref().and_then(|r| r.cone_for(spell_id)) {
+                let c = &mut self.boss_casts[i];
+                c.cone = Some(cone);
+                if let Some(tg) = self.boss_target.get(src_guid) {
+                    c.target = Some(tg.clone());
+                }
             }
             let e = self.enemy_spells.entry(spell_id).or_default();
             e.name = spell_name;
@@ -1338,11 +1369,13 @@ impl PullBuilder {
         let rules_file = self.rules.as_ref().and_then(|r| r.files.first().cloned());
         let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).filter(|d| !d.ignored).collect();
         let trigger = pull_trigger(&deaths_view);
+        let mut ghosts = None;
         let mechanics = self
             .rules
             .map(|mut r| {
                 let deaths: Vec<i64> = pending.iter().map(|d| d.death.t).collect();
                 r.close_pull(duration_ms, success, &deaths);
+                ghosts = r.ghost_paths();
                 r.finish(&roles)
             })
             .unwrap_or_default();
@@ -1359,7 +1392,10 @@ impl PullBuilder {
             .filter_map(|d| d.death.replay.as_ref())
             .chain(mechanics.iter().flat_map(|m| m.replays.iter().chain(m.pairings.iter().filter_map(|f| f.replay.as_ref()))))
             .collect();
-        let tracks = self.trails.build(&refs);
+        let mut tracks = self.trails.build(&refs);
+        if let (Some(t), Some((name, paths))) = (tracks.as_mut(), &ghosts) {
+            t.units.extend(replay::ghost_tracks(paths, &refs, name));
+        }
         let arena = tracks.as_ref().and_then(|_| self.trails.arena());
         let casts = {
             let bosses: HashSet<&str> = tracks.iter().flat_map(|t| t.units.iter()).filter(|u| u.kind == "enemy").map(|u| u.guid.as_str()).collect();

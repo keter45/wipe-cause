@@ -119,9 +119,12 @@ detect:
   culprit_auras: [..]         # opcional: auras de portador consumidas na falha
   orbs: { .. }                # opcional: orbs carregados/largados (culpa quem levou um até outro no chão)
   pairing: { .. }             # opcional: debuff de somar encostando (sem fail_ids: a falha é o encontro com soma errada)
+  gaze: { fixate_aura, fixate_cast, hit_aura, half_angle: 45, window_ms: 5000, sim: { name, speed, half_angle, delay_ms, stun_ms, catch_aura } }   # opcional: fantasma que só para com o alvo olhando; culpa quem ficou de costas para o próprio; `sim` desenha o caminho dele no replay
 blame_message: "{player} carregava o orb"
 ```
 Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `orbs` ou `culprit_auras`); sem eles, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.
+
+Frontal em cone (qualquer tipo): `cone: { cast_id, half_angle, range, target_spells }` no nível da mecânica desenha um triângulo no replay, apontado para o alvo do boss durante o cast. O alvo é quem o boss acerta corpo a corpo; boss que não bate corpo a corpo precisa de `target_spells` (spells que só vão no alvo dele, ex.: Dread Bolt).
 
 Hotfix que muda o raio dos orbs: `contact_yd` fica com o valor novo e o antigo vai em `before: [{ until: "AAAA-MM-DDTHH:MM", contact_yd: .. }]` (UTC). Pulls que começaram antes de `until` usam o raio antigo, então os logs velhos continuam certos.
 

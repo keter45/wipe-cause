@@ -291,13 +291,11 @@ function DeathPosition({ death, classes, replayData }: { death: Death; classes: 
         .filter((x) => x.d <= NEAR_YD)
         .sort((a, b) => a.d - b.d)
     : [];
+  const replay = !!replayData?.units.size && !!death.replay;
+  // com replay: as distâncias numa linha em cima e o replay na largura toda
   return (
-    <div className="death-pos">
-      {replayData?.units.size && death.replay ? (
-        <ReplayView data={replayData} replay={death.replay} classes={classes} moment="death" autoplay={false} hp={hp} dies={death.guid} hits={hits} />
-      ) : (
-        <PositionMap snap={snap} classes={classes} marks={new Map([[death.guid, 'dead']])} size={220} />
-      )}
+    <div className={replay ? 'death-pos stacked' : 'death-pos'}>
+      {!replay && <PositionMap snap={snap} classes={classes} marks={new Map([[death.guid, 'dead']])} size={220} />}
       <div className="death-pos-facts">
         <h4 className="recap-title">{t.where} <Hint>{t.mapHint}</Hint></h4>
         {!me ? (
@@ -325,6 +323,7 @@ function DeathPosition({ death, classes, replayData }: { death: Death; classes: 
           </>
         )}
       </div>
+      {replay && <ReplayView data={replayData!} replay={death.replay!} classes={classes} moment="death" autoplay={false} hp={hp} dies={death.guid} hits={hits} />}
     </div>
   );
 }

@@ -70,7 +70,7 @@ pub struct OldContact {
 
 fn utc<'de, D: serde::Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
     let s = String::deserialize(d)?;
-    crate::timestamp::parse_utc(&s).ok_or_else(|| serde::de::Error::custom(format!("data inválida: {s} (use AAAA-MM-DD ou AAAA-MM-DDTHH:MM, UTC)")))
+    crate::timestamp::parse_utc(&s).ok_or_else(|| serde::de::Error::custom(format!("invalid date: {s} (use YYYY-MM-DD or YYYY-MM-DDTHH:MM, UTC)")))
 }
 
 impl OrbDetect {

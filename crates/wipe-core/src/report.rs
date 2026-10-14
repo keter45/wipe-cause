@@ -103,6 +103,20 @@ pub struct BossCast {
     /// cortado (interrupt)
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub interrupted: bool,
+    /// frontal em cone (regra do boss): o replay desenha a área no fim do cast
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cone: Option<ConeShape>,
+    /// frontal: o alvo do boss (o cone aponta para ele durante o cast); sem alvo, vale `facing`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConeShape {
+    /// meio ângulo (graus) e alcance (jardas)
+    pub half_angle: f32,
+    pub range: f32,
 }
 
 /// Células (`cell_yd` de lado) em que algum player esteve no pull: desenham o chão da arena.
@@ -150,9 +164,15 @@ pub struct PullTracks {
 pub struct UnitTrack {
     pub guid: String,
     pub name: String,
-    /// "player" | "enemy"
+    /// "player" | "enemy" | "ghost" (caminho simulado, ver `gaze.rs`)
     pub kind: String,
     pub segs: Vec<TrackSeg>,
+    /// fantasma: o player que ele persegue
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
+    /// fantasma: daqui em diante o caminho foi puxado até onde o log diz que ele estava
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub estimated_from: Option<i64>,
 }
 
 /// Trecho contínuo: posições a cada `step_ms` a partir de `t0`, em décimos de jarda (x, y, x, y...).
