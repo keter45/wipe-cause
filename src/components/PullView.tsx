@@ -305,7 +305,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       {tab === 'me' && <SoloPullView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} defaultGuid={solo ? meIn(pull, chosen)?.guid : undefined} solo={solo && !!meIn(pull, chosen)} />}
       {tab === 'spells' && <EnemySpellsTable pull={pull} onRulesChanged={onRulesChanged} />}
-      {tab === 'replay' && <FightReplay key={pull.id} pull={pull} />}
+      {tab === 'replay' && <FightReplay key={`${pull.logFile ?? ''}:${pull.logOffset ?? ''}:${pull.startMs}:${pull.id}`} pull={pull} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       </ErrorBoundary>
     </div>

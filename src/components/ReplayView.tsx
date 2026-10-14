@@ -45,6 +45,8 @@ interface Props {
   vanished?: (guid: string, t: number) => boolean;
   /** defensivos de raid em área (replay completo): o círculo onde valem, na cor de quem usou */
   zones?: ZoneView[];
+  /** janela do slider (a mesma da linha do tempo com zoom); sem ela, o replay inteiro */
+  range?: [number, number];
   /** painéis por cima do mapa (replay completo: bosses, medidores, quadro do raid) */
   overlay?: ReactNode;
   /** entre o mapa e os controles (replay completo: a linha do tempo) */
@@ -112,7 +114,7 @@ const SHOW_GAP_YD = 3;
 const MARK_MS = 700;
 const SPEEDS = [0.5, 1, 2] as const;
 /** Luta inteira: dá para correr mais. */
-const FULL_SPEEDS = [1, 2, 4, 8] as const;
+const FULL_SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
 /** Clique (sem arrastar) seleciona o player mais perto até esta distância (px do mapa). */
 const PICK_PX = 14;
 /** Centralizar no selecionado aproxima ao menos até este zoom. */
@@ -296,8 +298,47 @@ export function MapFilter({ label, icon, items, hidden, onChange }: { label: str
   );
 }
 
+/** Velocidade num menu: o botão mostra a atual; clicar abre as opções. */
+function SpeedMenu({ speeds, speed, onChange }: { speeds: readonly number[]; speed: number; onChange: (s: number) => void }) {
+  const t = useMessages(replayMsg);
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="speed-menu">
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        label={t.speed}
+        trigger={
+          <button className={`btn sm ghost ${open ? 'pressed' : ''}`} aria-expanded={open} aria-label={t.speedNow(t.speedLabel(speed))} title={t.speed} onClick={() => setOpen(!open)}>
+            <span className="num">{t.speedLabel(speed)}</span>
+            <ChevronDown size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+        }
+      >
+        <ul className="plain speed-menu-list" role="menu" aria-label={t.speed}>
+          {speeds.map((s) => (
+            <li key={s}>
+              <button
+                role="menuitemradio"
+                aria-checked={speed === s}
+                className={`btn sm ghost ${speed === s ? 'pressed' : ''}`}
+                onClick={() => {
+                  onChange(s);
+                  setOpen(false);
+                }}
+              >
+                <span className="num">{t.speedLabel(s)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Popover>
+    </span>
+  );
+}
+
 /** Replay das posições em volta de um momento (morte, acerto, falha, encontro). */
-export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, vacated, vanished, zones = [] }: Props) {
+export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, vacated, vanished, zones = [], range }: Props) {
   const t = useMessages(replayMsg);
   // tempo: o de fora (replay completo) ou o próprio
   const own = usePlayback(r.from, r.to, autoplay ? r.from : r.t, !playback && autoplay);
@@ -332,7 +373,9 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     // unidades que são áreas (ex.: os machados) não viram losango de boss: aparecem como área
     const areaNpcs = new Set(data.areas.map((a) => a.npc).filter((n): n is number => n != null));
     const isAreaUnit = (u: ReplayUnit) => areaNpcs.size > 0 && areaNpcs.has(npcOf(u.guid) ?? -1);
-    const enemies = units.filter((u) => u.kind === 'enemy' && !isAreaUnit(u) && inWindow(u, r).length > 0);
+    // unidade da área que continua desenhada como sempre (o boss com o círculo em volta)
+    const keepNpcs = new Set(data.areas.filter((a) => a.keepUnit && a.npc != null).map((a) => a.npc!));
+    const enemies = units.filter((u) => u.kind === 'enemy' && (!isAreaUnit(u) || keepNpcs.has(npcOf(u.guid) ?? -1)) && inWindow(u, r).length > 0);
     const areaUnits = units.filter((u) => u.kind === 'enemy' && isAreaUnit(u) && inWindow(u, r).length > 0);
     // fantasmas (caminho simulado) que aparecem no replay, os que mais andaram primeiro
     const ghosts = units.filter((u) => u.kind === 'ghost' && inWindow(u, r).length > 0).sort((a, b) => movedUntil(b, r.to) - movedUntil(a, r.to));
@@ -698,7 +741,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                 <circle cx={sx(q[0])} cy={sy(q[1])} r={rad} fill={c} fillOpacity={0.12 * (1 - fade)} stroke={c} strokeOpacity={0.7} strokeDasharray={a.npc != null && since == null ? undefined : '4 3'}>
                   <title>{since != null ? t.vacated(a.name) : a.name}</title>
                 </circle>
-                {a.npc != null && a.spellId != null && <SvgSpellIcon spellId={a.spellId} x={sx(q[0]) - 6} y={sy(q[1]) - 6} size={12} title={since != null ? t.vacated(a.name) : a.name} />}
+                {a.npc != null && !a.keepUnit && a.spellId != null && <SvgSpellIcon spellId={a.spellId} x={sx(q[0]) - 6} y={sy(q[1]) - 6} size={12} title={since != null ? t.vacated(a.name) : a.name} />}
               </g>
             );
           });
@@ -1027,8 +1070,9 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
         </span>
         <input
           type="range"
-          min={r.from}
-          max={r.to}
+          min={range?.[0] ?? r.from}
+          max={range?.[1] ?? r.to}
+          className={range && (now < range[0] || now > range[1]) ? 'outside' : undefined}
           step={50}
           value={now}
           aria-label={t.slider}
@@ -1048,13 +1092,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             {wide ? <Minimize2 size={14} strokeWidth={1.75} aria-hidden /> : <Maximize2 size={14} strokeWidth={1.75} aria-hidden />}
           </button>
         )}
-        <span className="replay-speeds" role="group" aria-label={t.speed}>
-          {(full ? FULL_SPEEDS : SPEEDS).map((s) => (
-            <button key={s} className={`btn sm ghost ${speed === s ? 'pressed' : ''}`} aria-pressed={speed === s} onClick={() => setSpeed(s)}>
-              {s}×
-            </button>
-          ))}
-        </span>
+        <SpeedMenu speeds={full ? FULL_SPEEDS : SPEEDS} speed={speed} onChange={setSpeed} />
         {focus.length > 0 && (
           <label className="small muted replay-others">
             <input type="checkbox" checked={others} onChange={(e) => setOthers(e.target.checked)} /> {t.showOthers}

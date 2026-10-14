@@ -110,6 +110,8 @@ export interface AreaView {
   /** a unidade some depois de tanto tempo sem acertar ninguém perto dela, a partir de `vanishFrom` (ms) */
   vanishIdleMs?: number;
   vanishFrom?: number;
+  /** a unidade continua desenhada como sempre (ex.: o boss), com o círculo em volta */
+  keepUnit?: boolean;
 }
 
 /** Começo de uma fase do boss. */

@@ -168,6 +168,9 @@ pub struct AreaSpec {
     /// a unidade some depois de `idle_s` sem acertar ninguém perto dela (a partir da fase `from`)
     #[serde(default)]
     pub vanish: Option<VanishSpec>,
+    /// a unidade continua desenhada como sempre (ex.: o boss), com o círculo em volta
+    #[serde(default)]
+    pub keep_unit: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -1155,6 +1158,11 @@ impl RuleTracker {
         self.mechs.iter().any(|m| m.line.as_ref().is_some_and(|l| l.target_aura == Some(spell_id)))
     }
 
+    /// Mecânica com soak que marca quem soakou com esta aura (`soak_aura_id`): índice.
+    pub fn soak_for_aura(&self, spell_id: u32) -> Option<usize> {
+        self.mechs.iter().position(|m| m.soak.is_some() && m.detect.soak_aura_id == Some(spell_id))
+    }
+
     /// Mecânica com soak cujo dano é este spell: índice.
     pub fn soak_for(&self, spell_id: u32) -> Option<usize> {
         self.mechs.iter().position(|m| m.soak.is_some() && m.detect.damage_ids.iter().flatten().any(|&d| d == spell_id))
@@ -1290,6 +1298,7 @@ impl RuleTracker {
                     radius: a.radius,
                     vanish_idle_ms: vanish.map(|v| v.0),
                     vanish_from: vanish.map(|v| v.1),
+                    keep_unit: a.keep_unit,
                 })
             })
             .collect()

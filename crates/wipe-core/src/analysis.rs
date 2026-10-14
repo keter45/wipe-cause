@@ -649,6 +649,14 @@ impl PullBuilder {
         };
         let (dst_guid, dst_name) = (f[5], f[6]);
         let is_player = Self::is_group_player(dst_guid, hex(f[7]));
+        // soak que marca quem entrou com uma aura (`soak_aura_id`): onde cada um estava
+        if is_player && f[0] == "SPELL_AURA_APPLIED" && self.counting() {
+            if let Some(i) = self.rules.as_ref().and_then(|r| r.soak_for_aura(spell_id)) {
+                if let Some((x, y, _)) = self.players.get(dst_guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= GROUND_POS_MAX_AGE_MS) {
+                    self.soak_hits.push((rel, x, y, i, dst_guid.to_string()));
+                }
+            }
+        }
         // linha (regra com `line.target_aura`): o lançador marca o alvo logo depois de começar o cast
         if is_player && f[0] == "SPELL_AURA_APPLIED" && self.rules.as_ref().is_some_and(|r| r.is_line_target_aura(spell_id)) {
             if let Some(&i) = self.open_casts.get(f[1]) {

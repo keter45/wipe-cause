@@ -164,6 +164,9 @@ pub struct AreaView {
     pub vanish_idle_ms: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub vanish_from: Option<i64>,
+    /// a unidade continua desenhada como sempre (ex.: o boss), com o círculo em volta
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub keep_unit: bool,
 }
 
 /// Começo de uma fase do boss.

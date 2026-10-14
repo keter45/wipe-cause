@@ -10,9 +10,9 @@ updated: 2026-09-29
 difficulties: [normal, heroic, mythic]
 
 units:
-  - { key: vashnik, name: "Vashnik the Malignant", npc_id: null, boss: true }
-  - { key: burning_venom, name: "Burning Venom", npc_id: null }
-  - { key: shrouded_venom, name: "Shrouded Venom", npc_id: null }
+  - { key: vashnik, name: "Vashnik the Malignant", npc_id: 259181, boss: true }
+  - { key: burning_venom, name: "Burning Venom", npc_id: 260905, replay: true }
+  - { key: shrouded_venom, name: "Shrouded Venom", npc_id: 260895, replay: true }
   - { key: clotting_venom, name: "Clotting Venom", npc_id: null }
   - { key: malignant_totem, name: "Malignant Totem", npc_id: null }
 
@@ -85,6 +85,7 @@ mechanics:
     detect:
       damage_ids: [1282602]     # Catalytic Bile em quem soaka
       fail_ids: [1282616]       # círculo sem ninguém: explode no raid todo
+    soak: { radius: 4, players: 1 }   # 06/10: 1 player por círculo, até ~5 jd
     tip: { pt: "Ter alguém em cada círculo de soak.", en: "Have someone in every soak circle." }
     message: { pt: "{count} círculo(s) do Malignant Catalyst sem soak", en: "{count} Malignant Catalyst circle(s) without a soak" }
 

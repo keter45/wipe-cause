@@ -238,6 +238,7 @@ mechanics:
     detect:
       soak_aura_id: 1310102
       fail_ids: [1310105]       # Tainted Burst (ID do Journal; não visto no log ainda)
+    soak: { radius: 4 }   # quem soakou ganha a aura 1310102; 01/10: ~2 por orb, até ~4 jd do meio
     tip: { pt: "Vários players em cada orb vermelho; orb não soakado mata o raid.", en: "Several players on each red orb; an unsoaked orb kills the raid." }
     message: { pt: "{count} Tainted Burst — orb vermelho sem soak", en: "{count} Tainted Burst — red orb without a soak" }
 

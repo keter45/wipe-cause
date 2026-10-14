@@ -52,6 +52,7 @@ mechanics:
     difficulty: [mythic]
     severity: minor
     detect: { damage_ids: [1300089] }
+    area: { aura: 1297707, radius: 10 }   # em volta de quem tem a Virulence; 06/10 (20 golpes): de 6 a 10 jd e nada na 11 — confirmar com mais logs míticos
     tip: { pt: "Ficar longe de quem vai estourar a Virulence.", en: "Stay away from whoever is about to burst Virulence." }
     message: { pt: "{player} foi pego pelo estouro de Virulence de outro ({count}x)", en: "{player} was caught by someone else's Virulence burst ({count}x)" }
     notes: "Hipótese: 1300089 é o estouro que acerta quem estava perto. Confirmar no vídeo."

@@ -11,8 +11,8 @@ difficulties: [normal, heroic, mythic]
 
 units:
   - { key: nekzali, name: "Nek'zali the Soulcoiler", npc_id: null, boss: true }
-  - { key: restless_amani, name: "Restless Amani", npc_id: null }
-  - { key: echo_of_jawae, name: "Echo of Jawae", npc_id: null }
+  - { key: restless_amani, name: "Restless Amani", npc_id: 261509, replay: true }   # os esqueletos que andam até o poço
+  - { key: echo_of_jawae, name: "Echo of Jawae", npc_id: 263050, replay: true }   # o boss fica imune até os dois morrerem
   - { key: drowned_echo, name: "Drowned Echo", npc_id: null }
   - { key: soulcoil_well, name: "Soulcoil Well", npc_id: null }
 
@@ -209,6 +209,7 @@ mechanics:
     source_unit: echo_of_jawae
     severity: none
     detect: { damage_ids: [1289855], cast_id: 1294742 }
+    soak: { radius: 6 }   # 03/10: ~10 players por soak, até 6 jd do meio
     tip: { pt: "Soak dividido com o tank; quem não soaka ganha Slithering Flame.", en: "Soak shared with the tank; whoever doesn't soak gets Slithering Flame." }
     message: { pt: "Hungering Pyre", en: "Hungering Pyre" }
 
@@ -228,6 +229,7 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: none
     detect: { damage_ids: [1289875], aura_id: 1289875 }
+    area: { aura: 1294933, radius: 9 }   # em volta de quem tem Slithering Flame; 03/10: os golpes caem na jarda 10
     tip: { pt: "Explosão do Slithering Flame: posicionar em cima dos corpos para queimá-los.", en: "Slithering Flame explosion: position on top of the corpses to burn them." }
     message: { pt: "Cremation", en: "Cremation" }
 

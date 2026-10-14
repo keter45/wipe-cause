@@ -12,7 +12,7 @@ difficulties: [normal, heroic, mythic]
 units:
   - { key: breath, name: "Breath of Ula'tek", npc_id: 258557, boss: true }
   - { key: blood, name: "Blood of Ula'tek", npc_id: 258558, boss: true }
-  - { key: venom_coagulation, name: "Venom Coagulation", npc_id: null }
+  - { key: venom_coagulation, name: "Venom Coagulation", npc_id: 260766, replay: true }   # o slime que tem que morrer rápido
   - { key: vashnik, name: "Vashnik", npc_id: null }
 
 phases:
@@ -67,6 +67,7 @@ mechanics:
     source_unit: breath
     severity: none
     detect: { damage_ids: [1284500], aura_id: 1284500 }
+    area: { npc: 258557, radius: 8, keep_unit: true }   # em volta do Breath; 06/10: os pulsos caem até 7-8 jd do centro dele
     tip: { pt: "DoT acumulado de quem está perto do Breath; tanks trocam de boss a cada intermissão para os grupos zerarem.", en: "Stacking DoT on whoever is near the Breath; tanks swap bosses every intermission so the groups reset." }
     message: { pt: "Mark of Acid", en: "Mark of Acid" }
 
@@ -76,6 +77,7 @@ mechanics:
     source_unit: blood
     severity: none
     detect: { damage_ids: [1284506], aura_id: 1284506 }
+    area: { npc: 258558, radius: 8, keep_unit: true }   # em volta do Blood; 06/10: os pulsos caem até 7-8 jd do centro dele
     tip: { pt: "DoT acumulado de quem está perto do Blood; trocar de lado a cada intermissão.", en: "Stacking DoT on whoever is near the Blood; swap sides every intermission." }
     message: { pt: "Mark of Blood", en: "Mark of Blood" }
 
@@ -99,6 +101,7 @@ mechanics:
     detect:
       damage_ids: [1284451]     # quem pisa na gota
       fail_ids: [1284452]       # Noxious Blast: gota não pisada explode no raid todo
+    soak: { radius: 3, players: 1 }   # 06/10: 1 player por gota
     tip: { pt: "Pisar em todas as gotinhas verdes antes de explodirem.", en: "Step on every little green droplet before it explodes." }
     message: { pt: "{count} Noxious Blast — gota sem ninguém pisar", en: "{count} Noxious Blast — droplet nobody stepped on" }
 

@@ -15,8 +15,8 @@ units:
   - { key: ulatek, name: "Ula'tek", npc_id: null, boss: true }
   - { key: gore_rattle, name: "Gore Rattle", npc_id: null }
   - { key: spectral_coil, name: "Spectral Coil", npc_id: null }
-  - { key: venomous_heart, name: "Venomous Heart", npc_id: null }
-  - { key: blightscale_viper, name: "Blightscale Viper", npc_id: null }
+  - { key: venomous_heart, name: "Venomous Heart", npc_id: 267460, replay: true }   # janela de dano: todo mundo nele
+  - { key: blightscale_viper, name: "Blightscale Viper", npc_id: 261915, replay: true }   # matar rápido
   - { key: blightscale_rawling, name: "Blightscale Rawling", npc_id: null }
   - { key: doomscale_warden, name: "Doomscale Warden", npc_id: null }
   - { key: weakened_doomscale, name: "Weakened Doomscale", npc_id: null }
@@ -422,13 +422,23 @@ mechanics:
     tip: { pt: "No mítico o ovo tem escudo (quebrar antes de pegar) e o dano de carregar é bem maior; morrer com o ovo choca uma Viper.", en: "On Mythic the egg has a shield (break it before picking it up) and carrying it hurts much more; dying with the egg hatches a Viper." }
     message: { pt: "Noxious Shell", en: "Noxious Shell" }
 
+  - key: serpents_bite_circle
+    name: "Serpent's Bite (circle)"
+    type: info
+    source_unit: ulatek
+    severity: none
+    detect: { damage_ids: [1293146] }
+    soak: { radius: 5 }   # 06/10 (heroico): ~4 por soak, 90% a até 3,9 jd do meio
+    tip: { pt: "Os três círculos dos mordidos: cada grupo entra no seu.", en: "The three bitten players' circles: each group goes into its own." }
+    message: { pt: "Serpent's Bite", en: "Serpent's Bite" }
+    notes: "Só para o replay mostrar os círculos em toda dificuldade (o serpents_bite_soakers é só do mítico)."
+
   - key: serpents_bite_soakers
     name: "Serpent's Bite (soakers)"
     type: info
     severity: wipe
     difficulty: [mythic]
     detect: { damage_ids: [1293146] }
-    soak: { radius: 5 }   # 06/10 (heroico): ~4 por soak, 90% a até 3,9 jd do meio
     tip: { pt: "Soakar com o mínimo de gente, de cargos combinados, com defensivo grande para a explosão do fim; quem soakou solta ondas: mirar longe do raid. Soaker que morre durante o soak wipa o raid.", en: "Soak with the minimum number of people, from agreed roles, with a big defensive for the final explosion; soakers release waves: aim them away from the raid. A soaker dying mid-soak wipes the raid." }
     message: { pt: "Serpent's Bite", en: "Serpent's Bite" }
     notes: "No mítico, quem soakou solta Caustic Waves ao fim do Volatile Purge; as ondas que acertam o raid já contam em caustic_waves."
