@@ -7088,3 +7088,68 @@ button.kpi:hover {
 .replay-controls input[type='range'].outside {
   opacity: 0.35;
 }
+
+/* clipe do replay: o painel abre para cima, com a prévia */
+.clip-menu .popover {
+  width: 360px;
+  bottom: calc(100% + 6px);
+  top: auto;
+  right: 0;
+  padding: 10px;
+}
+.clip-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.clip-panel p {
+  margin: 0;
+}
+.clip-preview {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+.clip-progress {
+  display: block;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.clip-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+}
+.clip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* quem cortou o cast do add, embaixo da barra */
+.replay-kick {
+  font-size: 10px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+/* marcas de chão do grupo (world markers) */
+.replay-wm {
+  stroke: #10131a;
+  stroke-width: 1.4;
+  opacity: 0.9;
+}
+.replay-wm-cross {
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  fill: none;
+}
+.replay-wm-eye {
+  fill: #10131a;
+  stroke: none;
+}

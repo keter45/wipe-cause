@@ -9,6 +9,7 @@ import { useMessages } from '../i18n';
 import * as prefs from '../lib/replayPrefs';
 import { fightMsg } from './FightReplay.i18n';
 import { MapFilter, ReplayView, usePlayback, type ZoneView } from './ReplayView';
+import { ClipPullContext } from './ClipButton';
 import { SpellIcon, SpellName } from './SpellIcon';
 
 /** Pulls já relidos nesta sessão (trocar de aba não relê o log). */
@@ -50,8 +51,11 @@ export function FightReplay({ pull }: { pull: Pull }) {
     setError(null);
     loadFight(pull)
       .then((p) => {
-        cache.set(key, p);
-        if (!stale) setFull(p);
+        // as marcas de chão vêm da análise do log inteiro (relendo só o pull, as que já estavam ficam de fora)
+        // e o tempo de cast de cada spell (medido no log inteiro)
+        const withMarkers = { ...p, ...(pull.markers?.length ? { markers: pull.markers } : {}), ...(pull.castMs ? { castMs: { ...p.castMs, ...pull.castMs } } : {}) };
+        cache.set(key, withMarkers);
+        if (!stale) setFull(withMarkers);
       })
       .catch((e) => !stale && setError(String(e)));
     return () => {
@@ -141,10 +145,13 @@ function FightReplayInner({ pull }: { pull: Pull }) {
   // medidor aberto (como no Warcraft Logs: categorias no canto; clicar na vida de um boss abre o dano nele)
   const [meter, setMeter] = useState<MeterChoice | null>(null);
   const t = useMessages(fightMsg);
+  // clipe da luta inteira: com o pull relido (as posições do pull todo)
+  const clipCtx = useMemo(() => ({ pull, title: `Pull ${pull.pullNumber} · ${pull.encounterName}` }), [pull]);
 
   return (
     <div className="fight">
       <p className="small muted fight-beta">{t.beta}</p>
+      <ClipPullContext.Provider value={clipCtx}>
       <ReplayView
         data={data}
         replay={replay}
@@ -172,6 +179,7 @@ function FightReplayInner({ pull }: { pull: Pull }) {
         range={win}
         belowMap={<FightTimeline pull={pull} view={view} now={pb.now} duration={duration} win={win} onWin={setWin} selected={selected} classes={classes} onSeek={seek} />}
       />
+      </ClipPullContext.Provider>
       <FocusPanel pull={pull} view={view} now={pb.now} selected={selected} classes={classes} onClear={() => setSelected(null)} onSeek={seek} />
     </div>
   );

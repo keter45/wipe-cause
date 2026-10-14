@@ -1,7 +1,7 @@
 //! Estruturas de saída da análise, serializadas para a UI (camelCase).
 
 use crate::i18n::Text;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -104,6 +104,27 @@ pub struct Pull {
     /// soaks (regra com `soak`): onde cada um caiu e quantos entraram
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub soaks: Vec<SoakView>,
+    /// marcas de chão do grupo (world markers) durante o pull
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub markers: Vec<WorldMarker>,
+    /// tempo de cast típico (ms) de cada spell dos inimigos, medido nos casts que terminam no log
+    /// inteiro: a barra de um cast cortado para no ponto em que foi cortado
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub cast_ms: std::collections::BTreeMap<u32, i64>,
+}
+
+/// Marca de chão (world marker): qual (0-7, a ordem do /wm: quadrado azul, triângulo verde, losango roxo,
+/// X vermelho, estrela amarela, círculo laranja, lua, caveira), onde e de quando até quando no pull (0 =
+/// já estava no chão no começo).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorldMarker {
+    pub marker: u8,
+    pub x: f32,
+    pub y: f32,
+    pub from: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<i64>,
 }
 
 /// Um soak no replay: aparece em `from` (começo do cast que o anuncia) e cai em `at`, no meio de quem
@@ -257,6 +278,12 @@ pub struct BossCast {
     /// cortado (interrupt)
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub interrupted: bool,
+    /// quem cortou (guid do player)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interrupted_by: Option<String>,
+    /// o lançador estava com um efeito que aumenta o tempo de cast (Curse of Tongues...): quanto, em %
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub slow_pct: Option<u8>,
     /// frontal em cone (regra do boss): o replay desenha a área no fim do cast
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cone: Option<ConeShape>,

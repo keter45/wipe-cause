@@ -41,6 +41,10 @@ const AFFILIATION_MINE: u32 = 0x1;
 /// Tamanho de cada janela da linha do tempo de dano/cura por player.
 pub const TIMELINE_MS: i64 = 5_000;
 const REACTION_HOSTILE_OR_NEUTRAL: u32 = 0x40 | 0x20;
+/// Flags de unidade: de fora do grupo, controlada pelo jogo, tipo NPC.
+const AFFILIATION_OUTSIDER: u32 = 0x0000_0008;
+const CONTROL_NPC: u32 = 0x0000_0200;
+const TYPE_NPC: u32 = 0x0000_0800;
 const TYPE_PLAYER: u32 = 0x400;
 /// Marca no chão: o mesmo player tomando a mesma mecânica no mesmo lugar há menos disso é a
 /// mesma poça (ticks), não outra.
@@ -289,6 +293,8 @@ pub(crate) struct PullBuilder {
     /// acertos de mecânicas "de chão": onde a vítima estava (t, x, y, tipo)
     ground_kinds: Vec<GroundKind>,
     ground_marks: Vec<(i64, f32, f32, usize)>,
+    /// marcas de chão do grupo (world markers)
+    markers: Vec<WorldMarker>,
     /// acertos de soak (regra com `soak`): (t, x, y, mecânica, player)
     soak_hits: Vec<(i64, f32, f32, usize, String)>,
     /// última marca de cada (player, tipo), para não repetir os ticks de quem ficou parado na poça
@@ -298,6 +304,8 @@ pub(crate) struct PullBuilder {
     /// alvo de cada inimigo: o último player que ele acertou corpo a corpo (ou com um spell de alvo da regra)
     boss_target: HashMap<String, String>,
     open_casts: HashMap<String, usize>,
+    /// efeitos que aumentam o tempo de cast em cada inimigo (Curse of Tongues...)
+    cast_slows: HashMap<String, HashSet<u32>>,
     /// replay completo: vida, debuffs e eventos de cada player (só ao reler um pull sozinho)
     fight: Option<FightCapture>,
 }
@@ -345,10 +353,12 @@ impl PullBuilder {
             ground_kinds: Vec::new(),
             ground_marks: Vec::new(),
             soak_hits: Vec::new(),
+            markers: Vec::new(),
             ground_last: HashMap::new(),
             boss_casts: Vec::new(),
             boss_target: HashMap::new(),
             open_casts: HashMap::new(),
+            cast_slows: HashMap::new(),
             fight: None,
         }
     }
@@ -396,6 +406,12 @@ impl PullBuilder {
 
     fn is_enemy(guid: &str, flags: u32) -> bool {
         !guid.starts_with("Player-") && flags & TYPE_PLAYER == 0 && flags & REACTION_HOSTILE_OR_NEUTRAL != 0
+    }
+
+    /// Inimigo, ou NPC de fora do grupo controlado pelo jogo mesmo marcado como amigável (o add do Coiled
+    /// Altar nasce assim e já castando; os pets dos players têm outras flags e ficam de fora).
+    fn is_enemy_caster(guid: &str, flags: u32) -> bool {
+        Self::is_enemy(guid, flags) || (!guid.starts_with("Player-") && flags & AFFILIATION_OUTSIDER != 0 && flags & CONTROL_NPC != 0 && flags & TYPE_NPC != 0)
     }
 
     fn player(&mut self, guid: &str, name: &str) -> &mut PlayerAcc {
@@ -523,6 +539,11 @@ impl PullBuilder {
     }
 
     pub fn feed(&mut self, f: &[&str], t: i64, data: &GameData) {
+        // marca de chão posta ou tirada durante o pull
+        if f.first().is_some_and(|e| e.starts_with("WORLD_MARKER")) {
+            self.world_marker(f, t);
+            return;
+        }
         if f.len() < 9 {
             if f.first() == Some(&"COMBATANT_INFO") {
                 self.combatant_info(f);
@@ -585,7 +606,7 @@ impl PullBuilder {
                 }
             }
             "SPELL_CAST_START" | "SPELL_EMPOWER_START" => {
-                if self.counting() && Self::is_enemy(f[1], hex(f[3])) {
+                if self.counting() && Self::is_enemy_caster(f[1], hex(f[3])) {
                     if let Some(a) = advanced_at(f, 12) {
                         self.track_advanced(&a, f);
                     }
@@ -596,8 +617,10 @@ impl PullBuilder {
                     let cone = self.rules.as_ref().and_then(|r| r.cone_for(id));
                     // linha: o alvo vem da aura que o lançador põe nele logo depois (ou é o alvo do boss)
                     let line = self.rules.as_ref().and_then(|r| r.line_for(id));
+                    // curse que aumenta o tempo de cast no lançador agora (não somam: vale o maior)
+                    let slow_pct = self.cast_slows.get(&guid).and_then(|s| s.iter().filter_map(|id| CAST_SLOWS.iter().find(|c| c.0 == *id).map(|c| c.1)).max());
                     let target = (cone.is_some() || line.is_some_and(|l| l.1.is_none())).then(|| self.boss_target.get(&guid).cloned()).flatten();
-                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false, cone, target, line: line.map(|l| l.0) });
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false, interrupted_by: None, slow_pct, cone, target, line: line.map(|l| l.0) });
                 }
                 // começo de um cast com tempo de cast ou de um empower (a leitura da rotação mede o tempo parado)
                 if self.counting() && Self::is_group_player(f[1], hex(f[3])) {
@@ -633,6 +656,30 @@ impl PullBuilder {
             }
             "UNIT_DIED" => self.unit_died(f, t),
             _ => {}
+        }
+    }
+
+    /// Começa com as marcas que já estavam no chão (o leitor acompanha o log inteiro).
+    pub fn with_markers(mut self, markers: Vec<WorldMarker>) -> Self {
+        self.markers = markers;
+        self
+    }
+
+    fn world_marker(&mut self, f: &[&str], t: i64) {
+        let rel = self.rel(t);
+        let marker = match f[0] {
+            "WORLD_MARKER_PLACED" => f.get(2),
+            _ => f.get(1),
+        };
+        let Some(marker) = marker.and_then(|v| v.parse::<u8>().ok()) else { return };
+        // a mesma marca em outro lugar (ou tirada): fecha a anterior
+        for m in self.markers.iter_mut().filter(|m| m.marker == marker && m.to.is_none()) {
+            m.to = Some(rel);
+        }
+        if f[0] == "WORLD_MARKER_PLACED" {
+            if let (Some(x), Some(y)) = (f.get(3).and_then(|v| v.parse().ok()), f.get(4).and_then(|v| v.parse().ok())) {
+                self.markers.push(WorldMarker { marker, x, y, from: rel, to: None });
+            }
         }
     }
 
@@ -676,6 +723,20 @@ impl PullBuilder {
             if let Some(fc) = self.fight.as_mut() {
                 let enemy = Self::is_enemy(f[1], hex(f[3])) || f[1] == NIL_GUID;
                 fc.aura(rel, dst_guid, spell_id, f[10], f.get(12) == Some(&"DEBUFF"), enemy, stacks);
+            }
+        }
+        // efeito que aumenta o tempo de cast num inimigo (a barra do cast dele anda mais devagar)
+        if !is_player && CAST_SLOWS.iter().any(|c| c.0 == spell_id) {
+            match f[0] {
+                "SPELL_AURA_APPLIED" => {
+                    self.cast_slows.entry(dst_guid.to_string()).or_default().insert(spell_id);
+                }
+                "SPELL_AURA_REMOVED" => {
+                    if let Some(s) = self.cast_slows.get_mut(dst_guid) {
+                        s.remove(&spell_id);
+                    }
+                }
+                _ => {}
             }
         }
         // debuffs do player (ou do pet) num inimigo: uptime de DoT da rotação
@@ -767,9 +828,12 @@ impl PullBuilder {
         let Some(cut_id) = f.get(12).and_then(|v| v.parse::<u32>().ok()) else { return };
         let cut_name = f.get(13).unwrap_or(&"").to_string();
         if let Some(i) = self.open_casts.remove(f[5]).filter(|&i| self.boss_casts[i].spell_id == cut_id) {
+            // quem cortou: o player (ou o dono do pet)
+            let by = self.owner_of(f[1], hex(f[3])).unwrap_or_else(|| f[1].to_string());
             let c = &mut self.boss_casts[i];
             c.end = Some(rel);
             c.interrupted = true;
+            c.interrupted_by = Some(by);
         }
         // o nome vem daqui também: se todo cast foi cortado, nunca houve SPELL_CAST_SUCCESS
         let e = self.enemy_spells.entry(cut_id).or_default();
@@ -1124,7 +1188,7 @@ impl PullBuilder {
         }
 
         let counting = self.counting();
-        if Self::is_enemy(src_guid, src_flags) {
+        if Self::is_enemy_caster(src_guid, src_flags) {
             if let Some(r) = self.rules.as_mut() {
                 r.on_phase_cast(spell_id, rel);
             }
@@ -1150,7 +1214,7 @@ impl PullBuilder {
                     i
                 }
                 None => {
-                    self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, interrupted: false, cone: None, target: None, line: None });
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None });
                     self.boss_casts.len() - 1
                 }
             };
@@ -1288,10 +1352,14 @@ impl PullBuilder {
 
     fn unit_died(&mut self, f: &[&str], t: i64) {
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
+        // o rastro de qualquer criatura acaba quando ela morre (o add do Coiled Altar morre marcado como
+        // amigável, e o rastro dele seguia até o fim do pull)
+        if !dst_guid.starts_with("Player-") {
+            self.trails.on_enemy_died(dst_guid, self.rel(t));
+        }
         // inimigo morto: fecha os DoTs que os players tinham nele
         if Self::is_enemy(dst_guid, dst_flags) {
             let rel = self.rel(t);
-            self.trails.on_enemy_died(dst_guid, rel);
             for p in self.players.values_mut() {
                 if let Some(r) = p.rotation.as_mut() {
                     r.on_enemy_died(rel, dst_guid);
@@ -1581,7 +1649,8 @@ impl PullBuilder {
             let top = self.enemies.values().map(|e| e.max_hp).max().unwrap_or(0);
             for g in interrupt_casters.iter().filter(|g| !npc_id(g).is_some_and(|n| replay_npcs.contains(&n))) {
                 let big = bosses.contains(g.as_str()) && self.enemies.get(g).is_some_and(|e| e.max_hp as f64 >= top as f64 * 0.3);
-                if big {
+                // quem morre no log some na morte (o rastro já acaba ali)
+                if big || self.trails.died(g).is_some() {
                     continue;
                 }
                 let Some(last) = self.boss_casts.iter().filter(|c| &c.guid == g).map(|c| c.end.unwrap_or(c.t)).max() else { continue };
@@ -1672,6 +1741,8 @@ impl PullBuilder {
                 orbs,
                 areas,
                 soaks,
+                markers: std::mem::take(&mut self.markers),
+                cast_ms: cast_times(&self.boss_casts),
             },
             pending_deaths: pending,
             defensives_by_player,
@@ -1765,6 +1836,32 @@ fn attribute_death(d: &mut Death, rules: &RuleTracker) {
         None => d.mechanic_damage.first().filter(|m| m.pct >= CAUSE_MIN_PCT).cloned(),
     };
 }
+
+/// Efeitos que aumentam o tempo de cast do alvo, em % (Wowhead): Curse of Tongues e Curse of the Satyr
+/// (warlock, +30%), Numbing Poison (rogue, -15% de velocidade de cast).
+const CAST_SLOWS: [(u32, u8); 3] = [(1714, 30), (442804, 30), (5760, 18)];
+
+/// Tempo de cast de cada spell: a mediana dos casts que terminaram (começo do cast até o fim, sem os
+/// cortados e sem os instantâneos).
+fn cast_times(casts: &[BossCast]) -> std::collections::BTreeMap<u32, i64> {
+    let mut by: HashMap<u32, Vec<i64>> = HashMap::new();
+    for c in casts.iter().filter(|c| !c.interrupted) {
+        if let Some(end) = c.end.filter(|&e| e - c.t >= MIN_CAST_MS) {
+            // com curse, o cast terminou mais devagar: volta ao tempo base
+            let slow = 1.0 + c.slow_pct.unwrap_or(0) as f64 / 100.0;
+            by.entry(c.spell_id).or_default().push(((end - c.t) as f64 / slow).round() as i64);
+        }
+    }
+    by.into_iter().map(|(s, mut v)| (s, median(&mut v))).collect()
+}
+
+fn median(v: &mut [i64]) -> i64 {
+    v.sort_unstable();
+    v[v.len() / 2]
+}
+
+/// Cast mais curto que isso é instantâneo (o começo e o fim no mesmo instante).
+const MIN_CAST_MS: i64 = 200;
 
 /// Acertos do mesmo soak: até isto depois do primeiro, e até tantos raios do centro.
 const SOAK_HIT_WINDOW_MS: i64 = 600;
@@ -1901,6 +1998,15 @@ pub(crate) fn finalize(mut finished: Vec<FinishedPull>, data: &GameData) -> (Vec
         kickers.extend(fp.pull.players.iter().filter(|p| p.interrupt_attempts > 0).map(|p| p.guid.clone()));
     }
 
+    // tempo de cast de cada spell no log inteiro (o mesmo add castando em vários pulls)
+    let mut durations: HashMap<u32, Vec<i64>> = HashMap::new();
+    for fp in &finished {
+        for (&spell, &ms) in &fp.pull.cast_ms {
+            durations.entry(spell).or_default().push(ms);
+        }
+    }
+    let cast_ms: std::collections::BTreeMap<u32, i64> = durations.into_iter().map(|(s, mut v)| (s, median(&mut v))).collect();
+
     let mut counters: HashMap<(u32, u32), u32> = HashMap::new();
     let pulls = finished
         .into_iter()
@@ -1908,6 +2014,7 @@ pub(crate) fn finalize(mut finished: Vec<FinishedPull>, data: &GameData) -> (Vec
         .map(|(idx, fp)| {
             let mut pull = fp.pull;
             pull.id = idx;
+            pull.cast_ms = cast_ms.clone();
             for e in &mut pull.enemy_spells {
                 e.interruptible = interruptible.contains(&e.spell_id);
             }

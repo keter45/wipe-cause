@@ -8,6 +8,7 @@ pub mod i18n;
 pub mod orbs;
 pub mod pairing;
 pub mod replay;
+pub mod markers;
 pub mod peek;
 pub mod positions;
 pub mod report;
@@ -155,6 +156,9 @@ pub fn analyze_reader<R: BufRead + Seek>(
     let mut finished = Vec::new();
     // onde começou o pull atual: um kill que bateu o corte de mortes é relido daqui sem o corte
     let mut pull_offset = 0u64;
+    // marcas de chão: ficam de um pull para o outro
+    let mut markers = markers::WorldMarkers::default();
+    let mut pull_markers: Vec<report::WorldMarker> = Vec::new();
 
     loop {
         buf.clear();
@@ -175,6 +179,11 @@ pub fn analyze_reader<R: BufRead + Seek>(
 
         // Fora de encontro só interessam o cabeçalho e o início de encontros (pula trash rápido).
         let is_start = rest.starts_with("ENCOUNTER_START");
+        if rest.starts_with("WORLD_MARKER") {
+            let mut f = Vec::new();
+            split_fields(rest, &mut f);
+            markers.apply(&f);
+        }
         if current.is_none() && !is_start {
             if rest.starts_with("COMBAT_LOG_VERSION") {
                 let mut f = Vec::new();
@@ -195,13 +204,15 @@ pub fn analyze_reader<R: BufRead + Seek>(
                 fp.pull.log_offset = Some(pull_offset);
                 finished.push(fp);
             }
-            current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book, death_cutoff));
+            // ENCOUNTER_START,id,nome,dificuldade,tamanho,instância
+            pull_markers = markers.snapshot(f.get(5).and_then(|v| v.parse().ok()).unwrap_or(0));
+            current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book, death_cutoff).with_markers(pull_markers.clone()));
             pull_offset = line_start;
         } else if f[0] == "ENCOUNTER_END" {
             if let Some(b) = current.take() {
                 let kill = f.get(5) == Some(&"1");
                 let b = if kill && b.cut_by_deaths() {
-                    let again = reread_pull(&mut reader, pull_offset, default_year, book, &data)?;
+                    let again = reread_pull(&mut reader, pull_offset, default_year, book, &data)?.map(|b| b.with_markers(pull_markers.clone()));
                     reader.seek(SeekFrom::Start(bytes_read))?;
                     again.unwrap_or(b)
                 } else {

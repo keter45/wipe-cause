@@ -26,6 +26,9 @@ pub struct Settings {
     /// chave geral do envio automático (botão no topo): desligada, nada vai sozinho ao Discord
     #[serde(default = "yes")]
     pub discord_auto: bool,
+    /// junto com o cartão do wipe, o clipe (WebP animado) dos segundos do erro que acabou com a try
+    #[serde(default = "yes")]
+    pub discord_clip: bool,
     /// "Pergunte à IA": provedor, URL (compatível com OpenAI) e modelo; a chave fica no cofre do sistema
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ai_provider: Option<String>,
@@ -52,7 +55,7 @@ pub(crate) fn yes() -> bool {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, discord_on_night: true, discord_auto: true, ai_provider: None, ai_base_url: None, ai_model: None, wcr_cloud_user: None, wcr_cloud_guild: None, open_with_wow: false, locale: None }
+        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, discord_on_night: true, discord_auto: true, discord_clip: true, ai_provider: None, ai_base_url: None, ai_model: None, wcr_cloud_user: None, wcr_cloud_guild: None, open_with_wow: false, locale: None }
     }
 }
 

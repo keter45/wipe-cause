@@ -411,6 +411,11 @@ export function vanishedAreas(v: FightView, data: ReplayData): Map<string, [numb
         })
         .map(([t]) => t);
       const end = u.pts[u.pts.length - 1][0] + VACANT_STEP_MS;
+      // idle 0: some de vez quando a fase começa (os machados na P2: só o DoT, nada no chão)
+      if (idle <= 0) {
+        if (from < end) out.set(u.guid, [[Math.max(from, u.pts[0][0]), end]]);
+        continue;
+      }
       const spans: [number, number][] = [];
       let last = u.pts[0][0];
       for (const t of [...near, end]) {

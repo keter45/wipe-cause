@@ -117,6 +117,12 @@ export function fetchTooltip(id: number, kind: TooltipKind = 'spell', lang: Tool
   return p;
 }
 
+/** Tempo de cast (ms) pelo texto do tooltip ("10 sec cast"); null se instantâneo, canalizado ou sem. */
+export function castMsOf(t: SpellTooltip | null | undefined): number | null {
+  const m = t?.text.match(/(\d+(?:\.\d+)?) sec cast/);
+  return m ? Math.round(Number(m[1]) * 1000) : null;
+}
+
 /** Tooltip de um spell (ou item); `enabled` evita buscar antes da hora (ex.: fora da tela). */
 export function useTooltip(id: number, enabled = true, kind: TooltipKind = 'spell'): SpellTooltip | null | undefined {
   const [tip, setTip] = useState<SpellTooltip | null | undefined>(() => cachedTooltip(id, kind));

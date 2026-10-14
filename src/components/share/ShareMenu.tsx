@@ -1,7 +1,9 @@
 import { useState, type ReactElement } from 'react';
-import { Check, ClipboardCopy, FileCode, FileText, ImageDown, MessageSquare, Share2 } from 'lucide-react';
+import { Check, Clapperboard, ClipboardCopy, FileCode, FileText, ImageDown, MessageSquare, Share2 } from 'lucide-react';
+import type { Pull } from '../../types';
+import type { ClipMoment } from '../../lib/replayClip';
 import { discordPost, inTauri } from '../../lib/api';
-import { cardHtml, cardPng, copyPng, fileSlug, printPdf, saveHtml, savePng, sendPngToDiscord } from '../../lib/share';
+import { cardHtml, cardPng, copyPng, fileSlug, printPdf, saveClip, saveHtml, savePng, sendPngToDiscord, sendToDiscord } from '../../lib/share';
 import { Popover } from '../Popover';
 import type { CardDetail } from './common';
 import { PlayerClassesContext, usePlayerClasses } from '../../lib/players';
@@ -10,16 +12,17 @@ import { useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
 import { Hint } from '../ui/Hint';
 
-type Action = 'copy' | 'png' | 'html' | 'pdf' | 'discord' | 'discordText';
+type Action = 'copy' | 'png' | 'html' | 'pdf' | 'clip' | 'discord' | 'discordText';
 
 /**
  * "Compartilhar": gera o cartão (`card(detail)`) como imagem ou página, para quem não tem o app,
  * em duas versões: o resumo (padrão) ou o completo (tudo aberto).
  * `name`: base do nome do arquivo e título. `pdf`: oferece PDF (links clicáveis).
  * `discord`: a mensagem de texto (resumo) para o canal da raid; sem webhook, o menu leva às
- * Configurações.
+ * Configurações. `clip`: o pull e o trecho do erro que acabou com a try: dá para salvar o clipe
+ * (WebP animado), e a imagem no Discord vai junto com ele.
  */
-export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card: (detail: CardDetail) => ReactElement; name: string; pdf?: boolean; discord?: () => unknown }) {
+export function ShareMenu({ card: makeCard, name, pdf = false, discord, clip }: { card: (detail: CardDetail) => ReactElement; name: string; pdf?: boolean; discord?: () => unknown; clip?: { pull: Pull; moment: ClipMoment } | null }) {
   const t = useMessages(shareMsg);
   const [detail, setDetail] = useState<CardDetail>('summary');
   const classes = usePlayerClasses();
@@ -32,6 +35,14 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
   const file = (fileSlug(name) || 'wipe-cause') + (detail === 'full' ? t.fullSuffix : '');
   const title = detail === 'full' ? t.fullTitle(name) : name;
 
+  /** Clipe do erro que acabou com a try (o motor só carrega aqui). */
+  async function makeClip(): Promise<{ bytes: Uint8Array; name: string } | null> {
+    if (!clip) return null;
+    const { replayClip } = await import('../../lib/replayClip');
+    const bytes = await replayClip(clip.pull, clip.moment, { title: name });
+    return { bytes, name: `${fileSlug(`${name} ${clip.moment.label}`) || 'wipe-cause'}.webp` };
+  }
+
   async function run(a: Action) {
     setBusy(a);
     setMsg(null);
@@ -42,11 +53,19 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
         if (!(await saveHtml(await cardHtml(card(), title), `${file}.html`))) return;
       } else if (a === 'pdf') {
         await printPdf(await cardHtml(card(), title));
+      } else if (a === 'clip') {
+        const c = await makeClip();
+        if (!c || !(await saveClip(c.bytes, c.name))) return;
       } else {
         const png = await cardPng(card());
         if (a === 'copy') await copyPng(png);
         else if (a === 'png' && !(await savePng(png, `${file}.png`))) return;
-        else if (a === 'discord') await sendPngToDiscord(png, `${file}.png`, title);
+        else if (a === 'discord') {
+          // o wipe vai com o clipe do erro (se não der para desenhar, vai só a imagem)
+          const c = await makeClip().catch(() => null);
+          if (c) await sendToDiscord(title, { png: { dataUrl: png, name: `${file}.png` }, clip: c });
+          else await sendPngToDiscord(png, `${file}.png`, title);
+        }
       }
       setMsg({ ok: true, text: t.done[a] });
     } catch (e) {
@@ -62,9 +81,10 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord }: { card
     // PDF: links clicáveis e páginas; serve para o completo (e para quem pediu sempre)
     ...(pdf || detail === 'full' ? (['pdf'] as const) : []),
     'html',
+    ...(clip ? (['clip'] as const) : []),
     ...(inTauri && hasDiscord ? ([...(discord ? (['discordText'] as const) : []), 'discord'] as const) : []),
   ];
-  const icons = { copy: ClipboardCopy, png: ImageDown, html: FileCode, pdf: FileText, discord: MessageSquare, discordText: MessageSquare };
+  const icons = { copy: ClipboardCopy, png: ImageDown, html: FileCode, pdf: FileText, clip: Clapperboard, discord: MessageSquare, discordText: MessageSquare };
 
   return (
     <Popover

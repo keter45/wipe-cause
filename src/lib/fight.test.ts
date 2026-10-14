@@ -134,7 +134,7 @@ describe('stacks e áreas desmentidas', () => {
     // P1 passa pelo machado aos 2 s sem levar dano; P2 está nele aos 3 s e leva
     const p1 = unit('P1', 'player', [[0, 20, 0], [2000, 0, 0], [2500, 20, 0], [10000, 20, 0]]);
     const p2 = unit('P2', 'player', [[0, 20, 20], [3000, 0, 0], [3500, 20, 20], [10000, 20, 20]]);
-    const data = { units: new Map([axe, p1, p2].map((u) => [u.guid, u])), areas: [{ key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4 }], ground: [], groundKinds: [], casts: [], soaks: [] } as ReplayData;
+    const data = { units: new Map([axe, p1, p2].map((u) => [u.guid, u])), areas: [{ key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4 }], ground: [], groundKinds: [], casts: [], soaks: [], markers: [] } as ReplayData;
     const spans = vacatedAreas(v, data).get(axe.guid);
     expect(spans?.[0][1]).toBe(8000);
     expect(spans![0][0]).toBeGreaterThan(1000);
@@ -149,7 +149,7 @@ describe('stacks e áreas desmentidas', () => {
     // P2 levou o golpe aos 3 s, em cima do machado
     const p2 = unit('P2', 'player', [[0, 0, 0], [30000, 0, 0]]);
     const area = { key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4, vanishIdleMs: 10000, vanishFrom: 5000 };
-    const data = { units: new Map([axe, p2].map((u) => [u.guid, u])), areas: [area], ground: [], groundKinds: [], casts: [], soaks: [] } as ReplayData;
+    const data = { units: new Map([axe, p2].map((u) => [u.guid, u])), areas: [area], ground: [], groundKinds: [], casts: [], soaks: [], markers: [] } as ReplayData;
     expect(vanishedAreas(v, data).get(axe.guid)).toEqual([[13000, 30250]]);
     // longe do machado o golpe (DoT) não segura: some no começo da fase... depois dos 10 s do começo
     const far = unit('P2', 'player', [[0, 50, 50], [30000, 50, 50]]);
@@ -161,7 +161,7 @@ describe('stacks e áreas desmentidas', () => {
     const unit = (guid: string, kind: ReplayUnit['kind'], pts: [number, number, number][], seen?: number[]): ReplayUnit => ({ guid, name: guid, kind, pts, seen });
     const axe = unit('Creature-0-0-0-0-260474-02', 'enemy', [[0, 0, 0], [6000, 0, 0]], [0]);
     const p2 = unit('P2', 'player', [[0, 20, 20], [3000, 0, 0], [3500, 20, 20], [6000, 20, 20]]);
-    const data = { units: new Map([axe, p2].map((u) => [u.guid, u])), areas: [{ key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4 }], ground: [], groundKinds: [], casts: [], soaks: [] } as ReplayData;
+    const data = { units: new Map([axe, p2].map((u) => [u.guid, u])), areas: [{ key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4 }], ground: [], groundKinds: [], casts: [], soaks: [], markers: [] } as ReplayData;
     expect(vacatedAreas(v, data).size).toBe(0);
   });
 });

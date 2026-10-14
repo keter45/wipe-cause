@@ -21,6 +21,8 @@ import { SeekContext } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
 import { ShareMenu } from './share/ShareMenu';
+import { ClipPullContext } from './ClipButton';
+import { clipMoment } from '../lib/replayClip';
 import { PullShareCard } from './share/PullCard';
 import { AskView } from './AskView';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -152,7 +154,15 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
     { label: t.groups.fight, tabs: [{ key: 'replay', label: t.tabs.replay }, { key: 'spells', label: t.tabs.spells }] },
       ];
 
+  // o erro que acabou com a try, para o clipe (compartilhar e os replays)
+  const clipShare = useMemo(() => {
+    const moment = clipMoment(pull);
+    return moment ? { pull, moment } : null;
+  }, [pull]);
+  const clipCtx = useMemo(() => ({ pull, title: `Pull ${pull.pullNumber} · ${pull.encounterName}` }), [pull]);
+
   return (
+    <ClipPullContext.Provider value={clipCtx}>
     <SeekContext.Provider value={seek}>
     <div className="pull-view">
       <div className="pull-header">
@@ -206,7 +216,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
             </button>
           )}
           {(video || wclCode) && <span className="toolbar-divider" aria-hidden />}
-          <ShareMenu discord={() => pullPayload(pull, wclCode)} card={(detail) => <PullShareCard pull={pull} detail={detail} />} name={t.shareName(pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`, pull.encounterName, pull.difficultyName)} />
+          <ShareMenu discord={() => pullPayload(pull, wclCode)} clip={clipShare} card={(detail) => <PullShareCard pull={pull} detail={detail} />} name={t.shareName(pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`, pull.encounterName, pull.difficultyName)} />
         </span>
       </div>
 
@@ -310,6 +320,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       </ErrorBoundary>
     </div>
     </SeekContext.Provider>
+    </ClipPullContext.Provider>
   );
 }
 

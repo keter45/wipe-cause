@@ -55,6 +55,11 @@ impl Trails {
         }
     }
 
+    /// Quando a unidade morreu (UNIT_DIED), se morreu.
+    pub fn died(&self, guid: &str) -> Option<i64> {
+        self.units.get(guid).and_then(|u| u.died)
+    }
+
     /// Unidades com posição no pull.
     pub fn guids(&self) -> impl Iterator<Item = &String> {
         self.units.keys()
