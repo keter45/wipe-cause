@@ -21,6 +21,9 @@ pub struct DiscordConfig {
     /// chave geral do envio automático; desligada, os de cima ficam guardados mas nada vai
     #[serde(default = "settings::yes")]
     pub auto: bool,
+    /// junto com o cartão do wipe, o clipe (WebP animado) dos segundos do erro
+    #[serde(default = "settings::yes")]
+    pub clip: bool,
 }
 
 /// Aceita só webhooks do Discord (a URL vai direto para uma requisição HTTP).
@@ -33,7 +36,7 @@ pub fn valid_webhook(url: &str) -> bool {
 #[tauri::command]
 pub fn discord_get_config(app: AppHandle) -> DiscordConfig {
     let s = settings::load(&app);
-    DiscordConfig { webhook: s.discord_webhook, on_wipe: s.discord_on_wipe, on_kill: s.discord_on_kill, on_night: s.discord_on_night, auto: s.discord_auto }
+    DiscordConfig { webhook: s.discord_webhook, on_wipe: s.discord_on_wipe, on_kill: s.discord_on_kill, on_night: s.discord_on_night, auto: s.discord_auto, clip: s.discord_clip }
 }
 
 #[tauri::command]
@@ -50,6 +53,7 @@ pub fn discord_set_config(app: AppHandle, config: DiscordConfig) -> Result<(), S
         s.discord_on_kill = config.on_kill;
         s.discord_on_night = config.on_night;
         s.discord_auto = config.auto;
+        s.discord_clip = config.clip;
     })
 }
 
@@ -91,7 +95,44 @@ pub async fn discord_post_image(app: AppHandle, payload: serde_json::Value, file
         return Err(pick("Webhook do Discord inválido.", "Invalid Discord webhook."));
     }
     let png = base64::engine::general_purpose::STANDARD.decode(data_b64).map_err(|e| e.to_string())?;
-    let (content_type, body) = multipart(&payload.to_string(), &file_name, &png);
+    post_multipart(url, &payload, vec![(file_name, "image/png".to_string(), png)]).await
+}
+
+/// Um arquivo para o Discord: nome, tipo (image/png, image/webp) e o conteúdo em base64.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscordFile {
+    pub name: String,
+    pub mime: String,
+    pub data_b64: String,
+}
+
+/// Envia a mensagem com vários arquivos (ex.: o cartão do wipe e o clipe do erro); o embed pode usar
+/// `attachment://<nome>`.
+#[tauri::command]
+pub async fn discord_post_files(app: AppHandle, payload: serde_json::Value, files: Vec<DiscordFile>, webhook: Option<String>) -> Result<(), String> {
+    let url = webhook
+        .or_else(|| settings::load(&app).discord_webhook)
+        .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
+    if !valid_webhook(&url) {
+        return Err(pick("Webhook do Discord inválido.", "Invalid Discord webhook."));
+    }
+    if !files.iter().all(|f| ALLOWED_MIME.contains(&f.mime.as_str())) {
+        return Err("file type not allowed".into());
+    }
+    let mut decoded = Vec::with_capacity(files.len());
+    for f in files {
+        let data = base64::engine::general_purpose::STANDARD.decode(f.data_b64).map_err(|e| e.to_string())?;
+        decoded.push((f.name, f.mime, data));
+    }
+    post_multipart(url, &payload, decoded).await
+}
+
+/// Tipos de arquivo que vão ao Discord.
+const ALLOWED_MIME: [&str; 2] = ["image/png", "image/webp"];
+
+async fn post_multipart(url: String, payload: &serde_json::Value, files: Vec<(String, String, Vec<u8>)>) -> Result<(), String> {
+    let (content_type, body) = multipart(&payload.to_string(), &files);
     tauri::async_runtime::spawn_blocking(move || {
         let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(30)).build();
         match agent.post(&url).set("Content-Type", &content_type).send_bytes(&body) {
@@ -106,18 +147,21 @@ pub async fn discord_post_image(app: AppHandle, payload: serde_json::Value, file
 }
 
 /// multipart/form-data com `payload_json` e `files[0]` (formato do webhook do Discord).
-fn multipart(payload_json: &str, file_name: &str, png: &[u8]) -> (String, Vec<u8>) {
+fn multipart(payload_json: &str, files: &[(String, String, Vec<u8>)]) -> (String, Vec<u8>) {
     let boundary = "----wipecause7f3a9c2e";
-    let safe_name: String = file_name.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')).collect();
-    let mut body = Vec::with_capacity(png.len() + payload_json.len() + 512);
+    let mut body = Vec::with_capacity(files.iter().map(|f| f.2.len()).sum::<usize>() + payload_json.len() + 512);
     body.extend_from_slice(
         format!("--{boundary}\r\nContent-Disposition: form-data; name=\"payload_json\"\r\nContent-Type: application/json\r\n\r\n{payload_json}\r\n").as_bytes(),
     );
-    body.extend_from_slice(
-        format!("--{boundary}\r\nContent-Disposition: form-data; name=\"files[0]\"; filename=\"{safe_name}\"\r\nContent-Type: image/png\r\n\r\n").as_bytes(),
-    );
-    body.extend_from_slice(png);
-    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    for (i, (name, mime, data)) in files.iter().enumerate() {
+        let safe_name: String = name.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_')).collect();
+        body.extend_from_slice(
+            format!("--{boundary}\r\nContent-Disposition: form-data; name=\"files[{i}]\"; filename=\"{safe_name}\"\r\nContent-Type: {mime}\r\n\r\n").as_bytes(),
+        );
+        body.extend_from_slice(data);
+        body.extend_from_slice(b"\r\n");
+    }
+    body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
     (format!("multipart/form-data; boundary={boundary}"), body)
 }
 
@@ -135,7 +179,8 @@ mod tests {
 
     #[test]
     fn multipart_has_payload_and_file() {
-        let (ct, body) = multipart(r#"{"content":"oi"}"#, "pull 12.png", b"PNGDATA");
+        let files = vec![("pull 12.png".to_string(), "image/png".to_string(), b"PNGDATA".to_vec()), ("erro.webp".to_string(), "image/webp".to_string(), b"WEBPDATA".to_vec())];
+        let (ct, body) = multipart(r#"{"content":"oi"}"#, &files);
         let text = String::from_utf8_lossy(&body);
         let boundary = ct.split("boundary=").nth(1).unwrap();
         assert!(text.starts_with(&format!("--{boundary}")));
@@ -145,5 +190,7 @@ mod tests {
         // o Discord exige CRLF entre cabeçalhos e corpo de cada parte
         assert!(text.contains("Content-Type: image/png\r\n\r\nPNGDATA\r\n"));
         assert!(!text.replace("\r\n", "").contains('\n'));
+        // o segundo arquivo (o clipe) vai como files[1], com o tipo dele
+        assert!(text.contains("name=\"files[1]\"; filename=\"erro.webp\"\r\nContent-Type: image/webp\r\n\r\nWEBPDATA\r\n"));
     }
 }

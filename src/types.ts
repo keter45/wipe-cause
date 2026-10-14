@@ -72,6 +72,10 @@ export interface Pull {
   areas?: AreaView[];
   /** soaks (regra com `soak`): onde cada um caiu e quantos entraram */
   soaks?: SoakView[];
+  /** marcas de chão do grupo (world markers) durante o pull */
+  markers?: WorldMarker[];
+  /** tempo de cast típico (ms) de cada spell dos inimigos (medido no log inteiro) */
+  castMs?: Record<number, number>;
 }
 
 /** Orbs no replay completo: no chão [de, até, x, y em décimos de jarda, tipo] e carregados [player, de, até, tipo]. */
@@ -85,6 +89,17 @@ export interface OrbTracks {
 
 /** Área de uma habilidade do boss: em volta de quem tem um debuff (`aura`) ou de uma unidade (`npc`). */
 /** Um soak no replay: aparece em `from` e cai em `at`, no meio de quem foi atingido (coordenadas do log). */
+/** Marca de chão (world marker): 0-7 na ordem do /wm (quadrado azul, triângulo verde, losango roxo, X
+ * vermelho, estrela amarela, círculo laranja, lua, caveira), onde (coordenadas do log) e de quando até quando
+ * no pull (0 = já estava no chão). */
+export interface WorldMarker {
+  marker: number;
+  x: number;
+  y: number;
+  from: number;
+  to?: number;
+}
+
 export interface SoakView {
   key: string;
   name: string;
@@ -170,6 +185,10 @@ export interface BossCast {
   /** radianos, no mesmo sistema das posições */
   facing?: number;
   interrupted?: boolean;
+  /** quem cortou (guid do player) */
+  interruptedBy?: string;
+  /** o lançador estava com um efeito que aumenta o tempo de cast (Curse of Tongues...): quanto, em % */
+  slowPct?: number;
   /** frontal em cone (regra do boss): meio ângulo em graus e alcance em jardas */
   cone?: { halfAngle: number; range: number };
   /** frontal: o alvo do boss (o cone aponta para ele durante o cast); sem alvo, vale `facing` */

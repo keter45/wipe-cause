@@ -14,6 +14,8 @@ interface Prefs {
   hiddenAreas: string[];
   /** nomes embaixo das bolinhas na visão geral */
   showNames: boolean;
+  /** marcas de chão do grupo no mapa */
+  showMarkers: boolean;
 }
 
 let cache: Prefs | null = null;
@@ -26,7 +28,7 @@ function load(): Prefs {
   } catch {
     /* sem storage */
   }
-  cache = { hiddenGround: saved.hiddenGround ?? [], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true };
+  cache = { hiddenGround: saved.hiddenGround ?? [], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true };
   return cache;
 }
 
@@ -50,6 +52,9 @@ export const setHiddenAreas = (keys: Set<string>) => save({ ...load(), hiddenAre
 
 export const showNames = () => load().showNames;
 export const setShowNames = (v: boolean) => save({ ...load(), showNames: v });
+
+export const showMarkers = () => load().showMarkers;
+export const setShowMarkers = (v: boolean) => save({ ...load(), showMarkers: v });
 
 export const metersCollapsed = () => load().metersCollapsed;
 export const setMetersCollapsed = (v: boolean) => save({ ...load(), metersCollapsed: v });

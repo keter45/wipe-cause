@@ -1,7 +1,7 @@
 // Replays: posições guardadas no pull (`Pull.tracks`, só nos trechos usados) e as contas do
 // player de replay (posição num instante, stacks num instante).
 
-import type { SoakView, AreaView, BossCast, Death, LegacyPairReplay, MechanicResult, OrbTracks, Pull, PullGround, PullTracks, ReplayRef } from '../types';
+import type { WorldMarker, SoakView, AreaView, BossCast, Death, LegacyPairReplay, MechanicResult, OrbTracks, Pull, PullGround, PullTracks, ReplayRef } from '../types';
 import { arenaFor, facingToMap, toMap, type ArenaMap } from './arenas';
 
 export interface ReplayUnit {
@@ -42,6 +42,10 @@ export interface ReplayData {
   map?: ArenaMap;
   /** soaks, no mapa */
   soaks: SoakView[];
+  /** marcas de chão do grupo, no mapa */
+  markers: WorldMarker[];
+  /** tempo de cast típico (ms) de cada spell dos inimigos */
+  castMs?: Record<number, number>;
   /** replay completo: áreas das habilidades e orbs */
   areas: AreaView[];
   orbs?: OrbTracks;
@@ -58,8 +62,13 @@ export const npcOf = (guid: string): number | null => {
  * Posições e marcas no chão de um pull (vazio em relatórios antigos), já no mapa com o norte para cima
  * (ver `arenas.ts`): tudo o que o replay desenha passa por aqui.
  */
-export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs' | 'soaks'> & { encounterId?: number }): ReplayData {
+export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs' | 'soaks' | 'markers' | 'castMs'> & { encounterId?: number }): ReplayData {
   return {
+    castMs: pull.castMs ?? {},
+    markers: (pull.markers ?? []).map((m) => {
+      const [x, y] = toMap(m.x, m.y);
+      return { ...m, x, y };
+    }),
     soaks: (pull.soaks ?? []).map((k) => {
       const [x, y] = toMap(k.x, k.y);
       return { ...k, x, y };
@@ -97,7 +106,7 @@ export function fromLegacy(r: LegacyPairReplay, t: number): { data: ReplayData; 
   for (const tr of r.tracks) units.set(tr.guid, { guid: tr.guid, name: tr.name, kind: 'player', pts: tr.pts.map(([t, x, y]) => [t, ...toMap(x, y)]) });
   for (const e of r.enemies) units.set(e.guid, { guid: e.guid, name: e.name, kind: 'enemy', pts: [[r.from, ...toMap(e.x, e.y)], [r.to, ...toMap(e.x, e.y)]] });
   return {
-    data: { units, groundKinds: [], ground: [], casts: [], areas: [], soaks: [] },
+    data: { units, groundKinds: [], ground: [], casts: [], areas: [], soaks: [], markers: [] },
     replay: {
       t,
       from: r.from,

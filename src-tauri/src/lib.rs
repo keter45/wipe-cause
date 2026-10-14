@@ -71,6 +71,35 @@ async fn analyze_log(app: AppHandle, path: String, death_cutoff: Option<u32>, tz
     .map_err(|e| e.to_string())?
 }
 
+/// Imagem de fundo da arena (raidplan.io) como data URL: a CDN não libera a imagem para o canvas
+/// (sem CORS), e o clipe do replay precisa dela. Só desse endereço, até 15 MB.
+#[tauri::command]
+async fn fetch_image(url: String) -> Result<String, String> {
+    const ALLOWED: &str = "https://cdn.raidplan.io/";
+    const MAX_BYTES: u64 = 15 * 1024 * 1024;
+    if !url.starts_with(ALLOWED) || url.contains("..") {
+        return Err("address not allowed".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        use base64::Engine;
+        use std::io::Read;
+        let agent = ureq::AgentBuilder::new().timeout(std::time::Duration::from_secs(20)).build();
+        let r = agent.get(&url).call().map_err(|e| e.to_string())?;
+        let mime = r.content_type().to_string();
+        if !mime.starts_with("image/") {
+            return Err(format!("not an image: {mime}"));
+        }
+        let mut data = Vec::new();
+        r.into_reader().take(MAX_BYTES + 1).read_to_end(&mut data).map_err(|e| e.to_string())?;
+        if data.len() as u64 > MAX_BYTES {
+            return Err("image too large".into());
+        }
+        Ok(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(&data)))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Replay completo de um pull: relê só ele no log (posições do pull inteiro, vida, debuffs e
 /// eventos de cada player).
 #[tauri::command]
@@ -175,6 +204,8 @@ pub fn run() {
             discord::discord_set_config,
             discord::discord_post,
             discord::discord_post_image,
+            discord::discord_post_files,
+            fetch_image,
             save_file,
             startup::startup_get,
             startup::startup_set,

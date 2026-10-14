@@ -11,6 +11,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
   const [onWipe, setOnWipe] = useState(current?.onWipe ?? true);
   const [onKill, setOnKill] = useState(current?.onKill ?? true);
   const [onNight, setOnNight] = useState(current?.onNight ?? true);
+  const [clip, setClip] = useState(current?.clip ?? true);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [sending, setSending] = useState(false);
 
@@ -29,7 +30,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
 
   async function save() {
     try {
-      await discordSetConfig({ webhook: webhook.trim() || null, onWipe, onKill, onNight, auto: current?.auto ?? true });
+      await discordSetConfig({ webhook: webhook.trim() || null, onWipe, onKill, onNight, clip, auto: current?.auto ?? true });
       setMsg({ ok: true, text: webhook.trim() ? t.saved : t.off });
       onSaved();
     } catch (e) {
@@ -37,7 +38,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
     }
   }
 
-  const dirty = (webhook.trim() || null) !== (current?.webhook ?? null) || onWipe !== (current?.onWipe ?? true) || onKill !== (current?.onKill ?? true) || onNight !== (current?.onNight ?? true);
+  const dirty = (webhook.trim() || null) !== (current?.webhook ?? null) || onWipe !== (current?.onWipe ?? true) || onKill !== (current?.onKill ?? true) || onNight !== (current?.onNight ?? true) || clip !== (current?.clip ?? true);
   return (
     <>
       <ol className="small set-steps">
@@ -66,6 +67,9 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
         </label>
         <label>
           <input type="checkbox" checked={onNight} onChange={(e) => setOnNight(e.target.checked)} /> {t.onNight}
+        </label>
+        <label>
+          <input type="checkbox" checked={clip} onChange={(e) => setClip(e.target.checked)} /> {t.clip}
         </label>
       </div>
       {current?.webhook && current.auto === false && <p className="small warn">{t.paused}</p>}

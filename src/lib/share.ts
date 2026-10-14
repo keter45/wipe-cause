@@ -156,7 +156,7 @@ export async function copyPng(dataUrl: string) {
 }
 
 /** Salvar: no app, diálogo do sistema; no navegador, download. */
-async function saveFile(name: string, ext: 'png' | 'html' | 'json', dataB64: string, mime: string): Promise<boolean> {
+async function saveFile(name: string, ext: 'png' | 'html' | 'json' | 'webp', dataB64: string, mime: string): Promise<boolean> {
   if (!inTauri) {
     const a = document.createElement('a');
     a.href = `data:${mime};base64,${dataB64}`;
@@ -174,6 +174,29 @@ async function saveFile(name: string, ext: 'png' | 'html' | 'json', dataB64: str
 export const savePng = (dataUrl: string, name: string) => saveFile(name, 'png', b64(dataUrl), 'image/png');
 export const saveHtml = (html: string, name: string) => saveFile(name, 'html', utf8b64(html), 'text/html');
 export const saveJson = (json: string, name: string) => saveFile(name, 'json', utf8b64(json), 'application/json');
+export const saveClip = (clip: Uint8Array, name: string) => saveFile(name, 'webp', bytesBase64(clip), 'image/webp');
+
+/** Bytes em base64 (em pedaços: um clipe tem alguns MB). */
+export function bytesBase64(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/**
+ * Envia ao webhook configurado o cartão (PNG, como imagem do embed) e/ou o clipe do erro (WebP
+ * animado, como anexo: o Discord mostra logo abaixo).
+ */
+export async function sendToDiscord(title: string, files: { png?: { dataUrl: string; name: string }; clip?: { bytes: Uint8Array; name: string } }) {
+  const embed: Record<string, unknown> = { title, color: 0x3987e5 };
+  if (files.png) embed.image = { url: `attachment://${files.png.name}` };
+  const payload = { username: 'Wipe Cause', embeds: [embed] };
+  const list = [
+    ...(files.png ? [{ name: files.png.name, mime: 'image/png', dataB64: b64(files.png.dataUrl) }] : []),
+    ...(files.clip ? [{ name: files.clip.name, mime: 'image/webp', dataB64: bytesBase64(files.clip.bytes) }] : []),
+  ];
+  await invoke('discord_post_files', { payload, files: list, webhook: null });
+}
 
 /** Envia o PNG ao webhook configurado, como imagem de um embed. */
 export async function sendPngToDiscord(dataUrl: string, fileName: string, title: string) {

@@ -1,5 +1,5 @@
 // Discord no modo ao vivo, tudo como imagem (o mesmo cartão do "Compartilhar"):
-//   wipe -> o cartão do pull (motivo do wipe), kill -> o resumo do boss, fim da raid -> o
+//   wipe -> o cartão do pull (motivo do wipe) e o clipe do erro, kill -> o resumo do boss, fim da raid -> o
 //   resumo da noite. O fim da raid é quando o ao vivo é desligado ou 30 min sem pull novo.
 
 import { useCallback, useEffect, useRef } from 'react';
@@ -9,13 +9,14 @@ import { raidOnly } from './content';
 import { bossKey } from './night';
 import { lowestBossHp } from './verdict';
 import { PlayerClassesContext, playerClasses } from './players';
-import { cardPng, fileSlug, sendPngToDiscord } from './share';
+import { cardPng, fileSlug, sendPngToDiscord, sendToDiscord } from './share';
 import { pct } from './format';
 import { BossShareCard } from '../components/share/BossCard';
 import { NightShareCard } from '../components/share/NightCard';
 import { PullShareCard } from '../components/share/PullCard';
 import { messagesOf } from '../i18n';
 import { discordMsg } from './discord.i18n';
+import { clipMoment, replayClip } from './replayClip';
 
 /** Sem pull novo por isso, a raid acabou: vai o resumo da noite. */
 const NIGHT_IDLE_MS = 30 * 60_000;
@@ -31,7 +32,16 @@ export async function postPullImage(p: Pull, all: Pull[]) {
     const key = bossKey(p);
     await send(<BossShareCard title={key} pulls={all.filter((x) => bossKey(x) === key)} />, all, `Kill · ${key}`);
   } else {
-    await send(<PullShareCard pull={p} />, all, messagesOf(discordMsg).wipeTitle(p.pullNumber, bossKey(p), pct(lowestBossHp(p))));
+    const title = messagesOf(discordMsg).wipeTitle(p.pullNumber, bossKey(p), pct(lowestBossHp(p)));
+    const cfg = await discordGetConfig().catch(() => null);
+    const moment = cfg?.clip === false ? null : clipMoment(p);
+    if (!moment) return send(<PullShareCard pull={p} />, all, title);
+    // o cartão e, junto, o clipe dos segundos do erro (se não der para desenhar, vai só o cartão)
+    const png = await cardPng(<PlayerClassesContext.Provider value={playerClasses(all)}>{<PullShareCard pull={p} />}</PlayerClassesContext.Provider>);
+    const name = fileSlug(title) || 'wipe-cause';
+    const clip = await replayClip(p, moment, { title: `Pull ${p.pullNumber} · ${p.encounterName}` }).catch(() => null);
+    if (clip) await sendToDiscord(title, { png: { dataUrl: png, name: `${name}.png` }, clip: { bytes: clip, name: `${name}.webp` } });
+    else await sendPngToDiscord(png, `${name}.png`, title);
   }
 }
 

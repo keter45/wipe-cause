@@ -310,6 +310,8 @@ export interface DiscordConfig {
   onNight?: boolean;
   /** chave geral do envio automático (botão no topo); ausente = ligado */
   auto?: boolean;
+  /** junto com o cartão do wipe, o clipe do erro (WebP animado); ausente = ligado */
+  clip?: boolean;
 }
 
 export const discordGetConfig = () => invoke<DiscordConfig>('discord_get_config');

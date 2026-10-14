@@ -1,5 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, CircleDot, Crosshair, Maximize2, Minimize2, Pause, Play, Radius, RotateCcw, Tag } from 'lucide-react';
+import { useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown, CircleDot, Crosshair, Maximize2, Minimize2, Pause, Play, Radius, RotateCcw, Tag, MapPin } from 'lucide-react';
 import type { ReplayRef } from '../types';
 import { classColor, mmss, num, shortName } from '../lib/format';
 import { movedUntil, npcOf, posAt, valueAt, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
@@ -10,6 +10,8 @@ import { replayMsg, type ReplayMoment } from './ReplayView.i18n';
 import { SpellIcon, SpellName, SvgSpellIcon } from './SpellIcon';
 import { Hint } from './ui/Hint';
 import { Popover } from './Popover';
+import { castMsOf, fetchTooltip } from '../lib/wowhead';
+import { ClipButton, ClipPullContext } from './ClipButton';
 
 export type { ReplayHit } from '../lib/replay';
 
@@ -198,6 +200,13 @@ function lineEnd(from: [number, number], to: [number, number], floor?: [number, 
   return [from[0] + ux * best, from[1] + uy * best];
 }
 
+/** Clipe na luta inteira: o trecho em volta do instante (ms). */
+const CLIP_FULL_BEFORE_MS = 6_000;
+const CLIP_FULL_AFTER_MS = 4_000;
+
+/** Quem cortou o cast do add fica escrito ao lado dele por isto (ms). */
+const KICK_SHOW_MS = 2_000;
+
 /** O soak fica no mapa até isto depois de cair (ms). */
 const SOAK_AFTER_MS = 1500;
 /** O defensivo em área aparece e some aos poucos (ms). */
@@ -337,8 +346,56 @@ function SpeedMenu({ speeds, speed, onChange }: { speeds: readonly number[]; spe
   );
 }
 
+/** Marcas de chão (world markers), na ordem do /wm: cor e forma de cada uma. */
+const WORLD_MARKERS: { color: string; shape: 'square' | 'triangle' | 'diamond' | 'cross' | 'star' | 'circle' | 'moon' | 'skull' }[] = [
+  { color: '#3d8bff', shape: 'square' },
+  { color: '#43c043', shape: 'triangle' },
+  { color: '#b45cff', shape: 'diamond' },
+  { color: '#ff4040', shape: 'cross' },
+  { color: '#ffd23f', shape: 'star' },
+  { color: '#ff9b30', shape: 'circle' },
+  { color: '#c8d2dc', shape: 'moon' },
+  { color: '#f4f4f4', shape: 'skull' },
+];
+
+/** Uma marca de chão no mapa: a forma do jogo na cor dela, com contorno escuro. */
+function WorldMarkerIcon({ marker, x, y, title }: { marker: number; x: number; y: number; title: string }) {
+  const m = WORLD_MARKERS[marker];
+  if (!m) return null;
+  const r = 7;
+  const star = Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const rr = i % 2 ? r * 0.45 : r;
+    return `${(x + Math.cos(a) * rr).toFixed(1)},${(y + Math.sin(a) * rr).toFixed(1)}`;
+  }).join(' ');
+  const shape = {
+    square: <rect x={x - r * 0.8} y={y - r * 0.8} width={r * 1.6} height={r * 1.6} />,
+    triangle: <polygon points={`${x},${y - r} ${x + r},${y + r * 0.8} ${x - r},${y + r * 0.8}`} />,
+    diamond: <polygon points={`${x},${y - r} ${x + r * 0.8},${y} ${x},${y + r} ${x - r * 0.8},${y}`} />,
+    cross: <path d={`M${x - r},${y - r}L${x + r},${y + r}M${x + r},${y - r}L${x - r},${y + r}`} className="replay-wm-cross" style={{ stroke: m.color }} />,
+    star: <polygon points={star} />,
+    circle: <circle cx={x} cy={y} r={r * 0.85} />,
+    moon: <path d={`M${x + r * 0.3},${y - r} A${r},${r} 0 1 0 ${x + r * 0.3},${y + r} A${r * 0.75},${r * 0.75} 0 1 1 ${x + r * 0.3},${y - r}Z`} />,
+    skull: (
+      <g>
+        <circle cx={x} cy={y - 1} r={r * 0.85} />
+        <rect x={x - r * 0.45} y={y + r * 0.35} width={r * 0.9} height={r * 0.55} />
+        <circle cx={x - r * 0.32} cy={y - 1.5} r={1.6} className="replay-wm-eye" />
+        <circle cx={x + r * 0.32} cy={y - 1.5} r={1.6} className="replay-wm-eye" />
+      </g>
+    ),
+  }[m.shape];
+  return (
+    <g className="replay-wm" style={{ fill: m.color }}>
+      <title>{title}</title>
+      {shape}
+    </g>
+  );
+}
+
 /** Replay das posições em volta de um momento (morte, acerto, falha, encontro). */
 export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, vacated, vanished, zones = [], range }: Props) {
+  const clipCtx = useContext(ClipPullContext);
   const t = useMessages(replayMsg);
   // tempo: o de fora (replay completo) ou o próprio
   const own = usePlayback(r.from, r.to, autoplay ? r.from : r.t, !playback && autoplay);
@@ -348,6 +405,22 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   // áreas das habilidades e orbs (replay completo) e nomes embaixo das bolinhas: também ligam e desligam
   const [hiddenAreas, setHiddenAreas] = useState<Set<string>>(prefs.hiddenAreas);
   const [names, setNames] = useState(prefs.showNames);
+  const [markersOn, setMarkersOn] = useState(prefs.showMarkers);
+  const [wowheadCast, setWowheadCast] = useState<Record<number, number>>({});
+  // spells cortados sem tempo de cast medido no log: busca no Wowhead
+  useEffect(() => {
+    const missing = [...new Set(data.casts.filter((c) => c.interrupted && data.castMs?.[c.spellId] == null).map((c) => c.spellId))];
+    let alive = true;
+    for (const id of missing) {
+      void fetchTooltip(id).then((t) => {
+        const ms = castMsOf(t);
+        if (alive && ms) setWowheadCast((w) => ({ ...w, [id]: ms }));
+      });
+    }
+    return () => {
+      alive = false;
+    };
+  }, [data]);
   // (vale para todos os replays e fica salvo entre sessões)
   const [hiddenGround, setHiddenGround] = useState<Set<string>>(prefs.hiddenGround);
   // enquadramento: a arena inteira (morte, falha coletiva, luta inteira) ou perto de quem o replay acompanha
@@ -552,8 +625,30 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   if (!view || view.players.length === 0) return <p className="muted small">{t.noPositions}</p>;
   const { players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor, map, casts, casters } = view;
   // cast de cada boss no instante: o que está castando, ou o que acabou de terminar
-  const castEnd = (c: (typeof casts)[number]) => c.end ?? (c.facing == null ? c.t + CAST_OPEN_MS : c.t);
-  const castNow = (guid: string) => [...casts].reverse().find((c) => c.guid === guid && now >= c.t && now <= castEnd(c) + CAST_SHOW_MS);
+  // tempo de cast do spell: medido nos casts que terminam no log; sem nenhum (todo cast cortado), o do
+  // tooltip do Wowhead ("10 sec cast")
+  // com Curse of Tongues (e parecidos) no lançador, o cast demora mais
+  const castDur = (c: (typeof casts)[number]) => {
+    const base = data.castMs?.[c.spellId] ?? wowheadCast[c.spellId];
+    return base == null ? undefined : base * (1 + (c.slowPct ?? 0) / 100);
+  };
+  const castEnd = (c: (typeof casts)[number]) => c.end ?? (c.facing == null ? c.t + (castDur(c) ?? CAST_OPEN_MS) : c.t);
+  // o cast com tempo vale mais que um instantâneo no mesmo momento (o add solta um instantâneo ao ser
+  // cortado, e a barra cortada sumia atrás dele)
+  const castNow = (guid: string) => {
+    const live = [...casts].reverse().filter((c) => c.guid === guid && now >= c.t && now <= castEnd(c) + CAST_SHOW_MS);
+    return live.find((c) => castEnd(c) > c.t) ?? live[0];
+  };
+  // o add nasce castando, mas o log só dá a posição quando alguém bate nele: até lá, fica na primeira
+  // posição conhecida desde o primeiro cast
+  const firstCast = new Map<string, number>();
+  for (const c of data.casts) if (!firstCast.has(c.guid)) firstCast.set(c.guid, c.t);
+  const enemyPos = (u: ReplayUnit, t: number) => {
+    const p = posAt(u, t);
+    if (p || !u.pts.length) return p;
+    const born = firstCast.get(u.guid);
+    return born != null && t >= born && t < u.pts[0][0] ? ([u.pts[0][1], u.pts[0][2]] as [number, number]) : null;
+  };
   const recentCasts = casts.filter((c) => c.t <= now).slice(-CASTS_MAX).reverse();
   const bossName = (guid: string) => data.units.get(guid)?.name ?? '';
   const span = Math.max(1, r.to - r.from);
@@ -679,7 +774,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
         {map && (
           <g className="replay-map">
             {/* fundo da arena (raidplan.io) alinhado com o log; fora do chão andável, escurecido */}
-            <image href={map.image} x={sx(map.x0)} y={sy(map.y0)} width={map.w * scale} height={map.h * scale} preserveAspectRatio="none" className="replay-map-image" />
+            {map.image && <image href={map.image} x={sx(map.x0)} y={sy(map.y0)} width={map.w * scale} height={map.h * scale} preserveAspectRatio="none" className="replay-map-image" />}
             <path d={`M-9999,-9999H9999V9999H-9999Z ${[map.floor, ...map.holes].map((poly) => `M${poly.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join("L")}Z`).join(" ")}`} fillRule="evenodd" className="replay-map-out" />
             <path d={[map.floor, ...map.holes].map((poly) => `M${poly.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join("L")}Z`).join(" ")} className="replay-map-edge" />
           </g>
@@ -746,6 +841,11 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             );
           });
         })}
+        {/* marcas de chão do grupo (world markers) */}
+        {markersOn &&
+          data.markers.map((m, i) =>
+            now >= m.from && (m.to == null || now < m.to) ? <WorldMarkerIcon key={`wm-${i}`} marker={m.marker} x={sx(m.x)} y={sy(m.y)} title={t.marker(m.marker)} /> : null,
+          )}
         {/* soaks: o círculo onde cai, com quantos estão dentro (antes) ou entraram (depois) */}
         {data.soaks.map((k, i) => {
           if (now < k.from || now > k.at + SOAK_AFTER_MS || hiddenAreas.has(`soak:${k.key}`)) return null;
@@ -803,10 +903,17 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             );
           })}
         {enemies.map((e) => {
-          const p = posAt(e, now);
+          const p = enemyPos(e, now);
           if (!p) return null;
+          // quem cortou o último cast dele (por 2 s, mesmo que ele já tenha começado outro)
+          const kick = [...casts].reverse().find((c) => c.guid === e.guid && c.interrupted && c.interruptedBy && c.end != null && now >= c.end && now - c.end <= KICK_SHOW_MS);
           return (
             <g key={e.guid}>
+              {kick && (
+                <text x={sx(p[0]) + 11} y={sy(p[1]) + 9} className="posmap-label replay-kick" style={{ fill: color(kick.interruptedBy!) }}>
+                  {t.kickedBy(shortName(data.units.get(kick.interruptedBy!)?.name ?? '?'))}
+                </text>
+              )}
               <rect x={sx(p[0]) - 7} y={sy(p[1]) - 7} width={14} height={14} rx={2} transform={`rotate(45 ${sx(p[0])} ${sy(p[1])})`} className="posmap-enemy replay-boss">
                 <title>{e.name}</title>
               </rect>
@@ -820,7 +927,9 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                 if (!c) return null;
                 const end = castEnd(c);
                 const done = now >= end;
-                const k = end > c.t ? Math.min(1, (now - c.t) / (end - c.t)) : 1;
+                // a barra anda no ritmo do cast: cortado, para no ponto em que foi cortado (ex.: 50%)
+                const full = Math.max(castDur(c) ?? 0, end - c.t);
+                const k = full > 0 ? Math.min(1, (Math.min(now, end) - c.t) / full) : 1;
                 const [bx, by] = [sx(p[0]), sy(p[1])];
                 const len = Math.min(FACING_MAX_PX, FACING_YD * scale);
                 return (
@@ -864,9 +973,9 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                       <line x1={bx} y1={by} x2={bx + Math.cos(c.facing) * len} y2={by - Math.sin(c.facing) * len} className="replay-facing" markerEnd={`url(#${floorId}-arrow)`} />
                     )}
                     {/* ícone e barra ao lado do boss: o centro fica livre para a seta */}
-                    <SvgSpellIcon spellId={c.spellId} x={bx + 11} y={by - 25} size={18} title={c.name} />
+                    <SvgSpellIcon spellId={c.spellId} x={bx + 11} y={by - 25} size={18} title={c.slowPct ? t.castSlowed(c.name, c.slowPct) : c.name} />
                     <rect x={bx + 11} y={by - 4} width={30} height={4} rx={2} className="replay-castbar-bg" />
-                    <rect x={bx + 11} y={by - 4} width={30 * k} height={4} rx={2} className={`replay-castbar ${c.interrupted ? 'cut' : ''}`} />
+                    <rect x={bx + 11} y={by - 4} width={30 * k} height={4} rx={2} className={`replay-castbar ${c.interrupted && done ? 'cut' : ''}`} />
                   </g>
                 );
               })()}
@@ -1083,6 +1192,18 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           }}
         />
         <span className="replay-right">
+        {clipCtx && (
+          <ClipButton
+            pull={clipCtx.pull}
+            title={clipCtx.title}
+            moment={() => {
+              const death = dies ? clipCtx.pull.deaths.find((d) => d.guid === dies && d.replay?.t === r.t) : undefined;
+              const label = death ? t.clipDied(shortName(death.name)) : full ? t.clipAt(mmss(now)) : t.clipMoment;
+              return { replay: { ...r, from: r.from, to: r.to }, t: full ? now : r.t, label, death };
+            }}
+            span={full ? () => [Math.max(r.from, now - CLIP_FULL_BEFORE_MS), Math.min(r.to, now + CLIP_FULL_AFTER_MS)] : undefined}
+          />
+        )}
         <span className={`small num replay-clock ${after && !full ? 'bad' : 'muted'}`}>{clock}</span>
         {view.floor && !full && (
           <button className={`btn sm ghost ${wide ? 'pressed' : ''}`} aria-pressed={wide} onClick={() => {
@@ -1154,6 +1275,19 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                 title={names ? t.hideNames : t.showNames}
               >
                 <Tag size={14} strokeWidth={1.75} aria-hidden /> {t.names}
+              </button>
+            )}
+            {data.markers.length > 0 && (
+              <button
+                className={`btn sm ghost ${markersOn ? 'pressed' : ''}`}
+                aria-pressed={markersOn}
+                onClick={() => {
+                  prefs.setShowMarkers(!markersOn);
+                  setMarkersOn(!markersOn);
+                }}
+                title={markersOn ? t.hideMarkers : t.showMarkers}
+              >
+                <MapPin size={14} strokeWidth={1.75} aria-hidden /> {t.markers}
               </button>
             )}
           </div>

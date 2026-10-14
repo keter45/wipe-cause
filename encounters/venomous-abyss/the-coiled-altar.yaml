@@ -170,7 +170,7 @@ mechanics:
     source_unit: axegrinder
     severity: minor
     detect: { damage_ids: [1285017], cast_id: 1283832 }
-    area: { npc: 260474, radius: 4, vanish: { idle_s: 10, from: p2 } }   # os machados girando (os golpes começam a ~3,6 jd do machado, 13/10); na P2 eles somem (sem golpe por perto em 10 s)
+    area: { npc: 260474, radius: 4, vanish: { idle_s: 0, from: p2 } }   # os machados girando (os golpes começam a ~3,6 jd do machado, 13/10); na P2 somem de vez: só fica o DoT, nada no chão
     ground: { phases: [p1], dot: true }   # machado no chão só na P1 (depois é só o DoT); o dano é DoT: marca onde encostou
     tolerance: 4
     tip: { pt: "Desviar dos machados que giram pela sala (no Heroic+ eles não somem).", en: "Dodge the axes spinning around the room (on Heroic+ they don't disappear)." }
