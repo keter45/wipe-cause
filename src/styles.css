@@ -7045,3 +7045,46 @@ button.kpi:hover {
 .fight-beta {
   margin: 0 0 6px;
 }
+
+/* velocidade num menu */
+.speed-menu .popover {
+  width: auto;
+  bottom: calc(100% + 6px);
+  top: auto;
+  right: 0;
+  left: auto;
+  padding: 4px;
+}
+.speed-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.speed-menu-list .btn {
+  width: 100%;
+  justify-content: flex-end;
+}
+/* zoom da linha do tempo */
+.fight-zoom-reset {
+  gap: 4px;
+  padding-inline: 4px;
+  font-size: 11px;
+}
+.fight-zoom-hint {
+  font-size: 10px;
+  cursor: help;
+}
+.fight-timeline.pannable .fight-track {
+  cursor: grab;
+  touch-action: none;
+}
+.fight-timeline.panning,
+.fight-timeline.panning .fight-track,
+.fight-timeline.panning .fight-marker {
+  cursor: grabbing;
+  user-select: none;
+}
+/* instante fora do trecho com zoom: a bolinha fica presa na ponta, então apagada */
+.replay-controls input[type='range'].outside {
+  opacity: 0.35;
+}

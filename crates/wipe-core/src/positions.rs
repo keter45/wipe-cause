@@ -130,6 +130,12 @@ pub fn radius_probe(path: &Path, damage: u32, aura: Option<u32>, npc: Option<u32
             match ev {
                 "SPELL_AURA_APPLIED" => {
                     holders.insert(f[5].to_string(), None);
+                    // soak que marca quem entrou com a aura: a aplicação é o acerto
+                    if soak {
+                        if let Some(&(x, y, _)) = pos.get(f[5]).filter(|p| t - p.2 <= MAX_AGE_MS) {
+                            soak_hits.push((t, x, y, f[5].to_string()));
+                        }
+                    }
                 }
                 "SPELL_AURA_REMOVED" => {
                     holders.insert(f[5].to_string(), Some(t));
@@ -142,7 +148,9 @@ pub fn radius_probe(path: &Path, damage: u32, aura: Option<u32>, npc: Option<u32
         }
         let Some(&(vx, vy, _)) = pos.get(f[5]).filter(|p| t - p.2 <= MAX_AGE_MS) else { continue };
         if soak {
-            soak_hits.push((t, vx, vy, f[5].to_string()));
+            if aura.is_none() {
+                soak_hits.push((t, vx, vy, f[5].to_string()));
+            }
             continue;
         }
         let centers: Vec<(f32, f32)> = match (aura, npc) {

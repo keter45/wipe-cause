@@ -186,6 +186,7 @@ mechanics:
       damage_ids: [1283594]      # dano dividido em quem soakou
       soak_aura_id: 1307425      # vulnerabilidade de quem soakou
       fail_ids: [1283606]        # Execution: menos de 5 no soak → raid inteiro
+    soak: { radius: 5, players: 5 }   # quem soakou ganha a aura 1307425; 13/10: 9-10 por soak, até ~5 jd do meio
     min_soakers: 5
     tip: { pt: "Pelo menos 5 no círculo do alvo (imunidades contam); depois sair para longe.", en: "At least 5 in the target's circle (immunities count); then move far away." }
     message: { pt: "{count} Guillotine sem 5 pessoas (Execution no raid)", en: "{count} Guillotine without 5 people (Execution on the raid)" }
@@ -464,6 +465,7 @@ mechanics:
       damage_ids: [1299296]
       soak_aura_id: 1307652
       fail_ids: [null]           # Grim Execution: ainda não visto em log
+    soak: { radius: 5, players: 5 }   # como o Guillotine (aura 1307652); sem log da P3 para medir
     min_soakers: 5
     tip: { pt: "Mesmo esquema da Guillotine: 5+ no círculo, depois sair.", en: "Same as Guillotine: 5+ in the circle, then move out." }
     message: { pt: "{count} Grim Guillotine sem 5 pessoas", en: "{count} Grim Guillotine without 5 people" }
