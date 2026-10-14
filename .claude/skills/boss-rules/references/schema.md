@@ -128,6 +128,12 @@ Frontal em cone (qualquer tipo): `cone: { cast_id, half_angle, range, target_spe
 
 Área de habilidade no replay completo: `area: { aura: <id>, radius: <jd> }` desenha um círculo em volta de cada player com a aura (ex.: quem carrega o orb roxo, quem leva a bomba); `area: { npc: <id>, radius: <jd> }` em volta de cada unidade do boss (ex.: os machados do Axegrinder), que deixa de aparecer como losango de boss. Com `vanish: { idle_s: 10, from: p2 }`, a unidade some depois de `idle_s` sem acertar ninguém perto dela, a partir da fase `from` (sem `from`: o pull todo). Meça o raio pela distância dos atingidos até o centro no instante do golpe.
 
+Linha no replay: `line: { cast_id, width, target_aura }` desenha uma faixa do lançador até o alvo durante o cast (ex.: o Corrosive Spit do Spawn of Vexhul até quem ele marcou com a aura). Sem `target_aura`, o alvo é o do inimigo.
+
+Soak no replay: `soak: { radius, players }` desenha o círculo onde o soak cai (no meio de quem foi atingido no mesmo impacto; vários círculos ao mesmo tempo viram vários soaks), desde o começo do `detect.cast_id` (ou 3 s antes), com quantos estão dentro e, depois, quantos entraram; vermelho com menos que `players`. Vários impactos do mesmo cast aparecem um depois do outro. Meça com `wipe-cli radius <log> --damage <id> --soak` (players por soak e distância ao meio).
+
+Unidade com `replay: true` em `units` (ex.: `{ key: spawn_of_vexhul, npc_id: 264023, replay: true }`) entra no replay mesmo sem HP de boss: adds que importam (matar, desviar das linhas). Add de `interrupt` entra sozinho e some 1 s depois do último cast (cortado ou não), mesmo sem morrer no log.
+
 Chão por fase e DoT: `ground: { phases: [p1] }` marca só nas fases listadas (keys de `phases`; o motor acompanha a fase pelo cast que abre cada uma). `ground: { dot: true }` diz que o dano é um DoT que segue o player: os ticks não marcam, só a aplicação do debuff de mesmo ID. Poça em que o player fica parado (aura só enquanto está nela) continua com os ticks.
 
 Hotfix que muda o raio dos orbs: `contact_yd` fica com o valor novo e o antigo vai em `before: [{ until: "AAAA-MM-DDTHH:MM", contact_yd: .. }]` (UTC). Pulls que começaram antes de `until` usam o raio antigo, então os logs velhos continuam certos.

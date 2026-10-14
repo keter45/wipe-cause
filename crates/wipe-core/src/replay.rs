@@ -159,6 +159,15 @@ pub fn ghost_tracks(paths: &[GhostPath], replays: &[&ReplayRef], name: &str) -> 
         .collect()
 }
 
+/// Corta a trilha da unidade depois de `t` (a unidade sumiu sem morrer no log).
+pub fn cut_after(u: &mut UnitTrack, t: i64, step_ms: i64) {
+    for s in &mut u.segs {
+        let keep = ((t - s.t0) / step_ms + 1).max(0) as usize * 2;
+        s.xy.truncate(keep.min(s.xy.len()));
+    }
+    u.segs.retain(|s| !s.xy.is_empty());
+}
+
 /// Passos (t / STEP_MS) com uma posição de verdade da unidade dentro das janelas, sem repetir.
 fn seen_steps(u: &Unit, windows: &[(i64, i64)]) -> Vec<u32> {
     let mut out: Vec<u32> = Vec::new();

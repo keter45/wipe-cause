@@ -359,6 +359,7 @@ mechanics:
     detect:
       fail_ids: [1307635]       # dois portadores de ovo a menos de 3 jardas: o ovo choca na hora
       culprit_auras: [1307612]  # Noxious Shell: quem carregava
+    area: { aura: 1307612, radius: 3 }   # em volta de quem carrega o ovo: outro portador dentro do círculo choca o ovo
     tip: { pt: "Com ovo na mão, nunca chegar a 3 jardas de outro portador: andar em faixas e posições combinadas.", en: "While carrying an egg, never get within 3 yards of another carrier: move in agreed lanes and spots." }
     message: { pt: "{count} Noxious Splash — portadores de ovo se encostaram", en: "{count} Noxious Splash — egg carriers touched" }
     blame_message: { pt: "{player} encostou em outro portador de ovo", en: "{player} touched another egg carrier" }
@@ -427,6 +428,7 @@ mechanics:
     severity: wipe
     difficulty: [mythic]
     detect: { damage_ids: [1293146] }
+    soak: { radius: 5 }   # 06/10 (heroico): ~4 por soak, 90% a até 3,9 jd do meio
     tip: { pt: "Soakar com o mínimo de gente, de cargos combinados, com defensivo grande para a explosão do fim; quem soakou solta ondas: mirar longe do raid. Soaker que morre durante o soak wipa o raid.", en: "Soak with the minimum number of people, from agreed roles, with a big defensive for the final explosion; soakers release waves: aim them away from the raid. A soaker dying mid-soak wipes the raid." }
     message: { pt: "Serpent's Bite", en: "Serpent's Bite" }
     notes: "No mítico, quem soakou solta Caustic Waves ao fim do Volatile Purge; as ondas que acertam o raid já contam em caustic_waves."

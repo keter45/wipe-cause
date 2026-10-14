@@ -36,7 +36,14 @@ Leia `references/schema.md` antes de escrever qualquer arquivo. `encounters/veno
    - **frontal / cone / "na frente do boss"** → `cone: { cast_id, half_angle, range }` na mecânica. O cone aponta para o alvo do boss durante o cast; se o boss não bate corpo a corpo, ponha em `target_spells` um spell que só vai no alvo dele (ex.: o Dread Bolt do Malacrass). Sem tamanho no guia, comece em 40°/40yd e meça com os players atingidos num log (ângulo e distância até o boss no `SPELL_CAST_SUCCESS`).
    - **área em volta de alguém ou de uma unidade** (raio em volta de quem carrega algo, unidade que gira pela sala) → `area: { aura | npc, radius }` (ver o schema).
    - **deixa algo no chão** (poça, gota, área, rastro, círculo, projétil que cai) → `ground` ligado nos `damage_ids` (já é o padrão em `avoidable_damage`, `soak`, `positioning` e `spread`); para outro `type` (ex.: `unavoidable` que deixa poça), ponha `ground: true`, e `ground: { lingers_s: N }` quando a poça fica.
+   - **dano em quem está perto de quem tem um debuff** (`avoidable_damage` com `excludes_aura`: o splash do orb, a bomba, o cuspe) → quase sempre é uma `area: { aura: <o excludes_aura>, radius }`.
+   - **unidade do boss que some** (machado que para de girar, add que despawna sem morrer no log) → `area.vanish: { idle_s, from }`: some depois de N s sem acertar ninguém perto dela.
+   - **add que precisa ser interrompido** → basta a regra `interrupt` com o `cast_id` certo: quem solta o cast entra no mapa com a barra de cast (cortado em vermelho) e some logo depois do último cast.
+   - **add que importa** (tem que morrer, solta linhas, fica no meio) → `units` com `npc_id` e `replay: true`.
+   - **linha do lançador até o alvo** ("sair da linha de quem é o alvo") → `line: { cast_id, width, target_aura }`.
+   - **soak** (um ou mais players precisam estar onde a mecânica cai) → `soak: { radius, players }`; mede com `wipe-cli radius --soak`. O círculo do soak substitui as marcas de chão da mesma mecânica (tire o `ground`).
    Só fica de fora o que não tem forma no chão (dano no raid inteiro, DoT que segue o player). Na dúvida, mostre.
+   **Medir o raio:** `wipe-cli radius <log> --damage <id> (--aura <id> | --npc <id>)` mostra a distância de cada atingido até o portador (ou a unidade) mais perto, num histograma por jarda: o raio é onde a contagem despenca (os golpes mais longe vêm de outros centros). Ex.: Mutagenic Venom cai de 92 para 33 na jarda 6; Axegrinder tem 90% até 5,6 jd (raio 4).
 7. **Escrever o YAML**, validar mentalmente contra o schema (todo `type` com os campos obrigatórios; `difficulty` coerente) e mostrar ao usuário um resumo em tabela: mecânica → tipo → severidade → ID resolvido?
 
 ## Resolver spell IDs
@@ -52,9 +59,29 @@ O ID do Journal nem sempre é o ID que aparece no `SPELL_DAMAGE` (ex.: cast ≠ 
 
 Uma habilidade pode ter vários IDs (cast, dano, debuff, explosão). Coloque cada um no campo certo (`cast_id`, `damage_ids`, `aura_id`, `fail_ids`). Se não conseguir resolver, deixe `id: null` e `needs_id: true` — o app mostra essas regras como "não calibradas" e o usuário completa depois com um log.
 
+## Lições do Coiled Altar (valem para todo boss)
+
+- **O log dá contagens: use antes da geometria.** Quando o jogo marca quantas vezes algo aconteceu (stacks que o raid inteiro ganha, número de alvos), isso é mais confiável que reconstruir pela posição. Ex.: o raid ganha 1 stack de Venom Rupture por orb quebrado; o app quebra os N orbs mais alinhados com o frontal (`breaker.count_aura`). Antes, pelo ângulo do log, errava Severs inteiros.
+- **A direção do boss no log pode estar errada** (90° fora num Sever). Para frontal, use também a direção do alvo do boss (`cone`, `target_spells`).
+- **Falha sem culpado quase sempre tem uma causa:** procure o que o boss faz no mesmo instante. As explosões "sem culpado" do Coiled Altar caíam todas no cast de orbs novos (Toxic Deluge) ou no fim da P1: o boss explode o que sobrou no chão (`cleared_by`, `cleared_on_zero`), e a falha passa a dizer quais orbs sobraram.
+- **Troca de fase sem morte:** o boss da fase anterior fica com 1 ponto de vida (imune), não morre no log. Use "vida abaixo de 0,1%" como o fim dele.
+- **Unidades que o log quase não mostra** (machados): a posição entre uma aparição e outra é estimada. Quem passa por dentro sem levar dano desmente (o replay apaga), e o que para de acertar some (`vanish`). Antes de dizer que algo "some" numa fase, confira no log: alguns machados ainda aplicavam DoT na P2.
+- **Confirme o que o usuário conta no log, e o que o log mostra com o usuário:** os dois pegaram erros um do outro (o raio pós-nerf, os orbs que o boss explode, os machados na P2).
+- **Instantâneo no meio de um cast** (o add solta outro spell ao ser cortado) não fecha o cast aberto: o motor só fecha com o mesmo spell.
+
+## Arena
+
+A imagem de fundo e o chão andável de cada boss ficam em `data/arenas.json` (fora das regras: o Kith'ix não tem regra e tem arena). Para um boss novo:
+1. Achar a imagem no raidplan.io (`/plan/create?raid=wow.<expansão>.<raid>&boss=N`; a URL do mapa aparece nos recursos da página, `cdn.raidplan.io/raid/.../map/...jpg`). O app carrega da CDN na hora, como os ícones do Wowhead; a imagem não entra no repositório.
+2. `wipe-cli positions <log>` em logs com o boss (onde os players pisaram) e juntar por boss.
+3. Marcar o chão em `scripts/arena-fit.mjs` (polígono na imagem com 1224 de largura, `holes` para buracos; ou `hazard` com amostras da cor do perigo; `disk`/`holeDisk` para sala redonda com poço; `core` quando o raid sai da sala principal) e rodar. Ele acha escala e posição com o norte para cima (o Twin Fangs, sem simetria, confirmou: X do log = norte, Y = oeste) e grava uma imagem de conferência por boss: os pisões têm que cair no chão, inclusive em detalhes (pontes, poço). Nota acima de ~0,9.
+4. Copiar o resultado para `data/arenas.json`.
+
 ## Validar
 
 Depois de escrever, rode `cargo test -p wipe-core` (o teste `embedded_rules_parse` falha se o YAML for inválido) e, com um log do boss, `wipe-cli analyze <log> --json` — confira em `pulls[].mechanics` se as falhas batem com o que aconteceu. Se uma regra marca quase todo mundo em todo pull, provavelmente não é erro (ex.: stacks que todo tank pega): tire o `warn_stacks`/`tolerance` ou mude para `info`.
+
+Ao mudar uma regra que já existe, compare antes e depois em vários logs: guarde o `wipe-cli.exe` antigo, rode `analyze --json` com os dois e liste o que mudou (culpados, falhas, gatilhos). Toda mudança tem que ter uma explicação no log (no Coiled Altar: 2 culpados mudaram, os dois porque os orbs passaram a bater com as stacks); mudança sem explicação é bug.
 
 Regras novas vão em `encounters/<raid>/<boss>.yaml` (embutidas no build). Para testar sem recompilar, o app também lê `*.yaml` da pasta de dados do app (`%APPDATA%/gg.wipecause.app/encounters`), que substitui a embutida com o mesmo `encounter_id`.
 

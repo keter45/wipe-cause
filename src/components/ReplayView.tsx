@@ -130,6 +130,8 @@ const GROUND_YD = 1.2;
 const GROUND_MAX_PX = 7;
 /** Grade do chão (jardas) e régua de escala. */
 const GRID_YD = 10;
+/** Folga em volta do chão da arena conhecida, na luta inteira (jardas). */
+const MAP_PAD_YD = 4;
 /** Folga em volta da arena (jardas). */
 const ARENA_PAD_YD = 6;
 /** Vista aberta: deixa de fora esta parte das posições em cada ponta (quem ficou longe de todo mundo). */
@@ -168,6 +170,34 @@ const AREA_COLORS = ['#f472b6', '#2dd4bf', '#d9c05a', '#6ea8fe', '#e8904a', '#c0
 const areaColor = (i: number) => AREA_COLORS[i % AREA_COLORS.length];
 /** Tempo para o machado desmentido sumir até ficar só o contorno apagado. */
 const VACATED_FADE_MS = 600;
+/** Linha sem arena conhecida: vai até esta distância do lançador (jardas). */
+const LINE_FALLBACK_YD = 60;
+
+/**
+ * Fim da linha que sai de `from` na direção de `to`: onde ela sai do chão da arena (a borda mais longe
+ * que o raio cruza; o buraco do meio não para a linha), ou a distância padrão sem arena.
+ */
+function lineEnd(from: [number, number], to: [number, number], floor?: [number, number][]): [number, number] {
+  const [dx, dy] = [to[0] - from[0], to[1] - from[1]];
+  const len = Math.hypot(dx, dy) || 1;
+  const [ux, uy] = [dx / len, dy / len];
+  let best = floor?.length ? 0 : LINE_FALLBACK_YD;
+  for (let i = 0; floor && i < floor.length; i++) {
+    const [ax, ay] = floor[i];
+    const [bx, by] = floor[(i + 1) % floor.length];
+    const [ex, ey] = [bx - ax, by - ay];
+    const den = ux * ey - uy * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const t = ((ax - from[0]) * ey - (ay - from[1]) * ex) / den;
+    const u = ((ax - from[0]) * uy - (ay - from[1]) * ux) / den;
+    if (t > 0 && u >= 0 && u <= 1) best = Math.max(best, t);
+  }
+  if (best < len) best = len;
+  return [from[0] + ux * best, from[1] + uy * best];
+}
+
+/** O soak fica no mapa até isto depois de cair (ms). */
+const SOAK_AFTER_MS = 1500;
 /** O defensivo em área aparece e some aos poucos (ms). */
 const ZONE_FADE_MS = 400;
 
@@ -349,7 +379,16 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     const arena = data.arena;
     const useArena = wide && !!arena && arena.cells.length > 0;
     let cx: number, cy: number, reachX: number, reachY: number;
-    if (useArena) {
+    // luta inteira com a arena conhecida: a arena toda (o chão da imagem)
+    const fl = full ? data.map?.floor : undefined;
+    if (fl && fl.length) {
+      const [x0, x1] = [Math.min(...fl.map((q) => q[0])), Math.max(...fl.map((q) => q[0]))];
+      const [y0, y1] = [Math.min(...fl.map((q) => q[1])), Math.max(...fl.map((q) => q[1]))];
+      cx = (x0 + x1) / 2;
+      cy = (y0 + y1) / 2;
+      reachX = (x1 - x0) / 2 + MAP_PAD_YD;
+      reachY = (y1 - y0) / 2 + MAP_PAD_YD;
+    } else if (useArena) {
       // vista aberta: onde a raid (e os bosses e fantasmas) esteve durante o replay, não a sala toda do pull
       // (sem os poucos que ficaram longe de todo mundo; quem o replay acompanha, os bosses e os fantasmas em destaque sempre entram)
       const rx: number[] = [];
@@ -429,8 +468,8 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       if (ok) placed.push(q);
       enemyLabel.set(e.guid, ok);
     }
-    return { cx, cy, players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor: arena && arena.cells.length ? arena : null, casts, casters };
-  }, [data, r, wide, cam]);
+    return { cx, cy, players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor: arena && arena.cells.length ? arena : null, map: data.map, casts, casters };
+  }, [data, r, wide, cam, full]);
   const viewRef = useRef(view);
   viewRef.current = view;
 
@@ -468,7 +507,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   }, [view === null]);
 
   if (!view || view.players.length === 0) return <p className="muted small">{t.noPositions}</p>;
-  const { players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor, casts, casters } = view;
+  const { players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor, map, casts, casters } = view;
   // cast de cada boss no instante: o que está castando, ou o que acabou de terminar
   const castEnd = (c: (typeof casts)[number]) => c.end ?? (c.facing == null ? c.t + CAST_OPEN_MS : c.t);
   const castNow = (guid: string) => [...casts].reverse().find((c) => c.guid === guid && now >= c.t && now <= castEnd(c) + CAST_SHOW_MS);
@@ -594,7 +633,15 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             <path d="M 0 0 L 10 5 L 0 10 z" className="replay-facing-head" />
           </marker>
         </defs>
-        {floor && (
+        {map && (
+          <g className="replay-map">
+            {/* fundo da arena (raidplan.io) alinhado com o log; fora do chão andável, escurecido */}
+            <image href={map.image} x={sx(map.x0)} y={sy(map.y0)} width={map.w * scale} height={map.h * scale} preserveAspectRatio="none" className="replay-map-image" />
+            <path d={`M-9999,-9999H9999V9999H-9999Z ${[map.floor, ...map.holes].map((poly) => `M${poly.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join("L")}Z`).join(" ")}`} fillRule="evenodd" className="replay-map-out" />
+            <path d={[map.floor, ...map.holes].map((poly) => `M${poly.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join("L")}Z`).join(" ")} className="replay-map-edge" />
+          </g>
+        )}
+        {floor && !map && (
           <>
             <defs>
               {/* borra as células e corta o alfa: um chão contínuo com a borda limpa */}
@@ -655,6 +702,31 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
               </g>
             );
           });
+        })}
+        {/* soaks: o círculo onde cai, com quantos estão dentro (antes) ou entraram (depois) */}
+        {data.soaks.map((k, i) => {
+          if (now < k.from || now > k.at + SOAK_AFTER_MS || hiddenAreas.has(`soak:${k.key}`)) return null;
+          const done = now >= k.at;
+          const inside = done
+            ? k.hit
+            : players.filter((u) => {
+                if (deadNow(u.guid)) return false;
+                const q = posAt(u, now);
+                return !!q && Math.hypot(q[0] - k.x, q[1] - k.y) <= k.radius;
+              }).length;
+          const short = k.needs != null && inside < k.needs;
+          const label = t.soak(k.name, inside, k.needs ?? null, done);
+          return (
+            <g key={`soak-${i}`} className={`replay-soak ${done ? 'done' : ''} ${short ? 'short' : ''}`} opacity={done ? 1 - ((now - k.at) / SOAK_AFTER_MS) * 0.6 : 1}>
+              <circle cx={sx(k.x)} cy={sy(k.y)} r={k.radius * scale}>
+                <title>{label}</title>
+              </circle>
+              <SvgSpellIcon spellId={k.spellId} x={sx(k.x) - 7} y={sy(k.y) - k.radius * scale - 16} size={14} title={label} />
+              <text x={sx(k.x)} y={sy(k.y) + 4} textAnchor="middle" className="replay-soak-count">
+                {k.needs != null ? `${inside}/${k.needs}` : inside}
+              </text>
+            </g>
+          );
         })}
         {/* defensivos de raid em área (AMZ, Darkness, Spirit Link...): na cor de quem usou */}
         {zones.map((z, i) => {
@@ -721,6 +793,26 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                       if (dir == null) return null;
                       return (
                         <polygon points={triangle(bx, by, dir, (c.cone.halfAngle * Math.PI) / 180, c.cone.range * scale)} className={`replay-cone ${done ? '' : 'casting'}`}>
+                          <title>{c.name}</title>
+                        </polygon>
+                      );
+                    })()}
+                    {(() => {
+                      // linha do lançador até o alvo (o cuspe do add até quem ele marcou)
+                      if (!c.line || c.interrupted) return null;
+                      const at = done ? end : now;
+                      const tu = c.target ? data.units.get(c.target) : undefined;
+                      const tp = tu ? posAt(tu, at) : null;
+                      const bp = posAt(e, at) ?? p;
+                      if (!tp) return null;
+                      // o alvo só dá a direção: a linha vai até a borda da sala
+                      const far = lineEnd(bp, tp, data.map?.floor);
+                      const [x1, y1, x2, y2] = [sx(bp[0]), sy(bp[1]), sx(far[0]), sy(far[1])];
+                      const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+                      const hw = Math.max(2, (c.line.width * scale) / 2);
+                      const [nx, ny] = [(-(y2 - y1) / len) * hw, ((x2 - x1) / len) * hw];
+                      return (
+                        <polygon points={`${x1 + nx},${y1 + ny} ${x2 + nx},${y2 + ny} ${x2 - nx},${y2 - ny} ${x1 - nx},${y1 - ny}`} className={`replay-line ${done ? '' : 'casting'}`}>
                           <title>{c.name}</title>
                         </polygon>
                       );
@@ -902,8 +994,11 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       </svg>
       {overlay}
       </div>
+      {/* linha do tempo e controles na mesma grade: o trilho da linha do tempo tem a largura do slider */}
+      <div className={belowMap ? 'replay-dock' : undefined}>
       {belowMap}
       <div className="replay-controls">
+        <span className="replay-left">
         <button className="btn sm" onClick={() => (now >= r.to ? restart() : setPlaying(!playing))} aria-label={playing ? t.pause : t.play} title={playing ? t.pause : t.play}>
           {playing ? <Pause size={14} strokeWidth={1.75} aria-hidden /> : <Play size={14} strokeWidth={1.75} aria-hidden />}
         </button>
@@ -929,6 +1024,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             <Crosshair size={14} strokeWidth={1.75} aria-hidden />
           </button>
         )}
+        </span>
         <input
           type="range"
           min={r.from}
@@ -942,6 +1038,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             setNow(Number(e.target.value));
           }}
         />
+        <span className="replay-right">
         <span className={`small num replay-clock ${after && !full ? 'bad' : 'muted'}`}>{clock}</span>
         {view.floor && !full && (
           <button className={`btn sm ghost ${wide ? 'pressed' : ''}`} aria-pressed={wide} onClick={() => {
@@ -970,6 +1067,8 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             ))}
           </ul>
         </Hint>
+        </span>
+      </div>
       </div>
       <div className="replay-panels">
         {(groundKinds.length > 0 || legendExtra || full) && (
@@ -987,13 +1086,15 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
               />
             )}
             {legendExtra}
-            {(data.areas.length > 0 || data.orbs || zones.length > 0) && (
+            {(data.areas.length > 0 || data.orbs || zones.length > 0 || data.soaks.length > 0) && (
               <MapFilter
                 icon={<Radius size={14} strokeWidth={1.75} aria-hidden />}
                 label={t.areas}
                 items={[
                   ...data.areas.map((a, ai) => ({ key: a.key, spellId: a.spellId ?? undefined, name: a.name, color: areaColor(ai) })),
                   ...(data.orbs?.kinds ?? []).map((k, i) => ({ key: `orb:${i}`, name: t.orb(tr(k.name)), color: ORB_COLORS[i] ?? ORB_COLORS[1] })),
+                  // soaks, um por mecânica
+                  ...[...new Map(data.soaks.map((k) => [k.key, k] as const)).values()].map((k) => ({ key: `soak:${k.key}`, spellId: k.spellId, name: k.name })),
                   // defensivos de raid em área, um por spell
                   ...[...new Map(zones.map((z) => [z.spellId, z] as const)).values()].map((z) => ({ key: `def:${z.spellId}`, spellId: z.spellId, name: z.name })),
                 ]}

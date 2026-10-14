@@ -9,6 +9,7 @@ pub mod orbs;
 pub mod pairing;
 pub mod replay;
 pub mod peek;
+pub mod positions;
 pub mod report;
 pub mod rotation;
 pub mod rules;

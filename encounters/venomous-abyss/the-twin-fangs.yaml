@@ -13,8 +13,8 @@ difficulties: [normal, heroic, mythic]
 units:
   - { key: vexhul, name: "Vexhul", npc_id: 257361, boss: true }
   - { key: ithraz, name: "Ithraz", npc_id: 257368, boss: true }
-  - { key: broodling, name: "Broodling of Ithraz", npc_id: 270898 }
-  - { key: spawn_of_vexhul, name: "Spawn of Vexhul", npc_id: null }
+  - { key: broodling, name: "Broodling of Ithraz", npc_id: 270898 }   # interrupt: entra no replay e some depois do último cast
+  - { key: spawn_of_vexhul, name: "Spawn of Vexhul", npc_id: 264023, replay: true }   # os adds do meio que têm que morrer (soltam o Corrosive Spit)
   - { key: barbed_bulwark, name: "Barbed Bulwark", npc_id: null }
 
 mechanics:
@@ -54,6 +54,7 @@ mechanics:
     detect:
       damage_ids: [1289201]     # hit em quem soaka (1-6 players)
       fail_ids: [1290338]       # explosão: atinge 11-20 players
+    soak: { radius: 5, players: 1 }   # 01/10: 1-2 por orb, 90% a até 4,6 jd do meio
     tip: { pt: "Pisar em todos os orbs antes de explodirem.", en: "Step on every orb before it explodes." }
     message: { pt: "{count} Caustic Globule explodiram sem soak", en: "{count} Caustic Globule exploded without a soak" }
 
@@ -123,6 +124,7 @@ mechanics:
     source_unit: spawn_of_vexhul
     severity: wipe
     detect: { damage_ids: [1293295], excludes_aura: 1293979 }
+    line: { cast_id: 1291478, width: 4, target_aura: 1293979 }   # do add até quem ele marcou no começo do cast (a aura sai 30 ms depois)
     tip: { pt: "Sair da linha de quem é o alvo: quem fica no meio toma o cuspe e 1 stack de Eternal Venom.", en: "Get out of the target's line: whoever stands in it takes the spit and 1 Eternal Venom stack." }
     message: { pt: "{player} tomou Corrosive Spit sem ser o alvo ({count}x, +{count} Eternal Venom)", en: "{player} took Corrosive Spit without being the target ({count}x, +{count} Eternal Venom)" }
     notes: "O alvo do add recebe a aura 1293979 (sai no hit); dano sem ela = estava na linha de outro. Log de 24/09: 261 hits no alvo e 9 na linha, todos com stack."
@@ -213,6 +215,7 @@ mechanics:
     source_unit: ithraz
     severity: none
     detect: { damage_ids: [1290662], cast_id: 1290516 }
+    soak: { radius: 6 }   # 01/10: ~6 players por soak, 90% a até 5,4 jd do meio
     tip: { pt: "Soak dividido; também remove stack de Eternal Venom.", en: "Shared soak; it also removes an Eternal Venom stack." }
     message: { pt: "Ravenous Feast", en: "Ravenous Feast" }
 

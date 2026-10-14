@@ -5,6 +5,10 @@
 //!                                                      --tuning <pasta> aplica os ajustes do usuário (<encounter>.json)
 //!   wipe-cli spells <arquivo>             spells inimigas por encontro (para calibrar regras de boss)
 //!   wipe-cli peek <arquivo>               só os encontros do log (leitura rápida, como a lista de logs do app)
+//!   wipe-cli positions <arquivo>          onde os players pisaram em cada boss (para alinhar a imagem da arena)
+//!   wipe-cli radius <arquivo> --damage <id> (--aura <id> | --npc <id> | --soak)  raio de uma área: distância de
+//!                                         quem levou o dano até o portador da aura (ou a unidade) mais perto, ou
+//!                                         até o meio do soak (e quantos entraram em cada um)
 //!   wipe-cli wcl <pasta>[,<pasta>] [--json]  analisa reports baixados do Warcraft Logs (scripts/wcl-fetch.mjs)
 
 use std::path::PathBuf;
@@ -23,6 +27,53 @@ fn main() -> ExitCode {
         .and_then(|i| args.get(i + 1))
         .and_then(|v| v.parse().ok())
         .unwrap_or(0);
+    if cmd == "radius" {
+        let num = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).and_then(|v| v.parse::<u32>().ok());
+        let Some(damage) = num("--damage") else {
+            eprintln!("uso: wipe-cli radius <log> --damage <id> (--aura <id> | --npc <id> | --soak)");
+            return ExitCode::from(2);
+        };
+        return match wipe_core::positions::radius_probe(&PathBuf::from(path), damage, num("--aura"), num("--npc"), args.iter().any(|a| a == "--soak")) {
+            Ok((mut d, mut sizes)) => {
+                if !sizes.is_empty() {
+                    sizes.sort_unstable();
+                    let s = |p: f32| sizes[((sizes.len() - 1) as f32 * p) as usize];
+                    println!("{} soaks  players por soak p10 {}  p50 {}  p90 {}", sizes.len(), s(0.1), s(0.5), s(0.9));
+                }
+                d.sort_by(f32::total_cmp);
+                let q = |p: f32| d.get(((d.len().max(1) - 1) as f32 * p) as usize).copied().unwrap_or(f32::NAN);
+                println!("{} golpes  p10 {:.1}  p50 {:.1}  p90 {:.1}  p95 {:.1}  max {:.1} jd", d.len(), q(0.1), q(0.5), q(0.9), q(0.95), q(1.0));
+                // histograma por jarda: o raio é onde a contagem despenca (golpes de outros centros ficam no rabo)
+                let mut bins = [0usize; 30];
+                for &x in &d {
+                    if let Some(b) = bins.get_mut(x as usize) {
+                        *b += 1;
+                    }
+                }
+                let top = bins.iter().copied().max().unwrap_or(1).max(1);
+                for (i, n) in bins.iter().enumerate() {
+                    println!("{i:>3} jd {n:>6} {}", "#".repeat(n * 40 / top));
+                }
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("erro ao ler {path}: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+    if cmd == "positions" {
+        return match wipe_core::positions::occupancy_file(&PathBuf::from(path)) {
+            Ok(p) => {
+                println!("{}", serde_json::to_string(&p).unwrap());
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("erro ao ler {path}: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     if cmd == "peek" {
         return match wipe_core::peek::peek_file(&PathBuf::from(path)) {
             Ok(p) => {
