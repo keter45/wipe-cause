@@ -950,6 +950,14 @@ impl RuleTracker {
         }
     }
 
+    /// Quando o pull começou (epoch ms, UTC): regras com valores de antes de um hotfix usam a data.
+    pub fn started_at(mut self, start_ms: i64) -> Self {
+        if let Some((_, log)) = &mut self.orbs {
+            log.start_ms = Some(start_ms);
+        }
+        self
+    }
+
     /// A análise precisa da posição dos players a cada instante (orbs carregados)?
     pub fn wants_positions(&self) -> bool {
         self.orbs.is_some() || self.pairing.is_some()

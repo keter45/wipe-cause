@@ -51,10 +51,34 @@ pub struct OrbDetect {
     /// distância (jardas) em que dois orbs se tocam
     #[serde(default = "default_contact")]
     pub contact_yd: f32,
+    /// raios antigos, de antes de um hotfix: pull que começou antes de `until` usa o `contact_yd` dele
+    #[serde(default)]
+    pub before: Vec<OldContact>,
     /// só conta o encontro até este tempo antes da explosão (ms)
     #[serde(default = "default_window")]
     pub window_ms: i64,
     pub breaker: Option<Breaker>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OldContact {
+    /// UTC: `2026-10-13` ou `2026-10-13T15:00`
+    #[serde(deserialize_with = "utc")]
+    pub until: i64,
+    pub contact_yd: f32,
+}
+
+fn utc<'de, D: serde::Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
+    let s = String::deserialize(d)?;
+    crate::timestamp::parse_utc(&s).ok_or_else(|| serde::de::Error::custom(format!("data inválida: {s} (use AAAA-MM-DD ou AAAA-MM-DDTHH:MM, UTC)")))
+}
+
+impl OrbDetect {
+    /// Distância de contato num pull que começou em `start_ms` (None = sem data: a atual).
+    pub fn contact_at(&self, start_ms: Option<i64>) -> f32 {
+        let Some(t) = start_ms else { return self.contact_yd };
+        self.before.iter().filter(|o| t < o.until).min_by_key(|o| o.until).map_or(self.contact_yd, |o| o.contact_yd)
+    }
 }
 
 fn default_contact() -> f32 {
@@ -77,6 +101,8 @@ pub struct OrbLog {
     carries: Vec<(String, usize, i64, Option<i64>)>,
     /// frontais: (t, x, y, direção em radianos)
     breaks: Vec<(i64, f32, f32, f32)>,
+    /// quando o pull começou (epoch ms, UTC): escolhe o raio de antes ou depois de um hotfix
+    pub start_ms: Option<i64>,
 }
 
 impl OrbLog {
@@ -268,9 +294,10 @@ pub fn collision(cfg: &OrbDetect, log: &OrbLog, boom: i64) -> Option<Collision> 
     let ground = ground_orbs(cfg, log, boom);
     let from = boom - cfg.window_ms;
     let volatile = |k: usize| cfg.kinds[k].volatile;
+    let contact = cfg.contact_at(log.start_ms);
     let mut best: Option<Collision> = None;
     let mut keep = |c: Collision| {
-        if c.dist_yd <= cfg.contact_yd && best.as_ref().is_none_or(|b| c.dist_yd < b.dist_yd) {
+        if c.dist_yd <= contact && best.as_ref().is_none_or(|b| c.dist_yd < b.dist_yd) {
             best = Some(c);
         }
     };
@@ -309,6 +336,7 @@ mod tests {
                 OrbKind { npc_id: 2, carry_aura: 20, volatile: false, name: Text::new("verde", "green") },
             ],
             contact_yd: 9.0,
+            before: Vec::new(),
             window_ms: 500,
             breaker: Some(Breaker { cast_id: 99, half_angle: 40.0, range: 40.0 }),
         }
@@ -335,6 +363,24 @@ mod tests {
         let hit = collision(&c, &log, 4000).unwrap();
         assert_eq!((hit.guid.as_str(), hit.moved, hit.ground, hit.dropped), ("A", 0, 1, false));
         assert!(hit.dist_yd < 5.0);
+    }
+
+    #[test]
+    fn raio_de_antes_do_hotfix_vale_para_pull_antigo() {
+        let mut c = cfg();
+        c.contact_yd = 7.0;
+        let until = crate::timestamp::parse_utc("2026-10-13T15:00").unwrap();
+        c.before = vec![OldContact { until, contact_yd: 9.0 }];
+        let mut log = OrbLog::default();
+        log.on_enemy_cast(&c, Some(1), "P1", 5, 0.0, 0.0, 0.0, 100); // roxo no chão em (0,0)
+        walk(&mut log, "A", (30.0, 0.0), (8.0, 0.0), 1000, 4000); // passa a 8yd com o verde
+        log.on_aura(&c, 20, "A", "Alice", 1, 1000);
+        log.start_ms = Some(until - 3_600_000);
+        assert!(collision(&c, &log, 4000).is_some_and(|h| h.dist_yd <= 8.5));
+        log.start_ms = Some(until);
+        assert_eq!(collision(&c, &log, 4000), None);
+        log.start_ms = None;
+        assert_eq!(c.contact_at(None), 7.0);
     }
 
     #[test]
