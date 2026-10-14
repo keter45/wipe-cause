@@ -123,6 +123,8 @@ blame_message: "{player} carregava o orb"
 ```
 Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `orbs` ou `culprit_auras`); sem eles, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.
 
+Hotfix que muda o raio dos orbs: `contact_yd` fica com o valor novo e o antigo vai em `before: [{ until: "AAAA-MM-DDTHH:MM", contact_yd: .. }]` (UTC). Pulls que começaram antes de `until` usam o raio antigo, então os logs velhos continuam certos.
+
 ### `dispel`
 Debuff que um healer/dispeller precisa tirar.
 ```yaml

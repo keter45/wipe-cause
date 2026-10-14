@@ -47,6 +47,20 @@ fn frac_to_ms(frac: &str) -> Option<i64> {
     digits.parse().ok()
 }
 
+/// Data das regras em UTC, `2026-10-13` ou `2026-10-13T15:00`, em epoch ms.
+pub fn parse_utc(s: &str) -> Option<i64> {
+    let s = s.trim().trim_end_matches('Z');
+    let (date, time) = s.split_once('T').unwrap_or((s, "00:00"));
+    let mut dp = date.split('-');
+    let (y, m, d): (i32, u32, u32) = (dp.next()?.parse().ok()?, dp.next()?.parse().ok()?, dp.next()?.parse().ok()?);
+    let (h, min) = time.split_once(':')?;
+    let (h, min): (i64, i64) = (h.parse().ok()?, min.parse().ok()?);
+    if dp.next().is_some() || !(1..=12).contains(&m) || !(1..=31).contains(&d) || h > 23 || min > 59 {
+        return None;
+    }
+    Some(((days_from_civil(y, m, d) * 24 + h) * 60 + min) * 60_000)
+}
+
 /// Dias desde 1970-01-01 (algoritmo de Howard Hinnant).
 fn days_from_civil(y: i32, m: u32, d: u32) -> i64 {
     let y = (if m <= 2 { y - 1 } else { y }) as i64;
@@ -84,6 +98,15 @@ fn civil_from_days(z: i64) -> (i64, u32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rule_dates_in_utc() {
+        let day = parse_utc("2026-10-13").unwrap();
+        assert_eq!(parse_utc("2026-10-13T15:00Z"), Some(day + 15 * 3_600_000));
+        assert_eq!(parse_timestamp("10/13/2026 12:00:00.000-3", 2026), Some(day + 15 * 3_600_000));
+        assert_eq!(parse_utc("2026-13-01"), None);
+        assert_eq!(parse_utc("13/10/2026"), None);
+    }
 
     #[test]
     fn parses_modern_format() {

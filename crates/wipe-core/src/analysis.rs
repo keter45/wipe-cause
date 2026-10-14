@@ -309,7 +309,7 @@ impl PullBuilder {
         let difficulty_id = f.get(3).and_then(|v| v.parse().ok()).unwrap_or(0);
         // erros de regra já foram reportados na carga do RuleBook
         let sets = book.for_encounter(encounter_id, &encounter_name);
-        let rules = if sets.is_empty() { None } else { RuleTracker::new(&sets, difficulty_id).ok() };
+        let rules = if sets.is_empty() { None } else { RuleTracker::new(&sets, difficulty_id).ok().map(|r| r.started_at(t)) };
         PullBuilder {
             owner: None,
             encounter_id,
