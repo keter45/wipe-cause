@@ -14,9 +14,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
+          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p wipe-core
       - run: cargo clippy -p wipe-core --all-targets -- -D warnings
+      # o núcleo também precisa compilar para o navegador (versão web)
+      - run: cargo clippy -p wipe-wasm --target wasm32-unknown-unknown -- -D warnings
 
   ui:
     name: UI (typecheck + build)

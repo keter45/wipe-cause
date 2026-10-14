@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react';
 import { Check, Clapperboard, ClipboardCopy, FileCode, FileText, ImageDown, MessageSquare, Share2 } from 'lucide-react';
 import type { Pull } from '../../types';
 import type { ClipMoment } from '../../lib/replayClip';
-import { discordPost, inTauri } from '../../lib/api';
+import { discordPost, hasBackend } from '../../lib/api';
 import { cardHtml, cardPng, copyPng, fileSlug, printPdf, saveClip, saveHtml, savePng, sendPngToDiscord, sendToDiscord } from '../../lib/share';
 import { Popover } from '../Popover';
 import type { CardDetail } from './common';
@@ -82,7 +82,7 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord, clip }: 
     ...(pdf || detail === 'full' ? (['pdf'] as const) : []),
     'html',
     ...(clip ? (['clip'] as const) : []),
-    ...(inTauri && hasDiscord ? ([...(discord ? (['discordText'] as const) : []), 'discord'] as const) : []),
+    ...(hasBackend && hasDiscord ? ([...(discord ? (['discordText'] as const) : []), 'discord'] as const) : []),
   ];
   const icons = { copy: ClipboardCopy, png: ImageDown, html: FileCode, pdf: FileText, clip: Clapperboard, discord: MessageSquare, discordText: MessageSquare };
 
@@ -123,7 +123,7 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord, clip }: 
           );
         })}
       </div>
-      {inTauri && status && !hasDiscord && (
+      {hasBackend && status && !hasDiscord && (
         <p className="muted small">
           {t.discordSetup((text) => (
             <button

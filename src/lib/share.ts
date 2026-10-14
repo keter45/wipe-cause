@@ -5,8 +5,8 @@ import { createElement, type ReactElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { toPng } from 'html-to-image';
-import { invoke } from '@tauri-apps/api/core';
-import { inTauri } from './api';
+import { invoke } from './backend';
+import { inDesktop } from './api';
 import { EagerIcons } from '../components/SpellIcon';
 import { getLocale, messagesOf } from '../i18n';
 import { shareLibMsg } from './share.i18n';
@@ -157,7 +157,7 @@ export async function copyPng(dataUrl: string) {
 
 /** Salvar: no app, diálogo do sistema; no navegador, download. */
 async function saveFile(name: string, ext: 'png' | 'html' | 'json' | 'webp', dataB64: string, mime: string): Promise<boolean> {
-  if (!inTauri) {
+  if (!inDesktop) {
     const a = document.createElement('a');
     a.href = `data:${mime};base64,${dataB64}`;
     a.download = name;

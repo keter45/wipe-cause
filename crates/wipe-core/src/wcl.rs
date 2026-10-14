@@ -11,7 +11,7 @@ use crate::data::GameData;
 use crate::report::{GearItem, LogReport, Setup, SetupStats};
 use crate::rules::RuleBook;
 use crate::timestamp::format_timestamp;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::HashMap;
 
 const NIL_GUID: &str = "0000000000000000";
@@ -560,6 +560,76 @@ fn combatant(actors: &HashMap<i64, Actor>, e: &Value) -> Option<(String, Option<
     Some((a.guid.clone(), spec, Setup { stats, item_level: crate::setup::item_level(&items), items, talents }))
 }
 
+/// Tipos de evento que o motor não usa (fora daqui, só o que vira linha do log).
+const SKIP_TYPES: &[&str] = &[
+    "refreshbuff",
+    "refreshdebuff",
+    "begincast",
+    "absorbed",
+    "healabsorbed",
+    "extraattacks",
+    "empowerstart",
+    "empowerend",
+    "create",
+    "resurrect",
+    "encounterstart",
+    "encounterend",
+];
+
+/// Campos que o conversor lê (o resto — classResources, buffs, ... — é descartado).
+const KEEP_FIELDS: &[&str] = &[
+    "timestamp",
+    "type",
+    "sourceID",
+    "targetID",
+    "sourceInstance",
+    "targetInstance",
+    "abilityGameID",
+    "extraAbilityGameID",
+    "amount",
+    "overkill",
+    "absorbed",
+    "overheal",
+    "unmitigatedAmount",
+    "resisted",
+    "blocked",
+    "hitType",
+    "tick",
+    "stack",
+    "isBuff",
+    "resourceActor",
+    "hitPoints",
+    "maxHitPoints",
+    "attackPower",
+    "spellPower",
+    "armor",
+    "absorb",
+    "x",
+    "y",
+    "facing",
+    "mapID",
+    "itemLevel",
+    // resourcechange (recurso da rotação: ganho e desperdício)
+    "resourceChange",
+    "resourceChangeType",
+    "waste",
+    "maxResourceAmount",
+];
+
+/// Só o que interessa de uma página de eventos.
+pub fn slim_events(events: Vec<Value>) -> Vec<Value> {
+    events
+        .into_iter()
+        .filter(|e| !SKIP_TYPES.contains(&e["type"].as_str().unwrap_or("")))
+        .map(|e| match e {
+            Value::Object(o) if o.get("type").and_then(Value::as_str) != Some("combatantinfo") => {
+                Value::Object(o.into_iter().filter(|(k, _)| KEEP_FIELDS.contains(&k.as_str())).collect::<Map<_, _>>())
+            }
+            other => other,
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -656,5 +726,17 @@ mod tests {
         let kb = p.deaths[0].killing_blow.as_ref().expect("golpe final");
         assert_eq!((kb.spell_id, kb.overkill), (1_284_034, 5_000));
         assert_eq!(p.bosses[0].hp_pct, Some(90.0));
+    }
+
+    #[test]
+    fn slim_keeps_only_what_the_engine_reads() {
+        let v = slim_events(vec![
+            serde_json::json!({ "type": "refreshbuff", "timestamp": 1 }),
+            serde_json::json!({ "type": "damage", "timestamp": 2, "amount": 5, "classResources": [1], "fight": 3 }),
+            serde_json::json!({ "type": "combatantinfo", "timestamp": 3, "gear": [] }),
+        ]);
+        assert_eq!(v.len(), 2);
+        assert_eq!(v[0], serde_json::json!({ "type": "damage", "timestamp": 2, "amount": 5 }));
+        assert!(v[1].get("gear").is_some(), "combatantinfo fica inteiro");
     }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CircleAlert, Crosshair, ExternalLink, Link2, MessageSquare, MessageSquareOff, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { discordSetConfig, inTauri, migrateWcrDir, openExternal, savedWclAuto, savedWclLink, saveWclAuto, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo } from '../lib/api';
+import { discordSetConfig, hasBackend, migrateWcrDir, openExternal, savedWclAuto, savedWclLink, saveWclAuto, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo, inDesktop } from '../lib/api';
 import { reportCode } from '../lib/wcl';
 import { findNightReport } from '../lib/guildNights';
 import { logTitle, mainEncounterId } from '../lib/format';
@@ -59,12 +59,12 @@ export function Header(props: Props) {
       {report && (
         <>
           <CutoffStepper
-            value={inTauri ? props.deathCutoff : report.deathCutoff}
-            disabled={!inTauri || props.busy || !props.canReanalyze}
+            value={hasBackend ? props.deathCutoff : report.deathCutoff}
+            disabled={!hasBackend || props.busy || !props.canReanalyze}
             title={
               !props.canReanalyze
                 ? t.cutoffMissingLog
-                : inTauri
+                : hasBackend
                   ? t.cutoffHint
                   : t.cutoffBrowser
             }
@@ -75,9 +75,9 @@ export function Header(props: Props) {
       )}
       <div className="topbar-group" aria-label={t.tonight}>
         {props.showLive && <LiveButton status={props.live} error={props.liveError} onStart={props.onLiveStart} onStop={props.onLiveStop} />}
-        {inTauri && <DiscordAutoButton />}
+        {inDesktop && <DiscordAutoButton />}
         {report && <WclButton logFile={report.file} pulls={report.pulls} onWcl={props.onWcl} />}
-        {report && inTauri && <VideosButton pulls={report.pulls} onVideos={props.onVideos} />}
+        {report && inDesktop && <VideosButton pulls={report.pulls} onVideos={props.onVideos} />}
       </div>
     </header>
   );
@@ -188,7 +188,7 @@ function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
           </span>
         )}
       </div>
-      {inTauri && canReanalyze && (
+      {hasBackend && canReanalyze && (
         <button className="icon-btn" onClick={onReanalyze} disabled={busy} title={t.reanalyze}>
           <RotateCw {...ICON} />
         </button>
@@ -208,7 +208,7 @@ function WclButton({ logFile, pulls, onWcl }: { logFile: string; pulls: Pull[]; 
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
   const code = reportCode(input);
-  const canSearch = inTauri && !!status?.wcl?.configured;
+  const canSearch = hasBackend && !!status?.wcl?.configured;
   // ao vivo: o report da noite pode ainda não existir no começo; procura de novo a cada pull novo
   const raidPulls = pulls.filter((p) => !p.dungeon).length;
 

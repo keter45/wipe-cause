@@ -6,9 +6,9 @@
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from './backend';
 import type { Death, Pull, ReplayRef } from '../types';
-import { inTauri } from './api';
+import { inDesktop } from './api';
 import { decodeReplay, deathReplayExtras, type ReplayData, type ReplayHit } from './replay';
 import { wipeCause } from './verdict';
 import { muxWebpAnimation, type WebpFrame } from './webp';
@@ -82,7 +82,7 @@ export interface ClipOptions {
 /** Arena: a imagem do raidplan vem pelo app (sem CORS, ela estragaria o canvas); no navegador, sem ela. */
 async function withArenaImage(data: ReplayData): Promise<ReplayData> {
   if (!data.map) return data;
-  if (!inTauri) return { ...data, map: { ...data.map, image: '' } };
+  if (!inDesktop) return { ...data, map: { ...data.map, image: '' } };
   try {
     const image = await invoke<string>('fetch_image', { url: data.map.image });
     return { ...data, map: { ...data.map, image } };

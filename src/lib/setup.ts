@@ -3,7 +3,7 @@
 // contexto, então salvar numa tela atualiza os indicadores das outras.
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { discordGetConfig, inTauri, logsDetectDir, logsGetDir, wcrDetectDir, wcrGetDir, startupGet, wcrCloudGetConfig, type DiscordConfig, type WcrCloudConfig } from './api';
+import { discordGetConfig, hasBackend, inWeb, logsDetectDir, logsGetDir, wcrDetectDir, wcrGetDir, startupGet, wcrCloudGetConfig, type DiscordConfig, type WcrCloudConfig } from './api';
 import { aiGetConfig, type AiConfig } from './ai';
 import { wclGetConfig, type WclConfig } from './wclApi';
 
@@ -38,7 +38,7 @@ const DEMO: SetupStatus = {
 };
 
 async function loadStatus(): Promise<SetupStatus> {
-  if (!inTauri) return DEMO;
+  if (!hasBackend) return DEMO;
   const safe = <T,>(p: Promise<T>, fallback: T) => p.catch(() => fallback);
   const [logsSaved, logsDetected, wcrSaved, wcrDetected, discord, ai, wcl, openWithWow, wcrCloud] = await Promise.all([
     safe(logsGetDir(), null),
@@ -73,12 +73,14 @@ export function useSetupStatus() {
 }
 
 /** O que falta para o app funcionar (sem isso não há logs para analisar). */
-export const missingRequired = (s: SetupStatus | null) => s != null && !s.logsDir;
+/** No site não há pasta: o log é escolhido a cada análise. */
+export const missingRequired = (s: SetupStatus | null) => s != null && !inWeb && !s.logsDir;
 
 /** Integrações opcionais prontas (para o resumo "2 de 4"). */
 export function optionalDone(s: SetupStatus | null): { done: number; total: number } {
   if (!s) return { done: 0, total: 4 };
-  const flags = [!!s.wcl?.configured, !!s.wcrDir, !!s.discord?.webhook, !!s.ai];
+  // vídeos do Warcraft Recorder: só no app
+  const flags = [!!s.wcl?.configured, ...(inWeb ? [] : [!!s.wcrDir]), !!s.discord?.webhook, !!s.ai];
   return { done: flags.filter(Boolean).length, total: flags.length };
 }
 

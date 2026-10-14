@@ -2,7 +2,7 @@
 // OpenAI. Os limites dos planos gratuitos mudam com frequência: o modelo padrão é só um ponto
 // de partida — "Carregar modelos" busca a lista atual no provedor.
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from './backend';
 import { messagesOf } from '../i18n';
 import { aiPresetMsg } from './ai.i18n';
 

@@ -2,7 +2,7 @@
 // HPS para healers (cada ranking no seu). O WCL só ranqueia kills: num wipe mostramos o
 // histórico do player naquele boss (mediana e melhor parse), marcado como histórico.
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from './backend';
 import type { PlayerStats, Pull } from '../types';
 import { ownFight } from './wclApi';
 import { WCL_DIFFICULTY } from './wcl';

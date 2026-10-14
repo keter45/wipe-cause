@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronRight, FileX, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
 import type { LogReport } from '../types';
-import { inTauri, readReportFile, sameLog, type HistoryEntry } from '../lib/api';
+import { hasBackend, readReportFile, sameLog, type HistoryEntry, inDesktop } from '../lib/api';
 import { logTitle, mainEncounterId, pct } from '../lib/format';
 import { BossIcon, BossName } from './Names';
 import type { UpdateState } from '../lib/updater';
@@ -62,7 +62,7 @@ export function Sidebar(props: Props) {
         <button className="icon-btn sidebar-collapse" onClick={props.onCollapse} title={t.collapse} aria-label={t.collapse}>
           <PanelLeftClose size={16} strokeWidth={1.5} aria-hidden />
         </button>
-        {inTauri ? (
+        {hasBackend ? (
           <button className={`side-item new ${props.page === 'browse' ? 'active' : ''}`} onClick={props.onNew} aria-current={props.page === 'browse' ? 'page' : undefined}>
             <Plus size={16} strokeWidth={2} aria-hidden /> {t.newAnalysis}
           </button>
@@ -141,7 +141,7 @@ export function Sidebar(props: Props) {
 
       <div className="sidebar-foot">
         <SettingsItem active={props.page === 'settings'} onClick={props.onSettings} />
-        {inTauri && <VersionChip version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
+        {inDesktop && <VersionChip version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
       </div>
     </aside>
   );
@@ -298,7 +298,7 @@ export function SidebarRail({ history, report, page, onNew, onTrends, onSettings
   return (
     <nav className="sidebar-rail" aria-label={t.aria}>
       {item(t.expand, false, onExpand, <PanelLeftOpen size={16} strokeWidth={1.5} aria-hidden />)}
-      {inTauri && item(t.newAnalysis, page === 'browse', onNew, <Plus size={16} strokeWidth={2} aria-hidden />, 'new')}
+      {hasBackend && item(t.newAnalysis, page === 'browse', onNew, <Plus size={16} strokeWidth={2} aria-hidden />, 'new')}
       {item(t.trends, page === 'trends', onTrends, <TrendingUp size={16} strokeWidth={1.5} aria-hidden />)}
       <span className="rail-sep" aria-hidden />
       <div className="rail-entries">

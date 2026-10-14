@@ -5,7 +5,7 @@
 // kill parecido, se já matamos) -> baixa os casts e o dano por habilidade daquele fight e
 // monta um "player" no mesmo formato do nosso log, para a mesma comparação da aba.
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from './backend';
 import type { BuffTrace, GearItem, PlayerStats, Pull, Setup, SpellAmount, SpellCasts } from '../types';
 import { buffTraces, type AuraChange } from './decisions';
 import type { Sample } from './performance';

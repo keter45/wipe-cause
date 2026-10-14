@@ -40,14 +40,22 @@ function devVideos(): Plugin {
 }
 
 // Porta fixa: o Tauri aponta o devUrl para ela (src-tauri/tauri.conf.json).
-export default defineConfig({
+// `--mode web` (npm run dev:web / build:web) é o site: .env.web liga o VITE_TARGET, o build sai
+// em dist-web com o caminho do GitHub Pages, e o núcleo em WASM vem de src/web/pkg (npm run wasm).
+export default defineConfig(({ mode, command, isPreview }) => ({
   plugins: [react(), devVideos()],
   clearScreen: false,
+  // versão mostrada no site (no app vem do Tauri)
+  define: { __APP_VERSION__: JSON.stringify(JSON.parse(fs.readFileSync('package.json', 'utf8')).version) },
+  base: mode === 'web' && (command === 'build' || isPreview) ? (process.env.WEB_BASE ?? '/wipe-cause/') : '/',
+  resolve: { alias: [{ find: /^wipe-wasm\//, replacement: `${path.resolve(import.meta.dirname, 'src/web/pkg')}/` }] },
+  worker: { format: 'es' },
+  build: mode === 'web' ? { outDir: 'dist-web' } : undefined,
   // testes em português, como os textos esperados nos asserts (o inglês tem os próprios testes)
   test: { setupFiles: ['src/i18n/test-setup.ts'] },
   server: {
-    port: 1420,
+    port: mode === 'web' ? 1430 : 1420,
     strictPort: true,
     watch: { ignored: ['**/src-tauri/**', '**/crates/**', '**/target/**'] },
   },
-});
+}));

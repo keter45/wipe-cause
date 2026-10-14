@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Bot, FileText, RotateCcw, Send, Settings2 } from 'lucide-react';
 import type { Pull } from '../types';
-import { inTauri } from '../lib/api';
+import { hasBackend } from '../lib/api';
 import { PRESETS, aiChat, type ChatMessage } from '../lib/ai';
 import { useSetup } from '../lib/setup';
 import { dossierTitle, estimateTokens, pullContext, suggestedQuestions, systemPrompt } from '../lib/aiContext';
@@ -55,7 +55,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
     setError(null);
     try {
       const system: ChatMessage = { role: 'system', content: `${systemPrompt()}\n\n# ${dossierTitle()}\n${context}` };
-      const answer = inTauri ? await aiChat([system, ...next.slice(-HISTORY)]) : await demoAnswer(q);
+      const answer = hasBackend ? await aiChat([system, ...next.slice(-HISTORY)]) : await demoAnswer(q);
       update([...next, { role: 'assistant', content: answer }]);
     } catch (e) {
       setError(String(e));
@@ -100,7 +100,7 @@ export function AskView({ pull, nightPulls }: { pull: Pull; nightPulls: Pull[] }
               <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> {t.newChat}
             </button>
           )}
-          {inTauri && (
+          {hasBackend && (
             <button className="btn ghost sm" onClick={() => openSettings('ai')}>
               <Settings2 size={14} strokeWidth={1.5} aria-hidden /> {t.switchProvider}
             </button>

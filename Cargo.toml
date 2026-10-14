@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/wipe-core", "src-tauri"]
+members = ["crates/wipe-core", "crates/wipe-wasm", "src-tauri"]
 resolver = "2"
 
 [workspace.package]

@@ -1,9 +1,9 @@
 // Nomes e ícones dos talentos por spec (dados públicos do Raidbots). No app vem do backend,
 // que guarda em cache; no navegador (desenvolvimento da UI) busca direto.
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from './backend';
 import { useEffect, useState } from 'react';
-import { inTauri } from './api';
+import { inDesktop } from './api';
 
 export interface TalentEntry {
   name: string;
@@ -56,7 +56,7 @@ const cache = new Map<number, Promise<TalentTree>>();
 export function talentTree(specId: number): Promise<TalentTree> {
   let p = cache.get(specId);
   if (!p) {
-    p = inTauri
+    p = inDesktop
       ? invoke<Record<string, TalentEntry>>('talent_tree', { specId }).then((o) => new Map(Object.entries(o).map(([k, v]) => [Number(k), v])))
       : browserTree(specId);
     // falhou (sem internet): tenta de novo na próxima vez

@@ -6,6 +6,7 @@ export const settingsMsg = defineMessages(
   {
     title: 'Configurações',
     intro: 'O essencial para analisar e as integrações opcionais. Tudo fica só neste PC.',
+    introWeb: 'O essencial para analisar e as integrações opcionais. Tudo fica só neste navegador.',
     language: 'Idioma',
     systemLanguage: (name: string) => `Do sistema: ${name}`,
     logsMissing: 'Falta a pasta de logs',
@@ -117,6 +118,7 @@ export const settingsMsg = defineMessages(
   {
     title: 'Settings',
     intro: 'What you need to analyze, plus optional integrations. Everything stays on this PC.',
+    introWeb: 'What you need to analyze, plus optional integrations. Everything stays in this browser.',
     language: 'Language',
     systemLanguage: (name: string) => `System: ${name}`,
     logsMissing: 'Logs folder missing',

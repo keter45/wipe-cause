@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Globe } from 'lucide-react';
-import { WCL_SOURCE, inTauri, parseWclCode } from '../lib/api';
+import { WCL_SOURCE, hasBackend, parseWclCode } from '../lib/api';
 import { useSetup } from '../lib/setup';
 import { useMessages } from '../i18n';
 import { wclOpenMsg } from './WclOpen.i18n';
@@ -27,7 +27,7 @@ export function WclOpen({ busy, onAnalyze }: { busy: boolean; onAnalyze: (path: 
           <p className="muted small">{t.text}</p>
         </div>
       </div>
-      {!inTauri ? (
+      {!hasBackend ? (
         <p className="muted small">{t.appOnly}</p>
       ) : !configured ? (
         <p className="small">

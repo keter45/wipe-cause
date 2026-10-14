@@ -24,6 +24,16 @@ export const appMsg = defineMessages(
       </>
     ),
     orHistory: 'Ou abra uma análise salva na barra lateral.',
+    webNote: () => (
+      <>
+        Versão web: a análise roda no seu navegador e o log não sai do seu PC. O modo ao vivo, os vídeos do Warcraft Recorder e o envio automático ao Discord ficam no{' '}
+        <a href="https://github.com/keter45/wipe-cause/releases/latest" target="_blank" rel="noreferrer">
+          app para Windows
+        </a>
+        .
+      </>
+    ),
+    webIntegrations: 'integrações ligadas: Warcraft Logs, Discord e IA',
   },
   {
     needsApp: "Logs can't be read in the browser: open the app (npm run tauri dev) or load a JSON report from the sidebar.",
@@ -48,5 +58,15 @@ export const appMsg = defineMessages(
       </>
     ),
     orHistory: 'Or open a saved analysis from the sidebar.',
+    webNote: () => (
+      <>
+        Web version: the analysis runs in your browser and the log never leaves your PC. Live mode, Warcraft Recorder videos and automatic Discord posts are in the{' '}
+        <a href="https://github.com/keter45/wipe-cause/releases/latest" target="_blank" rel="noreferrer">
+          Windows app
+        </a>
+        .
+      </>
+    ),
+    webIntegrations: 'integrations on: Warcraft Logs, Discord and AI',
   },
 );
