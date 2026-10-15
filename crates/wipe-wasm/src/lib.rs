@@ -195,6 +195,19 @@ impl WclSession {
         Ok(())
     }
 
+    /// Fight para o replay completo (posições, vida, debuffs); feche com `replay`.
+    #[wasm_bindgen(js_name = beginReplay)]
+    pub fn begin_replay(&mut self, report: usize, fight_id: f64) -> Result<(), JsError> {
+        self.analyzer()?.begin_replay(report, fight_id as i64).map_err(err)
+    }
+
+    /// Fecha o fight de `beginReplay`: o pull com o replay, em JSON.
+    pub fn replay(&mut self) -> Result<String, JsError> {
+        let analyzer = self.analyzer.take().ok_or_else(|| err("session finished"))?;
+        let pull = analyzer.replay().ok_or_else(|| err(pick("pull curto demais para o replay", "pull too short for the replay")))?;
+        serde_json::to_string(&pull).map_err(err)
+    }
+
     /// Fecha a análise. `file` = `wcl:<códigos>`.
     pub fn finish(&mut self, file: &str) -> Result<String, JsError> {
         let analyzer = self.analyzer.take().ok_or_else(|| err("session finished"))?;

@@ -42,7 +42,9 @@ export async function loadFight(pull: Pull): Promise<Pull> {
     if (!url) throw new Error('missing ?fight= sample');
     return (await fetch(url)).json();
   }
-  return invoke<Pull>('fight_replay', { path: pull.logFile, offset: pull.logOffset });
+  // pull do Warcraft Logs (`wcl:<código>`, offset = fight): horários no fuso de quem vê, como na análise
+  const tzHours = -new Date().getTimezoneOffset() / 60;
+  return invoke<Pull>('fight_replay', { path: pull.logFile, offset: pull.logOffset, tzHours });
 }
 
 export async function analyzeLog(path: string, deathCutoff: number, onProgress: (fraction: number) => void): Promise<LogReport> {

@@ -34,6 +34,18 @@ pub(crate) fn user_rules_dir(app: &AppHandle) -> Option<PathBuf> {
     Some(dir)
 }
 
+/// Regras para a análise pelo Warcraft Logs: as embutidas, as do usuário e os ajustes.
+fn wcl_book(opts: &wipe_core::AnalyzeOptions) -> wipe_core::rules::RuleBook {
+    let mut book = wipe_core::rules::RuleBook::embedded();
+    if let Some(dir) = &opts.rules_dir {
+        book.load_dir(dir);
+    }
+    if let Some(dir) = &opts.tuning_dir {
+        book.load_tuning_dir(dir);
+    }
+    book
+}
+
 /// Analisa o log (ou um report do Warcraft Logs, `wcl:<código>`) e guarda no histórico (se o
 /// histórico falhar, a análise continua valendo). `progress(lidos, total)` acompanha a leitura;
 /// `tz_hours` é o fuso de quem vê (o Warcraft Logs guarda os horários em UTC).
@@ -42,14 +54,7 @@ pub(crate) fn analyze_and_save(app: &AppHandle, path: &str, death_cutoff: u32, t
     let codes = wcl_source::codes_of(path);
     let opts = wipe_core::AnalyzeOptions { rules_dir, tuning_dir: tuning_dir(app), death_cutoff };
     let report = if !codes.is_empty() {
-        let mut book = wipe_core::rules::RuleBook::embedded();
-        if let Some(dir) = &opts.rules_dir {
-            book.load_dir(dir);
-        }
-        if let Some(dir) = &opts.tuning_dir {
-            book.load_tuning_dir(dir);
-        }
-        wcl_source::analyze(app, &codes, book, &opts, tz_hours, progress)?
+        wcl_source::analyze(app, &codes, wcl_book(&opts), &opts, tz_hours, progress)?
     } else {
         wipe_core::analyze_file(&PathBuf::from(path), &opts, progress).map_err(|e| pick(format!("não foi possível ler {path}: {e}"), format!("could not read {path}: {e}")))?
     };
@@ -101,11 +106,14 @@ async fn fetch_image(url: String) -> Result<String, String> {
 }
 
 /// Replay completo de um pull: relê só ele no log (posições do pull inteiro, vida, debuffs e
-/// eventos de cada player).
+/// eventos de cada player). Pull do Warcraft Logs (`wcl:<código>`): `offset` é o id do fight.
 #[tauri::command]
-async fn fight_replay(app: AppHandle, path: String, offset: u64) -> Result<wipe_core::Pull, String> {
+async fn fight_replay(app: AppHandle, path: String, offset: u64, tz_hours: Option<f64>) -> Result<wipe_core::Pull, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let opts = wipe_core::AnalyzeOptions { rules_dir: user_rules_dir(&app), tuning_dir: tuning_dir(&app), death_cutoff: 0 };
+        if let Some(code) = wcl_source::codes_of(&path).first() {
+            return wcl_source::replay(&app, code, offset as i64, wcl_book(&opts), tz_hours.unwrap_or(0.0));
+        }
         wipe_core::analyze_pull_full(&PathBuf::from(&path), offset, &opts).map_err(|e| pick(format!("não foi possível reler o pull em {path}: {e}"), format!("could not re-read the pull in {path}: {e}")))
     })
     .await
