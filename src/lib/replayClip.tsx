@@ -23,17 +23,13 @@ import { mmss, shortName } from './format';
 import { messagesOf } from '../i18n';
 import { clipLibMsg } from './replayClip.i18n';
 import { EagerIcons } from '../components/SpellIcon';
-import { ReplayView, type Playback } from '../components/ReplayView';
+import { ReplayView, type MapView, type Playback } from '../components/ReplayView';
+import { clipSpan } from './clipSpan';
 
-/** Quadros por segundo e o maior trecho (ms) de um clipe. */
+export { clipSpan };
+
+/** Quadros por segundo. */
 const FPS = 10;
-const MAX_SPAN_MS = 12_000;
-/** Trecho em volta do erro: tanto antes e tanto depois (clipe de um momento só). */
-const BEFORE_MS = 7_000;
-const AFTER_MS = 3_000;
-/** No resumo da try, cada momento é mais curto. */
-const RECAP_BEFORE_MS = 5_000;
-const RECAP_AFTER_MS = 2_500;
 /** Momentos do resumo: no máximo estes, e dois a menos disto (ms) um do outro viram um só. */
 const MAX_MOMENTS = 4;
 const SAME_MOMENT_MS = 5_000;
@@ -138,13 +134,12 @@ export function clipMoments(p: Pull): ClipMoment[] {
   return picked.sort((a, b) => a.t - b.t);
 }
 
-/** O trecho do clipe dentro do replay: em volta do erro, no máximo 12 s (no resumo, mais curto). */
-export function clipSpan(r: ReplayRef, t: number, recap = false): [number, number] {
-  let from = Math.max(r.from, t - (recap ? RECAP_BEFORE_MS : BEFORE_MS));
-  let to = Math.min(r.to, t + (recap ? RECAP_AFTER_MS : AFTER_MS));
-  if (to - from > MAX_SPAN_MS) from = to - MAX_SPAN_MS;
-  if (to <= from) to = Math.min(r.to, from + 1000);
-  return [from, to];
+/** O mapa da tela que o clipe repete: enquadramento, câmera, os outros, e o trecho que o enquadramento cobre. */
+export interface ClipView {
+  view: MapView;
+  /** o replay é a luta inteira (chão da arena, relógio em mm:ss) */
+  full: boolean;
+  frame?: [number, number];
 }
 
 export interface ClipOptions {
@@ -152,6 +147,8 @@ export interface ClipOptions {
   title: string;
   /** trecho [de, até] (clipe de um momento só); sem ele, em volta do instante do erro */
   span?: [number, number];
+  /** o mapa como o usuário deixou na tela (clipe de um momento só); sem ele, o enquadramento automático */
+  view?: ClipView;
   onProgress?: (fraction: number) => void;
 }
 
@@ -230,6 +227,8 @@ export async function replayClip(pull: Pull, list: ClipMoment | ClipMoment[], op
   const classes = new Map(src.players.map((p) => [p.guid, p.class] as const));
   // com o replay completo, o trecho pode passar da janela guardada do replay (mostra o que veio depois do erro)
   const spans = moments.map((m) => (!recap && opts.span ? opts.span : clipSpan(fv ? { ...m.replay, from: 0, to: src.durationMs } : m.replay, m.t, recap)));
+  // o mapa como na tela (clipe de um momento só, com o enquadramento e o zoom que o usuário escolheu)
+  const screen = recap ? undefined : opts.view;
   // o mapa enquadra o trecho do clipe (onde a raid esteve nele)
   const replays = moments.map((m, i): ReplayRef => ({ ...m.replay, from: spans[i][0], to: spans[i][1] }));
   const images = new Map<string, Promise<string>>();
@@ -270,6 +269,7 @@ export async function replayClip(pull: Pull, list: ClipMoment | ClipMoment[], op
             ...extras,
             ...(overlays ?? {}),
             badge,
+            ...(screen ? { initial: screen.view, full: screen.full, frame: screen.frame } : {}),
           }),
         ),
       ),

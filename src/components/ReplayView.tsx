@@ -12,6 +12,7 @@ import { Hint } from './ui/Hint';
 import { Popover } from './Popover';
 import { castMsOf, fetchTooltip } from '../lib/wowhead';
 import { ClipButton, ClipPullContext } from './ClipButton';
+import { clipSpan } from '../lib/clipSpan';
 
 export type { ReplayHit } from '../lib/replay';
 
@@ -57,6 +58,24 @@ interface Props {
   legendExtra?: ReactNode;
   /** replay completo: quem tem esta aura neste instante (centros das áreas em volta de players) */
   holders?: (auraId: number, t: number) => string[];
+  /** como o mapa abre (o clipe desenha o que o usuário deixou na tela): enquadramento, câmera, os outros */
+  initial?: Partial<MapView>;
+  /** trecho que o enquadramento cobre (no clipe, o trecho escolhido); sem ele, o replay inteiro */
+  frame?: [number, number];
+}
+
+/** Câmera do usuário por cima do enquadramento automático: deslocamento (jardas) e zoom. */
+export interface Cam {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+/** O mapa como está na tela: o enquadramento (a raid toda ou focado), a câmera e se os outros aparecem. */
+export interface MapView {
+  wide: boolean;
+  cam: Cam;
+  others: boolean;
 }
 
 /** Tempo do replay: o instante, tocando ou parado, e a velocidade. */
@@ -235,10 +254,9 @@ function triangle(bx: number, by: number, a: number, h: number, len: number): st
 /** Setas: quanto voltar/avançar (ms); com Shift, o passo maior. */
 const KEY_STEP_MS = 1_000;
 const KEY_STEP_BIG_MS = 5_000;
-/** Câmera do usuário por cima do enquadramento automático: deslocamento (jardas) e zoom. */
-const NO_CAM = { x: 0, y: 0, zoom: 1 };
-const ZOOM_MIN = 0.5;
-const ZOOM_MAX = 10;
+const NO_CAM: Cam = { x: 0, y: 0, zoom: 1 };
+export const ZOOM_MIN = 0.5;
+export const ZOOM_MAX = 10;
 /** Quanto a roda do mouse aproxima por unidade de deltaY. */
 const WHEEL_ZOOM = 0.0015;
 
@@ -394,13 +412,13 @@ function WorldMarkerIcon({ marker, x, y, title }: { marker: number; x: number; y
 }
 
 /** Replay das posições em volta de um momento (morte, acerto, falha, encontro). */
-export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, vacated, vanished, zones = [], range }: Props) {
+export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, vacated, vanished, zones = [], range, initial, frame }: Props) {
   const clipCtx = useContext(ClipPullContext);
   const t = useMessages(replayMsg);
   // tempo: o de fora (replay completo) ou o próprio
   const own = usePlayback(r.from, r.to, autoplay ? r.from : r.t, !playback && autoplay);
   const { now, setNow, playing, setPlaying, speed, setSpeed, nowRef } = playback ?? own;
-  const [others, setOthers] = useState(true);
+  const [others, setOthers] = useState(initial?.others ?? true);
   // marcas de chão escondidas pela legenda (clique liga e desliga)
   // áreas das habilidades e orbs (replay completo) e nomes embaixo das bolinhas: também ligam e desligam
   const [hiddenAreas, setHiddenAreas] = useState<Set<string>>(prefs.hiddenAreas);
@@ -424,10 +442,15 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   // (vale para todos os replays e fica salvo entre sessões)
   const [hiddenGround, setHiddenGround] = useState<Set<string>>(prefs.hiddenGround);
   // enquadramento: a arena inteira (morte, falha coletiva, luta inteira) ou perto de quem o replay acompanha
-  const [wide, setWide] = useState(full || moment === 'death' || moment === 'failure');
+  // (na luta inteira: o chão da arena, ou focado em quem está selecionado no trecho do clipe)
+  const [wide, setWide] = useState(initial?.wide ?? (full || moment === 'death' || moment === 'failure'));
   const floorId = useId().replace(/:/g, '');
   // arrastar move o mapa, a roda dá zoom; duplo clique (ou trocar o enquadramento) volta
-  const [cam, setCam] = useState(NO_CAM);
+  const [cam, setCam] = useState<Cam>(initial?.cam ?? NO_CAM);
+  // trecho do clipe escolhido pelo usuário (null = o padrão, em volta do instante)
+  const [clipRange, setClipRange] = useState<[number, number] | null>(null);
+  // o que o enquadramento cobre: o trecho do clipe (no clipe e, na luta inteira focada, na tela) ou o replay
+  const frameWin = frame ?? (full && !wide ? clipRange : null);
   const [dragging, setDragging] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragFrom = useRef<{ x: number; y: number } | null>(null);
@@ -440,6 +463,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   }, []);
 
   const view = useMemo(() => {
+    const fr: ReplayRef = frameWin ? { ...r, from: frameWin[0], to: frameWin[1] } : r;
     const units = [...data.units.values()];
     const players = units.filter((u) => u.kind === 'player' && inWindow(u, r).length > 0);
     const focus = r.focus.map((g) => data.units.get(g)).filter((u): u is ReplayUnit => !!u && inWindow(u, r).length > 0);
@@ -457,7 +481,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     const xs: number[] = [];
     const ys: number[] = [];
     for (const u of core) {
-      for (const [, x, y] of inWindow(u, r)) {
+      for (const [, x, y] of inWindow(u, fr)) {
         xs.push(x);
         ys.push(y);
       }
@@ -475,9 +499,18 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     }
     // e entram na área
     for (const g of ghosts.filter((g) => keyGhosts.has(g.guid))) {
-      for (const [, x, y] of inWindow(g, r)) {
+      for (const [, x, y] of inWindow(g, fr)) {
         xs.push(x);
         ys.push(y);
+      }
+    }
+    // o trecho sem ninguém andando (fora do replay): enquadra pelo replay inteiro
+    if (xs.length === 0 && fr !== r) {
+      for (const u of core) {
+        for (const [, x, y] of inWindow(u, r)) {
+          xs.push(x);
+          ys.push(y);
+        }
       }
     }
     if (xs.length === 0) return null;
@@ -495,8 +528,8 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     const arena = data.arena;
     const useArena = wide && !!arena && arena.cells.length > 0;
     let cx: number, cy: number, reachX: number, reachY: number;
-    // luta inteira com a arena conhecida: a arena toda (o chão da imagem)
-    const fl = full ? data.map?.floor : undefined;
+    // luta inteira com a arena conhecida: a arena toda (o chão da imagem); focada, quem está selecionado
+    const fl = full && wide ? data.map?.floor : undefined;
     if (fl && fl.length) {
       const [x0, x1] = [Math.min(...fl.map((q) => q[0])), Math.max(...fl.map((q) => q[0]))];
       const [y0, y1] = [Math.min(...fl.map((q) => q[1])), Math.max(...fl.map((q) => q[1]))];
@@ -510,7 +543,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       const rx: number[] = [];
       const ry: number[] = [];
       for (const u of players) {
-        for (const [, x, y] of inWindow(u, r)) {
+        for (const [, x, y] of inWindow(u, fr)) {
           rx.push(x);
           ry.push(y);
         }
@@ -524,7 +557,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       const ax = [px0, px1];
       const ay = [py0, py1];
       for (const u of [...focus, ...ghosts.filter((g) => keyGhosts.has(g.guid))]) {
-        for (const [, x, y] of inWindow(u, r)) {
+        for (const [, x, y] of inWindow(u, fr)) {
           ax.push(x);
           ay.push(y);
         }
@@ -585,7 +618,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       enemyLabel.set(e.guid, ok);
     }
     return { cx, cy, players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor: arena && arena.cells.length ? arena : null, map: data.map, casts, casters };
-  }, [data, r, wide, cam, full]);
+  }, [data, r, wide, cam, full, frameWin?.[0], frameWin?.[1]]);
   const viewRef = useRef(view);
   viewRef.current = view;
 
@@ -709,6 +742,15 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   };
   const ghostOwner = (g: ReplayUnit) => shortName(data.units.get(g.owner ?? '')?.name ?? '');
   const hpNow = hp ? valueAt(hp, now) : null;
+  /** Trecho padrão do clipe: em volta do instante (luta inteira) ou o replay do momento. */
+  const defaultClipRange = (): [number, number] =>
+    full ? [Math.max(r.from, now - CLIP_FULL_BEFORE_MS), Math.min(r.to, now + CLIP_FULL_AFTER_MS)] : clipSpan(r, r.t);
+  /** A raid toda ou focado (na luta inteira, focado enquadra o trecho do clipe). */
+  const toggleWide = () => {
+    if (full && wide && !clipRange) setClipRange(defaultClipRange());
+    setWide(!wide);
+    setCam(NO_CAM);
+  };
   // luta inteira: centraliza (e aproxima) a câmera em quem está selecionado, no instante
   const centerOnFocus = () => {
     const p = fp[0];
@@ -1196,20 +1238,26 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           <ClipButton
             pull={clipCtx.pull}
             title={clipCtx.title}
-            moment={() => {
+            moment={([from]) => {
               const death = dies ? clipCtx.pull.deaths.find((d) => d.guid === dies && d.replay?.t === r.t) : undefined;
-              const label = death ? t.clipDied(shortName(death.name)) : full ? t.clipAt(mmss(now)) : t.clipMoment;
-              return { replay: { ...r, from: r.from, to: r.to }, t: full ? now : r.t, label, death };
+              const label = death ? t.clipDied(shortName(death.name)) : full ? t.clipAt(mmss(from)) : t.clipMoment;
+              return { replay: { ...r, from: r.from, to: r.to }, t: full ? from : r.t, label, death };
             }}
-            span={full ? () => [Math.max(r.from, now - CLIP_FULL_BEFORE_MS), Math.min(r.to, now + CLIP_FULL_AFTER_MS)] : undefined}
+            bounds={[r.from, r.to]}
+            range={clipRange ?? defaultClipRange()}
+            custom={clipRange != null}
+            onRange={setClipRange}
+            now={() => nowRef.current}
+            view={{ wide, cam, others }}
+            canFrame={!!view.floor || full}
+            onWide={toggleWide}
+            onZoom={(zoom) => setCam((c) => ({ ...c, zoom }))}
+            clipView={() => ({ view: { wide, cam, others }, full, frame: frameWin ?? [r.from, r.to] })}
           />
         )}
         <span className={`small num replay-clock ${after && !full ? 'bad' : 'muted'}`}>{clock}</span>
-        {view.floor && !full && (
-          <button className={`btn sm ghost ${wide ? 'pressed' : ''}`} aria-pressed={wide} onClick={() => {
-              setWide(!wide);
-              setCam(NO_CAM);
-            }} title={wide ? t.zoomFocus : t.zoomArena} aria-label={wide ? t.zoomFocus : t.zoomArena}>
+        {(view.floor || full) && (
+          <button className={`btn sm ghost ${wide ? 'pressed' : ''}`} aria-pressed={wide} onClick={toggleWide} title={wide ? t.zoomFocus : t.zoomArena} aria-label={wide ? t.zoomFocus : t.zoomArena}>
             {wide ? <Minimize2 size={14} strokeWidth={1.75} aria-hidden /> : <Maximize2 size={14} strokeWidth={1.75} aria-hidden />}
           </button>
         )}
