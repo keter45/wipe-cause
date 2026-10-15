@@ -22,7 +22,7 @@ import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
 import { ShareMenu } from './share/ShareMenu';
 import { ClipPullContext } from './ClipButton';
-import { clipMoment } from '../lib/replayClip';
+import { clipMoments } from '../lib/replayClip';
 import { PullShareCard } from './share/PullCard';
 import { AskView } from './AskView';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -154,10 +154,10 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
     { label: t.groups.fight, tabs: [{ key: 'replay', label: t.tabs.replay }, { key: 'spells', label: t.tabs.spells }] },
       ];
 
-  // o erro que acabou com a try, para o clipe (compartilhar e os replays)
+  // o resumo da try (erros graves e a causa do wipe), para o clipe do Compartilhar
   const clipShare = useMemo(() => {
-    const moment = clipMoment(pull);
-    return moment ? { pull, moment } : null;
+    const moments = clipMoments(pull);
+    return moments.length ? { pull, moments } : null;
   }, [pull]);
   const clipCtx = useMemo(() => ({ pull, title: `Pull ${pull.pullNumber} · ${pull.encounterName}` }), [pull]);
 

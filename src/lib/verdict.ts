@@ -39,7 +39,7 @@ export interface Verdict {
 }
 
 /** Quantas mortes contam como "decisivas" antes de considerar o resto como cascata. */
-function cascadeThreshold(p: Pull): number {
+export function cascadeThreshold(p: Pull): number {
   const raid = p.players.length || p.groupSize || 20;
   return Math.max(2, Math.ceil(raid * 0.2));
 }
