@@ -87,7 +87,7 @@ pub(crate) struct Advanced<'a> {
     pub(crate) x: f32,
     pub(crate) y: f32,
     /// direção para onde a unidade olha (radianos)
-    facing: f32,
+    facing: Option<f32>,
     /// recurso principal da unidade: (tipo, atual, máximo); 0 = mana
     power: Option<(u32, i64, i64)>,
     /// quantidade de campos do bloco (varia entre patches)
@@ -112,13 +112,13 @@ pub(crate) fn advanced_at<'a>(f: &[&'a str], at: usize) -> Option<Advanced<'a>> 
             is_decimal(end[0])
                 && is_decimal(end[1])
                 && end[2].parse::<i64>().is_ok()
-                && is_decimal(end[3])
+                && (is_decimal(end[3]) || end[3] == "nil")
                 && end[4].parse::<i64>().is_ok()
         }
     })?;
     let x = f[at + len - 5].parse().unwrap_or(0.0);
     let y = f[at + len - 4].parse().unwrap_or(0.0);
-    let facing = f[at + len - 2].parse().unwrap_or(0.0);
+    let facing = f[at + len - 2].parse::<f32>().ok().filter(|angle| angle.is_finite());
     // powerType, currentPower, maxPower, powerCost vêm logo antes da posição (no 12.x há dois campos a mais no meio)
     let power = (|| Some((f[at + len - 9].parse().ok()?, f[at + len - 8].parse().ok()?, f[at + len - 7].parse().ok()?)))();
     Some(Advanced { info_guid: f[at], owner_guid: f[at + 1], hp, max_hp, x, y, facing, power, len })
@@ -297,6 +297,7 @@ pub(crate) struct PullBuilder {
     markers: Vec<WorldMarker>,
     /// acertos de soak (regra com `soak`): (t, x, y, mecânica, player)
     soak_hits: Vec<(i64, f32, f32, usize, String)>,
+    blast_events: Vec<(i64, u32, String)>,
     /// última marca de cada (player, tipo), para não repetir os ticks de quem ficou parado na poça
     ground_last: HashMap<(String, usize), (i64, f32, f32)>,
     /// casts dos inimigos (para o replay) e o cast com tempo ainda aberto de cada inimigo
@@ -353,6 +354,7 @@ impl PullBuilder {
             ground_kinds: Vec::new(),
             ground_marks: Vec::new(),
             soak_hits: Vec::new(),
+            blast_events: Vec::new(),
             markers: Vec::new(),
             ground_last: HashMap::new(),
             boss_casts: Vec::new(),
@@ -458,7 +460,7 @@ impl PullBuilder {
             self.trails.on_pos(adv.info_guid, &p.name, false, adv.max_hp, adv.x, adv.y, rel);
             if self.cutoff_t.is_none() {
                 if let Some(r) = self.rules.as_mut().filter(|r| r.wants_positions()) {
-                    r.on_player_pos(adv.info_guid, adv.x, adv.y, adv.facing, rel);
+                    r.on_player_pos(adv.info_guid, adv.x, adv.y, adv.facing.unwrap_or(f32::NAN), rel);
                 }
             }
             p.last_hp_pct = Some(pct);
@@ -551,6 +553,11 @@ impl PullBuilder {
             return;
         }
         self.mark_injured(t);
+        if self.counting() && matches!(f[0], "SPELL_DAMAGE" | "SPELL_MISSED" | "SPELL_ABSORBED") {
+            if let Some(spell) = f.get(9).and_then(|spell| spell.parse().ok()).filter(|&spell| self.rules.as_ref().is_some_and(|rules| rules.is_blast_spell(spell))) {
+                self.blast_events.push((self.rel(t), spell, f[1].to_string()));
+            }
+        }
         self.last_ms = t;
         let event = f[0];
         if self.owner.is_none() && f[1].starts_with("Player-") && f[3].starts_with("0x") && hex(f[3]) & AFFILIATION_MINE != 0 {
@@ -766,7 +773,7 @@ impl PullBuilder {
             }
         }
         // DoT de uma mecânica "de chão" aplicado (ex.: encostar no machado): marca onde o player estava
-        if self.counting() && is_player && f[0] == "SPELL_AURA_APPLIED" && self.rules.as_ref().is_some_and(|r| r.ground_is_dot(spell_id) && r.ground_for(spell_id).is_some()) {
+        if self.counting() && is_player && f[0] == "SPELL_AURA_APPLIED" && self.rules.as_ref().is_some_and(|r| (r.ground_is_dot(spell_id) || r.ground_contour_cell(spell_id).is_some()) && r.ground_for(spell_id).is_some()) {
             if let Some((x, y, pt)) = self.players.get(dst_guid).and_then(|p| p.pos) {
                 if rel - pt <= GROUND_POS_MAX_AGE_MS {
                     self.ground_hit(spell_id, dst_guid, x, y, rel);
@@ -777,7 +784,7 @@ impl PullBuilder {
             if let Some(r) = self.rules.as_mut() {
                 r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
                 // possuído (Dreadmarch) aparece como hostil, mas ainda é player
-                if dst_guid.starts_with("Player-") && matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") {
+                if matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") {
                     r.on_aura_from(f[1], spell_id, dst_guid, dst_name, f[0] == "SPELL_AURA_APPLIED", rel);
                 }
             }
@@ -1052,7 +1059,8 @@ impl PullBuilder {
         let kind = match self.ground_kinds.iter().position(|k| k.key == key) {
             Some(i) => i,
             None => {
-                self.ground_kinds.push(GroundKind { key: key.to_string(), name: name.to_string(), spell_id, linger_ms });
+                let contour_cell_yd = self.rules.as_ref().and_then(|rules| rules.ground_contour_cell(spell_id));
+                self.ground_kinds.push(GroundKind { key: key.to_string(), name: name.to_string(), spell_id, linger_ms, contour_cell_yd });
                 self.ground_kinds.len() - 1
             }
         };
@@ -1199,10 +1207,10 @@ impl PullBuilder {
                 r.on_enemy_cast(spell_id, src_guid, src_name, rel);
                 if let Some(a) = adv.as_ref().filter(|a| a.info_guid == src_guid) {
                     let target = self.boss_target.get(src_guid).map(String::as_str);
-                    r.on_enemy_cast_at(spell_id, src_guid, npc_id(src_guid), a.x, a.y, a.facing, target, rel);
+                    r.on_enemy_cast_at(spell_id, src_guid, npc_id(src_guid), a.x, a.y, a.facing.unwrap_or(f32::NAN), target, rel);
                 }
             }
-            let facing = adv.as_ref().filter(|a| a.info_guid == src_guid).map(|a| a.facing);
+            let facing = adv.as_ref().filter(|a| a.info_guid == src_guid).and_then(|a| a.facing);
             // só fecha o cast aberto se for o mesmo spell (um instantâneo no meio, ex.: o do add ao ser cortado, não fecha)
             let open = self.open_casts.get(src_guid).copied().filter(|&i| self.boss_casts[i].spell_id == spell_id);
             let i = match open {
@@ -1218,11 +1226,14 @@ impl PullBuilder {
                     self.boss_casts.len() - 1
                 }
             };
+            if Self::is_group_player(f[5], hex(f[7])) {
+                self.boss_casts[i].target = Some(f[5].to_string());
+            }
             // frontal em cone: aponta para o alvo do boss (o mais recente, se trocou durante o cast)
             if let Some(cone) = self.rules.as_ref().and_then(|r| r.cone_for(spell_id)) {
                 let c = &mut self.boss_casts[i];
                 c.cone = Some(cone);
-                if let Some(tg) = self.boss_target.get(src_guid) {
+                if let Some(tg) = self.boss_target.get(src_guid).filter(|_| c.target.is_none()) {
                     c.target = Some(tg.clone());
                 }
             }
@@ -1587,6 +1598,7 @@ impl PullBuilder {
         let areas = self.rules.as_ref().filter(|_| full).map(|r| r.areas()).unwrap_or_default();
         let rule_spells = self.rules.as_ref().map(|r| r.rule_spells()).unwrap_or_default();
         // soaks: dados de cada mecânica com `soak` (antes de a regra ser consumida)
+        let blast_specs = self.rules.as_ref().map(|rules| rules.blast_specs()).unwrap_or_default();
         let soak_meta: HashMap<usize, SoakInfo> = self
             .rules
             .as_ref()
@@ -1659,7 +1671,8 @@ impl PullBuilder {
                 }
             }
         }
-        let soaks = build_soaks(&self.soak_hits, &soak_meta, &self.boss_casts, &refs);
+        let soaks = build_soaks(&self.soak_hits, &soak_meta, &self.boss_casts, &refs, &self.trails);
+        let blasts = replay::build_blasts(&soaks, &self.blast_events, &blast_specs, &refs);
         let arena = tracks.as_ref().and_then(|_| self.trails.arena());
         let casts = {
             let bosses: HashSet<&str> = tracks.iter().flat_map(|t| t.units.iter()).filter(|u| u.kind == "enemy").map(|u| u.guid.as_str()).collect();
@@ -1741,6 +1754,7 @@ impl PullBuilder {
                 orbs,
                 areas,
                 soaks,
+                blasts,
                 markers: std::mem::take(&mut self.markers),
                 cast_ms: cast_times(&self.boss_casts),
             },
@@ -1875,7 +1889,7 @@ const INTERRUPT_ADD_LINGER_MS: i64 = 1_000;
 
 /// Soaks do pull: os acertos da mesma mecânica no mesmo instante, juntados por perto (vários círculos
 /// ao mesmo tempo viram vários soaks); o centro é o meio de quem entrou. Só os que algum replay mostra.
-fn build_soaks(hits: &[(i64, f32, f32, usize, String)], meta: &HashMap<usize, SoakInfo>, casts: &[BossCast], refs: &[&ReplayRef]) -> Vec<SoakView> {
+fn build_soaks(hits: &[(i64, f32, f32, usize, String)], meta: &HashMap<usize, SoakInfo>, casts: &[BossCast], refs: &[&ReplayRef], trails: &Trails) -> Vec<SoakView> {
     let mut out = Vec::new();
     let mut by_mech: HashMap<usize, Vec<(i64, f32, f32, &str)>> = HashMap::new();
     for (t, x, y, i, g) in hits {
@@ -1908,14 +1922,20 @@ fn build_soaks(hits: &[(i64, f32, f32, usize, String)], meta: &HashMap<usize, So
                     None => groups.push((x, y, 1)),
                 }
             }
-            let from = m.cast_id
-                .and_then(|c| casts.iter().filter(|b| b.spell_id == c && b.t <= t0 && t0 - b.t <= SOAK_CAST_MAX_MS).map(|b| b.t).max())
-                .unwrap_or(t0 - SOAK_LEAD_MS)
-                .max(prev_at);
+            let cast = m.cast_id.and_then(|id| {
+                casts.iter().filter(|cast| cast.spell_id == id && !cast.interrupted && cast.t <= t0 && t0 - cast.t <= SOAK_CAST_MAX_MS && cast.end.is_some_and(|end| end <= t0)).max_by_key(|cast| cast.t)
+            });
+            let center = cast
+                .and_then(|cast| trails.position_at(cast.target.as_deref()?, cast.end?, GROUND_POS_MAX_AGE_MS))
+                .filter(|&(x, y)| hs[k..end].iter().all(|hit| (hit.1 - x).hypot(hit.2 - y) <= radius + 1.5));
+            if let Some((x, y)) = center {
+                groups = vec![(x * seen.len() as f32, y * seen.len() as f32, seen.len() as u32)];
+            }
+            let from = cast.map_or(t0 - SOAK_LEAD_MS, |cast| cast.t).max(prev_at);
             prev_at = t0;
-            if refs.iter().any(|r| t0 >= r.from && from <= r.to) {
+            if refs.iter().any(|r| t0 + 12_000 >= r.from && from <= r.to) {
                 for (sx, sy, n) in groups {
-                    out.push(SoakView { key: m.key.clone(), name: m.name.clone(), spell_id: m.spell_id, from, at: t0, x: sx / n as f32, y: sy / n as f32, radius, needs: m.players, hit: n });
+                    out.push(SoakView { key: m.key.clone(), name: m.name.clone(), spell_id: m.spell_id, from, at: t0, x: sx / n as f32, y: sy / n as f32, radius, needs: m.players, hit: n, caster: cast.map(|cast| cast.guid.clone()) });
                 }
             }
             k = end;
@@ -2060,6 +2080,42 @@ mod tests {
     use super::*;
     use crate::tokenizer::split_fields;
 
+    #[test]
+    fn soak_uses_cast_target_and_real_cast_start() {
+        let mut trails = Trails::default();
+        trails.on_pos("Player-1-A", "Target", false, 100, 50.0, 0.0, 6_000);
+        trails.on_pos("Player-1-A", "Target", false, 100, 52.0, 0.0, 7_000);
+        let cast = BossCast {
+            t: 3_000, end: Some(6_500), guid: "Boss".into(), spell_id: 1283489, name: "Guillotine".into(),
+            facing: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None,
+            target: Some("Player-1-A".into()), line: None,
+        };
+        let meta = HashMap::from([(0, SoakInfo { key: "guillotine".into(), name: "Guillotine".into(), spell_id: 1283594, cast_id: Some(1283489), radius: 9.0, players: Some(5) })]);
+        let hits = vec![(8_000, 55.0, 0.0, 0, "Player-1-B".into()), (8_010, 57.0, 0.0, 0, "Player-1-C".into()), (8_020, 57.0, 0.0, 0, "Player-1-C".into())];
+        let reference = replay::around(8_000, 1_000, vec![]);
+        let soaks = build_soaks(&hits, &meta, &[cast], &[&reference], &trails);
+        assert_eq!(soaks.len(), 1);
+        assert_eq!((soaks[0].from, soaks[0].at, soaks[0].hit), (3_000, 8_000, 2));
+        assert_eq!((soaks[0].x, soaks[0].y, soaks[0].radius), (51.0, 0.0, 9.0));
+        let fallback = build_soaks(&hits, &meta, &[], &[&reference], &trails);
+        assert_eq!((fallback[0].from, fallback[0].x, fallback[0].hit), (5_000, 56.0, 2));
+    }
+
+    #[test]
+    fn enemy_aura_confirms_ghost_cleanup() {
+        let start = ["ENCOUNTER_START", "3429", "The Coiled Altar", "16", "20", "1"];
+        let mut builder = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::embedded(), 0);
+        let ghost = "Creature-0-1-3004-1-261218-0000000001";
+        let rules = builder.rules.as_mut().unwrap();
+        rules.on_enemy_cast_at(1285911, ghost, Some(261218), 0.0, 0.0, 0.0, None, 0);
+        rules.on_aura_from(ghost, 1285911, "Player-1-A", "Alice", true, 0);
+        rules.on_player_pos("Player-1-A", 40.0, 0.0, 0.0, 10_000);
+        let fields = ["SPELL_AURA_APPLIED", "Boss", "Malacrass", "0xa48", "0x0", ghost, "Manifestation of Dread", "0xa48", "0x0", "1307959", "Soul Sever", "0x20", "BUFF"];
+        builder.aura_state(&fields, 5_055);
+        let (_, paths) = builder.rules.as_ref().unwrap().ghost_paths().unwrap();
+        assert_eq!(paths[0].pts.last().unwrap().0, 5_055);
+    }
+
     // Linhas reais do build 12.1.0 (nomes trocados).
     const DMG_12_1: &str = "SPELL_DAMAGE,Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000,Creature-0-3778-3004-13995-257361-000035B455,\"Vexhul\",0x10a48,0x80000000,8092,\"Mind Blast\",0x20,Creature-0-3778-3004-13995-257361-000035B455,0000000000000000,734281151,734324750,0,0,1470,0,0,0,3,0,100,0,691.57,16.16,2607,3.4732,93,37899,36794,-1,32,0,0,0,nil,nil,nil,ST";
     const ENV_12_1: &str = "ENVIRONMENTAL_DAMAGE,0000000000000000,nil,0x80000000,0x80000000,Player-3209-0B7FC6E4,\"Fulano-Azralon-US\",0x514,0x80000000,Player-3209-0B7FC6E4,0000000000000000,1089460,1243920,4250,657,7380,598,116,0,0,250000,250000,0,530.82,0.16,2607,0.0006,324,Falling,44148,44148,0,1,0,0,0,nil,nil,nil";
@@ -2076,6 +2132,16 @@ mod tests {
         let legacy = "SPELL_DAMAGE,Player-1-A,\"A\",0x514,0x0,Creature-0-1-2-3-4-5,\"B\",0x10a48,0x0,1,\"X\",0x1,Creature-0-1-2-3-4-5,0000000000000000,50,100,0,0,0,0,0,0,0,0,1.00,2.00,2607,0.5000,80,10,10,-1,1,0,0,0,nil,nil,nil";
         split_fields(legacy, &mut f);
         assert_eq!(advanced_at(&f, 12).unwrap().len, 17);
+    }
+
+    #[test]
+    fn missing_facing_preserves_position_without_inventing_a_heading() {
+        let line = DMG_12_1.replace("3.4732", "nil");
+        let mut fields = Vec::new();
+        split_fields(&line, &mut fields);
+        let advanced = advanced_at(&fields, 12).unwrap();
+        assert_eq!((advanced.x, advanced.y), (691.57, 16.16));
+        assert_eq!(advanced.facing, None);
     }
 
     // Linhas reais do build 12.1.0 (nomes trocados): cast com mana no bloco advanced e escudo segurando dano.

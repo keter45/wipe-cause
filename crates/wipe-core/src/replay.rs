@@ -9,6 +9,8 @@
 use crate::gaze::GhostPath;
 use crate::orbs::pos_at;
 use crate::report::{Arena, PullTracks, ReplayRef, StackLine, TrackSeg, UnitTrack};
+use crate::report::{BlastView, SoakView};
+use crate::rules::BlastInfo;
 use std::collections::{HashMap, HashSet};
 
 /// Segundos antes do momento que o replay mostra, e depois (falha de mecânica / morte).
@@ -17,6 +19,33 @@ pub const AFTER_MS: i64 = 2_000;
 pub const DEATH_AFTER_MS: i64 = 1_000;
 /// Passo das posições guardadas no relatório.
 pub const STEP_MS: i64 = 250;
+
+pub fn build_blasts(soaks: &[SoakView], events: &[(i64, u32, String)], specs: &[BlastInfo], refs: &[&ReplayRef]) -> Vec<BlastView> {
+    let mut blasts = Vec::new();
+    for info in specs {
+        for soak in soaks.iter().filter(|soak| soak.key == info.spec.from_soak) {
+            let expected = soak.at + info.spec.delay_ms;
+            let candidates: Vec<_> = events.iter().filter(|(t, spell, caster)| {
+                (*spell == info.spell_id || info.spec.event_ids.contains(spell))
+                    && (*t - expected).abs() <= 1_500 && *t > soak.at
+                    && soak.caster.as_ref().is_none_or(|source| source == caster)
+            }).collect();
+            let sources: HashSet<_> = candidates.iter().map(|event| &event.2).collect();
+            let observed = (sources.len() <= 1).then(|| candidates.iter().map(|event| event.0).min()).flatten();
+            let at = observed.unwrap_or(expected);
+            if !refs.iter().any(|reference| soak.at <= reference.to && at + 1_000 >= reference.from) {
+                continue;
+            }
+            blasts.push(BlastView {
+                key: info.key.clone(), name: info.name.clone(), spell_id: info.spell_id,
+                from: soak.at, at, x: soak.x, y: soak.y, radius: info.spec.radius,
+                timing_estimated: observed.is_none(),
+            });
+        }
+    }
+    blasts.sort_by_key(|blast| blast.at);
+    blasts
+}
 /// Na gravação: posição nova só depois disso (ou se andou mais que MIN_MOVE_YD).
 const MIN_GAP_MS: i64 = 100;
 const MIN_MOVE_YD: f32 = 1.5;
@@ -63,6 +92,21 @@ impl Trails {
     /// Unidades com posição no pull.
     pub fn guids(&self) -> impl Iterator<Item = &String> {
         self.units.keys()
+    }
+
+    pub fn position_at(&self, guid: &str, t: i64, max_age_ms: i64) -> Option<(f32, f32)> {
+        let pts = &self.units.get(guid)?.pts;
+        let index = pts.partition_point(|sample| sample.0 <= t);
+        let previous = index.checked_sub(1).and_then(|index| pts.get(index));
+        let next = pts.get(index);
+        match (previous, next) {
+            (Some(previous), Some(next)) if t - previous.0 <= max_age_ms && next.0 - t <= max_age_ms => {
+                let share = (t - previous.0) as f32 / (next.0 - previous.0).max(1) as f32;
+                Some((previous.1 + (next.1 - previous.1) * share, previous.2 + (next.2 - previous.2) * share))
+            }
+            (Some(previous), _) if t - previous.0 <= max_age_ms => Some((previous.1, previous.2)),
+            _ => None,
+        }
     }
 
     /// Inimigo morto: some do replay a partir daqui.
@@ -251,6 +295,39 @@ pub fn stack_lines(hist: &HashMap<String, Vec<(i64, u32)>>, from: i64, to: i64) 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn blast_uses_soak_center_and_matching_observed_source() {
+        let soak = SoakView { key: "axe".into(), name: "Axe".into(), spell_id: 1, from: 0, at: 2_000,
+            x: 30.0, y: 40.0, radius: 9.0, needs: None, hit: 5, caster: Some("Boss".into()) };
+        let spec = BlastInfo { key: "blast".into(), name: "Blast".into(), spell_id: 2,
+            spec: crate::rules::BlastSpec { from_soak: "axe".into(), radius: 40.0, delay_ms: 6_000, event_ids: vec![3] } };
+        let reference = around(8_000, 1_000, vec![]);
+        let events = vec![(7_900, 2, "Other".into()), (8_100, 3, "Boss".into())];
+        let measured = build_blasts(std::slice::from_ref(&soak), &events, std::slice::from_ref(&spec), &[&reference]);
+        assert_eq!(measured.len(), 1);
+        assert_eq!((measured[0].x, measured[0].y, measured[0].radius), (30.0, 40.0, 40.0));
+        assert_eq!((measured[0].from, measured[0].at, measured[0].timing_estimated), (2_000, 8_100, false));
+        let predicted = build_blasts(std::slice::from_ref(&soak), &[], std::slice::from_ref(&spec), &[&reference]);
+        assert_eq!((predicted[0].at, predicted[0].timing_estimated), (8_000, true));
+        let mut unknown = soak.clone();
+        unknown.caster = None;
+        let ambiguous = build_blasts(&[unknown], &events, std::slice::from_ref(&spec), &[&reference]);
+        assert!(ambiguous[0].timing_estimated);
+        let outside = around(30_000, 1_000, vec![]);
+        assert!(build_blasts(&[soak], &events, &[spec], &[&outside]).is_empty());
+    }
+
+    #[test]
+    fn target_position_requires_recent_observations() {
+        let mut trails = Trails::default();
+        trails.on_pos("Player-1-A", "Target", false, 100, 0.0, 0.0, 1_000);
+        trails.on_pos("Player-1-A", "Target", false, 100, 10.0, 0.0, 2_000);
+        assert_eq!(trails.position_at("Player-1-A", 1_500, 500), Some((5.0, 0.0)));
+        assert_eq!(trails.position_at("Player-1-A", 2_100, 500), Some((10.0, 0.0)));
+        assert_eq!(trails.position_at("Player-1-A", 5_000, 500), None);
+        assert_eq!(trails.position_at("Player-1-A", 0, 500), None);
+    }
 
     #[test]
     fn guarda_so_os_trechos_dos_replays() {

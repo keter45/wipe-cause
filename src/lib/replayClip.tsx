@@ -236,6 +236,7 @@ export async function replayClip(pull: Pull, list: ClipMoment | ClipMoment[], op
   const ids = new Set<number>();
   for (const c of data.casts) if (spans.some(([a, b]) => c.t <= b && (c.end ?? c.t) >= a - 2000)) ids.add(c.spellId);
   for (const k of data.soaks) ids.add(k.spellId);
+  for (const blast of data.blasts ?? []) ids.add(blast.spellId);
   for (const a of data.areas) if (a.spellId != null) ids.add(a.spellId);
   for (const z of overlays?.zones ?? []) ids.add(z.spellId);
   await Promise.all([...ids].map((id) => fetchTooltip(id).catch(() => null)));

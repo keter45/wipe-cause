@@ -52,7 +52,7 @@ const EVENTS_QUERY: &str = "query E($code: String!, $fight: Int!, $start: Float!
 }";
 
 fn cache_dir(app: &AppHandle, code: &str) -> Option<PathBuf> {
-    Some(app.path().app_data_dir().ok()?.join("wcl-events-v2").join(code))
+    Some(app.path().app_data_dir().ok()?.join("wcl-events-v4").join(code))
 }
 
 fn read_cached(file: &Path) -> Option<Vec<Value>> {

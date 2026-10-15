@@ -4,13 +4,15 @@ boss: the-coiled-altar
 name: "The Coiled Altar"
 encounter_id: 3429
 source:
+  - https://www.wowhead.com/spell=1283594/guillotine
+  - https://www.wowhead.com/spell=1299296/grim-guillotine
   - https://www.mythictrap.com/en/venomous-abyss/the-coiled-altar/mythic
   - https://www.youtube.com/watch?v=vGMDl0hIc48   # Dratnos, guia Mythic
   - https://warcraft.wiki.gg/wiki/The_Coiled_Altar  # IDs do Encounter Journal
   - "log: WoWCombatLog-092826_204129 (6 wipes Mythic, só P1) — IDs de P1 calibrados"
   - "log: Archive-WoWCombatLog-092226_180441 (kill Heroic) — IDs de P2/intermissão/P3"
   - "hotfix de 13/10: raio do Virulent Mutation e do Mutagenic Venom 8 → 6 jardas; Mythic com 8 orbs e 4 roxos na P1 (eram 10 e 5)"
-updated: 2026-10-13
+updated: 2026-10-15
 difficulties: [normal, heroic, mythic]
 
 units:
@@ -129,6 +131,7 @@ mechanics:
     source_unit: zuljan
     severity: minor
     detect: { damage_ids: [1283290] }
+    ground: { lingers_s: 3, contour_cell_yd: 2 }
     tolerance: 1
     tip: { pt: "Sair das poças que saem das bocas do altar.", en: "Get out of the pools coming from the altar's mouths." }
     message: { pt: "{player} tomou {count} ticks de Noxious Ground", en: "{player} took {count} ticks of Noxious Ground" }
@@ -160,6 +163,7 @@ mechanics:
     severity: major
     detect: { damage_ids: [1299684], aura_id: 1301690, cast_id: 1299684 }
     cone: { cast_id: 1299684, half_angle: 40, range: 40 }   # quebra os orbs no cone (mesmo tamanho do breaker); aponta para o alvo do boss
+    ground: false
     tip: { pt: "Só o tank no frontal; ele é mirado nos orbs.", en: "Only the tank in the frontal; it is aimed at the orbs." }
     message: { pt: "{player} foi atingido pelo Sever ({count}x)", en: "{player} was hit by Sever ({count}x)" }
     notes: "Pull 3 de 28/09: Sever matou 3 não-tanks de uma vez."
@@ -184,9 +188,11 @@ mechanics:
     severity: wipe
     detect:
       damage_ids: [1283594]      # dano dividido em quem soakou
+      cast_id: 1283489
       soak_aura_id: 1307425      # vulnerabilidade de quem soakou
       fail_ids: [1283606]        # Execution: menos de 5 no soak → raid inteiro
-    soak: { radius: 5, players: 5 }   # quem soakou ganha a aura 1307425; 13/10: 9-10 por soak, até ~5 jd do meio
+    soak: { radius: 9, players: 5 }
+    ground: false
     min_soakers: 5
     tip: { pt: "Pelo menos 5 no círculo do alvo (imunidades contam); depois sair para longe.", en: "At least 5 in the target's circle (immunities count); then move far away." }
     message: { pt: "{count} Guillotine sem 5 pessoas (Execution no raid)", en: "{count} Guillotine without 5 people (Execution on the raid)" }
@@ -202,6 +208,7 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: major
     detect: { damage_ids: [1283594], requires_aura: 1307425 }
+    ground: false
     tip: { pt: "Quem soakou uma Guillotine fica fora da próxima: grupos alternados.", en: "Whoever soaked a Guillotine sits out the next one: alternate groups." }
     message: { pt: "{player} soakou Guillotine ainda com a vulnerabilidade ({count}x)", en: "{player} soaked Guillotine with the vulnerability still up ({count}x)" }
 
@@ -213,6 +220,8 @@ mechanics:
     overrides:
       mythic: { severity: major }
     detect: { damage_ids: [1283623] }
+    blast: { from_soak: guillotine, radius: 40, delay_ms: 6000, event_ids: [1283631] }
+    ground: false
     tip: { pt: "Depois do soak, correr para mais de 40 jardas do machado antes de ele explodir.", en: "After the soak, run more than 40 yards from the axe before it explodes." }
     message: { pt: "{player} estava perto do machado no Widow's Kiss", en: "{player} was near the axe at Widow's Kiss" }
     notes: "No kill Heroic o raid inteiro tomou (dá para curar); no Mythic mata. Pull 6 de 28/09: matou 3. Widow's Touch (1283631) é o dano pequeno de quem está longe."
@@ -279,7 +288,7 @@ mechanics:
         half_angle: 45
         window_ms: 5000
         # caminho de cada fantasma no replay (calibrado nos alcances e colisões de 22/09 a 13/10)
-        sim: { name: "Manifestation of Dread", speed: 4, half_angle: 35, delay_ms: 2500, stun_ms: 1500, catch_aura: 1297445 }
+        sim: { name: "Manifestation of Dread", speed: 4, half_angle: 35, delay_ms: 2500, stun_ms: 1500, catch_aura: 1297445, clear_auras: [1307959, 1307403] }
     tip: { pt: "Olhar para o próprio fantasma o tempo todo; de costas ele anda e, se encostar em outro, mata os dois alvos.", en: "Keep looking at your own ghost; with your back turned it walks, and if it touches another one it kills both targets." }
     message: { pt: "{count} colisão(ões) de fantasmas (Malevolent Resonance)", en: "{count} ghost collision(s) (Malevolent Resonance)" }
     notes: >
@@ -298,6 +307,7 @@ mechanics:
     severity: major
     detect: { damage_ids: [1286620], aura_id: 1307959 }
     cone: { cast_id: 1286620, half_angle: 30, range: 45, target_spells: [1307184] }   # limpa os fantasmas; mira no alvo (Malacrass não bate corpo a corpo: o Dread Bolt mostra o alvo)
+    ground: false
     tip: { pt: "Só o tank no frontal; ele é mirado nos fantasmas.", en: "Only the tank in the frontal; it is aimed at the ghosts." }
     message: { pt: "{player} foi atingido pelo Soul Sever", en: "{player} was hit by Soul Sever" }
 
@@ -445,6 +455,16 @@ mechanics:
     message: { pt: "{player} chegou a {stacks} stacks de Corrupted Toxin", en: "{player} reached {stacks} stacks of Corrupted Toxin" }
     notes: "Sem warn_stacks: no kill Heroic chegou a 12. Calibrar com pulls de P3."
 
+  - key: defiled_ground
+    name: "Defiled Ground"
+    type: info
+    source_unit: zuljan
+    severity: none
+    detect: { damage_ids: [1298591], aura_id: 1298591 }
+    ground: { lingers_s: 3, contour_cell_yd: 2 }
+    tip: { pt: "Sair do chão corrompido; o contorno no replay é estimado a partir dos contatos registrados.", en: "Leave the corrupted ground; the replay outline is estimated from recorded contacts." }
+    message: { pt: "Defiled Ground", en: "Defiled Ground" }
+
   - key: blighted_sever
     name: "Blighted Sever"
     type: avoidable_damage
@@ -453,6 +473,7 @@ mechanics:
     severity: major
     detect: { damage_ids: [1307292], aura_id: 1307403 }
     cone: { cast_id: 1307292, half_angle: 40, range: 40 }   # orbs e fantasmas; tamanho do Sever (sem log Mythic da P3 ainda)
+    ground: false
     tip: { pt: "Só o tank no frontal; ele quebra orbs e fantasmas juntos.", en: "Only the tank in the frontal; it breaks orbs and ghosts together." }
     message: { pt: "{player} foi atingido pelo Blighted Sever", en: "{player} was hit by Blighted Sever" }
 
@@ -463,9 +484,11 @@ mechanics:
     severity: wipe
     detect:
       damage_ids: [1299296]
+      cast_id: 1299267
       soak_aura_id: 1307652
       fail_ids: [null]           # Grim Execution: ainda não visto em log
-    soak: { radius: 5, players: 5 }   # como o Guillotine (aura 1307652); sem log da P3 para medir
+    soak: { radius: 9, players: 5 }
+    ground: false
     min_soakers: 5
     tip: { pt: "Mesmo esquema da Guillotine: 5+ no círculo, depois sair.", en: "Same as Guillotine: 5+ in the circle, then move out." }
     message: { pt: "{count} Grim Guillotine sem 5 pessoas", en: "{count} Grim Guillotine without 5 people" }
@@ -479,6 +502,7 @@ mechanics:
     difficulty: [heroic, mythic]
     severity: major
     detect: { damage_ids: [1299296], requires_aura: 1307652 }
+    ground: false
     tip: { pt: "Quem soakou a anterior fica fora.", en: "Whoever soaked the previous one sits out." }
     message: { pt: "{player} soakou Grim Guillotine ainda com a vulnerabilidade ({count}x)", en: "{player} soaked Grim Guillotine with the vulnerability still up ({count}x)" }
 
@@ -490,6 +514,8 @@ mechanics:
     overrides:
       mythic: { severity: major }
     detect: { damage_ids: [1299396] }
+    blast: { from_soak: grim_guillotine, radius: 40, delay_ms: 6000 }
+    ground: false
     tip: { pt: "Sair para mais de 40 jardas do machado depois do soak.", en: "Move more than 40 yards from the axe after the soak." }
     message: { pt: "{player} estava perto do machado no Death's Embrace", en: "{player} was near the axe at Death's Embrace" }
 

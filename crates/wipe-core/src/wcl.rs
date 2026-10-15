@@ -379,7 +379,8 @@ fn advanced(actors: &HashMap<i64, Actor>, e: &Value, src: &str, dst: &str, out: 
         .map_or(NIL_GUID.to_string(), |o| o.guid.clone());
     // o WCL guarda a posição em centésimos de jarda e com os eixos girados: (x, y) = (-yLog, xLog)
     let (x, y) = (int(&e["y"]) as f64 / 100.0, -int(&e["x"]) as f64 / 100.0);
-    let facing = int(&e["facing"]) as f64 / 100.0;
+    let facing = e["facing"].as_f64().filter(|angle| angle.is_finite())
+        .map(|angle| (-angle / 100.0 - std::f64::consts::FRAC_PI_2).rem_euclid(std::f64::consts::TAU));
     // recurso principal (mana primeiro: o healer tem mana e às vezes outro recurso junto)
     let res = e["classResources"].as_array().and_then(|rs| rs.iter().find(|r| int(&r["type"]) == 0).or_else(|| rs.first()));
     let power = |k: &str| res.map_or(0, |r| int(&r[k])).to_string();
@@ -401,7 +402,7 @@ fn advanced(actors: &HashMap<i64, Actor>, e: &Value, src: &str, dst: &str, out: 
         format!("{x:.2}"),
         format!("{y:.2}"),
         int(&e["mapID"]).to_string(),
-        format!("{facing:.4}"),
+        facing.map_or_else(|| "nil".into(), |angle| format!("{angle:.4}")),
         int(&e["itemLevel"]).max(1).to_string(),
     ]);
 }
@@ -409,6 +410,9 @@ fn advanced(actors: &HashMap<i64, Actor>, e: &Value, src: &str, dst: &str, out: 
 /// Evento da API -> campos de uma linha do combat log. `false` = evento que o motor não usa.
 fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64)>, e: &Value, out: &mut Vec<String>) -> bool {
     let kind = e["type"].as_str().unwrap_or("");
+    if kind == "death" && e["feign"].as_bool() == Some(true) {
+        return false;
+    }
     let src = unit(actors, e, "source");
     let dst = unit(actors, e, "target");
     let (src_guid, src_name, src_flags) = src.clone().unwrap_or((NIL_GUID.into(), "nil".into(), FLAGS_NONE));
@@ -443,6 +447,7 @@ fn to_fields(actors: &HashMap<i64, Actor>, abilities: &HashMap<i64, (String, i64
         "summon" => "SPELL_SUMMON",
         "resourcechange" => "SPELL_ENERGIZE",
         "death" => "UNIT_DIED",
+        "resurrect" => "SPELL_RESURRECT",
         _ => return false,
     };
     out.extend([event.to_string(), src_guid.clone(), src_name, src_flags.into(), "0x0".into(), dst_guid.clone(), dst_name, dst_flags.into(), "0x0".into()]);
@@ -601,7 +606,6 @@ const SKIP_TYPES: &[&str] = &[
     "empowerstart",
     "empowerend",
     "create",
-    "resurrect",
     "encounterstart",
     "encounterend",
 ];
@@ -610,6 +614,7 @@ const SKIP_TYPES: &[&str] = &[
 const KEEP_FIELDS: &[&str] = &[
     "timestamp",
     "type",
+    "feign",
     "sourceID",
     "targetID",
     "sourceInstance",
@@ -692,6 +697,70 @@ mod tests {
 
     fn fight(report: usize, id: i64, encounter_id: u32, abs_start: i64) -> WclFight {
         WclFight { report, id, encounter_id, name: String::new(), difficulty_id: 16, kill: false, start_time: 0, end_time: 0, size: 20, abs_start }
+    }
+
+    #[test]
+    fn wcl_facing_is_rotated_and_clockwise_not_the_log_angle() {
+        for (angle, expected) in [(-157.079632679, 0.0), (-314.159265359, std::f64::consts::FRAC_PI_2), (-487.0, 3.2992), (-757.0, 5.9992)] {
+            let event = json!({ "maxHitPoints": 100, "hitPoints": 100, "resourceActor": 1, "sourceID": 5,
+                "x": 3492, "y": 114576, "facing": angle });
+            let mut out = Vec::new();
+            advanced(&HashMap::new(), &event, "Player-1-A", NIL_GUID, &mut out);
+            let facing = out[17].parse::<f64>().unwrap();
+            let difference = facing - expected;
+            assert!(difference.sin().atan2(difference.cos()).abs() < 0.0001, "{facing} vs {expected}");
+            assert_eq!((&out[14], &out[15]), (&"1145.76".to_string(), &"-34.92".to_string()));
+        }
+    }
+
+    #[test]
+    fn missing_heading_is_not_fabricated_as_zero_but_positions_survive() {
+        let mut out = Vec::new();
+        advanced(&HashMap::new(), &json!({ "maxHitPoints": 100, "x": 1000, "y": 2000 }), NIL_GUID, "Player-1-A", &mut out);
+        assert_eq!(out[17], "nil");
+        let fields: Vec<&str> = out.iter().map(String::as_str).collect();
+        assert!(crate::analysis::advanced_at(&fields, 0).is_some());
+    }
+
+    #[test]
+    fn coiled_fight_19_cached_wcl_heading_keeps_watched_ghost_still() {
+        let cfg: crate::gaze::GazeDetect = serde_json::from_value(json!({
+            "fixate_aura": 1285911, "fixate_cast": 1285911, "hit_aura": 1310744,
+            "sim": { "name": "Manifestation of Dread", "speed": 4, "half_angle": 35,
+                "delay_ms": 2500, "stun_ms": 1500 }
+        })).unwrap();
+        let samples = [
+            (213, 455, 113557, -608), (537, 432, 113506, -617),
+            (919, 161, 113505, -629), (1333, 13, 113438, -629),
+            (1877, 13, 113438, -629), (2281, -125, 113408, -630),
+            (2749, -153, 113319, -630), (3219, -198, 113319, -630),
+            (3770, -593, 113304, -646), (4341, -731, 113349, -646),
+            (5001, -731, 113349, -646), (5327, -731, 113349, -646),
+            (5847, -731, 113349, -646), (6255, -731, 113349, -646),
+            (6624, -731, 113349, -646), (7172, -731, 113349, -646),
+            (7441, -731, 113349, -646), (7893, -731, 113349, -646),
+            (8193, -731, 113349, -646), (8766, -731, 113349, -646),
+            (9285, -320, 113575, -646), (9761, -425, 114283, -634),
+        ];
+        let mut corrected = crate::gaze::GazeLog::default();
+        let mut previous = crate::gaze::GazeLog::default();
+        for log in [&mut corrected, &mut previous] {
+            log.on_enemy_cast(&cfg, "Ghost", 1285911, 1145.76, -42.68);
+            log.on_aura(&cfg, "Ghost", 1285911, "Player-1-A", "Player", true, 0);
+        }
+        for (timestamp, x, y, heading) in samples {
+            let mut fields = Vec::new();
+            advanced(&HashMap::new(), &json!({ "maxHitPoints": 100, "resourceActor": 1,
+                "x": x, "y": y, "facing": heading }), "Player-1-A", NIL_GUID, &mut fields);
+            let (x, y) = (fields[14].parse().unwrap(), fields[15].parse().unwrap());
+            corrected.on_player_pos("Player-1-A", x, y, fields[17].parse().unwrap(), timestamp);
+            previous.on_player_pos("Player-1-A", x, y, heading as f32 / 100.0, timestamp);
+        }
+        for log in [&mut corrected, &mut previous] {
+            log.on_aura(&cfg, "Ghost", 1285911, "Player-1-A", "Player", false, 10_000);
+        }
+        assert!(crate::gaze::paths(&cfg, &corrected, &[])[0].moved() < 0.01);
+        assert!(crate::gaze::paths(&cfg, &previous, &[])[0].moved() > 10.0);
     }
 
     #[test]
@@ -785,6 +854,53 @@ mod tests {
         assert!(fight.players.len() >= 2);
         assert_eq!(p.deaths.len(), 1);
         assert_eq!(p.log_offset, Some(2));
+    }
+
+    #[test]
+    fn wcl_feign_death_is_not_a_real_death_in_analysis_or_replay() {
+        let events = slim_events(vec![
+            json!({ "timestamp": 77_059, "type": "death", "targetID": 6, "feign": true, "abilityGameID": 0 }),
+            json!({ "timestamp": 77_752, "type": "cast", "sourceID": 6, "targetID": 30, "abilityGameID": 212431,
+                "resourceActor": 1, "hitPoints": 964912, "maxHitPoints": 975304, "x": -835, "y": 113898 }),
+            json!({ "timestamp": 90_000, "type": "death", "targetID": 6, "feign": false, "abilityGameID": 0 }),
+        ]);
+        assert_eq!(events[0]["feign"], true);
+        for replay in [false, true] {
+            let mut analyzer = WclAnalyzer::single(&report(), RuleBook::embedded(), 0, -3.0).unwrap();
+            if replay {
+                analyzer.begin_replay(0, 2).unwrap();
+            } else {
+                analyzer.begin_fight(0, 2).unwrap();
+            }
+            analyzer.push_events(&events);
+            let pull = if replay { analyzer.replay().expect("pull") } else { analyzer.finish().pulls.remove(0) };
+            assert_eq!(pull.deaths.iter().map(|death| death.t).collect::<Vec<_>>(), vec![80_000]);
+            if let Some(fight) = pull.fight {
+                let player = fight.players.iter().position(|guid| guid == "Player-0-000000DE").unwrap();
+                assert!(!fight.hp[player].iter().any(|&(t, hp)| t < 80_000 && hp == 0));
+                assert!(!fight.events.iter().any(|event| event.1 == crate::fight::EV_RESURRECT));
+            }
+        }
+    }
+
+    #[test]
+    fn imported_battle_resurrection_survives_slimming_and_reaches_replay() {
+        let events = slim_events(vec![
+            json!({ "timestamp": 20_000, "type": "death", "targetID": 6 }),
+            json!({ "timestamp": 25_000, "type": "resurrect", "sourceID": 5, "targetID": 6, "abilityGameID": 20484 }),
+            json!({ "timestamp": 40_000, "type": "death", "targetID": 6 }),
+        ]);
+        assert_eq!(events.len(), 3);
+        let mut analyzer = WclAnalyzer::single(&report(), RuleBook::embedded(), 4, -3.0).unwrap();
+        analyzer.begin_replay(0, 2).unwrap();
+        analyzer.push_events(&events);
+        let pull = analyzer.replay().expect("pull");
+        let fight = pull.fight.as_ref().expect("replay");
+        let revived = fight.players.iter().position(|guid| guid == "Player-0-000000DE").expect("revived player");
+        let event = fight.events.iter().find(|event| event.1 == crate::fight::EV_RESURRECT).expect("resurrection");
+        assert_eq!((event.0, event.2, event.3), (15_000, revived as u16, 20484));
+        assert_eq!(fight.sources[event.5 as usize], "Fulano-Azralon-US");
+        assert_eq!(pull.deaths.iter().map(|death| death.t).collect::<Vec<_>>(), vec![10_000, 30_000]);
     }
 
     #[test]

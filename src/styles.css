@@ -7196,3 +7196,25 @@ button.kpi:hover {
   fill: #10131a;
   stroke: none;
 }
+.replay-pool-fill {
+  fill: currentColor;
+  fill-opacity: .12;
+}
+.replay-pool-outline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+.replay-blast circle {
+  fill: var(--wipe);
+  fill-opacity: .04;
+  stroke: var(--wipe);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+.replay-blast.impact circle {
+  fill-opacity: .22;
+  stroke-width: 2;
+  stroke-dasharray: none;
+}

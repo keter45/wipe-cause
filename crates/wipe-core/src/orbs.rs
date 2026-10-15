@@ -349,7 +349,7 @@ fn ground_orbs(cfg: &OrbDetect, log: &OrbLog, until: i64) -> Vec<Ground> {
                 let Some(b) = &cfg.breaker else { continue };
                 let (_, bx, by, facing, target) = &log.breaks[i];
                 // direções do cone: a do log no fim do cast e a do alvo do boss (às vezes o log erra a direção)
-                let mut dirs = vec![*facing];
+                let mut dirs: Vec<f32> = facing.is_finite().then_some(*facing).into_iter().collect();
                 if let Some(p) = target.as_deref().and_then(|g| log.pos(g, t)) {
                     if (p.0 - bx).hypot(p.1 - by) > 0.5 {
                         dirs.push((p.1 - by).atan2(p.0 - bx));

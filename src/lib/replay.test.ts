@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { movedUntil, posAt, type ReplayUnit } from './replay';
+import { coneDirection, movedUntil, posAt, type ReplayUnit } from './replay';
+
+describe('direção do frontal', () => {
+  it('mantém aviso sem alvo quando existe facing registrado', () => {
+    expect(coneDirection(1, false, [0, 0], null)).toBe(1);
+  });
+  it('usa a direção registrada no impacto antes do alvo inferido', () => {
+    expect(coneDirection(0, true, [0, 0], [0, 10])).toBe(0);
+  });
+
+  it('acompanha o alvo durante o cast e usa o alvo como fallback', () => {
+    expect(coneDirection(0, false, [0, 0], [0, 10])).toBeCloseTo(Math.PI / 2);
+    expect(coneDirection(undefined, true, [0, 0], [0, 10])).toBeCloseTo(Math.PI / 2);
+    expect(coneDirection(undefined, true, [0, 0], null)).toBeUndefined();
+  });
+});
 
 const ghost: ReplayUnit = {
   guid: 'G1',

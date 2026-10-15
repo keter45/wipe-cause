@@ -3,8 +3,10 @@
 // app; sem storage (modo privado, erro), valem só enquanto o app está aberto.
 
 const KEY = 'wipe-cause:replay-prefs';
+const GROUND_DEFAULTS = ['noxious_ground'];
 
 interface Prefs {
+  groundDefaults: string[];
   /** chaves das mecânicas cujas marcas de chão estão escondidas */
   hiddenGround: string[];
   /** encounter id -> spells dos debuffs fora da cabeça */
@@ -28,7 +30,8 @@ function load(): Prefs {
   } catch {
     /* sem storage */
   }
-  cache = { hiddenGround: saved.hiddenGround ?? [], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true };
+  const introduced = GROUND_DEFAULTS.filter((key) => !saved.groundDefaults?.includes(key));
+  cache = { groundDefaults: GROUND_DEFAULTS, hiddenGround: [...new Set([...(saved.hiddenGround ?? []), ...introduced])], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true };
   return cache;
 }
 

@@ -104,6 +104,8 @@ pub struct Pull {
     /// soaks (regra com `soak`): onde cada um caiu e quantos entraram
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub soaks: Vec<SoakView>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub blasts: Vec<BlastView>,
     /// marcas de chão do grupo (world markers) durante o pull
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub markers: Vec<WorldMarker>,
@@ -144,6 +146,22 @@ pub struct SoakView {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub needs: Option<u32>,
     pub hit: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caster: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BlastView {
+    pub key: String,
+    pub name: String,
+    pub spell_id: u32,
+    pub from: i64,
+    pub at: i64,
+    pub x: f32,
+    pub y: f32,
+    pub radius: f32,
+    pub timing_estimated: bool,
 }
 
 /// Orbs no replay completo.
@@ -339,6 +357,8 @@ pub struct GroundKind {
     pub spell_id: u32,
     /// quanto a marca fica no chão
     pub linger_ms: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contour_cell_yd: Option<f32>,
 }
 
 /// Posições (advanced logging) só nos trechos que algum replay usa, em passos fixos.

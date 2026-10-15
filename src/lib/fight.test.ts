@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Pull } from '../types';
-import { aurasAt, bossHpAt, crucialAt, deadAt, eventsBetween, EV, fightMarkers, fightView, hpAt, meterAt, seriesAt, vacatedAreas, vacatedSince, vanishedAreas } from './fight';
+import { aurasAt, bossHpAt, crucialAt, deadAt, eventsBetween, EV, fightMarkers, fightView, hpAt, idleAxegrinders, meterAt, seriesAt, vacatedAreas, vacatedSince, vanishedAreas } from './fight';
 import type { ReplayData, ReplayUnit } from './replay';
 
 const pull = {
@@ -60,6 +60,17 @@ describe('replay completo', () => {
     expect(deadAt(v, 'P1', 4999)).toBe(false);
     expect(deadAt(v, 'P1', 6000)).toBe(true);
     expect(deadAt(v, 'P1', 7500)).toBe(false);
+  });
+
+  it('volta à vida no battle rez e fica morto novamente na próxima morte', () => {
+    const view = fightView({ ...pull, deaths: [...pull.deaths, { ...pull.deaths[0], t: 9000 }] })!;
+    expect(deadAt(view, 'P1', 5000)).toBe(true);
+    expect(deadAt(view, 'P1', 6999)).toBe(true);
+    expect(deadAt(view, 'P1', 7000)).toBe(false);
+    expect(deadAt(view, 'P1', 8999)).toBe(false);
+    expect(deadAt(view, 'P1', 9000)).toBe(true);
+    expect(deadAt(view, 'P1', 10000)).toBe(true);
+    expect(deadAt(view, 'P1', 4000)).toBe(false);
   });
 
   it('debuffs ativos com a mecânica da regra primeiro', () => {
@@ -163,5 +174,31 @@ describe('stacks e áreas desmentidas', () => {
     const p2 = unit('P2', 'player', [[0, 20, 20], [3000, 0, 0], [3500, 20, 20], [6000, 20, 20]]);
     const data = { units: new Map([axe, p2].map((u) => [u.guid, u])), areas: [{ key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4 }], ground: [], groundKinds: [], casts: [], soaks: [], markers: [] } as ReplayData;
     expect(vacatedAreas(v, data).size).toBe(0);
+  });
+
+  it('apaga cada Axegrinder após 5s sem contato próximo e restaura no próximo hit', () => {
+    const axe: ReplayUnit = { guid: 'Creature-0-0-0-0-260474-01', name: 'Axe', kind: 'enemy', pts: [[0, 0, 0], [20000, 0, 0]], seen: [0, 9000] };
+    const player: ReplayUnit = { guid: 'P2', name: 'Player', kind: 'player', pts: [[0, 0, 0], [20000, 0, 0]] };
+    const events = [...base.events, [10000, EV.damage, 1, 99, 500, 0]];
+    const view = fightView({ ...pull, fight: { ...base, events } } as unknown as Pull)!;
+    const data = { units: new Map([axe, player].map((unit) => [unit.guid, unit])), areas: [{ key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4, vanishFrom: 18000 }], ground: [], groundKinds: [], casts: [], soaks: [], markers: [] } as ReplayData;
+    const distant: ReplayUnit = { ...axe, guid: 'Creature-0-0-0-0-260474-02', pts: [[0, 50, 50], [20000, 50, 50]] };
+    data.units.set(distant.guid, distant);
+    const idle = idleAxegrinders(view, data);
+    const spans = idle.get(axe.guid);
+    expect(idle.get(distant.guid)).toEqual([[5000, 18000]]);
+    expect(spans).toEqual([[8000, 10000], [15000, 18000]]);
+    expect(vacatedSince(spans, 7999)).toBeNull();
+    expect(vacatedSince(spans, 9500)).toBe(8000);
+    expect(vacatedSince(spans, 10000)).toBeNull();
+    expect(vacatedSince(spans, 18000)).toBeNull();
+  });
+
+  it('sem hit, conta do nascimento; DoT distante não confirma o machado nem outra unidade', () => {
+    const axe: ReplayUnit = { guid: 'Creature-0-0-0-0-260474-01', name: 'Axe', kind: 'enemy', pts: [[0, 0, 0], [10000, 0, 0]], seen: [0] };
+    const far: ReplayUnit = { guid: 'P2', name: 'Player', kind: 'player', pts: [[0, 50, 50], [10000, 50, 50]] };
+    const other: ReplayUnit = { ...axe, guid: 'Creature-0-0-0-0-12345-01' };
+    const data = { units: new Map([axe, far, other].map((unit) => [unit.guid, unit])), areas: [{ key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4 }], ground: [], groundKinds: [], casts: [], soaks: [], markers: [] } as ReplayData;
+    expect([...idleAxegrinders(v, data)]).toEqual([[axe.guid, [[5000, 10250]]]]);
   });
 });

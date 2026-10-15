@@ -68,6 +68,8 @@ pub struct GhostSim {
     pub stun_ms: i64,
     /// aura que o alvo ganha quando o fantasma o alcança (sozinha, não a do cast do boss)
     pub catch_aura: Option<u32>,
+    #[serde(default)]
+    pub clear_auras: Vec<u32>,
 }
 
 fn default_half_angle() -> f32 {
@@ -110,6 +112,7 @@ pub struct GazeLog {
 impl GazeLog {
     pub fn on_player_pos(&mut self, guid: &str, x: f32, y: f32, facing: f32, t: i64) {
         self.last_t = self.last_t.max(t);
+        if !facing.is_finite() { return; }
         let tr = self.trails.entry(guid.to_string()).or_default();
         if tr.last().is_none_or(|&(lt, lx, ly, lf)| lt != t || lx != x || ly != y || lf != facing) {
             tr.push((t, x, y, facing));
@@ -125,6 +128,12 @@ impl GazeLog {
     /// Aura com a fonte: a fixação liga o fantasma (fonte) ao player; o debuff da colisão marca os alvos.
     #[allow(clippy::too_many_arguments)]
     pub fn on_aura(&mut self, cfg: &GazeDetect, source: &str, spell_id: u32, guid: &str, name: &str, applied: bool, t: i64) {
+        if applied && cfg.sim.as_ref().is_some_and(|sim| sim.clear_auras.contains(&spell_id)) {
+            for fix in self.fixes.iter_mut().filter(|fix| fix.ghost == guid) {
+                fix.to = Some(fix.to.map_or(t, |end| end.min(t)));
+            }
+            return;
+        }
         self.names.entry(guid.to_string()).or_insert_with(|| name.to_string());
         if spell_id == cfg.hit_aura && applied {
             self.hits.push((t, guid.to_string()));
@@ -225,16 +234,25 @@ fn state_at(tr: &[(i64, f32, f32, f32)], t: i64) -> Option<(f32, f32, f32)> {
     }
 }
 
+fn recent_state_at(trail: &[(i64, f32, f32, f32)], t: i64) -> Option<(f32, f32, f32)> {
+    let index = trail.partition_point(|sample| sample.0 <= t);
+    let sample = trail.get(index.checked_sub(1)?)?;
+    (t - sample.0 <= MAX_GAP_MS).then(|| state_at(trail, t)).flatten()
+}
+
 /// Simula o fantasma com a velocidade vezes `scale` até `until`: o caminho e quando ele
 /// alcançou o alvo (None = não alcançou).
 fn simulate(sim: &GhostSim, log: &GazeLog, f: &Fix, scale: f32, until: i64) -> (Vec<(i64, f32, f32)>, Option<i64>) {
     let tr = log.trails.get(&f.player).map(Vec::as_slice).unwrap_or(&[]);
     let half = sim.half_angle.to_radians();
-    let step = sim.speed * scale * SIM_STEP_MS as f32 / 1000.0;
     let (mut x, mut y, mut seen, mut reached) = (f.x, f.y, i64::MIN / 2, None);
-    let mut pts = Vec::with_capacity(((until - f.from) / SIM_STEP_MS + 1).max(1) as usize);
+    let mut pts = Vec::with_capacity(((until - f.from) / SIM_STEP_MS + 2).max(1) as usize);
     let mut t = f.from;
-    while t <= until {
+    pts.push((t, x, y));
+    while t < until {
+        let next = (t + SIM_STEP_MS).min(until);
+        let step = sim.speed * scale * (next - t) as f32 / 1000.0;
+        t = next;
         if let Some((px, py, facing)) = state_at(tr, t) {
             let a = (y - py).atan2(x - px) - facing;
             if a.sin().atan2(a.cos()).abs() <= half {
@@ -251,7 +269,6 @@ fn simulate(sim: &GhostSim, log: &GazeLog, f: &Fix, scale: f32, until: i64) -> (
             }
         }
         pts.push((t, x, y));
-        t += SIM_STEP_MS;
     }
     (pts, reached)
 }
@@ -259,6 +276,27 @@ fn simulate(sim: &GhostSim, log: &GazeLog, f: &Fix, scale: f32, until: i64) -> (
 fn at(pts: &[(i64, f32, f32)], t: i64) -> (f32, f32) {
     let i = pts.partition_point(|p| p.0 <= t).saturating_sub(1);
     pts.get(i).map_or((0.0, 0.0), |p| (p.1, p.2))
+}
+
+fn keep_gaze_locked(sim: &GhostSim, log: &GazeLog, fix: &Fix, points: &mut [(i64, f32, f32)]) {
+    let trail = log.trails.get(&fix.player).map(Vec::as_slice).unwrap_or(&[]);
+    let Some(&(start, mut x, mut y)) = points.first() else { return };
+    let (mut raw_x, mut raw_y, mut seen) = (x, y, i64::MIN / 2);
+    for point in points.iter_mut().skip(1) {
+        let (dx, dy) = (point.1 - raw_x, point.2 - raw_y);
+        (raw_x, raw_y) = (point.1, point.2);
+        if let Some((px, py, facing)) = state_at(trail, point.0) {
+            let angle = (y - py).atan2(x - px) - facing;
+            if angle.sin().atan2(angle.cos()).abs() <= sim.half_angle.to_radians() {
+                seen = point.0;
+            }
+        }
+        if point.0 - start >= sim.delay_ms && point.0 - seen > sim.stun_ms {
+            x += dx;
+            y += dy;
+        }
+        (point.1, point.2) = (x, y);
+    }
 }
 
 /// Alvos do debuff da colisão em `boom`, sem repetir.
@@ -315,22 +353,21 @@ pub fn paths(cfg: &GazeDetect, log: &GazeLog, fail_times: &[i64]) -> Vec<GhostPa
             continue;
         }
         let solo = |t: i64| log.catches.iter().filter(|(u, _)| (u - t).abs() <= MASS_MS).count() == 1;
-        if !log.catches.iter().any(|(t, g)| *g == f.player && (t - to).abs() <= CATCH_NEAR_MS && solo(*t)) {
-            continue;
-        }
-        let Some((px, py, _)) = log.trails.get(&f.player).and_then(|tr| state_at(tr, to)) else { continue };
+        let Some(&(caught_at, _)) = log.catches.iter().filter(|(t, g)| *g == f.player && *t >= f.from && (t - to).abs() <= CATCH_NEAR_MS && solo(*t)).min_by_key(|(t, _)| (t - to).abs()) else { continue };
+        let anchor_t = caught_at.min(to);
+        let Some((px, py, _)) = log.trails.get(&f.player).and_then(|tr| recent_state_at(tr, anchor_t)) else { continue };
         let mut best: Option<(f32, f32)> = None;
         for &s in &SCALES {
-            let (pts, reached) = simulate(sim, log, f, s, to);
-            let (x, y) = at(&pts, to);
-            let early = if reached.is_some_and(|r| r < to - EARLY_MS) { 20.0 } else { 0.0 };
+            let (pts, reached) = simulate(sim, log, f, s, anchor_t);
+            let (x, y) = at(&pts, anchor_t);
+            let early = if reached.is_some_and(|r| r < anchor_t - EARLY_MS) { 20.0 } else { 0.0 };
             let cost = ((x - px).hypot(y - py) - ANCHOR_OK_YD).max(0.0) * 10.0 + s.ln().abs() + early;
             if best.is_none_or(|b| cost < b.0) {
                 best = Some((cost, s));
             }
         }
         if let Some((_, s)) = best {
-            anchors.insert(i, (s, to, (px, py)));
+            anchors.insert(i, (s, anchor_t, (px, py)));
         }
     }
     log.fixes
@@ -347,12 +384,21 @@ pub fn paths(cfg: &GazeDetect, log: &GazeLog, fail_times: &[i64]) -> Vec<GhostPa
                 let (dx, dy) = (ax - x, ay - y);
                 if dx.hypot(dy) > ANCHOR_OK_YD {
                     let from = (ta - PULL_MS).max(f.from);
-                    for p in pts.iter_mut().filter(|p| p.0 > from) {
-                        let k = ((p.0 - from) as f32 / (ta - from).max(1) as f32).min(1.0);
+                    let weights: Vec<f32> = pts.windows(2).map(|pair| {
+                        if pair[1].0 > from && pair[1].0 <= ta {
+                            (pair[1].1 - pair[0].1).hypot(pair[1].2 - pair[0].2)
+                        } else { 0.0 }
+                    }).collect();
+                    let total: f32 = weights.iter().sum();
+                    let mut moved = 0.0;
+                    for (p, weight) in pts.iter_mut().skip(1).zip(weights) {
+                        moved += weight;
+                        let k = if total > 0.0 { moved / total } else { 0.0 };
                         p.1 += dx * k;
                         p.2 += dy * k;
                     }
                     estimated_from = Some(from);
+                    keep_gaze_locked(sim, log, f, &mut pts);
                 }
             }
             GhostPath { ghost: f.ghost.clone(), owner: f.player.clone(), pts, estimated_from }
@@ -450,9 +496,96 @@ mod tests {
 
     fn sim_cfg() -> GazeDetect {
         GazeDetect {
-            sim: Some(GhostSim { name: "Ghost".into(), speed: 4.0, half_angle: 35.0, delay_ms: 2_000, stun_ms: 1_000, catch_aura: Some(30) }),
+            sim: Some(GhostSim { name: "Ghost".into(), speed: 4.0, half_angle: 35.0, delay_ms: 2_000, stun_ms: 1_000, catch_aura: Some(30), clear_auras: vec![40] }),
             ..cfg()
         }
+    }
+
+    #[test]
+    fn clear_aura_ends_only_the_hit_ghost_at_the_exact_time() {
+        let cfg = sim_cfg();
+        let mut log = GazeLog::default();
+        for ghost in ["G1", "G2"] {
+            log.on_enemy_cast(&cfg, ghost, 10, 0.0, 0.0);
+            log.on_aura(&cfg, ghost, 10, "A", "Alice", true, 0);
+        }
+        stand(&mut log, "A", (40.0, 0.0), 0.0, 0, 10_000);
+        log.on_aura(&cfg, "Boss", 40, "G1", "Ghost", true, 5_055);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", false, 5_056);
+        let paths = paths(&cfg, &log, &[]);
+        assert_eq!(paths[0].pts.last().unwrap().0, 5_055);
+        assert_eq!(paths[1].pts.last().unwrap().0, 10_000);
+        assert_eq!(paths[0].pts[0], (0, 0.0, 0.0));
+    }
+
+    #[test]
+    fn stale_samples_do_not_anchor_a_catch() {
+        let trail = [(0, 40.0, 0.0, 0.0)];
+        assert!(recent_state_at(&trail, MAX_GAP_MS).is_some());
+        assert!(recent_state_at(&trail, MAX_GAP_MS + 1).is_none());
+        let cfg = sim_cfg();
+        let mut log = GazeLog::default();
+        log.on_enemy_cast(&cfg, "G1", 10, 0.0, 0.0);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", true, 0);
+        log.on_player_pos("A", 40.0, 0.0, 0.0, 0);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", false, 6_000);
+        let inferred = paths(&cfg, &log, &[])[0].moved();
+        log.on_aura(&cfg, "Boss", 30, "A", "Alice", true, 6_000);
+        assert_eq!(paths(&cfg, &log, &[])[0].moved(), inferred);
+        assert!(paths(&cfg, &log, &[])[0].estimated_from.is_none());
+    }
+
+    #[test]
+    fn catch_anchor_uses_the_catch_event_before_fixation_ends() {
+        let cfg = sim_cfg();
+        let mut log = GazeLog::default();
+        log.on_enemy_cast(&cfg, "G1", 10, 0.0, 0.0);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", true, 0);
+        stand(&mut log, "A", (40.0, 0.0), 0.0, 0, 5_000);
+        log.on_player_pos("A", 60.0, 0.0, std::f32::consts::PI, 5_300);
+        log.on_aura(&cfg, "Boss", 30, "A", "Alice", true, 5_000);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", false, 5_300);
+        let path = &paths(&cfg, &log, &[])[0];
+        assert_eq!(at(&path.pts, 5_000), (40.0, 0.0));
+        assert_eq!(path.pts.last().unwrap().0, 5_300);
+    }
+
+    #[test]
+    fn catch_anchor_cannot_move_a_watched_ghost() {
+        let cfg = sim_cfg();
+        let mut log = GazeLog::default();
+        log.on_enemy_cast(&cfg, "G1", 10, 0.0, 0.0);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", true, 0);
+        stand(&mut log, "A", (40.0, 0.0), std::f32::consts::PI, 0, 5_000);
+        log.on_aura(&cfg, "Boss", 30, "A", "Alice", true, 5_000);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", false, 5_000);
+        let result = paths(&cfg, &log, &[]);
+        assert!(result[0].pts.iter().all(|point| point.1 == 0.0 && point.2 == 0.0));
+    }
+
+    #[test]
+    fn corrected_path_stops_when_owner_turns_back() {
+        let cfg = sim_cfg();
+        let mut log = GazeLog::default();
+        log.on_enemy_cast(&cfg, "G1", 10, 0.0, 0.0);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", true, 0);
+        stand(&mut log, "A", (100.0, 0.0), 0.0, 0, 6_000);
+        stand(&mut log, "A", (100.0, 0.0), std::f32::consts::PI, 6_250, 10_000);
+        log.on_aura(&cfg, "Boss", 30, "A", "Alice", true, 10_000);
+        log.on_aura(&cfg, "G1", 10, "A", "Alice", false, 10_000);
+        let result = paths(&cfg, &log, &[]);
+        let path = &result[0];
+        assert!(path.estimated_from.is_some());
+        assert!(at(&path.pts, 5_000).0 > 0.0);
+        assert_eq!(at(&path.pts, 7_000), at(&path.pts, 10_000));
+    }
+
+    #[test]
+    fn unknown_heading_does_not_provide_gaze_coverage() {
+        let mut log = GazeLog::default();
+        log.on_player_pos("Player", 1.0, 2.0, f32::NAN, 1_000);
+        assert!(!log.trails.contains_key("Player"));
+        assert_eq!(log.last_t, 1_000);
     }
 
     #[test]

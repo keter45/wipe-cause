@@ -2,7 +2,7 @@ import { useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode
 import { ChevronDown, CircleDot, Crosshair, Maximize2, Minimize2, Pause, Play, Radius, RotateCcw, Tag, MapPin } from 'lucide-react';
 import type { ReplayRef } from '../types';
 import { classColor, mmss, num, shortName } from '../lib/format';
-import { movedUntil, npcOf, posAt, valueAt, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
+import { coneDirection, movedUntil, npcOf, posAt, valueAt, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
 import { tr } from '../i18n';
 import { useMessages } from '../i18n';
 import * as prefs from '../lib/replayPrefs';
@@ -13,6 +13,7 @@ import { Popover } from './Popover';
 import { castMsOf, fetchTooltip } from '../lib/wowhead';
 import { ClipButton, ClipPullContext } from './ClipButton';
 import { clipSpan } from '../lib/clipSpan';
+import { blastPhase, groundContours } from '../lib/replayHazards';
 
 export type { ReplayHit } from '../lib/replay';
 
@@ -581,6 +582,11 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       reachY = Math.max(MIN_SPAN / 2, (Math.max(...ys) - Math.min(...ys)) / 2) * 1.1;
     }
     // a mesma escala nos dois eixos: o lado que mais precisa manda
+    if (wide && !full) for (const blast of data.blasts ?? []) {
+      if (blast.from > fr.to || blast.at + 1000 < fr.from) continue;
+      reachX = Math.max(reachX, Math.abs(blast.x - cx) + blast.radius + 2);
+      reachY = Math.max(reachY, Math.abs(blast.y - cy) + blast.radius + 2);
+    }
     const scale = Math.min((W / 2 - PAD) / reachX, (H / 2 - PAD) / reachY) * cam.zoom;
     cx += cam.x;
     cy += cam.y;
@@ -655,6 +661,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
     return () => svg.removeEventListener('wheel', onWheel);
   }, [view === null]);
 
+  const contours = useMemo(() => groundContours(data, now), [data, now]);
   if (!view || view.players.length === 0) return <p className="muted small">{t.noPositions}</p>;
   const { players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor, map, casts, casters } = view;
   // cast de cada boss no instante: o que está castando, ou o que acabou de terminar
@@ -809,6 +816,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
         viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t.aria(focus.length ? focus.map((u) => shortName(u.name)).join(', ') : t.everyone)}>
         <rect width={W} height={H} className="replay-void" />
         <defs>
+          {map && <clipPath id={floorId + '-pools'}><path d={[map.floor, ...map.holes].map((poly) => 'M' + poly.map(([x, y]) => sx(x) + ',' + sy(y)).join('L') + 'Z').join(' ')} clipRule="evenodd" /></clipPath>}
           <marker id={`${floorId}-arrow`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" className="replay-facing-head" />
           </marker>
@@ -845,7 +853,29 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             <line key={`y${y}`} x1={0} y1={y} x2={W} y2={y} />
           ))}
         </g>
+        {contours.map((contour) => {
+          const kind = data.groundKinds[contour.kind];
+          if (hiddenGround.has(kind.key)) return null;
+          const size = contour.cellYd;
+          const fill = contour.cells.map(([x, y]) => 'M' + sx(x * size) + ',' + sy(y * size) + 'h' + size * scale + 'v' + -size * scale + 'h' + -size * scale + 'Z').join(' ');
+          const outline = contour.edges.map(([x, y, nextX, nextY]) => 'M' + sx(x * size) + ',' + sy(y * size) + 'L' + sx(nextX * size) + ',' + sy(nextY * size)).join(' ');
+          return <g key={kind.key} className="replay-pool" style={{ color: groundColor(contour.kind) }} clipPath={map ? 'url(#' + floorId + '-pools)' : undefined}>
+            <title>{t.estimatedArea(kind.name)}</title>
+            <path d={fill} className="replay-pool-fill" />
+            <path d={outline} className="replay-pool-outline" />
+          </g>;
+        })}
+        {(data.blasts ?? []).map((blast, index) => {
+          const phase = blastPhase(blast, now);
+          if (!phase || hiddenAreas.has('blast:' + blast.key)) return null;
+          return <g key={blast.key + ':' + index} className={'replay-blast ' + phase} data-phase={phase}>
+            <title>{t.blast(blast.name, blast.radius, Math.max(0, blast.at - now), phase === 'impact', blast.timingEstimated)}</title>
+            <circle cx={sx(blast.x)} cy={sy(blast.y)} r={blast.radius * scale} />
+            <SvgSpellIcon spellId={blast.spellId} x={sx(blast.x) - 7} y={sy(blast.y) - 7} size={14} title={t.blast(blast.name, blast.radius, Math.max(0, blast.at - now), phase === 'impact', blast.timingEstimated)} />
+          </g>;
+        })}
         {ground.map((g, i) => {
+          if (data.groundKinds[g.kind]?.contourCellYd) return null;
           if (hiddenGround.has(data.groundKinds[g.kind]?.key)) return null;
           const linger = data.groundKinds[g.kind]?.lingerMs ?? 0;
           const age = now - g.t;
@@ -978,15 +1008,15 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                   <g opacity={done ? 1 - Math.min(1, (now - end) / CAST_SHOW_MS) * 0.6 : 1}>
                     {(() => {
                       // frontal: aponta para o alvo do boss durante o cast e fica travado na direção do fim
-                      if (!c.cone || c.interrupted) return null;
+                      if (!c.cone || (done && c.interrupted)) return null;
                       const at = done ? end : now;
                       const tu = c.target ? data.units.get(c.target) : undefined;
                       const tp = tu ? posAt(tu, at) : null;
                       const bp = posAt(e, at) ?? p;
-                      const dir = tp ? Math.atan2(tp[1] - bp[1], tp[0] - bp[0]) : done ? c.facing : undefined;
+                      const dir = coneDirection(c.facing, done, bp, tp);
                       if (dir == null) return null;
                       return (
-                        <polygon points={triangle(bx, by, dir, (c.cone.halfAngle * Math.PI) / 180, c.cone.range * scale)} className={`replay-cone ${done ? '' : 'casting'}`}>
+                        <polygon points={triangle(sx(bp[0]), sy(bp[1]), dir, (c.cone.halfAngle * Math.PI) / 180, c.cone.range * scale)} data-phase={done ? 'impact' : 'warning'} className={`replay-cone ${done ? 'impact' : 'casting'}`}>
                           <title>{c.name}</title>
                         </polygon>
                       );
@@ -1293,11 +1323,12 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
               />
             )}
             {legendExtra}
-            {(data.areas.length > 0 || data.orbs || zones.length > 0 || data.soaks.length > 0) && (
+            {(data.areas.length > 0 || data.orbs || zones.length > 0 || data.soaks.length > 0 || (data.blasts?.length ?? 0) > 0) && (
               <MapFilter
                 icon={<Radius size={14} strokeWidth={1.75} aria-hidden />}
                 label={t.areas}
                 items={[
+                  ...[...new Map((data.blasts ?? []).map((blast) => [blast.key, blast] as const)).values()].map((blast) => ({ key: 'blast:' + blast.key, spellId: blast.spellId, name: blast.name })),
                   ...data.areas.map((a, ai) => ({ key: a.key, spellId: a.spellId ?? undefined, name: a.name, color: areaColor(ai) })),
                   ...(data.orbs?.kinds ?? []).map((k, i) => ({ key: `orb:${i}`, name: t.orb(tr(k.name)), color: ORB_COLORS[i] ?? ORB_COLORS[1] })),
                   // soaks, um por mecânica

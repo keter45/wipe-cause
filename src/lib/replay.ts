@@ -20,6 +20,11 @@ export interface ReplayUnit {
 
 export type GroundKind = PullGround['kinds'][number];
 
+export function coneDirection(facing: number | undefined, done: boolean, origin: [number, number], target: [number, number] | null): number | undefined {
+  if (done && facing != null) return facing;
+  return target ? Math.atan2(target[1] - origin[1], target[0] - origin[0]) : facing;
+}
+
 /** Acerto de mecânica "de chão": onde a vítima estava (jardas). */
 export interface GroundMark {
   t: number;
@@ -42,6 +47,7 @@ export interface ReplayData {
   map?: ArenaMap;
   /** soaks, no mapa */
   soaks: SoakView[];
+  blasts?: NonNullable<Pull['blasts']>;
   /** marcas de chão do grupo, no mapa */
   markers: WorldMarker[];
   /** tempo de cast típico (ms) de cada spell dos inimigos */
@@ -62,7 +68,7 @@ export const npcOf = (guid: string): number | null => {
  * Posições e marcas no chão de um pull (vazio em relatórios antigos), já no mapa com o norte para cima
  * (ver `arenas.ts`): tudo o que o replay desenha passa por aqui.
  */
-export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs' | 'soaks' | 'markers' | 'castMs'> & { encounterId?: number }): ReplayData {
+export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs' | 'soaks' | 'blasts' | 'markers' | 'castMs'> & { encounterId?: number }): ReplayData {
   return {
     castMs: pull.castMs ?? {},
     markers: (pull.markers ?? []).map((m) => {
@@ -74,6 +80,10 @@ export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'c
       return { ...k, x, y };
     }),
     areas: pull.areas ?? [],
+    blasts: (pull.blasts ?? []).map((blast) => {
+      const [x, y] = toMap(blast.x, blast.y);
+      return { ...blast, x, y };
+    }),
     orbs: pull.orbs && { ...pull.orbs, ground: pull.orbs.ground.map(([from, to, x, y, k]) => [from, to, -y, x, k]) },
     // células do chão: a de (c, l) cobre x em [c, c+1) e y em [l, l+1) (vezes o lado); no mapa, (-l-1, c)
     arena: pull.arena && { ...pull.arena, cells: pull.arena.cells.map(([c, l]) => [-l - 1, c]) },

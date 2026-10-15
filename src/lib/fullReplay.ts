@@ -5,7 +5,7 @@
 import type { Pull } from '../types';
 import type { ZoneView } from '../components/ReplayView';
 import { hasBackend, loadFight } from './api';
-import { auraHolders, crucialAt, deadAt, vacatedAreas, vacatedSince, vanishedAreas, type FightView } from './fight';
+import { auraHolders, crucialAt, deadAt, idleAxegrinders, vacatedAreas, vacatedSince, vanishedAreas, type FightView } from './fight';
 import type { ReplayData } from './replay';
 
 /** Pulls já relidos nesta sessão (trocar de aba ou gerar outro clipe não relê o log). */
@@ -59,13 +59,17 @@ export interface FightOverlays {
 export function fightOverlays(pull: Pull, view: FightView, data: ReplayData): FightOverlays {
   // machados que alguém atravessou sem levar dano (já não estavam onde o replay estimava) e os que sumiram
   const vacatedMap = vacatedAreas(view, data);
+  const idleMap = idleAxegrinders(view, data);
   const vanishedMap = vanishedAreas(view, data);
   const names = new Map(pull.players.map((p) => [p.guid, p.name] as const));
   return {
     isDead: (g, t) => deadAt(view, g, t),
     // centros das áreas em volta de players: quem tem a aura no instante (e está vivo)
     holders: (aura, t) => auraHolders(view, aura, t).filter((g) => !deadAt(view, g, t)),
-    vacated: (g, t) => vacatedSince(vacatedMap.get(g), t),
+    vacated: (g, t) => {
+      const since = [vacatedSince(vacatedMap.get(g), t), vacatedSince(idleMap.get(g), t)].filter((value): value is number => value != null);
+      return since.length ? Math.min(...since) : null;
+    },
     vanished: (g, t) => vacatedSince(vanishedMap.get(g), t) != null,
     // defensivos de raid em área (AMZ, Darkness, Spirit Link...), no mapa com o norte para cima
     zones: (view.data.zones ?? []).map((z) => {

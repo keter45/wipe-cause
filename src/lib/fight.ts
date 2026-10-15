@@ -430,6 +430,36 @@ export function vanishedAreas(v: FightView, data: ReplayData): Map<string, [numb
   return out;
 }
 
+export function idleAxegrinders(v: FightView, data: ReplayData): Map<string, [number, number][]> {
+  const out = new Map<string, [number, number][]>();
+  for (const area of data.areas) {
+    if (area.npc !== 260474) continue;
+    const spells = new Set(Object.entries(v.data.ruleSpells).filter(([, key]) => key === area.key).map(([id]) => Number(id)));
+    const hits = v.data.events.filter((event) => event[1] === EV.damage && spells.has(event[3]));
+    for (const unit of data.units.values()) {
+      if (unit.kind !== 'enemy' || npcOf(unit.guid) !== area.npc || !unit.pts.length) continue;
+      const start = unit.pts[0][0];
+      const end = Math.min(unit.pts[unit.pts.length - 1][0] + VACANT_STEP_MS, area.vanishFrom ?? Infinity);
+      const contacts = hits.filter((event) => {
+        if (event[0] < start || event[0] >= end) return false;
+        const origin = posAt(unit, event[0]);
+        const player = data.units.get(v.data.players[event[2]]);
+        const point = player && posAt(player, event[0]);
+        return origin && point && Math.hypot(point[0] - origin[0], point[1] - origin[1]) <= area.radius + NEAR_HIT_SLACK_YD;
+      }).map((event) => event[0]).sort((left, right) => left - right);
+      const spans: [number, number][] = [];
+      let last = start;
+      for (const contact of [...contacts, end]) {
+        const fadedAt = last + 5000;
+        if (fadedAt < contact) spans.push([fadedAt, contact]);
+        last = contact;
+      }
+      if (spans.length) out.set(unit.guid, spans);
+    }
+  }
+  return out;
+}
+
 /** Desde quando a unidade está apagada em `t` (ver `vacatedAreas`), ou null. */
 export function vacatedSince(spans: [number, number][] | undefined, t: number): number | null {
   for (const [a, b] of spans ?? []) if (t >= a && t < b) return a;

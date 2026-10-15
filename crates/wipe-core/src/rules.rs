@@ -199,6 +199,22 @@ pub struct SoakSpec {
     pub players: Option<u32>,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct BlastSpec {
+    pub from_soak: String,
+    pub radius: f32,
+    pub delay_ms: i64,
+    #[serde(default)]
+    pub event_ids: Vec<u32>,
+}
+
+pub struct BlastInfo {
+    pub key: String,
+    pub name: String,
+    pub spell_id: u32,
+    pub spec: BlastSpec,
+}
+
 /// Soak de uma mecânica, para o replay: chave, nome, spell (ícone), cast que o anuncia, raio e quantos.
 #[derive(Debug, Clone)]
 pub struct SoakInfo {
@@ -280,6 +296,7 @@ pub struct Mechanic {
     pub line: Option<LineSpec>,
     /// replay: o círculo do soak onde ele cai (no meio de quem foi atingido), com quantos entraram
     pub soak: Option<SoakSpec>,
+    pub blast: Option<BlastSpec>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -308,6 +325,7 @@ pub enum GroundSpec {
         /// debuff (de mesmo ID), onde ele encostou na coisa
         #[serde(default)]
         dot: bool,
+        contour_cell_yd: Option<f32>,
     },
 }
 
@@ -844,6 +862,28 @@ impl RuleTracker {
             }
         }
         Some((m.key.as_str(), m.name.as_str(), ms))
+    }
+
+    pub fn ground_contour_cell(&self, spell_id: u32) -> Option<f32> {
+        let &(index, _) = self.ground.get(&spell_id)?;
+        match self.mechs[index].ground {
+            Some(GroundSpec::Spec { contour_cell_yd, .. }) => contour_cell_yd.filter(|cell| cell.is_finite() && *cell > 0.0),
+            _ => None,
+        }
+    }
+
+    pub fn blast_specs(&self) -> Vec<BlastInfo> {
+        self.mechs.iter().filter_map(|mechanic| Some(BlastInfo {
+            key: mechanic.key.clone(), name: mechanic.name.clone(),
+            spell_id: mechanic.detect.damage_ids.iter().flatten().next().copied()?,
+            spec: mechanic.blast.clone()?,
+        })).collect()
+    }
+
+    pub fn is_blast_spell(&self, spell_id: u32) -> bool {
+        self.mechs.iter().any(|mechanic| mechanic.blast.as_ref().is_some_and(|blast| {
+            blast.event_ids.contains(&spell_id) || mechanic.detect.damage_ids.iter().flatten().any(|&id| id == spell_id)
+        }))
     }
 
     /// Chave e nome da mecânica que causa dano com este spell (para anotar golpes finais).
@@ -2383,6 +2423,32 @@ mechanics:
         let book = RuleBook::embedded();
         assert!(book.errors.is_empty(), "{:?}", book.errors);
         assert!(book.find(3421, "The Twin Fangs").is_some());
+    }
+
+    #[test]
+    fn coiled_altar_replay_uses_spell_geometry_without_duplicate_ground_marks() {
+        let book = RuleBook::embedded();
+        let sets = book.for_encounter(3429, "The Coiled Altar");
+        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        for (damage, cast) in [(1283594, 1283489), (1299296, 1299267)] {
+            let info = tracker.soak_info(tracker.soak_for(damage).unwrap()).unwrap();
+            assert_eq!((info.radius, info.cast_id, info.players), (9.0, Some(cast), Some(5)));
+            assert!(tracker.ground_for(damage).is_none());
+        }
+        for damage in [1299684, 1286620, 1307292] {
+            assert!(tracker.cone_for(damage).is_some());
+            assert!(tracker.ground_for(damage).is_none());
+        }
+        let blasts = tracker.blast_specs();
+        assert_eq!(blasts.len(), 2);
+        for blast in blasts {
+            assert_eq!((blast.spec.radius, blast.spec.delay_ms), (40.0, 6_000));
+            assert!(tracker.ground_for(blast.spell_id).is_none());
+        }
+        assert!(tracker.is_blast_spell(1283631));
+        assert_eq!(tracker.ground_contour_cell(1283290), Some(2.0));
+        let heroic = RuleTracker::new(&sets, 15).unwrap();
+        assert_eq!(heroic.ground_contour_cell(1298591), Some(2.0));
     }
 
     #[test]

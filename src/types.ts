@@ -72,6 +72,7 @@ export interface Pull {
   areas?: AreaView[];
   /** soaks (regra com `soak`): onde cada um caiu e quantos entraram */
   soaks?: SoakView[];
+  blasts?: BlastView[];
   /** marcas de chão do grupo (world markers) durante o pull */
   markers?: WorldMarker[];
   /** tempo de cast típico (ms) de cada spell dos inimigos (medido no log inteiro) */
@@ -113,6 +114,19 @@ export interface SoakView {
   needs?: number;
   /** quantos entraram */
   hit: number;
+  caster?: string;
+}
+
+export interface BlastView {
+  key: string;
+  name: string;
+  spellId: number;
+  from: number;
+  at: number;
+  x: number;
+  y: number;
+  radius: number;
+  timingEstimated: boolean;
 }
 
 export interface AreaView {
@@ -199,7 +213,7 @@ export interface BossCast {
 
 /** Marcas no chão: o log não mostra poças nem gotas, só onde estava quem foi atingido. */
 export interface PullGround {
-  kinds: { key: string; name: string; spellId: number; lingerMs: number }[];
+  kinds: { key: string; name: string; spellId: number; lingerMs: number; contourCellYd?: number }[];
   /** [t, x, y em décimos de jarda, índice em kinds] */
   marks: [number, number, number, number][];
 }

@@ -275,7 +275,7 @@ const KEEP_REPORTS = 6;
 const SETTLED_AFTER_MS = 30_000;
 const REPORT_IDLE_MS = 10 * 60_000;
 
-const eventsKey = (code: string, fight: number) => `wcl-events:${code}:${fight}`;
+const eventsKey = (code: string, fight: number) => `wcl-events:${code}:v4:${fight}`;
 
 /** Marca os reports como usados agora e apaga os eventos dos mais antigos. */
 async function pruneEvents(codes: string[]) {
