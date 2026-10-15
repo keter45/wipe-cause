@@ -111,6 +111,8 @@ fn int(v: &Value) -> i64 {
 
 /// Atores e habilidades de um report (os ids são por report).
 struct Source {
+    /// código do report (vira o `log_file` dos pulls: `wcl:<código>`, para o replay achar o fight)
+    code: String,
     start_time: i64,
     actors: HashMap<i64, Actor>,
     abilities: HashMap<i64, (String, i64)>,
@@ -211,7 +213,8 @@ impl WclAnalyzer {
             size: int(&f["size"]) as u32,
             abs_start: start_time + int(&f["startTime"]),
         }));
-        self.sources.push(Source { start_time, actors, abilities });
+        let code = report["code"].as_str().unwrap_or("").to_string();
+        self.sources.push(Source { code, start_time, actors, abilities });
         Ok(index)
     }
 
@@ -221,6 +224,16 @@ impl WclAnalyzer {
     }
 
     pub fn begin_fight(&mut self, report: usize, fight_id: i64) -> Result<(), String> {
+        self.start_fight(report, fight_id, false)
+    }
+
+    /// Fight para o replay completo: guarda posições, vida, debuffs e eventos de cada player,
+    /// sem o corte de mortes (o mesmo que `analyze_pull_full` faz no log). Feche com `replay`.
+    pub fn begin_replay(&mut self, report: usize, fight_id: i64) -> Result<(), String> {
+        self.start_fight(report, fight_id, true)
+    }
+
+    fn start_fight(&mut self, report: usize, fight_id: i64, replay: bool) -> Result<(), String> {
         self.end_fight();
         let fight = self
             .fights
@@ -239,8 +252,11 @@ impl WclAnalyzer {
         ];
         let f: Vec<&str> = start.iter().map(String::as_str).collect();
         // kill: sem corte de mortes (a raid seguiu e matou o boss, o resto da luta conta)
-        let cutoff = if fight.kill { 0 } else { self.death_cutoff };
+        let cutoff = if fight.kill || replay { 0 } else { self.death_cutoff };
         let mut b = PullBuilder::start(&f, t, &format_timestamp(t, self.tz_hours), self.tz_hours, &self.book, cutoff);
+        if replay {
+            b = b.capture_fight(&self.data);
+        }
         for a in src.actors.values().filter(|a| a.kind == ActorKind::Pet) {
             if let Some(owner) = a.pet_owner.and_then(|o| src.actors.get(&o)).filter(|o| o.kind == ActorKind::Player) {
                 b.set_pet_owner(&a.guid, &owner.guid);
@@ -286,7 +302,21 @@ impl WclAnalyzer {
         ];
         let f: Vec<&str> = end.iter().map(String::as_str).collect();
         let id = self.finished.len();
-        self.finished.push(b.finish(Some((&f, t)), id, &self.data));
+        let mut fp = b.finish(Some((&f, t)), id, &self.data);
+        // o replay acha o fight de novo por aqui (no log local é o arquivo e o byte do início)
+        let code = &self.sources[fight.report].code;
+        if !code.is_empty() {
+            fp.pull.log_file = Some(format!("wcl:{code}"));
+            fp.pull.log_offset = Some(fight.id as u64);
+        }
+        self.finished.push(fp);
+    }
+
+    /// Fecha o fight de `begin_replay` e devolve o pull com o replay (`Pull.fight`).
+    pub fn replay(mut self) -> Option<crate::Pull> {
+        self.end_fight();
+        let (mut pulls, _) = finalize(self.finished, &self.data);
+        pulls.pop()
     }
 
     pub fn finish(mut self) -> LogReport {
@@ -637,6 +667,7 @@ mod tests {
 
     fn report() -> Value {
         json!({
+            "code": "abcd1234",
             "startTime": 1_790_730_000_000i64,
             "guild": { "server": { "region": { "slug": "us" } } },
             "fights": [
@@ -726,6 +757,34 @@ mod tests {
         let kb = p.deaths[0].killing_blow.as_ref().expect("golpe final");
         assert_eq!((kb.spell_id, kb.overkill), (1_284_034, 5_000));
         assert_eq!(p.bosses[0].hp_pct, Some(90.0));
+    }
+
+    #[test]
+    fn replays_a_fight_and_remembers_where_it_came_from() {
+        let events = [
+            json!({ "timestamp": 12_000, "type": "damage", "sourceID": 5, "sourceIsFriendly": true, "targetID": 30, "targetIsFriendly": false, "abilityGameID": 133,
+                    "amount": 50_000, "hitType": 1, "resourceActor": 1, "hitPoints": 90_000, "maxHitPoints": 100_000, "x": 69157, "y": 1616 }),
+            json!({ "timestamp": 20_000, "type": "damage", "sourceID": 30, "sourceIsFriendly": false, "targetID": 6, "targetIsFriendly": true, "abilityGameID": 1284034,
+                    "amount": 75_000, "overkill": 5_000, "resourceActor": 2, "hitPoints": 0, "maxHitPoints": 75_000, "x": 100, "y": 200 }),
+            json!({ "timestamp": 20_010, "type": "death", "sourceID": 30, "targetID": 6, "targetIsFriendly": true, "abilityGameID": 1284034 }),
+        ];
+        // a análise guarda de onde veio cada pull (report e fight), sem o replay
+        let mut a = WclAnalyzer::single(&report(), RuleBook::embedded(), 0, -3.0).unwrap();
+        a.begin_fight(0, 2).unwrap();
+        a.push_events(&events);
+        let p = &a.finish().pulls[0];
+        assert_eq!((p.log_file.as_deref(), p.log_offset), (Some("wcl:abcd1234"), Some(2)));
+        assert!(p.fight.is_none());
+
+        // o replay relê só aquele fight, com o replay completo
+        let mut r = WclAnalyzer::single(&report(), RuleBook::embedded(), 4, -3.0).unwrap();
+        r.begin_replay(0, 2).unwrap();
+        r.push_events(&events);
+        let p = r.replay().expect("pull");
+        let fight = p.fight.as_ref().expect("replay");
+        assert!(fight.players.len() >= 2);
+        assert_eq!(p.deaths.len(), 1);
+        assert_eq!(p.log_offset, Some(2));
     }
 
     #[test]

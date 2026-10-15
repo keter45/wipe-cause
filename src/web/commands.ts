@@ -13,7 +13,7 @@ import { emit } from './events';
 import { openedFile } from './files';
 import { historyDelete, historyDeleteUnpinned, historyList, historyLoad, historySetPinned, historyTrends, saveAnalysis, type Summary } from './history';
 import { aiChat, aiGetConfig, aiListModels, aiSetConfig, discordGetConfig, discordPost, discordPostFiles, discordSetConfig } from './integrations';
-import { analyzeReports, wclGetConfig, wclLogin, wclLogout, wclQuery, wclSetConfig } from './wcl';
+import { analyzeReports, replayFight, wclGetConfig, wclLogin, wclLogout, wclQuery, wclSetConfig } from './wcl';
 import { idbDel, idbGet, idbKeys, idbSet } from './store';
 
 const m = () => messagesOf(webMsg);
@@ -65,7 +65,9 @@ async function analyzeLog(path: string, deathCutoff: number, tzHours: number): P
   return out.report;
 }
 
-async function fightReplay(path: string, offset: number): Promise<Pull> {
+async function fightReplay(path: string, offset: number, tzHours: number): Promise<Pull> {
+  // pull do Warcraft Logs: o "offset" é o id do fight
+  if (path.startsWith(WCL_PREFIX)) return replayFight(path.slice(WCL_PREFIX.length), offset, tzHours, await tunings());
   return JSON.parse(await call<string>('fightReplay', [fileOrReopen(path), offset, await tunings()]));
 }
 
@@ -78,7 +80,7 @@ const appOnly = () => Promise.reject(m().appOnly);
 
 const commands: Record<string, (a: Args) => unknown> = {
   analyze_log: (a) => analyzeLog(a.path, a.deathCutoff ?? 0, a.tzHours ?? 0),
-  fight_replay: (a) => fightReplay(a.path, a.offset),
+  fight_replay: (a) => fightReplay(a.path, a.offset, a.tzHours ?? 0),
   set_locale: (a) => setEngineEnglish(a.locale === 'en'),
   rules_dir: () => null,
   rules_get: (a) => rulesGet(a.encounterId, a.name),

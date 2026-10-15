@@ -154,47 +154,11 @@ pub fn analyze(
     for (i, f) in fights.iter().enumerate() {
         let done = i as u64 * 100;
         progress(done, total);
-        let code = codes[f.report];
-        let file = cache_dir(app, code).map(|d| d.join(format!("fight-{}.json.gz", f.id)));
         analyzer.begin_fight(f.report, f.id)?;
-        if let Some(events) = file.as_deref().and_then(read_cached) {
-            analyzer.push_events(&events);
-            continue;
-        }
-        let mut all = Vec::new();
-        let mut from = Some(f.start_time as f64);
-        let mut pages = 0u64;
-        while let Some(t) = from {
-            let vars = serde_json::json!({ "code": code, "fight": f.id, "start": t, "end": f.end_time });
-            let mut page = api_query(EVENTS_QUERY, &vars)?;
-            let events = &mut page["reportData"]["report"]["events"];
-            from = events["nextPageTimestamp"].as_f64();
-            let data = slim_events(match events["data"].take() {
-                Value::Array(v) => v,
-                _ => Vec::new(),
-            });
-            analyzer.push_events(&data);
-            all.extend(data);
-            pages += 1;
-            progress(done + (pages * 8).min(95), total);
-        }
-        let (start, end) = spans[f.report];
-        let settled = end - f.end_time > SETTLED_AFTER_MS || now_ms() - (start + end) > REPORT_IDLE_MS;
-        if let (Some(file), true) = (&file, settled) {
-            write_cached(file, &all);
-        }
+        let span = spans[f.report];
+        feed_fight(app, &mut analyzer, codes[f.report], f.id, (f.start_time, f.end_time), span, |pages| progress(done + (pages * 8).min(95), total))?;
     }
-    for code in codes {
-        if let Some(d) = cache_dir(app, code) {
-            // marca o report como usado agora (a limpeza mantém os mais recentes)
-            let _ = std::fs::create_dir_all(&d);
-            let _ = std::fs::remove_file(d.join(".used"));
-            let _ = std::fs::File::create(d.join(".used"));
-        }
-    }
-    if let Some(root) = cache_dir(app, "x").and_then(|d| d.parent().map(Path::to_path_buf)) {
-        prune(&root);
-    }
+    mark_used(app, codes);
     progress(total, total);
     let mut r = analyzer.finish();
     r.file = format!("{PREFIX}{}", codes.join(","));
@@ -209,6 +173,76 @@ pub fn analyze(
         }
     }
     Ok(r)
+}
+
+/// Eventos de um fight para o analisador (depois do `begin_*`): do disco, se já foram baixados;
+/// senão da API, página a página (`on_page(páginas)`), guardando quando o fight não muda mais.
+fn feed_fight(app: &AppHandle, analyzer: &mut WclAnalyzer, code: &str, fight_id: i64, (start_time, end_time): (i64, i64), (start, end): (i64, i64), mut on_page: impl FnMut(u64)) -> Result<(), String> {
+    let file = cache_dir(app, code).map(|d| d.join(format!("fight-{fight_id}.json.gz")));
+    if let Some(events) = file.as_deref().and_then(read_cached) {
+        analyzer.push_events(&events);
+        return Ok(());
+    }
+    let mut all = Vec::new();
+    let mut from = Some(start_time as f64);
+    let mut pages = 0u64;
+    while let Some(t) = from {
+        let vars = serde_json::json!({ "code": code, "fight": fight_id, "start": t, "end": end_time });
+        let mut page = api_query(EVENTS_QUERY, &vars)?;
+        let events = &mut page["reportData"]["report"]["events"];
+        from = events["nextPageTimestamp"].as_f64();
+        let data = slim_events(match events["data"].take() {
+            Value::Array(v) => v,
+            _ => Vec::new(),
+        });
+        analyzer.push_events(&data);
+        all.extend(data);
+        pages += 1;
+        on_page(pages);
+    }
+    let settled = end - end_time > SETTLED_AFTER_MS || now_ms() - (start + end) > REPORT_IDLE_MS;
+    if let (Some(file), true) = (&file, settled) {
+        write_cached(file, &all);
+    }
+    Ok(())
+}
+
+/// Marca os reports como usados agora e apaga os eventos dos mais antigos.
+fn mark_used(app: &AppHandle, codes: &[&str]) {
+    for code in codes {
+        if let Some(d) = cache_dir(app, code) {
+            // marca o report como usado agora (a limpeza mantém os mais recentes)
+            let _ = std::fs::create_dir_all(&d);
+            let _ = std::fs::remove_file(d.join(".used"));
+            let _ = std::fs::File::create(d.join(".used"));
+        }
+    }
+    if let Some(root) = cache_dir(app, "x").and_then(|d| d.parent().map(Path::to_path_buf)) {
+        prune(&root);
+    }
+}
+
+/// Replay completo de um pull analisado pelo Warcraft Logs (`log_file` = `wcl:<código>`,
+/// `log_offset` = id do fight): só os eventos desse fight, do disco ou baixados.
+pub fn replay(app: &AppHandle, code: &str, fight_id: i64, book: RuleBook, tz_hours: f64) -> Result<Pull, String> {
+    let data = api_query(REPORT_QUERY, &serde_json::json!({ "code": code }))?;
+    let report = &data["reportData"]["report"];
+    if report.is_null() {
+        return Err(pick(format!("Report {code} não encontrado no Warcraft Logs (ele é privado ou o código está errado)."), format!("Report {code} not found on Warcraft Logs (it's private or the code is wrong).")));
+    }
+    let mut analyzer = WclAnalyzer::new(book, 0, tz_hours);
+    analyzer.add_report(report, None)?;
+    let fight = analyzer
+        .fights()
+        .iter()
+        .find(|f| f.id == fight_id)
+        .map(|f| (f.start_time, f.end_time))
+        .ok_or_else(|| pick(format!("O fight {fight_id} não está mais no report {code} do Warcraft Logs."), format!("Fight {fight_id} is no longer in the Warcraft Logs report {code}.")))?;
+    analyzer.begin_replay(0, fight_id)?;
+    let span = (report["startTime"].as_i64().unwrap_or(0), report["endTime"].as_i64().unwrap_or(0));
+    feed_fight(app, &mut analyzer, code, fight_id, fight, span, |_| {})?;
+    mark_used(app, &[code]);
+    analyzer.replay().ok_or_else(|| pick("pull curto demais para o replay", "pull too short for the replay"))
 }
 
 #[cfg(test)]

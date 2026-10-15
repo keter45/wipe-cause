@@ -49,6 +49,16 @@ const handlers: Record<string, (args: any[], progress: Progress) => unknown> = {
     return { next: events.nextPageTimestamp ?? null, slim };
   },
   wclPushSlim: ([id, events]) => session(id).pushSlim(events),
+  wclBeginReplay: ([id, report, fight]) => session(id).beginReplay(report, fight),
+  wclReplay: ([id]) => {
+    const s = session(id);
+    sessions.delete(id);
+    try {
+      return s.replay();
+    } finally {
+      s.free();
+    }
+  },
   wclFinish: ([id, file]) => {
     const s = session(id);
     sessions.delete(id);

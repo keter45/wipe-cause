@@ -16,6 +16,8 @@ declare module 'wipe-wasm/wipe_wasm.js' {
     pushPage(events: string): string;
     pushSlim(events: string): void;
     finish(file: string): string;
+    beginReplay(report: number, fightId: number): void;
+    replay(): string;
     free(): void;
   }
 }

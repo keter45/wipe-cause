@@ -22,6 +22,7 @@ export const webMsg = defineMessages(
     wclQuery: (m: string) => `Erro na consulta ao Warcraft Logs: ${m}`,
     wclOffline: (e: string) => `Sem conexão com o Warcraft Logs: ${e}`,
     reportNotFound: (code: string) => `Report ${code} não encontrado no Warcraft Logs (ele é privado ou o código está errado).`,
+    fightNotFound: (code: string, fight: number) => `O fight ${fight} não está mais no report ${code} do Warcraft Logs.`,
     // Discord
     noWebhook: 'Nenhum webhook do Discord configurado.',
     badWebhook: 'Isso não parece um webhook do Discord (https://discord.com/api/webhooks/…).',
@@ -60,6 +61,7 @@ export const webMsg = defineMessages(
     wclQuery: (m: string) => `Warcraft Logs query error: ${m}`,
     wclOffline: (e: string) => `No connection to Warcraft Logs: ${e}`,
     reportNotFound: (code: string) => `Report ${code} not found on Warcraft Logs (it's private or the code is wrong).`,
+    fightNotFound: (code: string, fight: number) => `Fight ${fight} is no longer in the Warcraft Logs report ${code}.`,
     noWebhook: 'No Discord webhook set up.',
     badWebhook: "That doesn't look like a Discord webhook (https://discord.com/api/webhooks/…).",
     webhookGone: "Discord couldn't find that webhook (was it deleted?).",

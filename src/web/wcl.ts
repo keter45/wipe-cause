@@ -3,7 +3,7 @@
 // chamadas do navegador (CORS), então nada passa por servidor nosso.
 
 import type { WclConfig, WclUser } from '../lib/wclApi';
-import type { LogReport } from '../types';
+import type { LogReport, Pull } from '../types';
 import { messagesOf } from '../i18n';
 import { webMsg } from './web.i18n';
 import { call } from './engine';
@@ -302,6 +302,29 @@ interface Fight {
 const joinPages = (pages: string[]) => `[${pages.map((p) => p.slice(1, -1)).filter(Boolean).join(',')}]`;
 
 /**
+ * Eventos de um fight para o núcleo no worker (depois do `begin`): do IndexedDB, se já foram
+ * baixados; senão da API, página a página, guardando quando o fight não muda mais.
+ */
+async function feedFight(sid: number, code: string, f: { id: number; startTime: number; endTime: number }, span: [number, number], onPage?: (pages: number) => void) {
+  const key = eventsKey(code, f.id);
+  const cached = await idbGet<string>(key).catch(() => undefined);
+  if (cached) return call('wclPushSlim', [sid, cached]);
+  const pages: string[] = [];
+  let from: number | null = f.startTime;
+  while (from != null) {
+    const text = await apiText(EVENTS_QUERY, { code, fight: f.id, start: from, end: f.endTime });
+    const r = await call<{ errors?: string[]; next?: number | null; slim?: string }>('wclPushResponse', [sid, text]);
+    if (r.errors?.length) throw m().wclQuery(r.errors.join('; '));
+    from = r.next ?? null;
+    pages.push(r.slim ?? '[]');
+    onPage?.(pages.length);
+  }
+  const [start, end] = span;
+  const settled = end - f.endTime > SETTLED_AFTER_MS || Date.now() - (start + end) > REPORT_IDLE_MS;
+  if (settled) await idbSet(key, joinPages(pages)).catch(() => {});
+}
+
+/**
  * Analisa a noite dos reports: baixa os eventos de cada fight de boss e passa para o núcleo
  * no worker, página a página. Fights já baixados (e que não mudam mais) saem do IndexedDB.
  */
@@ -321,32 +344,35 @@ export async function analyzeReports(codes: string[], deathCutoff: number, tzHou
     for (const [i, f] of fights.entries()) {
       const done = i * 100;
       progress(done, total);
-      const code = codes[f.report];
-      const key = eventsKey(code, f.id);
       await call('wclBeginFight', [sid, f.report, f.id]);
-      const cached = await idbGet<string>(key).catch(() => undefined);
-      if (cached) {
-        await call('wclPushSlim', [sid, cached]);
-        continue;
-      }
-      const pages: string[] = [];
-      let from: number | null = f.startTime;
-      while (from != null) {
-        const text = await apiText(EVENTS_QUERY, { code, fight: f.id, start: from, end: f.endTime });
-        const r = await call<{ errors?: string[]; next?: number | null; slim?: string }>('wclPushResponse', [sid, text]);
-        if (r.errors?.length) throw m().wclQuery(r.errors.join('; '));
-        from = r.next ?? null;
-        pages.push(r.slim ?? '[]');
-        progress(done + Math.min(pages.length * 8, 95), total);
-      }
-      const [start, end] = spans[f.report];
-      const settled = end - f.endTime > SETTLED_AFTER_MS || Date.now() - (start + end) > REPORT_IDLE_MS;
-      if (settled) await idbSet(key, joinPages(pages)).catch(() => {});
+      await feedFight(sid, codes[f.report], f, spans[f.report], (pages) => progress(done + Math.min(pages * 8, 95), total));
     }
     await pruneEvents(codes);
     progress(total, total);
     const text = await call<string>('wclFinish', [sid, `wcl:${codes.join(',')}`]);
     return { ...(JSON.parse(text) as { report: LogReport; summary: Summary }), size: text.length };
+  } catch (e) {
+    await call('wclDrop', [sid]).catch(() => {});
+    throw e;
+  }
+}
+
+/**
+ * Replay completo de um pull analisado pelo Warcraft Logs (`logFile` = `wcl:<código>`,
+ * `logOffset` = id do fight): os eventos só desse fight, guardados ou baixados.
+ */
+export async function replayFight(code: string, fightId: number, tzHours: number, tunings: string): Promise<Pull> {
+  const sid = await call<number>('wclNew', [0, tzHours, tunings]);
+  try {
+    const report = (await apiQuery(REPORT_QUERY, { code }))?.reportData?.report;
+    if (!report) throw m().reportNotFound(code);
+    await call('wclAddReport', [sid, JSON.stringify(report)]);
+    const fight = (report.fights ?? []).find((f: { id: number }) => f.id === fightId);
+    if (!fight) throw m().fightNotFound(code, fightId);
+    await call('wclBeginReplay', [sid, 0, fightId]);
+    await feedFight(sid, code, fight, [report.startTime ?? 0, report.endTime ?? 0]);
+    await pruneEvents([code]);
+    return JSON.parse(await call<string>('wclReplay', [sid]));
   } catch (e) {
     await call('wclDrop', [sid]).catch(() => {});
     throw e;
