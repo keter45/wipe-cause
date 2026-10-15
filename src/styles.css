@@ -2565,10 +2565,13 @@ table.heat td {
   margin: 0;
   line-height: 1.5;
 }
+/* em bloco, não flex: numa coluna flex o Chromium mede o replay (SVG de largura total) mais baixo do que
+   ele fica, e os casts e golpes embaixo do mapa vazam por cima dos "Últimos 15s" */
 .death-pos.stacked {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
+  display: block;
+}
+.death-pos.stacked .death-pos-facts {
+  margin-bottom: 8px;
 }
 .death-pos.stacked .death-pos-facts {
   flex-direction: row;
