@@ -19,10 +19,10 @@ type Action = 'copy' | 'png' | 'html' | 'pdf' | 'clip' | 'discord' | 'discordTex
  * em duas versões: o resumo (padrão) ou o completo (tudo aberto).
  * `name`: base do nome do arquivo e título. `pdf`: oferece PDF (links clicáveis).
  * `discord`: a mensagem de texto (resumo) para o canal da raid; sem webhook, o menu leva às
- * Configurações. `clip`: o pull e o trecho do erro que acabou com a try: dá para salvar o clipe
+ * Configurações. `clip`: o pull e os momentos do resumo da try (erros graves e a causa do wipe): dá para salvar o clipe
  * (WebP animado), e a imagem no Discord vai junto com ele.
  */
-export function ShareMenu({ card: makeCard, name, pdf = false, discord, clip }: { card: (detail: CardDetail) => ReactElement; name: string; pdf?: boolean; discord?: () => unknown; clip?: { pull: Pull; moment: ClipMoment } | null }) {
+export function ShareMenu({ card: makeCard, name, pdf = false, discord, clip }: { card: (detail: CardDetail) => ReactElement; name: string; pdf?: boolean; discord?: () => unknown; clip?: { pull: Pull; moments: ClipMoment[] } | null }) {
   const t = useMessages(shareMsg);
   const [detail, setDetail] = useState<CardDetail>('summary');
   const classes = usePlayerClasses();
@@ -39,8 +39,9 @@ export function ShareMenu({ card: makeCard, name, pdf = false, discord, clip }: 
   async function makeClip(): Promise<{ bytes: Uint8Array; name: string } | null> {
     if (!clip) return null;
     const { replayClip } = await import('../../lib/replayClip');
-    const bytes = await replayClip(clip.pull, clip.moment, { title: name });
-    return { bytes, name: `${fileSlug(`${name} ${clip.moment.label}`) || 'wipe-cause'}.webp` };
+    const bytes = await replayClip(clip.pull, clip.moments, { title: name });
+    const what = clip.moments.length === 1 ? clip.moments[0].label : '';
+    return { bytes, name: `${fileSlug(`${name} ${what}`) || 'wipe-cause'}.webp` };
   }
 
   async function run(a: Action) {

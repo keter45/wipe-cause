@@ -1,19 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp, CircleUserRound, X, ZoomOut } from 'lucide-react';
 import type { Pull, ReplayRef } from '../types';
 import { classColor, mmss, num, shortName } from '../lib/format';
 import { decodeReplay } from '../lib/replay';
-import { auraHolders, aurasAt, bossHpAt, crucialAt, crucialSpells, deadAt, EV, eventsBetween, fightView, hpAt, meterAt, METERS, vacatedAreas, vacatedSince, vanishedAreas, type FightEventView, type FightMarker, type FightView, type MeterKind } from '../lib/fight';
-import { hasBackend, loadFight } from '../lib/api';
+import { aurasAt, bossHpAt, crucialAt, crucialSpells, deadAt, EV, eventsBetween, fightView, hpAt, meterAt, METERS, type FightEventView, type FightMarker, type FightView, type MeterKind } from '../lib/fight';
+import { canLoadFull, fightOverlays, headBadge, loadFullPull } from '../lib/fullReplay';
 import { useMessages } from '../i18n';
 import * as prefs from '../lib/replayPrefs';
 import { fightMsg } from './FightReplay.i18n';
-import { MapFilter, ReplayView, usePlayback, type ZoneView } from './ReplayView';
+import { MapFilter, ReplayView, usePlayback } from './ReplayView';
 import { ClipPullContext } from './ClipButton';
 import { SpellIcon, SpellName } from './SpellIcon';
-
-/** Pulls já relidos nesta sessão (trocar de aba não relê o log). */
-const cache = new Map<string, Pull>();
 
 /** Janela do painel do player focado: o que aconteceu com ele até o instante (ms). */
 const FEED_WINDOW_MS = 15_000;
@@ -39,29 +36,21 @@ const ROLE_RANK: Record<string, number> = { tank: 0, healer: 1, dps: 2 };
  */
 export function FightReplay({ pull }: { pull: Pull }) {
   const t = useMessages(fightMsg);
-  const key = `${pull.logFile ?? ''}:${pull.logOffset ?? ''}:${pull.startMs}`;
-  const devFight = import.meta.env.DEV && !hasBackend && new URLSearchParams(window.location.search).has('fight');
-  const canLoad = devFight || (hasBackend && !!pull.logFile && pull.logOffset != null);
-  const [full, setFull] = useState<Pull | null>(() => cache.get(key) ?? null);
+  const canLoad = canLoadFull(pull);
+  const [full, setFull] = useState<Pull | null>(pull.fight ? pull : null);
   const [error, setError] = useState<string | null>(null);
   const [tries, setTries] = useState(0);
   useEffect(() => {
-    if (!canLoad || full) return;
+    if (!canLoad) return;
     let stale = false;
     setError(null);
-    loadFight(pull)
-      .then((p) => {
-        // as marcas de chão vêm da análise do log inteiro (relendo só o pull, as que já estavam ficam de fora)
-        // e o tempo de cast de cada spell (medido no log inteiro)
-        const withMarkers = { ...p, ...(pull.markers?.length ? { markers: pull.markers } : {}), ...(pull.castMs ? { castMs: { ...p.castMs, ...pull.castMs } } : {}) };
-        cache.set(key, withMarkers);
-        if (!stale) setFull(withMarkers);
-      })
+    loadFullPull(pull)
+      .then((p) => !stale && setFull(p))
       .catch((e) => !stale && setError(String(e)));
     return () => {
       stale = true;
     };
-  }, [key, tries]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pull, tries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!canLoad) return <p className="muted pad">{t.noLog}</p>;
   if (error)
@@ -85,24 +74,8 @@ function FightReplayInner({ pull }: { pull: Pull }) {
   const pb = usePlayback(0, duration, 0, false);
   const [selected, setSelected] = useState<string | null>(null);
   const replay = useMemo<ReplayRef>(() => ({ t: 0, from: 0, to: duration, focus: selected ? [selected] : [] }), [duration, selected]);
-  const isDead = useCallback((g: string, tt: number) => deadAt(view, g, tt), [view]);
-  // centros das áreas em volta de players: quem tem a aura no instante (e está vivo)
-  const holders = useCallback((aura: number, tt: number) => auraHolders(view, aura, tt).filter((g) => !deadAt(view, g, tt)), [view]);
-  // machados que alguém atravessou sem levar dano: já não estavam onde o replay estimava
-  const vacatedMap = useMemo(() => vacatedAreas(view, data), [view, data]);
-  const vacated = useCallback((g: string, tt: number) => vacatedSince(vacatedMap.get(g), tt), [vacatedMap]);
-  // e os que sumiram (regra `vanish`: sem acertar ninguém por perto)
-  const vanishedMap = useMemo(() => vanishedAreas(view, data), [view, data]);
-  const vanished = useCallback((g: string, tt: number) => vacatedSince(vanishedMap.get(g), tt) != null, [vanishedMap]);
-  // defensivos de raid em área (AMZ, Darkness, Spirit Link...)
-  const zones = useMemo<ZoneView[]>(() => {
-    const names = new Map(pull.players.map((p) => [p.guid, p.name] as const));
-    return (view.data.zones ?? []).map((z) => {
-      const caster = view.data.players[z.caster];
-      // no mapa com o norte para cima, como o resto do replay
-      return { ...z, x: -z.y, y: z.x, caster, casterName: names.get(caster) ?? caster, name: view.data.spells[z.spellId] ?? String(z.spellId) };
-    });
-  }, [view, pull]);
+  // mortes, áreas, machados e defensivos em área (os mesmos do clipe)
+  const { isDead, holders, vacated, vanished, zones } = useMemo(() => fightOverlays(pull, view, data), [pull, view, data]);
   // debuffs na cabeça: o usuário escolhe quais (os cruciais do pull, todos ligados no começo)
   const heads = useMemo(() => crucialSpells(view), [view]);
   const [hidden, setHidden] = useState<Set<number>>(() => prefs.hiddenHead(pull.encounterId));
@@ -110,13 +83,7 @@ function FightReplayInner({ pull }: { pull: Pull }) {
     prefs.setHiddenHead(pull.encounterId, next);
     setHidden(next);
   };
-  const badge = useCallback(
-    (g: string, tt: number) => {
-      const a = crucialAt(view, g, tt, (id) => !hidden.has(id));
-      return a ? { spellId: a.spellId, name: a.mechanic?.name ?? a.name, stacks: a.stacks } : null;
-    },
-    [view, hidden],
-  );
+  const badge = useMemo(() => headBadge(view, hidden), [view, hidden]);
   const hp = selected != null && view.index.has(selected) ? view.data.hp[view.index.get(selected)!] : undefined;
   // janela da linha do tempo (e do slider): o pull inteiro, ou o trecho com zoom
   const [win, setWin] = useState<[number, number]>([0, duration]);
