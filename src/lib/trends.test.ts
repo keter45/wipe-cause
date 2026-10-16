@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildTrends, playerMoves, trendBosses, type NightInput, type PlayerTrend } from './trends';
+import * as fx from './test-fixtures';
 import { death, player, pull } from './test-fixtures';
 
 const guillotine = { key: 'guillotine', name: 'Guillotine', amount: 1, pct: 100, failT: 1000 };
@@ -50,7 +51,21 @@ describe('buildTrends', () => {
   });
 
   it('lista os bosses do histórico', () => {
-    expect(trendBosses(nights)).toEqual([{ key: "Boss · Mythic", encounterId: 1, nights: 2, pulls: 8 }]);
+    expect(trendBosses(nights)).toEqual([{ key: "Boss · Mythic", encounterId: 1, name: "Boss", difficultyId: 16, difficultyName: "Mythic", nights: 2, pulls: 8 }]);
+  });
+
+  it("Mythic antes de Heroic e, em cada um, a ordem da raide (não a quantidade de pulls)", () => {
+    const at = (encounterId: number, encounterName: string, difficultyId: number, difficultyName: string, n: number) =>
+      Array.from({ length: n }, (_, i) => fx.pull(i, i * 1_000, 60_000, { encounterId, encounterName, difficultyId, difficultyName }));
+    const night = { id: "n", title: "x", raidStartMs: 0, pulls: [
+      ...at(3421, "The Twin Fangs", 16, "Mythic", 30),
+      ...at(3470, "Nek'zali the Soulcoiler", 16, "Mythic", 2),
+      ...at(3429, "The Coiled Altar", 15, "Heroic", 9),
+      ...at(3445, "Entombed Sentinels", 15, "Heroic", 1),
+    ] };
+    expect(trendBosses([night]).map((b) => b.key)).toEqual([
+      "Nek'zali the Soulcoiler · Mythic", "The Twin Fangs · Mythic", "Entombed Sentinels · Heroic", "The Coiled Altar · Heroic",
+    ]);
   });
 });
 

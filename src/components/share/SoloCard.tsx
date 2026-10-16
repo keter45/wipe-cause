@@ -2,7 +2,7 @@ import { mmss, num } from '../../lib/format';
 import { isHealer, outputPerSec, type CooldownInfo, type Sample } from '../../lib/performance';
 import { advantageWindows, castDiff, losses, myDeaths, myMechanicFailures, relevantSpells, takenMoreThan, type Loss } from '../../lib/solo';
 import { specLabel } from '../../lib/specs';
-import { scoreTone } from '../../lib/score';
+import { scoreTier } from '../../lib/score';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import { BossName, PlayerName } from '../Names';
 import { CooldownCompare } from '../perf/CooldownCompare';
@@ -76,7 +76,7 @@ export function SoloShareCard({
         </div>
         <div>
           <span className="share-muted small">{t.rotation}</span>
-          <strong>{r ? <span className={`score-pill ${scoreTone(r.score)}`}>{r.score}</span> : '—'}</strong>
+          <strong>{r ? <span className={`score-pill ${scoreTier(r.score)}`}>{r.score}</span> : '—'}</strong>
           {r && <span className="share-muted small">{t.idle(mmss(r.downtimeMs))}</span>}
         </div>
         <div>

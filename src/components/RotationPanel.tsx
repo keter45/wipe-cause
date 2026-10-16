@@ -6,7 +6,7 @@ import { ANCHOR_WINDOW_MS } from '../lib/benchMetrics';
 import { mmss, uniqueSeconds } from '../lib/format';
 import { openExternal } from '../lib/api';
 import { useSeek } from '../lib/wcr';
-import { scoreTone } from '../lib/score';
+import { scoreTier } from '../lib/score';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { PlayAt } from './VideoPanel';
 import { DecisionList } from './DecisionList';
@@ -59,7 +59,7 @@ export function RotationPanel({
           </p>
         )}
       </div>
-      <span className={`score-pill big ${scoreTone(r.score)}`} title={t.scoreTitle}>
+      <span className={`score-pill big ${scoreTier(r.score)}`} title={t.scoreTitle}>
         {r.score}
       </span>
     </header>

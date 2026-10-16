@@ -3,7 +3,8 @@ import { TrendingDown, TrendingUp, Trophy } from 'lucide-react';
 import { historyTrends } from '../lib/api';
 import { classColor, pct, shortName } from '../lib/format';
 import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
-import { scoreTone } from '../lib/score';
+import { scoreTier } from '../lib/score';
+import { pullProgress } from '../lib/phases';
 import { SpellName } from './SpellIcon';
 import { Markdown } from './AskView';
 import { withErrorBoundary } from './ErrorBoundary';
@@ -33,7 +34,19 @@ function TrendsViewInner() {
   const [withPug, setWithPug] = useState(false);
   const grouped = useMemo(() => (nights ? byGroup(nights, withPug ? 'all' : 'guild') : null), [nights, withPug]);
   const bosses = useMemo(() => (grouped ? trendBosses(grouped.nights) : []), [grouped]);
-  const selected = boss ?? bosses.find((b) => b.nights >= 2)?.key ?? bosses[0]?.key ?? null;
+  // sem escolha: o boss com mais pulls entre os que têm duas noites (a progressão do momento)
+  const busiest = [...bosses].sort((a, b) => b.pulls - a.pulls);
+  const selected = boss ?? busiest.find((b) => b.nights >= 2)?.key ?? busiest[0]?.key ?? null;
+  // uma linha por dificuldade (Mythic, Heroic...), cada uma na ordem da raide
+  const rows = useMemo(() => {
+    const out: { id: number; name: string; bosses: typeof bosses }[] = [];
+    for (const b of bosses) {
+      const row = out.find((r) => r.id === b.difficultyId);
+      if (row) row.bosses.push(b);
+      else out.push({ id: b.difficultyId, name: b.difficultyName, bosses: [b] });
+    }
+    return out;
+  }, [bosses]);
   const trends = useMemo(() => (grouped && selected ? buildTrends(grouped.nights, selected) : null), [grouped, selected]);
 
   return (
@@ -52,13 +65,20 @@ function TrendsViewInner() {
       {!nights && !error && <p className="muted">{t.reading}</p>}
       {nights && bosses.length === 0 && <p className="muted">{t.empty}</p>}
 
-      {bosses.length > 0 && (
-        <div className="chips" role="tablist" aria-label={t.boss}>
-          {bosses.map((b) => (
-            <button key={b.key} role="tab" aria-selected={b.key === selected} className={b.key === selected ? 'active' : ''} onClick={() => setBoss(b.key)}>
-              <BossName encounterId={b.encounterId} name={b.key} size={16} />
-              <span className="muted">{t.nights(b.nights)}</span>
-            </button>
+      {rows.length > 0 && (
+        <div className="trends-bosses" role="tablist" aria-label={t.boss}>
+          {rows.map((r) => (
+            <div key={r.id} className="trends-difficulty">
+              <span className="tile-label">{[14, 15, 16, 17].includes(r.id) ? r.name : t.otherDifficulty}</span>
+              <div className="chips">
+                {r.bosses.map((b) => (
+                  <button key={b.key} role="tab" aria-selected={b.key === selected} className={b.key === selected ? 'active' : ''} onClick={() => setBoss(b.key)} title={b.key}>
+                    <BossName encounterId={b.encounterId} name={b.name} size={16} />
+                    <span className="muted">{t.nights(b.nights)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -101,12 +121,14 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
         <div className="night-cols">
           {t.nights.map((n) => {
             const s = n.summary;
-            const hp = s.kills ? 0 : s.best?.hp ?? 100;
+            // o melhor pull da noite: fase e vida ("P3 82%"); a barra é até onde ele foi na luta toda
+            const label = s.kills ? 'Kill' : s.best?.label ?? pct(100);
+            const progress = s.kills ? 1 : s.best ? pullProgress(s.best.pull) : 0;
             return (
-              <div key={n.id} className="night-col" title={m.nightTitle(n.label, s.pulls.length, s.kills ? 'kill' : m.best(pct(hp)))}>
-                <span className="night-col-value">{s.kills ? 'Kill' : pct(hp)}</span>
+              <div key={n.id} className="night-col" title={m.nightTitle(n.label, s.pulls.length, s.kills ? 'kill' : m.best(label))}>
+                <span className="night-col-value">{label}</span>
                 <span className="night-col-track" aria-hidden>
-                  <span className={s.kills ? 'kill' : ''} style={{ transform: `scaleY(${(100 - hp) / 100})` }} />
+                  <span className={s.kills ? 'kill' : ''} style={{ transform: `scaleY(${progress})` }} />
                 </span>
                 <strong>{n.label}</strong>
                 <span className="muted small">{m.pulls(s.pulls.length)}</span>
@@ -194,7 +216,7 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
                   </td>
                   <td className="score-trail">
                     {p.scorePerNight.map((s, i) => (
-                      <span key={i} className={s == null ? 'muted' : `score-pill ${scoreTone(s)}`} title={t.nights[i].label}>
+                      <span key={i} className={s == null ? 'muted' : `score-pill ${scoreTier(s)}`} title={t.nights[i].label}>
                         {s ?? '—'}
                       </span>
                     ))}

@@ -1,6 +1,6 @@
 import type { Pull } from '../../types';
 import { mmss, num } from '../../lib/format';
-import { scorePull, scoreTone } from '../../lib/score';
+import { scorePull, scoreTier } from '../../lib/score';
 import { analyzePull, lowestBossHp } from '../../lib/verdict';
 import { mechanicSpellId } from '../../lib/spells';
 import { getNote } from '../../lib/notes';
@@ -201,7 +201,7 @@ function PullDetails({ pull: p }: { pull: Pull }) {
                     <Who name={x.name} cls={x.class} />
                   </td>
                   <td className="num">
-                    <span className={`score-pill ${scoreTone(s)}`}>{s}</span>
+                    <span className={`score-pill ${scoreTier(s)}`}>{s}</span>
                   </td>
                   <td className="num">{num(x.dps)}</td>
                   <td className="num">{x.hps > 0 ? num(x.hps) : '—'}</td>

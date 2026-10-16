@@ -8,7 +8,7 @@ import { BossName } from './Names';
 import { lowestBossHp } from '../lib/verdict';
 import { progressLabel, pullProgress, reachedPhase } from '../lib/phases';
 import { SpellName } from './SpellIcon';
-import { scoreTone } from '../lib/score';
+import { scoreTier } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
 import { Stat, StatGrid } from './ui/Stat';
 import { ShareMenu } from './share/ShareMenu';
@@ -551,7 +551,7 @@ function Scoreboard({ players }: { players: PlayerNight[] }) {
           <tr key={p.guid}>
             <td style={{ color: classColor(p.class) }}>{shortName(p.name)}</td>
             <td className="num">
-              <span className={`score-pill ${scoreTone(p.avgScore)}`}>{Math.round(p.avgScore)}</span>
+              <span className={`score-pill ${scoreTier(p.avgScore)}`}>{Math.round(p.avgScore)}</span>
             </td>
             <td className="num">{p.deaths}</td>
             <td className="num">{p.decisiveDeaths || ''}</td>

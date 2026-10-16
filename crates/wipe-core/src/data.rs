@@ -158,7 +158,7 @@ pub fn difficulty_name(id: u32) -> &'static str {
         16 => "Mythic",
         17 => "LFR",
         23 => "Mythic (dungeon)",
-        _ => "Outra",
+        _ => "Other",
     }
 }
 

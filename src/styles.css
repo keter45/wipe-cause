@@ -3038,6 +3038,29 @@ td.warn {
   background: color-mix(in srgb, var(--wipe) 22%, transparent);
   color: var(--wipe);
 }
+/* notas nas cores dos parses do Warcraft Logs */
+.score-pill.q-gray { --q: #9d9d9d; }
+.score-pill.q-green { --q: #1eff00; }
+.score-pill.q-blue { --q: #0070ff; }
+.score-pill.q-purple { --q: #a335ee; }
+.score-pill.q-orange { --q: #ff8000; }
+.score-pill.q-pink { --q: #e268a8; }
+.score-pill.q-gold { --q: #e5cc80; }
+.score-pill[class*='q-'] {
+  background: color-mix(in srgb, var(--q) 20%, transparent);
+  color: color-mix(in srgb, var(--q) 80%, white);
+}
+/* Evolução: os bosses numa linha por dificuldade, na ordem da raide */
+.trends-bosses {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.trends-difficulty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .trends-pug {
   display: inline-flex;
   align-items: center;

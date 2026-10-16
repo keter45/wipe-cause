@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import type { Pull } from '../../types';
 import { classColor, shortName } from '../../lib/format';
-import { scoreTone } from '../../lib/score';
+import { scoreTier } from '../../lib/score';
 import { getLocale, useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
 
@@ -93,7 +93,7 @@ export function ScoreChips({ list }: { list: { guid: string; name: string; class
     <div className="share-scores">
       {list.map((x) => (
         <span key={x.guid}>
-          <Who name={x.name} cls={x.class} /> <span className={`score-pill ${scoreTone(x.score)}`}>{Math.round(x.score)}</span>
+          <Who name={x.name} cls={x.class} /> <span className={`score-pill ${scoreTier(x.score)}`}>{Math.round(x.score)}</span>
         </span>
       ))}
     </div>

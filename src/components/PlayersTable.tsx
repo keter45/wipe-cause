@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { PlayerStats, Pull } from '../types';
-import { scoreTone, type PlayerScore } from '../lib/score';
+import { scoreTier, type PlayerScore } from '../lib/score';
 import { classColor, mmss, num, ROLE_LABEL, shortName, damageSource } from '../lib/format';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { ownPreviousParses, parseColor, type OwnParses, type PlayerParse } from '../lib/wclParses';
@@ -151,7 +151,7 @@ function PlayerRow({
         </td>
         <td className="num">
           {score && (
-            <span className={`score-pill ${scoreTone(score.score)}`} title={score.parts.length ? score.parts.join('\n') : t.noDeductions}>
+            <span className={`score-pill ${scoreTier(score.score)}`} title={score.parts.length ? score.parts.join('\n') : t.noDeductions}>
               {score.score}
             </span>
           )}

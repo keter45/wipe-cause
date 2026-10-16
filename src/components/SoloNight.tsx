@@ -5,7 +5,7 @@ import { mmss, num, shortName } from '../lib/format';
 import { soloBosses, soloEvolution, soloNight, type SoloBoss } from '../lib/solo';
 import { setSoloCharacter, useSoloCharacter } from '../lib/mode';
 import { historyTrends } from '../lib/api';
-import { scoreTone } from '../lib/score';
+import { scoreTier } from '../lib/score';
 import { specLabel } from '../lib/specs';
 import { BossName, PlayerName } from './Names';
 import { SpellIcon } from './SpellIcon';
@@ -132,7 +132,7 @@ function SoloBossCard({ b, onSelectPull, open = false }: { b: SoloBoss; onSelect
                   {p.pull.pullNumber} <span className={`small ${p.pull.success ? 'good' : 'muted'}`}>{p.pull.success ? t.kill : t.wipe}</span>
                 </td>
                 <td className={`num ${p === b.best ? 'good' : ''}`}>{num(p.output)}</td>
-                <td className="num">{p.score != null ? <span className={`score-pill ${scoreTone(p.score)}`}>{p.score}</span> : <span className="muted">—</span>}</td>
+                <td className="num">{p.score != null ? <span className={`score-pill ${scoreTier(p.score)}`}>{p.score}</span> : <span className="muted">—</span>}</td>
                 <td className={p.died != null ? 'bad' : 'muted'}>{p.died != null ? mmss(p.died) : '—'}</td>
                 <td className={`num ${p.mechFails ? 'warn' : 'muted'}`}>{p.mechFails}</td>
                 <td className="small">{p.losses[0]?.title ?? <span className="muted">{t.nothingSerious}</span>}</td>
@@ -212,7 +212,7 @@ function SoloTrendsInner() {
                       <td className="num">
                         {num(p.bestOutput)} {prev && <span className={`small ${up >= 0 ? 'good' : 'bad'}`}>{up >= 0 ? '▲' : '▼'}</span>}
                       </td>
-                      <td className="num">{p.score != null ? <span className={`score-pill ${scoreTone(p.score)}`}>{p.score}</span> : <span className="muted">—</span>}</td>
+                      <td className="num">{p.score != null ? <span className={`score-pill ${scoreTier(p.score)}`}>{p.score}</span> : <span className="muted">—</span>}</td>
                       <td className={`num ${p.deathsPerPull > 0.5 ? 'bad' : ''}`}>{t.ofPullsPct(Math.round(p.deathsPerPull * 100))}</td>
                       <td className={`num ${p.mechPerPull >= 1 ? 'warn' : ''}`}>{p.mechPerPull.toFixed(1)}</td>
                     </tr>

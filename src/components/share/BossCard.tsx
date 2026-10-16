@@ -2,7 +2,7 @@ import type { Pull } from '../../types';
 import { mmss, num } from '../../lib/format';
 import { summarizeNight, type Cause, type NightSummary, type PlayerNight } from '../../lib/night';
 import { mechanicSpellId } from '../../lib/spells';
-import { scoreTone } from '../../lib/score';
+import { scoreTier } from '../../lib/score';
 import { SpellName } from '../SpellIcon';
 import { BossName } from '../Names';
 import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight, progressLabel, pullProgress, reachedPhase } from '../../lib/phases';
@@ -262,7 +262,7 @@ export function Scoreboard({ players }: { players: PlayerNight[] }) {
                 <Who name={x.name} cls={x.class} />
               </td>
               <td className="num">
-                <span className={`score-pill ${scoreTone(x.avgScore)}`}>{Math.round(x.avgScore)}</span>
+                <span className={`score-pill ${scoreTier(x.avgScore)}`}>{Math.round(x.avgScore)}</span>
               </td>
               <td className="num">{x.pulls}</td>
               <td className="num">{x.deaths}</td>

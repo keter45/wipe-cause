@@ -9,6 +9,7 @@ import { bossKey, summarizeNight, type NightSummary } from './night';
 import { raidOnly } from './content';
 import { mechanicSpellId } from './spells';
 import { scorePull } from './score';
+import { difficultyRank, raidOrder } from './raids';
 import { coreRoster, isGuildGroup } from './roster';
 
 export interface NightInput {
@@ -206,18 +207,32 @@ export function byGroup(input: NightInput[], group: 'guild' | 'pug' | 'all'): { 
 }
 
 /** Bosses presentes no histórico, do mais jogado para o menos. */
-export function trendBosses(nights: NightInput[]): { key: string; encounterId: number; nights: number; pulls: number }[] {
-  const m = new Map<string, { encounterId: number; nights: Set<string>; pulls: number }>();
+export interface TrendBoss {
+  key: string;
+  encounterId: number;
+  name: string;
+  difficultyId: number;
+  difficultyName: string;
+  nights: number;
+  pulls: number;
+}
+
+/** Bosses com noites salvas: por dificuldade (Mythic, Heroic...) e, dentro dela, na ordem da raide. */
+export function trendBosses(nights: NightInput[]): TrendBoss[] {
+  const m = new Map<string, Omit<TrendBoss, 'nights'> & { nights: Set<string> }>();
   for (const n of nights) {
     // a Evolução é de raid: masmorras (M+) ficam de fora
     for (const p of raidOnly(n.pulls)) {
-      const e = m.get(bossKey(p)) ?? { encounterId: p.encounterId, nights: new Set(), pulls: 0 };
+      const key = bossKey(p);
+      const e = m.get(key) ?? { key, encounterId: p.encounterId, name: p.encounterName, difficultyId: p.difficultyId, difficultyName: p.difficultyName, nights: new Set(), pulls: 0 };
       e.nights.add(n.id);
       e.pulls++;
-      m.set(bossKey(p), e);
+      m.set(key, e);
     }
   }
-  return [...m.entries()].map(([key, e]) => ({ key, encounterId: e.encounterId, nights: e.nights.size, pulls: e.pulls })).sort((a, b) => b.pulls - a.pulls);
+  return [...m.values()]
+    .map((e) => ({ ...e, nights: e.nights.size }))
+    .sort((a, b) => difficultyRank(a.difficultyId) - difficultyRank(b.difficultyId) || raidOrder(a.encounterId) - raidOrder(b.encounterId) || a.name.localeCompare(b.name));
 }
 
 const pctOf = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
@@ -312,12 +327,12 @@ function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend
   const last = nights[nights.length - 1];
 
   // progresso
-  const hpOf = (n: TrendNight) => (n.summary.kills ? 0 : n.summary.best?.hp ?? null);
+  const hpOf = (n: TrendNight) => (n.summary.kills ? 'Kill' : n.summary.best?.label ?? null);
   const kill = nights.find((n) => n.summary.kills > 0);
   if (kill) out.push(t.killAt(kill.label, nights.slice(0, nights.indexOf(kill) + 1).reduce((s, n) => s + n.summary.pulls.length, 0)));
   else {
-    const hps = nights.map(hpOf).filter((x): x is number => x != null);
-    if (hps.length >= 2) out.push(t.bestPerNight(hps.map((h) => `${h.toFixed(1)}%`).join(' → ')));
+    const hps = nights.map(hpOf).filter((x): x is string => x != null);
+    if (hps.length >= 2) out.push(t.bestPerNight(hps.join(' → ')));
   }
 
   // causas que caíram ou subiram entre a primeira e a última noite
