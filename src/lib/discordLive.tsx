@@ -7,16 +7,15 @@ import type { Pull } from '../types';
 import { discordGetConfig } from './api';
 import { raidOnly } from './content';
 import { bossKey } from './night';
-import { lowestBossHp } from './verdict';
 import { PlayerClassesContext, playerClasses } from './players';
 import { cardPng, fileSlug, sendPngToDiscord, sendToDiscord } from './share';
-import { pct } from './format';
 import { BossShareCard } from '../components/share/BossCard';
 import { NightShareCard } from '../components/share/NightCard';
 import { PullShareCard } from '../components/share/PullCard';
 import { messagesOf } from '../i18n';
 import { discordMsg } from './discord.i18n';
 import { clipMoments, replayClip } from './replayClip';
+import { progressLabel } from './phases';
 
 /** Sem pull novo por isso, a raid acabou: vai o resumo da noite. */
 const NIGHT_IDLE_MS = 30 * 60_000;
@@ -34,7 +33,7 @@ export async function postPullImage(p: Pull, all: Pull[]) {
     const key = bossKey(p);
     await send(<BossShareCard title={key} pulls={all.filter((x) => bossKey(x) === key)} />, all, `Kill · ${key}`);
   } else {
-    const title = messagesOf(discordMsg).wipeTitle(p.pullNumber, bossKey(p), pct(lowestBossHp(p)));
+    const title = messagesOf(discordMsg).wipeTitle(p.pullNumber, bossKey(p), progressLabel(p));
     const cfg = await discordGetConfig().catch(() => null);
     const moments = cfg?.clip === false ? [] : clipMoments(p);
     if (!moments.length) return send(<PullShareCard pull={p} />, all, title);

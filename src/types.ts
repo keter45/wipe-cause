@@ -43,6 +43,12 @@ export interface Pull {
   success: boolean;
   incomplete: boolean;
   bosses: BossState[];
+  /** boss de várias fases: vida somada dos bosses da fase em que o pull acabou (como o Warcraft Logs) */
+  phaseHpPct?: number;
+  /** o mesmo no corte ("ignorar após N mortes"), na fase em que o corte caiu */
+  phaseHpPctAtCutoff?: number;
+  /** quantas fases o boss tem (regra com fases) */
+  phaseCount?: number;
   players: PlayerStats[];
   deaths: Death[];
   enemySpells: EnemySpell[];

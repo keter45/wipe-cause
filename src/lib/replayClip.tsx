@@ -362,11 +362,12 @@ export async function replayClip(pull: Pull, list: ClipMoment | ClipMoment[], op
         x += Math.min(ctx.measureText(head).width, w - 200);
       }
       ctx.fillStyle = fg;
-      iconText(m.who ? `${m.label} · ${m.who}` : m.label, x, y, 16, icons[i], w - x - 80);
+      iconText(m.who ? `${m.label} · ${m.who}` : m.label, x, y, 16, icons[i], w - x - 130);
       const dt = now - m.t;
       ctx.fillStyle = dt < 0 ? fg : kindColor[m.kind ?? 'trigger'];
       ctx.textAlign = 'right';
-      ctx.fillText(dt < 0 ? msg.toMoment(dt) : mmss(now), w - 10, y);
+      // tempo de luta sempre; antes do erro, também quanto falta
+      ctx.fillText(dt < 0 ? `${mmss(now)} · ${msg.toMoment(dt)}` : mmss(now), w - 10, y);
       ctx.textAlign = 'left';
       // resumo: um traço por momento (o atual enche com o tempo)
       if (recap) {

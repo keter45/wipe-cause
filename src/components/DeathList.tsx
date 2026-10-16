@@ -364,7 +364,7 @@ function RecapRow({ e, deathT, killingBlow }: { e: RecapEntry; deathT: number; k
   const sign = e.kind === 'damage' ? '−' : e.kind === 'heal' ? '+' : '';
   return (
     <tr className={`recap-${e.kind} ${killingBlow ? 'kb-row' : ''}`} title={killingBlow ? messagesOf(deathMsg).killingBlow : undefined}>
-      <td className="muted num-cell">{relSeconds(e.t - deathT)}</td>
+      <td className="muted num-cell">{mmss(e.t)} · {relSeconds(e.t - deathT)}</td>
       <td>
         <SpellName spellId={e.spellId} name={e.spellName} size={16} />
         {e.overkill > 0 && <span className="muted"> (overkill {num(e.overkill)})</span>}

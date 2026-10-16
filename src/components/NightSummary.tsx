@@ -6,6 +6,7 @@ import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummar
 import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
 import { lowestBossHp } from '../lib/verdict';
+import { progressLabel, pullProgress, reachedPhase } from '../lib/phases';
 import { SpellName } from './SpellIcon';
 import { scoreTone } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
@@ -79,7 +80,7 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
               <span className="boss-card-title">
                 <BossName encounterId={b.pulls[0]?.encounterId} name={key} size={22} />
               </span>
-              <span className="boss-card-result">{b.kills ? 'Kill' : b.best ? t.best(pct(b.best.hp)) : '—'}</span>
+              <span className="boss-card-result">{b.kills ? 'Kill' : b.best ? t.best(b.best.label) : '—'}</span>
               <span className="muted small">{t.bossCardLine(b.pulls.length, b.wipes, duration(b.combatMs), clock(b.pulls[0]), endClock(b))}</span>
               {top ? (
                 <span className="small boss-card-cause">
@@ -142,7 +143,7 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
         <Stat label={t.pulls} value={String(s.pulls.length)} sub={t.wipesKills(s.wipes, s.kills)} />
         <Stat
           label={t.bestPull}
-          value={s.kills ? 'Kill' : s.best ? pct(s.best.hp) : '—'}
+          value={s.kills ? 'Kill' : s.best ? s.best.label : '—'}
           sub={s.best ? t.pullAt(s.best.pull.pullNumber, clock(s.best.pull)) : undefined}
           onClick={s.best ? () => onSelectPull(s.best!.pull.id) : undefined}
         />
@@ -230,11 +231,13 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
           </g>
         ))}
         {pulls.map((p, i) => {
-          const hp = p.success ? 0 : lowestBossHp(p) ?? 100;
+          // até onde foi na luta toda (fases passadas + vida da fase): mais alto = mais perto do kill
+          const progress = pullProgress(p) * 100;
+          const phase = p.success ? null : reachedPhase(p);
           const cx = pad.l + band * i + band / 2;
-          const top = y(hp);
+          const top = y(progress);
           const h = Math.max(p.success ? 0 : 1, base - top);
-          const label = p.success ? 'Kill' : p.id === bestId ? pct(hp) : null;
+          const label = p.success ? 'Kill' : p.id === bestId ? progressLabel(p) : null;
           return (
             <g
               key={p.id}
@@ -242,14 +245,14 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
               tabIndex={0}
               onClick={() => onSelect(p.id)}
               onKeyDown={(e) => e.key === 'Enter' && onSelect(p.id)}
-              onMouseMove={(e) => setTip({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, content: pullTip(p, hp) })}
-              onFocus={() => setTip({ x: (cx / W) * 100, y: 10, content: pullTip(p, hp) })}
+              onMouseMove={(e) => setTip({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, content: pullTip(p) })}
+              onFocus={() => setTip({ x: (cx / W) * 100, y: 10, content: pullTip(p) })}
             >
               <rect x={cx - band / 2} y={pad.t} width={band} height={base - pad.t} fill="transparent" />
               {p.success ? (
                 <circle cx={cx} cy={base - 6} r={5} className="mark-good" />
               ) : (
-                <path d={roundedTop(cx - barW / 2, top, barW, h)} className={p.id === bestId ? 'mark mark-best' : 'mark'} />
+                <path d={roundedTop(cx - barW / 2, top, barW, h)} className={`${p.id === bestId ? 'mark mark-best' : 'mark'} ${phase ? `ph-${Math.min(phase.index, 3)}` : (p.phaseCount ?? 0) >= 2 ? 'ph-0' : ''}`} />
               )}
               {label && (
                 <text x={cx} y={p.success ? base - 16 : top - 4} className="value-label" textAnchor="middle">
@@ -271,11 +274,12 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
   );
 }
 
-function pullTip(p: Pull, hp: number) {
+function pullTip(p: Pull) {
   const t = messagesOf(nightMsg);
+  const phase = p.success ? null : reachedPhase(p);
   return (
     <>
-      <strong>{p.success ? 'Kill' : t.hp(pct(hp))}</strong>
+      <strong>{p.success ? 'Kill' : phase ? `${phase.name} · ${t.hp(pct(lowestBossHp(p)))}` : t.hp(pct(lowestBossHp(p)))}</strong>
       <span>
         {pullName(p, true)} · {clock(p)} · {mmss(p.durationMs)}
       </span>
@@ -343,7 +347,7 @@ function Timeline({ s, onSelect }: { s: Summary; onSelect: (id: number) => void 
                 setTip({
                   x: e.nativeEvent.offsetX,
                   y: e.nativeEvent.offsetY,
-                  content: pullTip(p, p.success ? 0 : lowestBossHp(p) ?? 100),
+                  content: pullTip(p),
                 })
               }
             />

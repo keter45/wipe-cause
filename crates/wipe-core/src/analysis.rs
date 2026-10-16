@@ -285,6 +285,8 @@ pub(crate) struct PullBuilder {
     cutoff_t: Option<i64>,
     /// HP dos inimigos no corte
     hp_at_cutoff: HashMap<String, f32>,
+    /// vida da fase no corte (bosses da fase em que o corte caiu)
+    phase_hp_at_cutoff: Option<f32>,
     /// segundos do pull em que alguém da raid acertou um inimigo
     raid_active: Vec<bool>,
     /// players vivos abaixo de INJURED_PCT agora, e os segundos do pull com alguém assim
@@ -349,6 +351,7 @@ impl PullBuilder {
             death_cutoff,
             cutoff_t: None,
             hp_at_cutoff: HashMap::new(),
+            phase_hp_at_cutoff: None,
             raid_active: Vec::new(),
             injured: HashSet::new(),
             injured_secs: Vec::new(),
@@ -1472,7 +1475,28 @@ impl PullBuilder {
                 .filter(|(_, e)| e.max_hp > 0)
                 .map(|(g, e)| (g.clone(), (e.hp as f32 / e.max_hp as f32 * 100.0).clamp(0.0, 100.0)))
                 .collect();
+            self.phase_hp_at_cutoff = self.phase_hp(rel);
         }
+    }
+
+    /// Vida (%) dos bosses da fase em `t`, somada (fase com `hp` na regra): de cada npc, a unidade
+    /// vista por último (o Zul'jan da P3 é outra unidade, com outra vida máxima).
+    fn phase_hp(&self, t: i64) -> Option<f32> {
+        let (_, npcs) = self.rules.as_ref()?.phase_hp_at(t);
+        let mut latest: HashMap<u32, (i64, i64, i64)> = HashMap::new();
+        for (guid, e) in &self.enemies {
+            let Some(n) = npc_id(guid).filter(|n| npcs.contains(n)) else { continue };
+            let seen = e.pos.map_or(0, |p| p.2);
+            if e.max_hp > 0 && latest.get(&n).is_none_or(|l| seen >= l.2) {
+                latest.insert(n, (e.hp, e.max_hp, seen));
+            }
+        }
+        let (hp, max) = latest.values().fold((0, 0), |a, v| (a.0 + v.0, a.1 + v.1));
+        if max == 0 {
+            // a fase começou e o boss dela ainda não apareceu no log: vida cheia (sem advanced logging, nada)
+            return (!npcs.is_empty() && !self.enemies.is_empty()).then_some(100.0);
+        }
+        Some((hp as f64 / max as f64 * 100.0).clamp(0.0, 100.0) as f32)
     }
 
     pub fn finish(mut self, end: Option<(&[&str], i64)>, id: usize, data: &GameData) -> FinishedPull {
@@ -1505,6 +1529,9 @@ impl PullBuilder {
             .collect();
         bosses.sort_by(|a, b| b.max_hp.cmp(&a.max_hp).then(a.name.cmp(&b.name)));
         bosses.truncate(5);
+        let phase_hp_pct = if success { self.phase_hp(duration_ms).map(|_| 0.0) } else { self.phase_hp(duration_ms) };
+        let phase_hp_pct_at_cutoff = self.phase_hp_at_cutoff;
+        let phase_count = self.rules.as_ref().map_or(0, |r| r.phase_count()) as u32;
 
         let mut defensives_by_player: HashMap<String, HashSet<u32>> = HashMap::new();
         let mut healthstone_users = HashSet::new();
@@ -1740,6 +1767,9 @@ impl PullBuilder {
                 success,
                 incomplete,
                 bosses,
+                phase_hp_pct,
+                phase_hp_pct_at_cutoff,
+                phase_count,
                 players,
                 deaths: Vec::new(),
                 enemy_spells,
@@ -2118,6 +2148,29 @@ mod tests {
         builder.aura_state(&fields, 5_055);
         let (_, paths) = builder.rules.as_mut().unwrap().ghost_paths().unwrap();
         assert_eq!(paths[0].pts.last().unwrap().0, 5_055);
+    }
+
+    #[test]
+    fn phase_hp_follows_the_bosses_of_each_phase() {
+        let start = ["ENCOUNTER_START", "3429", "The Coiled Altar", "16", "20", "1"];
+        let mut builder = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::embedded(), 0);
+        let unit = |hp: i64, max: i64, t: i64| UnitHp { name: String::new(), hp, max_hp: max, pos: Some((0.0, 0.0, t)) };
+        builder.enemies.insert("Creature-0-1-3004-1-257911-01".into(), unit(450, 1_000, 1_000));
+        builder.enemies.insert("Creature-0-1-3004-1-259854-02".into(), unit(1_000, 1_000, 1_000));
+        // P1: só o Zul'jan
+        assert_eq!(builder.phase_hp(1_000), Some(45.0));
+        // o Zul'jan zera: abre a P2, que conta só o Malacrass (cheio, ainda sem dano)
+        builder.enemies.get_mut("Creature-0-1-3004-1-257911-01").unwrap().hp = 0;
+        builder.rules.as_mut().unwrap().on_enemy_zero(Some(257911), 2_000);
+        assert_eq!(builder.phase_hp(2_000), Some(100.0));
+        assert_eq!(builder.rules.as_ref().unwrap().phase_marks().last().map(|m| (m.key.as_str(), m.t)), Some(("p2", 2_000)));
+        // P3: o Zul'jan volta como outra unidade (a vista por último vale) e soma com o Malacrass
+        builder.rules.as_mut().unwrap().on_phase_cast(1298381, 3_000);
+        builder.enemies.insert("Vehicle-0-1-3004-1-257911-03".into(), unit(905, 1_154, 3_500));
+        builder.enemies.get_mut("Creature-0-1-3004-1-259854-02").unwrap().hp = 353;
+        builder.enemies.get_mut("Creature-0-1-3004-1-259854-02").unwrap().max_hp = 376;
+        let hp = builder.phase_hp(3_500).unwrap();
+        assert!((hp - 82.2).abs() < 0.1, "{hp}");
     }
 
     #[test]

@@ -356,10 +356,14 @@ pub struct RuleSet {
     pub global: bool,
     mechanics: Vec<Value>,
     /// fases do boss: (key, nome, mecânica cujo cast abre a fase; None = começa no pull)
-    phases: Vec<(String, String, Option<String>)>,
+    phases: Vec<PhaseDef>,
     /// npcs das unidades com `replay: true` (adds que importam: entram no replay mesmo sem HP de boss)
     replay_npcs: Vec<u32>,
 }
+
+/// Fase da regra: (key, nome, cast que abre, npcs cuja vida é o progresso da fase, npc que abre a
+/// fase ao zerar).
+type PhaseDef = (String, String, Option<String>, Vec<u32>, Option<u32>);
 
 impl RuleSet {
     pub fn parse(file: &str, src: &str) -> Result<Self, String> {
@@ -368,6 +372,12 @@ impl RuleSet {
         let encounter_id = doc.get("encounter_id").and_then(Value::as_u64).map(|v| v as u32);
         let mechanics = doc.get("mechanics").and_then(Value::as_sequence).cloned().unwrap_or_default();
         let global = doc.get("scope").and_then(Value::as_str) == Some("global");
+        // unidade (key) -> npc, para o `hp` de cada fase
+        let unit_npcs: HashMap<String, u32> = doc
+            .get("units")
+            .and_then(Value::as_sequence)
+            .map(|us| us.iter().filter_map(|u| Some((u.get("key")?.as_str()?.to_string(), u.get("npc_id")?.as_u64()? as u32))).collect())
+            .unwrap_or_default();
         let phases = doc
             .get("phases")
             .and_then(Value::as_sequence)
@@ -377,7 +387,15 @@ impl RuleSet {
                         let key = p.get("key")?.as_str()?.to_string();
                         let name = p.get("name").and_then(Value::as_str).unwrap_or(&key).to_string();
                         let cast = p.get("start").and_then(|s| s.get("cast")).and_then(Value::as_str).map(str::to_string);
-                        Some((key, name, cast))
+                        // os bosses cuja vida (somada) é o progresso da fase, como no Warcraft Logs
+                        let hp = p
+                            .get("hp")
+                            .and_then(Value::as_sequence)
+                            .map(|us| us.iter().filter_map(|u| u.as_str().and_then(|k| unit_npcs.get(k)).copied()).collect())
+                            .unwrap_or_default();
+                        // ou o boss da fase anterior zerou (o Warcraft Logs troca de fase aí)
+                        let zero = p.get("start").and_then(|s| s.get("zero")).and_then(Value::as_str).and_then(|k| unit_npcs.get(k)).copied();
+                        Some((key, name, cast, hp, zero))
                     })
                     .collect()
             })
@@ -728,6 +746,10 @@ pub struct RuleTracker {
     phase: usize,
     /// (t, fase) de cada troca de fase
     phase_log: Vec<(i64, usize)>,
+    /// npcs cuja vida é o progresso de cada fase (vazio = a vida do boss de sempre)
+    phase_hp: Vec<Vec<u32>>,
+    /// npc que, ao zerar, abre a fase
+    phase_zero: HashMap<u32, usize>,
     /// spell de dano -> (mecânica, ms que a marca fica no chão) para o replay
     ground: HashMap<u32, (usize, i64)>,
 }
@@ -772,8 +794,10 @@ impl RuleTracker {
         // fases: o cast que abre cada uma (só as do boss, o primeiro arquivo)
         let phase_keys: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.0.clone()).collect()).unwrap_or_default();
         let phase_names: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.1.clone()).collect()).unwrap_or_default();
+        let phase_hp: Vec<Vec<u32>> = sets.first().map(|s| s.phases.iter().map(|p| p.3.clone()).collect()).unwrap_or_default();
+        let phase_zero: HashMap<u32, usize> = sets.first().map(|s| s.phases.iter().enumerate().filter_map(|(i, p)| p.4.map(|n| (n, i))).collect()).unwrap_or_default();
         let mut phase_starts = HashMap::new();
-        for (pi, (_, _, cast)) in sets.first().map(|s| s.phases.as_slice()).unwrap_or(&[]).iter().enumerate() {
+        for (pi, (_, _, cast, _, _)) in sets.first().map(|s| s.phases.as_slice()).unwrap_or(&[]).iter().enumerate() {
             if let Some(id) = cast.as_ref().and_then(|k| mechs.iter().find(|m| &m.key == k)).and_then(|m| m.detect.cast_id) {
                 phase_starts.insert(id, pi);
             }
@@ -791,6 +815,8 @@ impl RuleTracker {
             replay_npcs,
             phase_keys,
             phase_names,
+            phase_hp,
+            phase_zero,
             phase_starts,
             phase: 0,
             phase_log: Vec::new(),
@@ -1179,6 +1205,12 @@ impl RuleTracker {
 
     /// Vida de um inimigo chegou a 0 (orbs: boss que explode os que sobraram no chão).
     pub fn on_enemy_zero(&mut self, npc_id: Option<u32>, t: i64) {
+        if let Some(&p) = npc_id.and_then(|n| self.phase_zero.get(&n)) {
+            if p > self.phase {
+                self.phase = p;
+                self.phase_log.push((t, p));
+            }
+        }
         if let (Some((i, log)), Some(npc)) = (&mut self.orbs, npc_id) {
             if let Some(cfg) = &self.mechs[*i].detect.orbs {
                 log.on_enemy_zero(cfg, npc, t);
@@ -1340,6 +1372,17 @@ impl RuleTracker {
 
     /// Cast de inimigo que pode abrir uma fase (vale mesmo depois do corte de mortes: a lista de
     /// pulls mostra até onde cada try chegou).
+    /// Quantas fases o boss tem (regra com `phases`; 0 sem).
+    pub fn phase_count(&self) -> usize {
+        self.phase_keys.len()
+    }
+
+    /// Fase em `t` e os npcs cuja vida é o progresso dela (vazio sem `hp` na regra).
+    pub fn phase_hp_at(&self, t: i64) -> (usize, &[u32]) {
+        let i = self.phase_log.iter().take_while(|&&(pt, _)| pt <= t).last().map_or(0, |&(_, p)| p);
+        (i, self.phase_hp.get(i).map_or(&[][..], Vec::as_slice))
+    }
+
     pub fn on_phase_cast(&mut self, spell_id: u32, t: i64) {
         if let Some(&p) = self.phase_starts.get(&spell_id) {
             if p > self.phase {

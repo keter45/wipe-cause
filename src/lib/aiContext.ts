@@ -13,6 +13,7 @@ import { getMarks } from './marks';
 import { phaseLabel } from './phases';
 import { messagesOf, tr } from '../i18n';
 import { aiMsg } from './aiContext.i18n';
+import { progressLabel } from './phases';
 
 /** Limites para não estourar o contexto dos modelos gratuitos. */
 const MAX_DEATHS_DETAILED = 12;
@@ -82,7 +83,7 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
   out.push(t.header(p.encounterName, p.difficultyName, p.pullNumber, nightPulls.length));
   out.push(
     [
-      p.success ? t.resultKill(mmss(p.durationMs)) : t.resultWipe(pct(hp), mmss(p.durationMs)),
+      p.success ? t.resultKill(mmss(p.durationMs)) : t.resultWipe(hp != null ? progressLabel(p) : pct(hp), mmss(p.durationMs)),
       p.cutoffT != null ? t.cutoff(p.deaths.filter((d) => !d.ignored).length, mmss(p.cutoffT), pct(lowestBossHpAtEnd(p))) : null,
       t.players(p.players.length, p.bosses.map((b) => `${b.name} ${pct(p.cutoffT != null ? (b.hpPctAtCutoff ?? b.hpPct) : b.hpPct)}`).join(', ')),
     ]
@@ -179,7 +180,7 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
   if (nightPulls.length > 1) {
     out.push(`\n${t.otherPullsTitle}`);
     for (const q of nightPulls) {
-      const qv = q.success ? 'KILL' : t.wipeAt(pct(lowestBossHp(q)));
+      const qv = q.success ? 'KILL' : t.wipeAt(progressLabel(q));
       out.push(t.otherPull(q.pullNumber, q.id === p.id, qv, mmss(q.durationMs), q.trigger?.name ?? null, q.deaths.filter((d) => !d.ignored).length));
     }
     if (idx > 0) out.push(t.previous(nightPulls[idx - 1].pullNumber));

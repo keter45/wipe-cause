@@ -624,7 +624,7 @@ function EventRow({ e, now, defensive }: { e: FightEventView; now: number; defen
   const rel = Math.round((e.t - now) / 100) * 100;
   return (
     <li className={`fight-event k${e.kind} ${e.mechanic ? 'mech' : ''}`}>
-      <span className="muted num">{t.relTime(rel)}</span>
+      <span className="muted num">{mmss(e.t)} · {t.relTime(rel)}</span>
       <SpellName spellId={e.spellId} name={e.name} size={16} />
       {e.kind === EV.damage && <span className="num bad">-{num(e.amount)}</span>}
       {e.kind === EV.heal && <span className="num good">+{num(e.amount)}</span>}

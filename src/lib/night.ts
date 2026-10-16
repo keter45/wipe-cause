@@ -3,6 +3,7 @@
 
 import type { Pull } from '../types';
 import { analyzePull, lowestBossHp } from './verdict';
+import { bestWipe, progressLabel } from './phases';
 import { blameFactor, PERSONAL_BLAME } from './blame';
 import { scorePull } from './score';
 
@@ -81,7 +82,8 @@ export interface NightSummary {
   pulls: Pull[];
   wipes: number;
   kills: number;
-  best: { pull: Pull; hp: number } | null;
+  /** o wipe que mais avançou (fase, depois vida) e o resultado dele ("P3 82.2%") */
+  best: { pull: Pull; hp: number; label: string } | null;
   startMs: number;
   endMs: number;
   totalMs: number;
@@ -209,9 +211,8 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
     });
 
   const wipes = pulls.filter((p) => !p.success);
-  const best = wipes
-    .map((p) => ({ pull: p, hp: lowestBossHp(p) ?? 100 }))
-    .reduce<{ pull: Pull; hp: number } | null>((b, x) => (!b || x.hp < b.hp ? x : b), null);
+  const top = bestWipe(wipes);
+  const best = top ? { pull: top, hp: lowestBossHp(top) ?? 100, label: progressLabel(top) } : null;
 
   return {
     pulls,

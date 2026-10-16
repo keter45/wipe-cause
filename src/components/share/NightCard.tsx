@@ -1,8 +1,8 @@
 import type { Pull } from '../../types';
-import { mmss, pct } from '../../lib/format';
+import { mmss } from '../../lib/format';
 import { groupByBoss, summarizeNight } from '../../lib/night';
 import { raidOnly } from '../../lib/content';
-import { lowestBossHp } from '../../lib/verdict';
+import { bestWipe, progressLabel } from '../../lib/phases';
 import { BossName } from '../Names';
 import { ATTENTION_SCORE, Card, dateOf, hm, timeOf, type CardDetail } from './common';
 import { CausesSection, PeopleSection, Scoreboard } from './BossCard';
@@ -39,10 +39,8 @@ export function NightShareCard({ pulls: all, detail = 'summary' }: { pulls: Pull
         {groupByBoss(pulls).map(({ key, pulls: ps }) => {
           const kill = ps.find((p) => p.success);
           const wipes = ps.filter((p) => !p.success);
-          const best = wipes.reduce<number | null>((m, p) => {
-            const hp = lowestBossHp(p);
-            return hp != null && (m == null || hp < m) ? hp : m;
-          }, null);
+          const top = bestWipe(wipes);
+          const best = top ? progressLabel(top) : null;
           const time = ps.reduce((n, p) => n + p.durationMs, 0);
           return (
             <li key={key}>
@@ -51,9 +49,9 @@ export function NightShareCard({ pulls: all, detail = 'summary' }: { pulls: Pull
                 {t.pulls(ps.length)}
                 {full && wipes.length > 0 && ` · ${t.wipes(wipes.length)}`}
                 {full && t.inCombat(mmss(time))}
-                {full && kill && best != null && t.bestWipe(pct(best))}
+                {full && kill && best != null && t.bestWipe(best)}
               </span>
-              <strong className={kill ? 'share-kill' : 'share-wipe'}>{kill ? 'Kill' : best != null ? pct(best) : '—'}</strong>
+              <strong className={kill ? 'share-kill' : 'share-wipe'}>{kill ? 'Kill' : best ?? '—'}</strong>
             </li>
           );
         })}

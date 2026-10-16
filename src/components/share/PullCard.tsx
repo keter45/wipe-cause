@@ -1,5 +1,5 @@
 import type { Pull } from '../../types';
-import { mmss, num, pct } from '../../lib/format';
+import { mmss, num } from '../../lib/format';
 import { scorePull, scoreTone } from '../../lib/score';
 import { analyzePull, lowestBossHp } from '../../lib/verdict';
 import { mechanicSpellId } from '../../lib/spells';
@@ -10,6 +10,7 @@ import { BossName, Colored } from '../Names';
 import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, timeOf, type CardDetail } from './common';
 import { tr, useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
+import { progressLabel } from '../../lib/phases';
 
 const SUMMARY = { findings: 3, deaths: 3, scores: 4 };
 
@@ -42,7 +43,7 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
       wide={full}
       title={<BossName encounterId={p.encounterId} name={`${p.success ? 'Kill' : t.pullTitle(p.pullNumber)} — ${p.encounterName} ${p.difficultyName}`} size={22} />}
       sub={`${dateOf(p)} ${timeOf(p)} · ${mmss(p.durationMs)} · ${t.deaths(counted.length)}`}
-      big={!p.success && hp != null ? pct(hp) : undefined}
+      big={!p.success && hp != null ? progressLabel(p) : undefined}
       foot={full ? t.pullFoot : undefined}
     >
       <p className="share-headline">{v.headline}</p>

@@ -60,6 +60,16 @@ pub struct Pull {
     /// ENCOUNTER_END não encontrado (log cortado / desconectou)
     pub incomplete: bool,
     pub bosses: Vec<BossState>,
+    /// boss de várias fases (`hp` nas fases da regra): a vida somada dos bosses da fase em que o
+    /// pull acabou, como o Warcraft Logs mostra (P2 = Malacrass; P3 = Zul'jan + Malacrass)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase_hp_pct: Option<f32>,
+    /// o mesmo no corte ("ignorar após N mortes"), na fase em que o corte caiu
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub phase_hp_pct_at_cutoff: Option<f32>,
+    /// quantas fases o boss tem (regra com `phases`), para o progresso de cada pull na luta toda
+    #[serde(skip_serializing_if = "is_zero")]
+    pub phase_count: u32,
     pub players: Vec<PlayerStats>,
     pub deaths: Vec<Death>,
     pub enemy_spells: Vec<EnemySpell>,

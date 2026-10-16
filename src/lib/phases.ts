@@ -2,6 +2,8 @@
 // resolver a mecânica. Quanto mais rápido, melhor.
 
 import type { MechanicResult, PhaseWindow, Pull } from '../types';
+import { pct } from './format';
+import { lowestBossHp } from './verdict';
 
 /** Mortes numa fase que mostram que a mecânica deu errado (o mesmo limite do núcleo). */
 export const PHASE_FAIL_DEATHS = 3;
@@ -81,11 +83,38 @@ export function phasesOfNight(pulls: Pull[]): PhaseNight[] {
  * Fase a que o pull chegou (regra do boss com `phases`), quando passou da primeira: rótulo curto
  * (P2, Int., P3) e o nome. Num boss de várias fases o HP do boss da primeira não diz até onde o try foi.
  */
-export function reachedPhase(p: Pick<Pull, 'phaseMarks'>): { short: string; name: string; index: number } | null {
-  const marks = p.phaseMarks ?? [];
+export function reachedPhase(p: Pick<Pull, 'phaseMarks'> & Partial<Pick<Pull, 'cutoffT'>>): { short: string; name: string; index: number } | null {
+  // com o corte de mortes, a fase em que o corte caiu (a vida também é a do corte)
+  const marks = (p.phaseMarks ?? []).filter((m) => p.cutoffT == null || m.t <= p.cutoffT);
   if (marks.length < 2) return null;
   const last = marks[marks.length - 1];
   const n = /^p(\d+)$/i.exec(last.key);
   const short = n ? `P${n[1]}` : `${last.key.charAt(0).toUpperCase()}${last.key.slice(1, 3)}.`;
   return { short, name: last.name, index: marks.length - 1 };
+}
+
+/**
+ * Até onde o pull foi na luta toda (0 a 1): as fases já passadas mais o que foi da vida da fase em
+ * que acabou. Kill = 1. Sem fases, só a vida do boss. Serve para ordenar ("melhor pull") e desenhar.
+ */
+export function pullProgress(p: Pull): number {
+  if (p.success) return 1;
+  const done = (100 - (lowestBossHp(p) ?? 100)) / 100;
+  const phase = reachedPhase(p);
+  const n = p.phaseCount ?? 0;
+  if (n < 2) return done;
+  return Math.min(1, ((phase?.index ?? 0) + done) / n);
+}
+
+/** "Kill", "P3 82%" ou "36.3%": o resultado do pull como o Warcraft Logs mostra. */
+export function progressLabel(p: Pull): string {
+  if (p.success) return 'Kill';
+  const phase = reachedPhase(p);
+  const hp = pct(lowestBossHp(p));
+  return phase ? `${phase.short} ${hp}` : hp;
+}
+
+/** O wipe que mais avançou (fase, depois vida). */
+export function bestWipe(pulls: Pull[]): Pull | null {
+  return pulls.filter((p) => !p.success).reduce<Pull | null>((b, p) => (!b || pullProgress(p) > pullProgress(b) ? p : b), null);
 }

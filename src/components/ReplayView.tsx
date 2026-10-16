@@ -1265,7 +1265,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           step={50}
           value={now}
           aria-label={t.slider}
-          aria-valuetext={clock}
+          aria-valuetext={full ? clock : `${mmss(now)} · ${clock}`}
           onChange={(e) => {
             setPlaying(false);
             setNow(Number(e.target.value));
@@ -1293,6 +1293,8 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             clipView={() => ({ view: { wide, cam, others }, full, frame: frameWin ?? [r.from, r.to] })}
           />
         )}
+        {/* tempo de luta sempre; no trecho de uma morte/falha, também quanto falta para ela */}
+        {!full && <span className="small num muted replay-fight-time" title={t.fightTime}>{mmss(now)}</span>}
         <span className={`small num replay-clock ${after && !full ? 'bad' : 'muted'}`}>{clock}</span>
         {(view.floor || full) && (
           <button className={`btn sm ghost ${wide ? 'pressed' : ''}`} aria-pressed={wide} onClick={toggleWide} title={wide ? t.zoomFocus : t.zoomArena} aria-label={wide ? t.zoomFocus : t.zoomArena}>
@@ -1395,7 +1397,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                         className={`replay-cast-mark ${c.t <= now ? 'past' : ''}`}
                         style={{ left: `${pctOf(c.t)}%`, width: `max(16px, ${pctOf(castEnd(c)) - pctOf(c.t)}%)` }}
                       >
-                        <SpellIcon spellId={c.spellId} size={16} title={t.castTitle(c.name, e.name, t.relTime(c.t - r.t))} />
+                        <SpellIcon spellId={c.spellId} size={16} title={t.castTitle(c.name, e.name, `${mmss(c.t)} · ${t.relTime(c.t - r.t)}`)} />
                       </span>
                     ))}
                   <span className="replay-cast-now" style={{ left: `${pctOf(now)}%` }} aria-hidden />
@@ -1406,7 +1408,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
               <ul className="plain small replay-cast-list">
                 {recentCasts.map((c, i) => (
                   <li key={`${c.t}-${i}`}>
-                    <span className="muted num">{t.relTime(c.t - r.t)}</span>
+                    <span className="muted num">{mmss(c.t)} · {t.relTime(c.t - r.t)}</span>
                     <span className="muted">{bossName(c.guid)}</span>
                     <SpellName spellId={c.spellId} name={c.name} size={16} />
                     {c.interrupted && <span className="chip">{t.interrupted}</span>}
@@ -1448,7 +1450,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
               <ul className="plain small">
                 {feed.map((h, i) => (
                   <li key={`${h.t}-${i}`} className={h.cause ? 'cause' : ''}>
-                    <span className="muted num">{t.relTime(h.t - r.t)}</span>
+                    <span className="muted num">{mmss(h.t)} · {t.relTime(h.t - r.t)}</span>
                     <SpellName spellId={h.spellId} name={h.name} size={16} />
                     <span className="num">-{num(h.amount)}</span>
                     {h.cause && <span className="chip bad">{t.cause}</span>}

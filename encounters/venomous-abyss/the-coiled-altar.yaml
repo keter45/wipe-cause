@@ -24,11 +24,13 @@ units:
   - { key: manifestation, name: "Manifestation of Dread", npc_id: 261218 }
   - { key: soulcoiler, name: "Spiteful Soulcoiler", npc_id: 261521 }
 
+# hp: bosses cuja vida (somada) é o progresso da fase, como o Warcraft Logs mostra (conferido em 14 e 15/10:
+# P2 = vida do Malacrass; P3 = Zul'jan, que volta como outra unidade, + Malacrass)
 phases:
-  - { key: p1, name: "Serpent's Bargain", start: pull }
-  - { key: p2, name: "Usurper's Reprisal", start: { cast: dreadmarch } }
-  - { key: intermission, name: "The Claimed Vessel", start: { cast: soulbinding } }
-  - { key: p3, name: "Coiled Union", start: { cast: defilement } }
+  - { key: p1, name: "Serpent's Bargain", start: pull, hp: [zuljan] }
+  - { key: p2, name: "Usurper's Reprisal", start: { cast: dreadmarch, zero: zuljan }, hp: [malacrass] }
+  - { key: intermission, name: "The Claimed Vessel", start: { cast: soulbinding }, hp: [malacrass] }
+  - { key: p3, name: "Coiled Union", start: { cast: defilement }, hp: [zuljan, malacrass] }
 
 mechanics:
   # =====================================================================
@@ -216,9 +218,7 @@ mechanics:
     name: "Widow's Kiss"
     type: avoidable_damage
     source_unit: zuljan
-    severity: minor
-    overrides:
-      mythic: { severity: major }
+    severity: minor   # dano no raid, raramente mata: não é erro grave (nem no Mythic)
     detect: { damage_ids: [1283623] }
     blast: { from_soak: guillotine, radius: 40, delay_ms: 6000, event_ids: [1283631] }
     ground: false
@@ -277,7 +277,7 @@ mechanics:
     type: failure_event
     source_unit: manifestation
     difficulty: [mythic]
-    severity: major
+    severity: wipe   # quase sempre mata os dois alvos
     detect:
       fail_ids: [1312132]         # Malevolent Resonance (dano nos alvos)
       confirm_aura: 1310744       # só o hit que aplica o debuff; o do fim dele (1s depois) não

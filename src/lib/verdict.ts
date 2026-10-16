@@ -1,13 +1,14 @@
 // Heurísticas genéricas de "por que deu wipe". Regras específicas de boss virão de encounters/*.yaml.
 
 import type { Death, Pull, PullTrigger } from '../types';
-import { mmss, pct, shortName, damageSource } from './format';
+import { mmss, shortName, damageSource } from './format';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { spellIdByName } from './spells';
 import { getMarks } from './marks';
 import { PERSONAL_BLAME } from './blame';
 import { messagesOf, tr } from '../i18n';
 import { verdictMsg } from './verdict.i18n';
+import { progressLabel } from './phases';
 
 export type Severity = 'wipe' | 'major' | 'minor' | 'info';
 
@@ -68,9 +69,14 @@ export function deathsUntilCascade(sorted: Death[], threshold: number): Death[] 
   return start < 0 ? sorted : sorted.slice(0, start + 2);
 }
 
-/** HP do boss mais baixo: no corte ("ignorar após N mortes"), se houver; kill = 0. */
+/**
+ * HP do boss no fim do pull: no corte ("ignorar após N mortes"), se houver; kill = 0. Boss de várias
+ * fases: a vida dos bosses da fase em que o pull acabou (P2 = 69%, não o boss da P1 a 0%).
+ */
 export function lowestBossHp(p: Pull): number | null {
   if (p.success) return 0;
+  const phase = p.cutoffT != null ? (p.phaseHpPctAtCutoff ?? p.phaseHpPct) : p.phaseHpPct;
+  if (phase != null) return phase;
   const hps = p.bosses.map((b) => (p.cutoffT != null ? b.hpPctAtCutoff ?? b.hpPct : b.hpPct)).filter((x): x is number => x != null);
   return hps.length ? Math.min(...hps) : null;
 }
@@ -229,14 +235,15 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   if (!p.success && deaths.length < 2 && bossHp != null && bossHp > 0) {
     findings.push({
       severity: 'info',
-      title: t.fewDeaths(pct(bossHp)),
+      title: t.fewDeaths(progressLabel(p)),
       detail: t.fewDeathsDetail,
     });
   }
 
   const first = deaths[0];
   let headline: string;
-  const boss = t.bossAt(bossHp != null ? pct(bossHp) : null);
+  // boss de várias fases: a fase e a vida dos bosses dela ("P3 82.2%")
+  const boss = t.bossAt(bossHp != null ? progressLabel(p) : null);
   if (p.success) {
     headline = t.kill(mmss(p.durationMs), deaths.length);
   } else if (p.trigger) {

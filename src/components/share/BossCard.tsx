@@ -1,12 +1,11 @@
 import type { Pull } from '../../types';
-import { mmss, num, pct } from '../../lib/format';
+import { mmss, num } from '../../lib/format';
 import { summarizeNight, type Cause, type NightSummary, type PlayerNight } from '../../lib/night';
-import { lowestBossHp } from '../../lib/verdict';
 import { mechanicSpellId } from '../../lib/spells';
 import { scoreTone } from '../../lib/score';
 import { SpellName } from '../SpellIcon';
 import { BossName } from '../Names';
-import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight } from '../../lib/phases';
+import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight, progressLabel, pullProgress, reachedPhase } from '../../lib/phases';
 import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, type CardDetail } from './common';
 import { intlLocale, useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
@@ -36,7 +35,7 @@ export function BossShareCard({ title, pulls, detail = 'summary' }: { title: str
       wide={full}
       title={<BossName encounterId={pulls[0]?.encounterId} name={title} size={22} />}
       sub={t.bossSub(first ? `${dateOf(first)} · ` : '', s.pulls.length, s.wipes, s.kills)}
-      big={s.kills ? 'Kill' : s.best ? pct(s.best.hp) : '—'}
+      big={s.kills ? 'Kill' : s.best ? s.best.label : '—'}
       foot={t.bossFoot(mmss(s.avgGapMs)) + (full ? t.fullReport : '')}
     >
       <PullBars pulls={s.pulls} />
@@ -68,17 +67,19 @@ export function PullBars({ pulls }: { pulls: Pull[] }) {
     <figure className="share-figure">
       <svg width={W} height={TOP + H + BOTTOM} viewBox={`0 0 ${W} ${TOP + H + BOTTOM}`} className="share-bars" role="img" aria-label={t.barsAria}>
         {pulls.map((p, i) => {
-          const hp = p.success ? 0 : (lowestBossHp(p) ?? 100);
-          const h = p.success ? H : Math.max(2, ((100 - hp) / 100) * H);
+          // até onde foi na luta toda (fases passadas + vida da fase), na cor da fase
+          const phase = p.success ? null : reachedPhase(p);
+          const h = p.success ? H : Math.max(2, pullProgress(p) * H);
+          const fill = p.success ? 'var(--kill)' : phase ? (phase.index >= 3 ? '#b48cf2' : '#6ea8fe') : (p.phaseCount ?? 0) >= 2 ? '#d4a54a' : '#3987e5';
           const x = i * band + 1;
           const w = Math.max(2, band - 2);
           // cor e fonte em linha: o gerador de imagem não aplica fill de SVG vindo de classe
           return (
             <g key={p.id}>
-              <rect x={x} y={TOP + H - h} width={w} height={h} rx={2} style={{ fill: p.success ? 'var(--kill)' : '#3987e5' }} />
+              <rect x={x} y={TOP + H - h} width={w} height={h} rx={2} style={{ fill }} />
               {labelHp && (
                 <text x={x + w / 2} y={TOP + H - h - 4} textAnchor="middle" style={{ fill: p.success ? 'var(--kill)' : 'var(--text)', fontSize: 10, fontWeight: 600 }}>
-                  {p.success ? 'kill' : pct(hp)}
+                  {p.success ? 'kill' : progressLabel(p)}
                 </text>
               )}
               {labelN && (
@@ -225,7 +226,7 @@ function PullTable({ pulls }: { pulls: Pull[] }) {
           {pulls.map((p) => (
             <tr key={p.id}>
               <td>{p.pullNumber}</td>
-              <td className={`num ${p.success ? 'share-kill' : ''}`}>{p.success ? 'kill' : pct(lowestBossHp(p))}</td>
+              <td className={`num ${p.success ? 'share-kill' : ''}`}>{p.success ? 'kill' : progressLabel(p)}</td>
               <td className="num">{mmss(p.durationMs)}</td>
               <td>{p.trigger ? `${p.trigger.name} (${mmss(p.trigger.t)})` : <span className="share-muted">—</span>}</td>
               <td className="num">{p.deaths.filter((d) => !d.ignored).length}</td>

@@ -11,7 +11,7 @@ import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
 import { useMessages } from '../i18n';
 import { pullListMsg } from './PullList.i18n';
-import { reachedPhase } from '../lib/phases';
+import { bestWipe, progressLabel, reachedPhase } from '../lib/phases';
 
 const DUNGEONS_OPEN_KEY = 'wipe-cause:dungeons-open';
 
@@ -27,6 +27,9 @@ export interface PullListProps {
 }
 
 /** Resumo da noite + uma linha por boss (o resumo dele), com os pulls embaixo. */
+/** Vida na fase como o Warcraft Logs: inteira de 10% para cima ("69%"), uma casa abaixo ("3.9%"). */
+const phasePct = (hp: number | null) => (hp == null ? '—' : hp >= 10 ? `${Math.floor(hp)}%` : pct(hp));
+
 export function PullList({ pulls, selected, onSelect, summary, onSummary }: PullListProps) {
   const t = useMessages(pullListMsg);
   const raid = raidOnly(pulls);
@@ -84,11 +87,8 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
     <>
       {groups.map(({ key, pulls: ps }) => {
         const kills = ps.filter((p) => p.success).length;
-        const best = ps.filter((p) => !p.success).reduce<number | null>((m, p) => {
-          const hp = lowestBossHp(p);
-          return hp != null && (m == null || hp < m) ? hp : m;
-        }, null);
-        const meta = t.meta(ps.length, kills > 0, best != null ? pct(best) : null);
+        const top = bestWipe(ps);
+        const meta = t.meta(ps.length, kills > 0, top ? progressLabel(top) : null);
         const isOpen = open === key;
         const active = summary === key;
         return (
@@ -135,10 +135,21 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
                       {p.pullNumber}
                       <NoteDot pull={p} />
                     </span>
-                    <span className={`pull-result ${phase ? 'phase' : ''}`}>{p.success ? 'Kill' : phase ? phase.short : pct(hp)}</span>
-                    {/* progresso até o kill: quanto do HP do boss já foi (em outra fase, a barra cheia na cor da fase) */}
-                    <span className={`pull-meter ${phase ? 'phase' : ''}`} aria-hidden>
-                      <span style={{ transform: `scaleX(${p.success || phase ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
+                    <span className={`pull-result ${phase ? `phase ph-${Math.min(phase.index, 3)}` : ''}`}>
+                      {p.success ? (
+                        'Kill'
+                      ) : phase ? (
+                        <>
+                          <span className="pull-phase">{phase.short}</span>
+                          {phasePct(hp)}
+                        </>
+                      ) : (
+                        pct(hp)
+                      )}
+                    </span>
+                    {/* progresso na fase em que o pull acabou: quanto da vida dos bosses dela já foi (como o Warcraft Logs) */}
+                    <span className={`pull-meter ${phase ? `phase ph-${Math.min(phase.index, 3)}` : ''}`} aria-hidden>
+                      <span style={{ transform: `scaleX(${p.success ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
                     </span>
                     <span className="pull-meta">{mmss(p.durationMs)}</span>
                     <span className="pull-deaths">

@@ -9,6 +9,7 @@ import { bossUrl } from './wcl';
 import { assignmentsFor, checkAssignments } from './assignments';
 import { messagesOf, tr } from '../i18n';
 import { discordMsg } from './discord.i18n';
+import { progressLabel } from './phases';
 
 export interface DiscordEmbed {
   title: string;
@@ -57,7 +58,7 @@ export function pullPayload(p: Pull, wclCode?: string | null): DiscordPayload {
   const hp = lowestBossHp(p);
   const title = p.success
     ? `Kill · ${p.encounterName} ${p.difficultyName} (${mmss(p.durationMs)})`
-    : `Wipe ${p.pullNumber} · ${p.encounterName} ${p.difficultyName}${hp != null ? ` — ${pct(hp)}` : ''}`;
+    : `Wipe ${p.pullNumber} · ${p.encounterName} ${p.difficultyName}${hp != null ? ` — ${progressLabel(p)}` : ''}`;
 
   const mechanics = p.mechanics
     .filter((m) => m.failures > 0 && (m.severity === 'wipe' || m.severity === 'major'))

@@ -12,6 +12,7 @@
   --major: #e8904a;
   --minor: #d9c05a;
   --info: #6ea8fe;
+  --phase-3: #b48cf2;
   --heal: #4cc38a;
 
   /* raios concêntricos: externo = interno + padding */
@@ -1505,6 +1506,17 @@ ul.plain {
   fill: var(--viz-series);
   stroke: var(--text);
   stroke-width: 1.5;
+}
+/* boss de várias fases: a cor da fase em que o pull acabou (como na lista de pulls) */
+.chart .mark.ph-0 {
+  fill: var(--accent);
+}
+.chart .mark.ph-1,
+.chart .mark.ph-2 {
+  fill: var(--info);
+}
+.chart .mark.ph-3 {
+  fill: var(--phase-3);
 }
 .chart .mark-good {
   fill: var(--viz-good);
@@ -6907,12 +6919,27 @@ button.kpi:hover {
   stroke-width: 2.5px;
   pointer-events: none;
 }
-/* pull que passou da primeira fase (boss de várias fases): o rótulo da fase no lugar do HP */
+/* pull que passou da primeira fase (boss de várias fases): a fase e a vida dos bosses dela, a barra
+   na cor da fase (P2 azul, P3 em diante violeta) */
 .pull-result.phase {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+}
+.pull-phase {
+  font-size: 11px;
+  font-weight: 700;
   color: var(--info);
+}
+.pull-result.ph-3 .pull-phase {
+  color: var(--phase-3);
 }
 .pull-meter.phase span {
   background: var(--info);
+}
+.pull-meter.ph-3 span {
+  background: var(--phase-3);
 }
 /* orbs e áreas das habilidades no replay */
 .replay-area circle,
