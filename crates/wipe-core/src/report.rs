@@ -70,6 +70,10 @@ pub struct Pull {
     /// quantas fases o boss tem (regra com `phases`), para o progresso de cada pull na luta toda
     #[serde(skip_serializing_if = "is_zero")]
     pub phase_count: u32,
+    /// call de wipe: o grupo desistiu da try e o resto morreu de propósito. Quando acha uma, a
+    /// análise para nela (`cutoff_t`), como no corte de mortes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wipe_call: Option<WipeCall>,
     pub players: Vec<PlayerStats>,
     pub deaths: Vec<Death>,
     pub enemy_spells: Vec<EnemySpell>,
@@ -885,6 +889,10 @@ pub struct Death {
     /// onde cada um estava na hora da morte (só mortes antes do corte)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub positions: Option<Positions>,
+    /// quanto tempo o player estava sem castar nada quando morreu (ms; None = nunca castou no pull).
+    /// Muita gente morrendo parada logo depois de um desastre é a call de wipe (ver `wipecall.rs`)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub idle_ms: Option<i64>,
     /// replay dos segundos antes da morte (posições em `Pull.tracks`)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub replay: Option<ReplayRef>,
@@ -995,4 +1003,41 @@ pub struct EnemySpell {
     pub interrupted: u32,
     /// foi interrompido ao menos uma vez em algum pull do log
     pub interruptible: bool,
+}
+
+/// Call de wipe (ver `wipecall.rs`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WipeCall {
+    /// quando o grupo parou de jogar (ms do pull)
+    pub t: i64,
+    /// "certain" (muita gente parou junto) ou "possible" (poucos, pode ser só desastre)
+    pub confidence: String,
+    /// quantos morreram parados (sem castar) depois de parar junto com os outros
+    pub stopped: u32,
+    /// o que veio antes e levou à call
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trigger: Option<WipeCallTrigger>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WipeCallTrigger {
+    /// "tank" (tank morreu), "mass" (uma mecânica matou muita gente junto), "mechanic" (falha
+    /// grave do raid: interrupt, soak, colisão...) ou "deaths" (várias mortes seguidas)
+    pub kind: String,
+    pub t: i64,
+    /// tank: quem morreu
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// mass/tank: o que matou
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spell: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spell_id: Option<u32>,
+    /// mass/deaths: quantas mortes
+    pub deaths: u32,
+    /// tank: morreu e não voltou (sem battle rez nem Soulstone) antes da call
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub no_rez: bool,
 }

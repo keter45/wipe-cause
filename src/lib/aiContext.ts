@@ -15,6 +15,7 @@ import { messagesOf, tr } from '../i18n';
 import { aiMsg } from './aiContext.i18n';
 import { progressLabel } from './phases';
 import { mechanicMistakes } from './blame';
+import { wipeCallText } from './wipeCall';
 
 /** Limites para não estourar o contexto dos modelos gratuitos. */
 const MAX_DEATHS_DETAILED = 12;
@@ -85,7 +86,8 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
   out.push(
     [
       p.success ? t.resultKill(mmss(p.durationMs)) : t.resultWipe(hp != null ? progressLabel(p) : pct(hp), mmss(p.durationMs)),
-      p.cutoffT != null ? t.cutoff(p.deaths.filter((d) => !d.ignored).length, mmss(p.cutoffT), pct(lowestBossHpAtEnd(p))) : null,
+      // call de wipe: o corte veio dela (o grupo desistiu), não do número de mortes
+      p.wipeCall ? wipeCallText(p)!.detail : p.cutoffT != null ? t.cutoff(p.deaths.filter((d) => !d.ignored).length, mmss(p.cutoffT), pct(lowestBossHpAtEnd(p))) : null,
       t.players(p.players.length, p.bosses.map((b) => `${b.name} ${pct(p.cutoffT != null ? (b.hpPctAtCutoff ?? b.hpPct) : b.hpPct)}`).join(', ')),
     ]
       .filter(Boolean)

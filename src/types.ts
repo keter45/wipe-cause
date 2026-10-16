@@ -49,6 +49,8 @@ export interface Pull {
   phaseHpPctAtCutoff?: number;
   /** quantas fases o boss tem (regra com fases) */
   phaseCount?: number;
+  /** call de wipe: o grupo desistiu e o resto morreu de propósito; a análise para nela (cutoffT) */
+  wipeCall?: WipeCall;
   players: PlayerStats[];
   deaths: Death[];
   enemySpells: EnemySpell[];
@@ -147,6 +149,29 @@ export interface AreaView {
   vanishFrom?: number;
   /** a unidade continua desenhada como sempre (ex.: o boss), com o círculo em volta */
   keepUnit?: boolean;
+}
+
+/** Call de wipe (ver crates/wipe-core/src/wipecall.rs). */
+export interface WipeCall {
+  /** quando o grupo parou de jogar (ms do pull) */
+  t: number;
+  /** "certain": muita gente parou junto; "possible": poucos, pode ser só um desastre */
+  confidence: 'certain' | 'possible';
+  /** quantos morreram parados depois de parar junto com os outros */
+  stopped: number;
+  /** o que veio antes e levou à call */
+  trigger?: WipeCallTrigger;
+}
+
+export interface WipeCallTrigger {
+  kind: 'tank' | 'mass' | 'mechanic' | 'deaths';
+  t: number;
+  name?: string;
+  spell?: string;
+  spellId?: number;
+  deaths: number;
+  /** tank: morreu e não voltou antes da call */
+  noRez?: boolean;
 }
 
 /** Começo de uma fase do boss. */
@@ -435,6 +460,8 @@ export interface Death {
   /** onde cada um estava na hora da morte (só mortes antes do corte, com Advanced Logging) */
   positions?: Positions;
   /** replay dos segundos antes da morte (posições em `Pull.tracks`) */
+  /** quanto tempo estava sem castar nada ao morrer (ms); muita gente parada morrendo junto = call de wipe */
+  idleMs?: number;
   replay?: ReplayRef;
 }
 

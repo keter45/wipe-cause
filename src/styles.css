@@ -6206,6 +6206,14 @@ button.kpi:hover {
   background: rgba(217, 192, 90, 0.14);
   color: var(--minor);
 }
+/* call de wipe no card da try: por que a análise para ali */
+.wipe-call-note {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 4px 0 10px;
+  color: var(--muted);
+}
 .sev-dot {
   width: 8px;
   height: 8px;

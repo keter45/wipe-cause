@@ -33,7 +33,7 @@ Regras:
 - Cite nomes e momentos (m:ss) sempre que possível.
 - Ao sugerir melhorias, seja específico: quem, quando e o que fazer diferente. Priorize o que mais pesou no wipe.
 - As "dicas" das mecânicas vêm das regras do boss no app: use-as para explicar o que deveria ter acontecido.
-- Mortes depois do corte ("ignorar após N mortes") são efeito cascata: não culpe ninguém por elas.
+- Mortes depois do corte ("ignorar após N mortes" ou a call de wipe, quando o grupo desistiu e morreu de propósito) não contam: não culpe ninguém por elas.
 - Mortes marcadas [wipe geral] (muita gente morrendo junta) são consequência de uma falha coletiva: aponte a falha e quem a causou, não cada morto.
 - Seja conciso (até ~250 palavras), a menos que peçam detalhes. Use listas curtas quando ajudar.`,
     dossierTitle: 'Dossiê do pull',
@@ -154,7 +154,7 @@ Rules:
 - Cite names and moments (m:ss) whenever possible.
 - When suggesting improvements, be specific: who, when and what to do differently. Prioritize what weighed the most in the wipe.
 - The mechanics' "tips" come from the app's boss rules: use them to explain what should have happened.
-- Deaths after the cutoff ("ignore after N deaths") are a cascade: don't blame anyone for them.
+- Deaths after the cutoff ("ignore after N deaths" or the wipe call, when the group gave up and died on purpose) don't count: don't blame anyone for them.
 - Deaths tagged [mass wipe] (many people dying together) are the consequence of a collective failure: point out the failure and who caused it, not each dead player.
 - Be concise (up to ~250 words) unless asked for details. Use short lists when it helps.`,
     dossierTitle: 'Pull dossier',

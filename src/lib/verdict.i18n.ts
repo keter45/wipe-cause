@@ -28,6 +28,7 @@ export const verdictMsg = defineMessages(
     wipeTrigger: (boss: string, trigger: string, time: string, deaths: number) =>
       `Wipe${boss} — gatilho: ${trigger} aos ${time} (${deaths} ${s(deaths, 'morte ligada', 'mortes ligadas')})`,
     wipeFirstDeath: (boss: string, who: string, spell: string | null, time: string) => `Wipe${boss} — começou com ${who} morrendo${spell ? ` para ${spell}` : ''} aos ${time}`,
+    wipeCall: (boss: string, time: string, trigger: string | null) => `Wipe${boss} — call de wipe aos ${time}${trigger ? ` (antes: ${trigger})` : ''}`,
     wipeNoDeaths: (boss: string) => `Wipe${boss} sem mortes`,
   },
   {
@@ -55,6 +56,7 @@ export const verdictMsg = defineMessages(
     wipeTrigger: (boss: string, trigger: string, time: string, deaths: number) =>
       `Wipe${boss} — trigger: ${trigger} at ${time} (${deaths} ${s(deaths, 'linked death', 'linked deaths')})`,
     wipeFirstDeath: (boss: string, who: string, spell: string | null, time: string) => `Wipe${boss} — started with ${who} dying${spell ? ` to ${spell}` : ''} at ${time}`,
+    wipeCall: (boss: string, time: string, trigger: string | null) => `Wipe${boss} — wipe call at ${time}${trigger ? ` (before it: ${trigger})` : ''}`,
     wipeNoDeaths: (boss: string) => `Wipe${boss} without deaths`,
   },
 );

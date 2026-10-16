@@ -10,6 +10,7 @@ import { messagesOf, tr } from '../i18n';
 import { verdictMsg } from './verdict.i18n';
 import { progressLabel } from './phases';
 import { deathKey, massDeathKeys } from './massDeaths';
+import { triggerText, wipeCallText } from './wipeCall';
 
 export type Severity = 'wipe' | 'major' | 'minor' | 'info';
 
@@ -105,8 +106,8 @@ export function wipeCause(p: Pull): PullTrigger | null {
 
 /** HP do boss mais baixo no fim do pull (depois da cascata), para referência. */
 export function lowestBossHpAtEnd(p: Pull): number | null {
-  const hps = p.bosses.map((b) => b.hpPct).filter((x): x is number => x != null);
-  return hps.length ? Math.min(...hps) : null;
+  // sem o corte: a vida no fim (da fase em que o pull acabou, num boss de várias fases)
+  return lowestBossHp({ ...p, cutoffT: null });
 }
 
 /** `assignments`: escala de interrupts (padrão: a salva para o boss). */
@@ -260,8 +261,12 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   let headline: string;
   // boss de várias fases: a fase e a vida dos bosses dela ("P3 82.2%")
   const boss = t.bossAt(bossHp != null ? progressLabel(p) : null);
+  // call de wipe que cortou a análise: o que levou a ela explica o wipe melhor que a 1ª morte
+  const call = p.success ? null : wipeCallText(p);
   if (p.success) {
     headline = t.kill(mmss(p.durationMs), deaths.length);
+  } else if (call && p.wipeCall) {
+    headline = t.wipeCall(boss, mmss(p.wipeCall.t), p.wipeCall.trigger ? triggerText(p.wipeCall.trigger) : null);
   } else if (p.trigger) {
     const trig = p.trigger;
     headline = t.wipeTrigger(boss, trig.name, mmss(trig.t), trig.deaths);

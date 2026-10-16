@@ -36,6 +36,7 @@ import { SoloPullView } from './SoloPullView';
 import { FightReplay } from './FightReplay';
 import { messagesOf, useMessages } from '../i18n';
 import { pullMsg } from './PullView.i18n';
+import { wipeCallText } from '../lib/wipeCall';
 
 type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'replay' | 'ask';
 
@@ -109,6 +110,9 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
   const mechFailures = pull.mechanics.filter((m) => m.failures > 0).length;
   const verdict = analyzePull(pull);
   const bossHp = bossHpOf(pull);
+  const call = wipeCallText(pull);
+  // com call de wipe, o gatilho do título é o que levou a ela
+  const callTrigger = call ? pull.wipeCall?.trigger : undefined;
   const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
   // no resumo da try, só o que causou o wipe; o resto (erros graves e avisos) fica recolhido
   const main = verdict.findings.filter((f) => f.severity === 'wipe');
@@ -175,11 +179,19 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
           <div className="muted">
             {pull.startLocal.split(' ')[1]?.slice(0, 8)} · {mmss(pull.durationMs)}
             {pull.incomplete && <span className="warn">{t.incomplete}</span>}
-            {pull.cutoffT != null && (
-              <span title={t.cutoffTitle}>
-                {t.analyzedUntil(mmss(pull.cutoffT))}
+            {call ? (
+              <span title={call.detail} className={call.possible ? '' : 'wipe-call'}>
+                {' · '}
+                {call.short}
                 {!pull.success && t.bossAtEnd(pct(lowestBossHpAtEnd(pull)))}
               </span>
+            ) : (
+              pull.cutoffT != null && (
+                <span title={t.cutoffTitle}>
+                  {t.analyzedUntil(mmss(pull.cutoffT))}
+                  {!pull.success && t.bossAtEnd(pct(lowestBossHpAtEnd(pull)))}
+                </span>
+              )
             )}
           </div>
         </div>
@@ -235,10 +247,19 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       {(!solo || showVerdict) && (
       <section className={`verdict ${pull.success ? 'kill' : 'wipe'}`}>
         <h3>
-          {pull.trigger && <SpellIcon spellId={mechanicSpellId(pull, pull.trigger.key)} size={20} />}
+          {callTrigger ? (
+            callTrigger.spellId != null && <SpellIcon spellId={callTrigger.spellId} size={20} />
+          ) : (
+            pull.trigger && <SpellIcon spellId={mechanicSpellId(pull, pull.trigger.key)} size={20} />
+          )}
           {verdict.headline}
-          {pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label={t.seeTrigger} />}
+          {callTrigger ? <PlayAt t={callTrigger.t} seek={seek} label={t.seeTrigger} /> : pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label={t.seeTrigger} />}
         </h3>
+        {call && (
+          <p className="small wipe-call-note">
+            <span className={`sev-tag ${call.possible ? 'minor' : 'none'}`}>{call.possible ? t.callPossibleTag : t.callTag}</span> {call.explain}
+          </p>
+        )}
         {main.length > 0 && (
           <ul className="findings">
             {main.map((f, i) => (
@@ -295,6 +316,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
           deaths={pull.deaths}
           decisive={decisive}
           cutoffT={pull.cutoffT ?? null}
+          wipeCall={pull.wipeCall}
           classes={classesOf(pull)}
           mechanicSpells={mechanicSpellMap([pull])}
           replayData={replayData}

@@ -129,7 +129,19 @@ pub struct WclAnalyzer {
     finished: Vec<FinishedPull>,
     current: Option<(WclFight, PullBuilder)>,
     events: u64,
+    /// wipe: o fight convertido em linhas, para reler cortando na call de wipe (ver `end_fight`)
+    redo: Option<Redo>,
 }
+
+/// O que o fight recebeu, para relê-lo do começo.
+#[derive(Default)]
+struct Redo {
+    /// (t, campos separados por \u{1f})
+    lines: Vec<(i64, String)>,
+    combatants: Vec<(String, Option<u32>, Setup)>,
+}
+
+const REDO_SEP: char = '\u{1f}';
 
 impl WclAnalyzer {
     /// `tz_hours`: fuso de quem vê (o WCL guarda em UTC; o log local vem no fuso do PC).
@@ -144,6 +156,7 @@ impl WclAnalyzer {
             finished: Vec::new(),
             current: None,
             events: 0,
+            redo: None,
         }
     }
 
@@ -262,8 +275,38 @@ impl WclAnalyzer {
                 b.set_pet_owner(&a.guid, &owner.guid);
             }
         }
+        // wipe: guarda o fight para relê-lo se houver call de wipe
+        self.redo = (!fight.kill && !replay).then(Redo::default);
         self.current = Some((fight, b));
         Ok(())
+    }
+
+    /// Builder do fight do zero, sem corte de mortes e cortando em `cut_at` (a call de wipe).
+    fn rebuild(&self, fight: &WclFight, redo: &Redo, cut_at: i64) -> PullBuilder {
+        let src = &self.sources[fight.report];
+        let t = fight.abs_start;
+        let start = [
+            "ENCOUNTER_START".to_string(),
+            fight.encounter_id.to_string(),
+            fight.name.clone(),
+            fight.difficulty_id.to_string(),
+            fight.size.to_string(),
+        ];
+        let f: Vec<&str> = start.iter().map(String::as_str).collect();
+        let mut b = PullBuilder::start(&f, t, &format_timestamp(t, self.tz_hours), self.tz_hours, &self.book, 0).with_cut_at(cut_at);
+        for a in src.actors.values().filter(|a| a.kind == ActorKind::Pet) {
+            if let Some(owner) = a.pet_owner.and_then(|o| src.actors.get(&o)).filter(|o| o.kind == ActorKind::Player) {
+                b.set_pet_owner(&a.guid, &owner.guid);
+            }
+        }
+        for (guid, spec, setup) in &redo.combatants {
+            b.set_combatant(guid, *spec, setup.clone());
+        }
+        for (t, line) in &redo.lines {
+            let f: Vec<&str> = line.split(REDO_SEP).collect();
+            b.feed(&f, *t, &self.data);
+        }
+        b
     }
 
     /// Uma página de `events.data` do fight atual.
@@ -276,6 +319,9 @@ impl WclAnalyzer {
             let t = src.start_time + int(&e["timestamp"]);
             if e["type"] == "combatantinfo" {
                 if let Some((guid, spec, setup)) = combatant(&src.actors, e) {
+                    if let Some(r) = self.redo.as_mut() {
+                        r.combatants.push((guid.clone(), spec, setup.clone()));
+                    }
                     b.set_combatant(&guid, spec, setup);
                 }
                 continue;
@@ -283,6 +329,9 @@ impl WclAnalyzer {
             fields.clear();
             if !to_fields(&src.actors, &src.abilities, e, &mut fields) {
                 continue;
+            }
+            if let Some(r) = self.redo.as_mut() {
+                r.lines.push((t, fields.join(&REDO_SEP.to_string())));
             }
             let f: Vec<&str> = fields.iter().map(String::as_str).collect();
             b.feed(&f, t, &self.data);
@@ -303,6 +352,12 @@ impl WclAnalyzer {
         let f: Vec<&str> = end.iter().map(String::as_str).collect();
         let id = self.finished.len();
         let mut fp = b.finish(Some((&f, t)), id, &self.data);
+        // call de wipe antes do corte (ou sem corte): relê o fight parando nela
+        let redo = self.redo.take();
+        if let (Some(redo), Some(call)) = (redo, fp.pull.wipe_call.clone().filter(|c| crate::wipecall::applies(c, fp.pull.cutoff_t))) {
+            fp = self.rebuild(&fight, &redo, call.t).finish(Some((&f, t)), id, &self.data);
+            fp.pull.wipe_call = Some(crate::wipecall::reread(call, fp.pull.wipe_call.take()));
+        }
         // o replay acha o fight de novo por aqui (no log local é o arquivo e o byte do início)
         let code = &self.sources[fight.report].code;
         if !code.is_empty() {

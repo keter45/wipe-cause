@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ChevronRight, ExternalLink, FlaskConical, Gem, Shield } from 'lucide-react';
-import type { Death, DeathAura, RecapEntry } from '../types';
+import type { Death, DeathAura, RecapEntry, WipeCall } from '../types';
 import { classColor, mmss, num, relSeconds, shortName, damageSource } from '../lib/format';
 import { useSpellDescription, useTooltip, wowheadUrl } from '../lib/wowhead';
 import { SpellIcon, SpellName } from './SpellIcon';
@@ -22,6 +22,8 @@ interface Props {
   decisive: Set<string>;
   /** momento da N-ésima morte: mortes depois disso são ignoradas */
   cutoffT: number | null;
+  /** call de wipe: as mortes ignoradas vieram depois dela */
+  wipeCall?: WipeCall;
   /** guid -> classe, para as cores do mini mapa */
   classes: Map<string, string | null>;
   /** mecânica (key) -> spell, para os ícones */
@@ -35,7 +37,7 @@ interface Props {
 /** Tipo da morte (rótulo e explicação) no idioma atual. */
 export const deathKind = (k: Death['deathKind']) => messagesOf(deathMsg).kind[k];
 
-export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, onMark, replayData }: Props) {
+export function DeathList({ deaths, decisive, cutoffT, wipeCall, classes, mechanicSpells, onMark, replayData }: Props) {
   const t = useMessages(deathMsg);
   const [open, setOpen] = useState<string | null>(null);
   const seek = useSeek();
@@ -117,7 +119,7 @@ export function DeathList({ deaths, decisive, cutoffT, classes, mechanicSpells, 
         );
       })}
       <p className="muted small">
-        {cutoffT != null ? t.cutoffNote(mmss(cutoffT)) : t.cascadeNote} {t.iconsNote}
+        {wipeCall ? t.callNote(mmss(wipeCall.t)) : cutoffT != null ? t.cutoffNote(mmss(cutoffT)) : t.cascadeNote} {t.iconsNote}
       </p>
     </div>
   );

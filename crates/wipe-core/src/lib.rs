@@ -19,6 +19,7 @@ pub mod summary;
 pub mod timestamp;
 pub mod tokenizer;
 pub mod wcl;
+pub mod wipecall;
 
 use analysis::{finalize, PullBuilder};
 use data::GameData;
@@ -120,8 +121,11 @@ pub fn analyze_pull_reader<R: BufRead + Seek>(mut reader: R, offset: u64, book: 
     Ok(pull)
 }
 
-/** Relê um pull desde o `ENCOUNTER_START` em `offset` sem o corte de mortes, até o `ENCOUNTER_END` (sem consumi-lo). */
-fn reread_pull<R: BufRead + Seek>(reader: &mut R, offset: u64, default_year: i32, book: &RuleBook, data: &GameData) -> io::Result<Option<PullBuilder>> {
+/**
+ * Relê um pull desde o `ENCOUNTER_START` em `offset` sem o corte de mortes, até o `ENCOUNTER_END`
+ * (sem consumi-lo). `cut_at`: corta nesse instante (a call de wipe).
+ */
+fn reread_pull<R: BufRead + Seek>(reader: &mut R, offset: u64, default_year: i32, book: &RuleBook, data: &GameData, cut_at: Option<i64>) -> io::Result<Option<PullBuilder>> {
     reader.seek(SeekFrom::Start(offset))?;
     let mut buf = Vec::with_capacity(4096);
     let mut current: Option<PullBuilder> = None;
@@ -136,7 +140,13 @@ fn reread_pull<R: BufRead + Seek>(reader: &mut R, offset: u64, default_year: i32
         let mut f = Vec::with_capacity(48);
         split_fields(rest, &mut f);
         match (f[0], current.as_mut()) {
-            ("ENCOUNTER_START", None) => current = Some(PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book, 0)),
+            ("ENCOUNTER_START", None) => {
+                let b = PullBuilder::start(&f, t, ts, tz_offset_hours(ts), book, 0);
+                current = Some(match cut_at {
+                    Some(at) => b.with_cut_at(at),
+                    None => b,
+                });
+            }
             ("ENCOUNTER_END", _) => return Ok(current),
             (_, Some(b)) => b.feed(&f, t, data),
             _ => {}
@@ -222,13 +232,22 @@ pub fn analyze_reader<R: BufRead + Seek>(
             if let Some(b) = current.take() {
                 let kill = f.get(5) == Some(&"1");
                 let b = if kill && b.cut_by_deaths() {
-                    let again = reread_pull(&mut reader, pull_offset, default_year, book, &data)?.map(|b| b.with_markers(pull_markers.clone()));
+                    let again = reread_pull(&mut reader, pull_offset, default_year, book, &data, None)?.map(|b| b.with_markers(pull_markers.clone()));
                     reader.seek(SeekFrom::Start(bytes_read))?;
                     again.unwrap_or(b)
                 } else {
                     b
                 };
                 let mut fp = b.finish(Some((f.as_slice(), t)), finished.len(), &data);
+                // call de wipe antes do corte (ou sem corte): relê o pull parando nela
+                if let Some(call) = fp.pull.wipe_call.clone().filter(|c| !kill && crate::wipecall::applies(c, fp.pull.cutoff_t)) {
+                    let again = reread_pull(&mut reader, pull_offset, default_year, book, &data, Some(call.t))?;
+                    reader.seek(SeekFrom::Start(bytes_read))?;
+                    if let Some(b) = again {
+                        fp = b.with_markers(pull_markers.clone()).finish(Some((f.as_slice(), t)), finished.len(), &data);
+                        fp.pull.wipe_call = Some(crate::wipecall::reread(call, fp.pull.wipe_call.take()));
+                    }
+                }
                 fp.pull.log_offset = Some(pull_offset);
                 finished.push(fp);
             }

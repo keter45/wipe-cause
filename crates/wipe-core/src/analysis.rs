@@ -22,6 +22,8 @@ const MAX_RECAP_ENTRIES: usize = 150;
 const FEIGN_DEATH: u32 = 5384;
 /// Reincarnation do xamã: ele volta sozinho, sem SPELL_RESURRECT no log (só este cast, já morto).
 const REINCARNATION: u32 = 21169;
+/// Falhas do raid que podem fazer o grupo desistir (gatilho da call de wipe): as coletivas.
+const WIPE_CALL_FAILURE_KINDS: [&str; 6] = ["interrupt", "soak", "tank_soak", "enrage", "failure_event", "hp_balance"];
 /// Abaixo disso de vida o player "precisa de cura": o tempo parado do healer só conta com alguém assim.
 const INJURED_PCT: f32 = 80.0;
 /// Histórico de HP guardado por player (para slow death).
@@ -287,6 +289,12 @@ pub(crate) struct PullBuilder {
     hp_at_cutoff: HashMap<String, f32>,
     /// vida da fase no corte (bosses da fase em que o corte caiu)
     phase_hp_at_cutoff: Option<f32>,
+    /// corte num instante dado (call de wipe achada numa primeira leitura do pull)
+    cut_at: Option<i64>,
+    /// último cast de cada player (sempre, mesmo depois do corte): quanto tempo estava parado ao morrer
+    last_cast: HashMap<String, i64>,
+    /// (t, guid) de cada ressurreição (battle rez, Reincarnation)
+    rezzes: Vec<(i64, String)>,
     /// segundos do pull em que alguém da raid acertou um inimigo
     raid_active: Vec<bool>,
     /// players vivos abaixo de INJURED_PCT agora, e os segundos do pull com alguém assim
@@ -352,6 +360,9 @@ impl PullBuilder {
             cutoff_t: None,
             hp_at_cutoff: HashMap::new(),
             phase_hp_at_cutoff: None,
+            cut_at: None,
+            last_cast: HashMap::new(),
+            rezzes: Vec::new(),
             raid_active: Vec::new(),
             injured: HashSet::new(),
             injured_secs: Vec::new(),
@@ -557,6 +568,9 @@ impl PullBuilder {
             }
             return;
         }
+        if let Some(at) = self.cut_at.filter(|&at| self.cutoff_t.is_none() && self.rel(t) >= at) {
+            self.cut_now(at);
+        }
         self.mark_injured(t);
         if self.counting() && matches!(f[0], "SPELL_DAMAGE" | "SPELL_MISSED" | "SPELL_ABSORBED") {
             if let Some(spell) = f.get(9).and_then(|spell| spell.parse().ok()).filter(|&spell| self.rules.as_ref().is_some_and(|rules| rules.is_blast_spell(spell))) {
@@ -651,6 +665,7 @@ impl PullBuilder {
             "SPELL_RESURRECT" => {
                 if Self::is_group_player(f[5], hex(f[7])) {
                     let rel = self.rel(t);
+                    self.rezzes.push((rel, f[5].to_string()));
                     if let Some(fc) = self.fight.as_mut() {
                         fc.event(rel, fight::EV_RESURRECT, f[5], f[9].parse().unwrap_or(0), f[10], 0, f[2]);
                     }
@@ -672,6 +687,24 @@ impl PullBuilder {
     }
 
     /// Começa com as marcas que já estavam no chão (o leitor acompanha o log inteiro).
+    /// Para de contar em `rel` (ms do pull), como o corte de mortes: a call de wipe.
+    pub fn with_cut_at(mut self, rel: i64) -> Self {
+        self.cut_at = Some(rel);
+        self
+    }
+
+    /// Congela as estatísticas daqui em diante (corte de mortes ou call de wipe).
+    fn cut_now(&mut self, rel: i64) {
+        self.cutoff_t = Some(rel);
+        self.hp_at_cutoff = self
+            .enemies
+            .iter()
+            .filter(|(_, e)| e.max_hp > 0)
+            .map(|(g, e)| (g.clone(), (e.hp as f32 / e.max_hp as f32 * 100.0).clamp(0.0, 100.0)))
+            .collect();
+        self.phase_hp_at_cutoff = self.phase_hp(rel);
+    }
+
     pub fn with_markers(mut self, markers: Vec<WorldMarker>) -> Self {
         self.markers = markers;
         self
@@ -1189,6 +1222,14 @@ impl PullBuilder {
         let spell_id: u32 = f.get(9).and_then(|v| v.parse().ok()).unwrap_or(0);
         let spell_name = f.get(10).unwrap_or(&"").to_string();
         let rel = self.rel(t);
+        if Self::is_group_player(src_guid, src_flags) {
+            // morto não casta: o Reincarnation é o player voltando
+            if spell_id == REINCARNATION {
+                self.rezzes.push((rel, src_guid.to_string()));
+            } else {
+                self.last_cast.insert(src_guid.to_string(), rel);
+            }
+        }
         // replay completo: defensivos de raid em área (onde quem usou estava) e o totem deles aparecendo
         if let Some(fc) = self.fight.as_mut() {
             let here = adv.as_ref().filter(|a| a.info_guid == src_guid).map(|a| (a.x, a.y));
@@ -1396,6 +1437,7 @@ impl PullBuilder {
         // depois do corte a morte fica registrada (recap), mas não conta em nada
         let ignored = !self.counting();
         let positions = (!ignored).then(|| self.snapshot(rel));
+        let idle_ms = self.last_cast.get(dst_guid).map(|&c| rel - c);
         let p = self.player(dst_guid, dst_name);
         if p.feigning {
             return;
@@ -1457,6 +1499,7 @@ impl PullBuilder {
             healthstone_known: false,
             positions,
             replay: None,
+            idle_ms,
         };
         p.recap.clear();
         p.debuffs.clear();
@@ -1468,14 +1511,7 @@ impl PullBuilder {
         // N-ésima morte: congela as estatísticas daqui em diante
         let counted = self.deaths.iter().filter(|d| !d.death.ignored).count() as u32;
         if !ignored && self.death_cutoff > 0 && counted == self.death_cutoff {
-            self.cutoff_t = Some(rel);
-            self.hp_at_cutoff = self
-                .enemies
-                .iter()
-                .filter(|(_, e)| e.max_hp > 0)
-                .map(|(g, e)| (g.clone(), (e.hp as f32 / e.max_hp as f32 * 100.0).clamp(0.0, 100.0)))
-                .collect();
-            self.phase_hp_at_cutoff = self.phase_hp(rel);
+            self.cut_now(rel);
         }
     }
 
@@ -1655,6 +1691,32 @@ impl PullBuilder {
             })
             .unwrap_or_default();
 
+        // call de wipe: quem morreu parado, todo mundo junto (todas as mortes, mesmo depois do corte);
+        // gatilhos: a morte do tank, uma mecânica que matou muita gente, uma falha grave do raid
+        let wipe_call = if success {
+            None
+        } else {
+            let infos: Vec<crate::wipecall::DeathInfo> = pending
+                .iter()
+                .map(|d| crate::wipecall::DeathInfo {
+                    t: d.death.t,
+                    guid: &d.death.guid,
+                    name: &d.death.name,
+                    tank: d.death.role.as_deref() == Some("tank"),
+                    idle_ms: d.death.idle_ms,
+                    killer: d.death.killing_blow.as_ref().map(|k| (k.spell_name.as_str(), k.spell_id)),
+                    environment: d.death.killing_blow.as_ref().is_some_and(|k| k.source == ENVIRONMENT),
+                })
+                .collect();
+            let rezzes: Vec<(i64, &str)> = self.rezzes.iter().map(|(t, g)| (*t, g.as_str())).collect();
+            let failures: Vec<crate::wipecall::Failure> = mechanics
+                .iter()
+                .filter(|m| matches!(m.severity.as_str(), "wipe" | "major") && WIPE_CALL_FAILURE_KINDS.contains(&m.kind.as_str()))
+                .flat_map(|m| m.events.iter().map(move |e| crate::wipecall::Failure { t: e.t, name: &m.name, spell_id: m.spell_id }))
+                .collect();
+            crate::wipecall::detect(&infos, players.len(), &rezzes, &failures)
+        };
+
         // replays: os segundos antes de cada morte (antes do corte) e de cada falha de mecânica
         for d in pending.iter_mut().filter(|d| !d.death.ignored) {
             d.death.replay = Some(replay::around(d.death.t, replay::DEATH_AFTER_MS, vec![d.death.guid.clone()]));
@@ -1770,6 +1832,7 @@ impl PullBuilder {
                 phase_hp_pct,
                 phase_hp_pct_at_cutoff,
                 phase_count,
+                wipe_call,
                 players,
                 deaths: Vec::new(),
                 enemy_spells,
