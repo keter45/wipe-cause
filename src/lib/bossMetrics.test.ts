@@ -58,6 +58,28 @@ describe('métricas do resumo do boss', () => {
     expect(metricNight(pulls, 'nada')).toBeNull();
   });
 
+  it('jardas que o fantasma de cada um andou na noite', () => {
+    const ghosts = (players: [string, number, number][]) => ({ spellId: 7, name: 'Manifestation of Dread', players: players.map(([g, yards, n]) => ({ guid: g, name: `${g}-Realm`, yards, ghosts: n })) });
+    const night = [
+      pull(0, 0, 60_000, { players: [player('A', { class: 'Priest' }), player('B')], mechanics: [mech({ key: 'dread', name: 'Collision', kind: 'failure_event', severity: 'major', failures: 1, ghostYards: ghosts([['A', 30.4, 2], ['B', 5, 1]]) })] }),
+      pull(1, 100_000, 60_000, { players: [player('A'), player('B')], mechanics: [mech({ key: 'dread', name: 'Collision', kind: 'failure_event', severity: 'major', ghostYards: ghosts([['B', 12.2, 2]]) })] }),
+      pull(2, 200_000, 60_000, { mechanics: [mech({ key: 'dread', name: 'Collision', kind: 'failure_event', severity: 'major' })] }),
+    ];
+    // a opção vem depois das mecânicas, com as jardas da noite
+    expect(metricOptions(night).map((o) => [o.key, o.unit, o.amount, o.pullsWithFailure])).toEqual([
+      ['dread', undefined, undefined, 1],
+      ['dread:yards', 'yd', 48, 2],
+    ]);
+    const y = metricNight(night, 'dread:yards')!;
+    expect([y.unit, y.name, y.spellId, y.total, y.pullsWithFailure]).toEqual(['yd', 'Manifestation of Dread', 7, 48, 2]);
+    expect(y.perPull.map((x) => x.failures)).toEqual([35, 12]);
+    // quem deixou andar mais primeiro; `max` = quantos fantasmas teve
+    expect(y.players.map((p) => [p.guid, p.count, p.pulls, p.max, p.class])).toEqual([
+      ['A', 30, 1, 2, 'Priest'],
+      ['B', 17, 2, 3, 'Mage'],
+    ]);
+  });
+
   it('reordena sem sair da lista', () => {
     expect(moveMetric(['a', 'b', 'c'], 'c', -1)).toEqual(['a', 'c', 'b']);
     expect(moveMetric(['a', 'b'], 'a', -1)).toEqual(['a', 'b']);

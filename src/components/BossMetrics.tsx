@@ -35,7 +35,11 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
   const toggle = (k: string) => setKeys(keys.includes(k) ? keys.filter((x) => x !== k) : [...keys, k]);
 
   if (!options.length) return null;
-  const suggestions = options.filter((o) => o.failures > 0 && !keys.includes(o.key)).slice(0, SUGGEST);
+  // as que mais falharam e, com fantasmas, as jardas que eles andaram
+  const suggestions = [
+    ...options.filter((o) => !o.unit && o.failures > 0 && !keys.includes(o.key)).slice(0, SUGGEST),
+    ...options.filter((o) => o.unit && o.amount && !keys.includes(o.key)),
+  ];
 
   return (
     <section className="panel boss-metrics">
@@ -52,7 +56,8 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
             {suggestions.map((o) => (
               <button key={o.key} onClick={() => toggle(o.key)}>
                 <Plus size={12} strokeWidth={2} aria-hidden /> <SpellName spellId={o.spellId} name={o.name} size={14} />
-                <span className="muted tabular">{o.failures}</span>
+                {o.unit && <span className="muted">· {t.walked}</span>}
+                <span className="muted tabular">{o.unit ? t.yards(o.amount ?? 0) : o.failures}</span>
               </button>
             ))}
           </div>
@@ -114,9 +119,16 @@ function AddMetric({ options, chosen, onToggle }: { options: MetricOption[]; cho
                   {on && <Check size={12} strokeWidth={2.5} />}
                 </span>
                 <SpellIcon spellId={o.spellId} size={16} />
-                <span className="metric-option-name">{o.name}</span>
+                <span className="metric-option-name">
+                  {o.name}
+                  {o.unit && <span className="muted"> · {t.walked}</span>}
+                </span>
                 <span className={`sev-dot ${o.severity}`} title={t.severities[o.severity]} aria-label={t.severities[o.severity]} />
-                <span className={`small tabular ${o.failures ? '' : 'muted'}`}>{t.failuresShort(o.failures)}</span>
+                {o.unit ? (
+                  <span className="small tabular">{t.yards(o.amount ?? 0)}</span>
+                ) : (
+                  <span className={`small tabular ${o.failures ? '' : 'muted'}`}>{t.failuresShort(o.failures)}</span>
+                )}
               </button>
             </li>
           );
@@ -145,11 +157,22 @@ function MetricCard({
   const t = useMessages(bossMetricsMsg);
   const peak = Math.max(1, ...m.perPull.map((x) => x.failures));
   const stack = m.kind === 'stack_limit';
+  const yd = m.unit === 'yd';
+  const stats = yd
+    ? m.total === 0
+      ? t.cleanYards
+      : t.statsYards(m.total, m.pullsWithFailure, m.perPull.length)
+    : m.total === 0
+      ? t.clean
+      : stack
+        ? t.statsStack(m.players.length, m.pullsWithFailure, m.perPull.length)
+        : t.stats(m.total, m.pullsWithFailure, m.perPull.length);
   return (
     <article className={`metric-card ${m.severity}`}>
       <header className="metric-head">
         <strong className="metric-name">
           <SpellName spellId={m.spellId} name={m.name} size={18} />
+          {yd && <span className="muted small"> · {t.walked}</span>}
         </strong>
         <span className="metric-tools">
           <button className="icon-btn" disabled={first} onClick={() => onMove(-1)} title={t.moveUp} aria-label={t.moveUp}>
@@ -166,24 +189,26 @@ function MetricCard({
 
       <p className={`small metric-stats ${m.total ? '' : 'good'}`}>
         <span className={`sev-tag ${m.severity}`}>{t.severities[m.severity] ?? m.severity}</span>
-        {m.total === 0 ? t.clean : stack ? t.statsStack(m.players.length, m.pullsWithFailure, m.perPull.length) : t.stats(m.total, m.pullsWithFailure, m.perPull.length)}
+        {stats}
       </p>
 
-      <div className="metric-bars" role="img" aria-label={t.perPullAria(m.name)}>
+      <div className="metric-bars" role="img" aria-label={yd ? t.perPullYardsAria(m.name) : t.perPullAria(m.name)}>
         {m.perPull.map(({ pull, failures }) => (
           <button
             key={pull.id}
             className={`metric-bar ${failures ? 'hit' : ''} ${pull.success ? 'kill' : ''}`}
             style={{ height: `${failures ? 18 + (failures / peak) * 82 : 6}%` }}
-            title={t.barTitle(pull.pullNumber, failures)}
-            aria-label={t.barTitle(pull.pullNumber, failures)}
+            title={yd ? t.barYards(pull.pullNumber, failures) : t.barTitle(pull.pullNumber, failures)}
+            aria-label={yd ? t.barYards(pull.pullNumber, failures) : t.barTitle(pull.pullNumber, failures)}
             onClick={() => onSelectPull(pull.id)}
           />
         ))}
       </div>
 
       {/* nas falhas do raid a lista é de quem foi atingido; em failure_event, de quem causou */}
-      {m.players.length > 0 && <PeopleList title={m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} tone="bad" />}
+      {m.players.length > 0 && (
+        <PeopleList title={yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} tone="bad" />
+      )}
       {m.helpers.length > 0 && <PeopleList title={t.helpers} people={m.helpers} tone="good" />}
       {tr(m.tip) && (
         <p className="muted small metric-tip">
@@ -194,19 +219,19 @@ function MetricCard({
   );
 }
 
-function PeopleList({ title, people, stack = false, tone }: { title: string; people: MetricPlayer[]; stack?: boolean; tone: 'bad' | 'good' }) {
+function PeopleList({ title, people, stack = false, yards = false, tone }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; tone: 'bad' | 'good' }) {
   const t = useMessages(bossMetricsMsg);
   const [all, setAll] = useState(false);
   const shown = all ? people : people.slice(0, TOP);
   return (
-    <div className="metric-people">
+    <div className={`metric-people ${yards ? 'wide' : ''}`}>
       <span className="tile-label">{title}</span>
       <ul className="plain">
         {shown.map((p) => (
           <li key={p.guid}>
             <PlayerName name={p.name} guid={p.guid} cls={p.class} />
-            <strong className={`tabular ${tone}`}>{stack ? t.inPulls(p.count) : t.times(p.count)}</strong>
-            <span className="muted small">{stack ? t.maxStacks(p.max) : t.inPulls(p.pulls)}</span>
+            <strong className={`tabular ${tone}`}>{yards ? t.yards(p.count) : stack ? t.inPulls(p.count) : t.times(p.count)}</strong>
+            <span className="muted small">{yards ? t.ghosts(p.max, p.count) : stack ? t.maxStacks(p.max) : t.inPulls(p.pulls)}</span>
           </li>
         ))}
       </ul>

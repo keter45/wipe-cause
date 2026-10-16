@@ -287,8 +287,9 @@ mechanics:
         hit_aura: 1310744         # Malevolent Resonance: os alvos dos dois fantasmas
         half_angle: 45
         window_ms: 5000
-        # caminho de cada fantasma no replay (calibrado nos alcances e colisões de 22/09 a 13/10)
-        sim: { name: "Manifestation of Dread", speed: 4, half_angle: 35, delay_ms: 2500, stun_ms: 1500, catch_aura: 1297445, clear_auras: [1307959, 1307403] }
+        # caminho de cada fantasma no replay: recalibrado em 14 e 15/10 (19 pulls Mythic, 385 fantasmas)
+        # contra alcances, colisões e fantasmas limpos pelo Soul Sever (scripts/ghost-calibrate.mjs)
+        sim: { name: "Manifestation of Dread", speed: 4.5, half_angle: 30, delay_ms: 2000, stun_ms: 500, catch_aura: 1297445, clear_auras: [1307959, 1307403] }
     tip: { pt: "Olhar para o próprio fantasma o tempo todo; de costas ele anda e, se encostar em outro, mata os dois alvos.", en: "Keep looking at your own ghost; with your back turned it walks, and if it touches another one it kills both targets." }
     message: { pt: "{count} colisão(ões) de fantasmas (Malevolent Resonance)", en: "{count} ghost collision(s) (Malevolent Resonance)" }
     notes: >

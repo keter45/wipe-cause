@@ -91,6 +91,47 @@ describe('clipMoments: o resumo da try', () => {
     expect(clipMoments(p)[0]).toMatchObject({ kind: 'trigger', t: 85_156, death: { guid: 'A' } });
   });
 
+  // o pull 20 de 15/10: colisões de fantasmas (grave) aos 3:15 e 3:51 mataram dois cada uma;
+  // a de 3:15 é o gatilho. A segunda também entra, em sequência; Widow's Kiss sem morte, não.
+  it('cada falha que matou alguém antes da cascata entra em sequência', () => {
+    const killed = (g: string, t: number, failT: number) =>
+      death(g, t, { causedBy: { key: 'dread_collision', name: 'Malevolent Resonance', amount: 1, pct: 100, failT }, replay: ref(t, [g]) });
+    const p = pull(0, 0, 346_000, {
+      players: [],
+      groupSize: 20,
+      trigger: { key: 'dread_collision', name: 'Malevolent Resonance', t: 195_000, deaths: 2 },
+      mechanics: [
+        mech('dread_collision', 'major', [ref(195_000, ['A', 'B']), ref(231_000, ['C', 'D'])]),
+        mech('widows_kiss', 'major', [ref(54_000, ['E'])]),
+      ],
+      deaths: [killed('A', 199_000, 195_000), killed('B', 199_500, 195_000), killed('C', 233_000, 231_000), killed('D', 234_000, 231_000)],
+    });
+    expect(clipMoments(p).map((m) => [m.kind, m.t])).toEqual([
+      ['trigger', 195_000],
+      ['mistake', 231_000],
+    ]);
+  });
+
+  it('falha gravíssima repetida entra cada vez, não só a primeira', () => {
+    const p = { ...p1, mechanics: [...p1.mechanics, mech('failed_soak', 'wipe', [ref(30_000), ref(60_000)])] };
+    expect(clipMoments(p).map((m) => m.t)).toEqual([30_000, 60_000, 85_156]);
+  });
+
+  it('quem matou mais gente fica quando passa de 4', () => {
+    const killed = (g: string, key: string, t: number) => death(g, t, { causedBy: { key, name: key, amount: 1, pct: 100, failT: t }, replay: ref(t, [g]) });
+    const keys = ['a', 'b', 'c', 'd', 'e'];
+    const p = pull(0, 0, 200_000, {
+      players: [],
+      groupSize: 20,
+      mechanics: keys.map((k) => mech(k, 'major', [])),
+      // 'c' matou dois; os outros, um cada
+      deaths: [...keys.map((k, i) => killed(k + '1', k, 20_000 + i * 20_000)), killed('c2', 'c', 61_000)],
+    });
+    const ms = clipMoments(p);
+    expect(ms).toHaveLength(4);
+    expect(ms.map((m) => m.mechanicKey)).toContain('c');
+  });
+
   it('kill: nada', () => {
     expect(clipMoments({ ...p1, success: true })).toEqual([]);
   });

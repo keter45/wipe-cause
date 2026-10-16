@@ -18,9 +18,13 @@
 //! âncoras para corrigir: na colisão os dois fantasmas estavam juntos, e quando o fantasma
 //! alcança o alvo (Dreadmarch só nele) estava em cima dele. Fantasma com âncora ganha a
 //! velocidade que melhor bate com ela; o que ainda sobrar é puxado no fim do caminho (estimado).
-//! Calibrado em 22/09, 03/10, 06/10 e 13/10: 4 jd/s, cone de 35°, 2,5s de espera, 1,5s parado.
+//! Recalibrado em 14 e 15/10 (19 pulls Mythic, 385 fantasmas; `scripts/ghost-calibrate.mjs` com
+//! `WIPE_GAZE_DUMP`): 4,5 jd/s, cone de 30°, 2s de espera, 0,5s parado depois de visto. Antes eram
+//! 4 jd/s, 35°, 2,5s e 1,5s: a parada longa deixava o fantasma parado quando ele já andava. Sem
+//! âncora, o erro mediano no alcance caiu de ~6,6 para ~1 jd, na colisão de ~7,9 para ~4 jd, e os
+//! fantasmas limpos pelo Soul Sever dentro do cone subiram de 73% para 83%.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// O debuff dos dois alvos chega com até isso de diferença da falha.
@@ -82,6 +86,7 @@ fn default_share() -> f32 {
     0.5
 }
 
+#[derive(Serialize)]
 struct Fix {
     ghost: String,
     player: String,
@@ -93,7 +98,7 @@ struct Fix {
 }
 
 /// Tudo do pull que o julgamento precisa (alimentado pelo streaming).
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct GazeLog {
     /// (t, x, y, direção) de cada player, em ordem
     trails: HashMap<String, Vec<(i64, f32, f32, f32)>>,
@@ -107,9 +112,37 @@ pub struct GazeLog {
     catches: Vec<(i64, String)>,
     /// última posição de player vista (fim do pull para fantasma que não acabou)
     last_t: i64,
+    /// (t, fantasma, aura) de cada frontal que limpou um fantasma
+    clears: Vec<(i64, String, u32)>,
+    /// só para calibrar (WIPE_GAZE_DUMP): (t, spell, x, y, direção) de todo cast inimigo
+    casts: Vec<(i64, u32, f32, f32, f32)>,
+    #[serde(skip)]
+    dump: Option<std::path::PathBuf>,
 }
 
 impl GazeLog {
+    /// `WIPE_GAZE_DUMP=<pasta>` grava os dados de cada pull em JSON (calibração da simulação).
+    pub fn new() -> Self {
+        GazeLog { dump: std::env::var_os("WIPE_GAZE_DUMP").map(Into::into), ..Default::default() }
+    }
+
+    pub fn dumping(&self) -> bool {
+        self.dump.is_some()
+    }
+
+    pub fn on_cast_seen(&mut self, spell_id: u32, x: f32, y: f32, facing: f32, t: i64) {
+        self.casts.push((t, spell_id, x, y, facing));
+    }
+
+    /// Grava o pull em `<WIPE_GAZE_DUMP>/gaze-<n>.json` com as colisões dele.
+    pub fn write_dump(&self, fail_times: &[i64]) {
+        let Some(dir) = &self.dump else { return };
+        let _ = std::fs::create_dir_all(dir);
+        let n = std::fs::read_dir(dir).map_or(0, |d| d.count());
+        let body = serde_json::json!({ "log": self, "fail_times": fail_times });
+        let _ = std::fs::write(dir.join(format!("gaze-{n:03}.json")), body.to_string());
+    }
+
     pub fn on_player_pos(&mut self, guid: &str, x: f32, y: f32, facing: f32, t: i64) {
         self.last_t = self.last_t.max(t);
         if !facing.is_finite() { return; }
@@ -132,6 +165,7 @@ impl GazeLog {
             for fix in self.fixes.iter_mut().filter(|fix| fix.ghost == guid) {
                 fix.to = Some(fix.to.map_or(t, |end| end.min(t)));
             }
+            self.clears.push((t, guid.to_string(), spell_id));
             return;
         }
         self.names.entry(guid.to_string()).or_insert_with(|| name.to_string());

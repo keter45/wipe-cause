@@ -200,3 +200,24 @@ snapshots não determinísticos e a nova regra informativa de Defiled Ground.
 Relatórios e replays já salvos precisam ser reanalisados para incorporar as
 correções do motor/YAML. A renderização de facing beneficia relatórios que já
 tenham esse campo, sem alterar os eventos originais.
+
+## Recalibração dos fantasmas (15/10)
+
+Pedido: o fantasma andando/parado não batia com o log. Com `WIPE_GAZE_DUMP=<pasta>` o motor
+grava, por pull, posições/direção dos alvos, fixações, colisões, alcances (Dreadmarch sozinho),
+fantasmas limpos por frontal e os casts com posição; `scripts/ghost-calibrate.mjs` simula sem
+âncoras e mede o erro contra esses fatos. Base: 19 pulls Mythic de 14 e 15/10, 385 fantasmas,
+23 colisões, 24 alcances e 225 fantasmas limpos pelo Soul Sever/Blighted Sever.
+
+| Parâmetros | Alcance (mediana) | Colisão (mediana) | Limpos dentro do cone |
+| --- | --- | --- | --- |
+| antes: 4 jd/s, 35°, espera 2,5s, parado 1,5s | 6,6 jd | 7,9 jd | 165/225 (73%) |
+| agora: 4,5 jd/s, 30°, espera 2s, parado 0,5s | 1,0 jd | 3,9 jd | 186/225 (83%) |
+
+O que mais pesava era a parada de 1,5s depois de visto: o fantasma volta a andar quase assim
+que o alvo vira de costas. A melhora vale nos dois dias separados (14/10: custo 20,8 → 9,9;
+15/10: 26,4 → 14,5). O critério de culpa da colisão (45°, 5s) não mudou. Os caminhos continuam
+estimados; o cone do Soul Sever (30°/45 jd) também é calibração, não número confirmado.
+
+Com os caminhos novos, cada pull guarda quantas jardas o fantasma de cada um andou
+(`MechanicResult.ghostYards`); o resumo do boss soma na noite como métrica do grupo.

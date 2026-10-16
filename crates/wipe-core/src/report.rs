@@ -503,6 +503,32 @@ pub struct MechanicResult {
     /// replays das falhas (quem errou, ou a falha coletiva), com as posições em `Pull.tracks`
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub replays: Vec<ReplayRef>,
+    /// fantasmas (`gaze` com simulação): quantas jardas o fantasma de cada um andou no pull
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ghost_yards: Option<GhostYards>,
+}
+
+/// Quanto o fantasma de cada player andou no pull (caminho simulado, ver `gaze.rs`): parado é
+/// olhar para ele; cada jarda é tempo de costas.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GhostYards {
+    /// a fixação do fantasma (ícone)
+    pub spell_id: u32,
+    /// nome do fantasma
+    pub name: String,
+    /// quem teve fantasma, quem deixou andar mais primeiro
+    pub players: Vec<PlayerYards>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerYards {
+    pub guid: String,
+    pub name: String,
+    /// jardas andadas, somando os fantasmas dele no pull
+    pub yards: f32,
+    pub ghosts: u32,
 }
 
 /// Encontro de players com soma errada num debuff de parear (ex.: Helical Toxins, que precisa

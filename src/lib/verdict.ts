@@ -52,10 +52,20 @@ const MAX_DECISIVE = 6;
  * Cascata = primeira janela de 20s com `threshold` mortes ou mais.
  */
 export function decisiveDeaths(sorted: Death[], threshold: number): Death[] {
-  const start = sorted.findIndex((d) => sorted.filter((x) => x.t >= d.t && x.t - d.t <= CASCADE_WINDOW_MS).length >= threshold);
+  const start = cascadeStart(sorted, threshold);
   if (start < 0) return sorted.slice(0, threshold);
   const isolated = sorted.slice(0, start).slice(0, MAX_DECISIVE - 2);
   return [...isolated, ...sorted.slice(start, start + 2)];
+}
+
+function cascadeStart(sorted: Death[], threshold: number): number {
+  return sorted.findIndex((d) => sorted.filter((x) => x.t >= d.t && x.t - d.t <= CASCADE_WINDOW_MS).length >= threshold);
+}
+
+/** Mortes até a cascata: todas as de antes dela e as 2 primeiras dela (sem cascata, todas). */
+export function deathsUntilCascade(sorted: Death[], threshold: number): Death[] {
+  const start = cascadeStart(sorted, threshold);
+  return start < 0 ? sorted : sorted.slice(0, start + 2);
 }
 
 /** HP do boss mais baixo: no corte ("ignorar após N mortes"), se houver; kill = 0. */

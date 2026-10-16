@@ -718,6 +718,8 @@ pub struct RuleTracker {
     pairing: Option<(usize, PairLog)>,
     /// mecânica com `gaze` (só uma por pull): fixações, posições e direção de cada player
     gaze: Option<(usize, GazeLog)>,
+    /// caminhos dos fantasmas já simulados (`ghost_paths`), para não simular de novo no `finish`
+    ghost_cache: Option<Vec<crate::gaze::GhostPath>>,
     /// fases do boss (keys), o cast que abre cada uma e a fase atual
     phase_keys: Vec<String>,
     replay_npcs: Vec<u32>,
@@ -766,7 +768,7 @@ impl RuleTracker {
             .collect();
         let orbs = mechs.iter().position(|m| m.detect.orbs.is_some()).map(|i| (i, OrbLog::default()));
         let pairing = mechs.iter().position(|m| m.detect.pairing.is_some()).map(|i| (i, PairLog::default()));
-        let gaze = mechs.iter().position(|m| m.detect.gaze.is_some()).map(|i| (i, GazeLog::default()));
+        let gaze = mechs.iter().position(|m| m.detect.gaze.is_some()).map(|i| (i, GazeLog::new()));
         // fases: o cast que abre cada uma (só as do boss, o primeiro arquivo)
         let phase_keys: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.0.clone()).collect()).unwrap_or_default();
         let phase_names: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.1.clone()).collect()).unwrap_or_default();
@@ -796,6 +798,7 @@ impl RuleTracker {
             orbs,
             pairing,
             gaze,
+            ghost_cache: None,
             files,
             mechs,
             state,
@@ -1232,11 +1235,48 @@ impl RuleTracker {
     }
 
     /// Caminho simulado de cada fantasma (mecânica com `gaze.sim`), para o replay: (nome, caminhos).
-    pub fn ghost_paths(&self) -> Option<(String, Vec<crate::gaze::GhostPath>)> {
+    pub fn ghost_paths(&mut self) -> Option<(String, Vec<crate::gaze::GhostPath>)> {
         let (i, log) = self.gaze.as_ref()?;
         let cfg = self.mechs[*i].detect.gaze.as_ref()?;
         let paths = crate::gaze::paths(cfg, log, &self.state[*i].fail_times);
-        (!paths.is_empty()).then(|| (cfg.sim.as_ref().map_or(String::new(), |s| s.name.clone()), paths))
+        log.write_dump(&self.state[*i].fail_times);
+        let name = cfg.sim.as_ref().map_or(String::new(), |s| s.name.clone());
+        self.ghost_cache = Some(paths.clone());
+        (!paths.is_empty()).then_some((name, paths))
+    }
+
+    /// Jardas que o fantasma de cada player andou (a métrica da noite), quem andou mais primeiro.
+    fn ghost_yards(&self) -> Option<crate::report::GhostYards> {
+        let (i, log) = self.gaze.as_ref()?;
+        let cfg = self.mechs[*i].detect.gaze.as_ref()?;
+        let sim = cfg.sim.as_ref()?;
+        let computed;
+        let paths = match &self.ghost_cache {
+            Some(p) => p,
+            None => {
+                computed = crate::gaze::paths(cfg, log, &self.state[*i].fail_times);
+                &computed
+            }
+        };
+        if paths.is_empty() {
+            return None;
+        }
+        let mut by: Vec<crate::report::PlayerYards> = Vec::new();
+        for p in paths {
+            let moved = p.moved();
+            match by.iter_mut().find(|x| x.guid == p.owner) {
+                Some(x) => {
+                    x.yards += moved;
+                    x.ghosts += 1;
+                }
+                None => by.push(crate::report::PlayerYards { guid: p.owner.clone(), name: log.name(&p.owner).to_string(), yards: moved, ghosts: 1 }),
+            }
+        }
+        for x in &mut by {
+            x.yards = (x.yards * 10.0).round() / 10.0;
+        }
+        by.sort_by(|a, b| b.yards.total_cmp(&a.yards).then(a.name.cmp(&b.name)));
+        Some(crate::report::GhostYards { spell_id: cfg.fixate_aura, name: sim.name.clone(), players: by })
     }
 
     /// A análise precisa da posição dos players a cada instante (orbs carregados)?
@@ -1282,6 +1322,9 @@ impl RuleTracker {
         if let Some((i, log)) = &mut self.gaze {
             if let Some(cfg) = &self.mechs[*i].detect.gaze {
                 log.on_enemy_cast(cfg, guid, spell_id, x, y);
+            }
+            if log.dumping() {
+                log.on_cast_seen(spell_id, x, y, facing, t);
             }
         }
     }
@@ -1434,6 +1477,7 @@ impl RuleTracker {
     /// `roles`: guid -> role, para não culpar quem a mecânica não envolve.
     pub fn finish(self, roles: &HashMap<String, String>) -> Vec<MechanicResult> {
         let mut out = Vec::new();
+        let mut ghost_yards = self.ghost_yards().zip(self.gaze.as_ref().map(|g| g.0));
         let removals = self.removals;
         let mut state = self.state;
         if let Some((i, log)) = &self.orbs {
@@ -1637,6 +1681,7 @@ impl RuleTracker {
                 max_ms,
                 stack_origins,
                 pairings: st.pairings,
+                ghost_yards: ghost_yards.take_if(|(_, gi)| *gi == mi).map(|(y, _)| y),
             });
         }
         let rank = |s: &str| match s {

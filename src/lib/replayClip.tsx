@@ -1,6 +1,6 @@
 // Clipe (WebP animado) do replay: o replay é desenhado fora da tela instante a instante, cada quadro
 // vira imagem (com uma faixa em cima: o que foi e quanto falta para o erro), o canvas codifica cada
-// um em WebP e webp.ts junta a animação. O clipe do pull mostra só as falhas gravíssimas e a causa
+// um em WebP e webp.ts junta a animação. O clipe do pull mostra os erros que levaram ao wipe e a causa
 // do wipe, em ordem, cada um com um quadro de abertura; vai ao Discord junto com o cartão do wipe.
 //
 // O mapa é o mesmo da aba Replay: o pull relido sozinho no log (posições de todo mundo, mortes, áreas,
@@ -13,7 +13,7 @@ import { invoke } from './backend';
 import type { Death, Pull, ReplayRef } from '../types';
 import { inDesktop } from './api';
 import { decodeReplay, deathReplayExtras, type ReplayData, type ReplayHit } from './replay';
-import { wipeCause } from './verdict';
+import { cascadeThreshold, deathsUntilCascade, wipeCause } from './verdict';
 import { clipBounds } from './clipFraming';
 import { fightView } from './fight';
 import { canLoadFull, fightOverlays, headBadge, loadFullPull } from './fullReplay';
@@ -80,15 +80,19 @@ export interface ClipMoment {
  */
 function triggerMoment(p: Pull, deaths: Death[]): ClipMoment | null {
   const trig = wipeCause(p) ?? p.trigger;
-  if (!trig) return null;
-  const m = p.mechanics.find((x) => x.key === trig.key);
-  const base = { label: trig.name, kind: 'trigger' as const, spellId: m?.spellId ?? null, mechanicKey: trig.key };
-  const covers = (r?: ReplayRef) => !!r && r.from <= trig.t && r.to >= trig.t;
+  return trig ? failMoment(p, deaths, trig.key, trig.name, trig.t, 'trigger') : null;
+}
+
+/** A falha da mecânica `key` no instante `t`: o replay dela que cubra o instante, ou o da morte ligada a ela. */
+function failMoment(p: Pull, deaths: Death[], key: string, label: string, t: number, kind: ClipKind): ClipMoment | null {
+  const m = p.mechanics.find((x) => x.key === key);
+  const base = { label, kind, spellId: m?.spellId ?? null, mechanicKey: key };
+  const covers = (r?: ReplayRef) => !!r && r.from <= t && r.to >= t;
   const mech = (m?.replays ?? []).find(covers);
-  if (mech) return { ...base, replay: mech, t: trig.t, who: whoOf(p, mech) };
-  const linked = deaths.filter((d) => d.causedBy?.key === trig.key);
+  if (mech) return { ...base, replay: mech, t, who: whoOf(p, mech) };
+  const linked = deaths.filter((d) => d.causedBy?.key === key).sort((a, b) => Math.abs(a.t - t) - Math.abs(b.t - t));
   const d = linked.find((x) => covers(x.replay)) ?? linked[0];
-  if (d?.replay) return { ...base, replay: d.replay, t: covers(d.replay) ? trig.t : d.t, death: d };
+  if (d?.replay) return { ...base, replay: d.replay, t: covers(d.replay) ? t : d.t, death: d };
   return null;
 }
 
@@ -100,26 +104,43 @@ function whoOf(p: Pull, r: ReplayRef): string | undefined {
 }
 
 /**
- * Só a causa do wipe e as falhas de gravidade `wipe`. Erros graves/leves, mesmo marcados como
- * foco, e mortes isoladas não viram highlights. Sem causa ou falha gravíssima, não há clipe.
- * No máximo 4, em ordem de tempo; dois perto demais viram um só, com preferência pelo gatilho.
+ * Os erros que levaram ao wipe, em sequência: a causa do wipe, cada falha de mecânica que matou
+ * alguém antes da cascata (mortes decisivas com a mecânica ligada, ex.: a 2ª e a 3ª colisão de
+ * fantasmas) e cada falha de gravidade `wipe`. Erros graves/leves que não mataram ninguém, mesmo
+ * marcados como foco, e mortes sem mecânica ligada não entram. Sem nada disso, não há clipe.
+ * No máximo 4 (o gatilho, depois quem matou mais gente), em ordem de tempo; dois perto demais
+ * viram um só, com preferência pelo mais importante.
  */
 export function clipMoments(p: Pull): ClipMoment[] {
   if (p.success) return [];
-  const deaths = p.deaths.filter((d) => !d.ignored && d.replay).sort((a, b) => a.t - b.t);
+  const before = (t: number) => p.cutoffT == null || t <= p.cutoffT;
+  const live = p.deaths.filter((d) => !d.ignored).sort((a, b) => a.t - b.t);
+  const deaths = live.filter((d) => d.replay);
   const picked: ClipMoment[] = [];
   const add = (m: ClipMoment | null) => {
     if (m && picked.length < MAX_MOMENTS && !picked.some((x) => Math.abs(x.t - m.t) < SAME_MOMENT_MS)) picked.push(m);
   };
   add(triggerMoment(p, deaths));
-  const trig = picked[0]?.kind === 'trigger' ? (wipeCause(p) ?? p.trigger)?.key : undefined;
-  const severe = p.mechanics
-    .filter((m) => m.failures > 0 && m.key !== trig && m.replays?.length && m.severity === 'wipe')
-    .sort((a, b) => Number(!!b.focus) - Number(!!a.focus) || (b.priority ?? 0) - (a.priority ?? 0));
-  for (const m of severe) {
-    const r = [...m.replays!].filter((r) => p.cutoffT == null || r.t <= p.cutoffT).sort((a, b) => a.t - b.t)[0];
-    if (r) add({ replay: r, t: r.t, label: m.name, kind: 'mistake', spellId: m.spellId, mechanicKey: m.key, who: whoOf(p, r) });
+
+  // falhas que mataram: mortes decisivas da mesma mecânica perto uma da outra são uma falha só
+  const lethal: { key: string; name: string; t: number; deaths: number; wipe: boolean }[] = [];
+  const severity = new Map(p.mechanics.map((m) => [m.key, m.severity]));
+  for (const d of deathsUntilCascade(live.filter((x) => before(x.t)), cascadeThreshold(p))) {
+    const c = d.causedBy;
+    if (!c) continue;
+    const t = c.failT ?? d.t;
+    const same = lethal.find((x) => x.key === c.key && Math.abs(x.t - t) < SAME_MOMENT_MS);
+    if (same) same.deaths++;
+    else lethal.push({ key: c.key, name: p.mechanics.find((m) => m.key === c.key)?.name ?? c.name, t, deaths: 1, wipe: severity.get(c.key) === 'wipe' });
   }
+  // falhas gravíssimas, cada uma (não só a primeira de cada mecânica)
+  for (const m of p.mechanics.filter((x) => x.failures > 0 && x.severity === 'wipe')) {
+    for (const r of (m.replays ?? []).filter((r) => before(r.t))) {
+      if (!lethal.some((x) => x.key === m.key && Math.abs(x.t - r.t) < SAME_MOMENT_MS)) lethal.push({ key: m.key, name: m.name, t: r.t, deaths: 0, wipe: true });
+    }
+  }
+  lethal.sort((a, b) => b.deaths - a.deaths || Number(b.wipe) - Number(a.wipe) || a.t - b.t);
+  for (const f of lethal) add(failMoment(p, deaths, f.key, f.name, f.t, 'mistake'));
   return picked.sort((a, b) => a.t - b.t);
 }
 

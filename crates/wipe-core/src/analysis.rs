@@ -2112,8 +2112,29 @@ mod tests {
         rules.on_player_pos("Player-1-A", 40.0, 0.0, 0.0, 10_000);
         let fields = ["SPELL_AURA_APPLIED", "Boss", "Malacrass", "0xa48", "0x0", ghost, "Manifestation of Dread", "0xa48", "0x0", "1307959", "Soul Sever", "0x20", "BUFF"];
         builder.aura_state(&fields, 5_055);
-        let (_, paths) = builder.rules.as_ref().unwrap().ghost_paths().unwrap();
+        let (_, paths) = builder.rules.as_mut().unwrap().ghost_paths().unwrap();
         assert_eq!(paths[0].pts.last().unwrap().0, 5_055);
+    }
+
+    #[test]
+    fn ghost_yards_add_up_each_owner_path() {
+        let start = ["ENCOUNTER_START", "3429", "The Coiled Altar", "16", "20", "1"];
+        let mut builder = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::embedded(), 0);
+        let ghost = "Creature-0-1-3004-1-261218-0000000001";
+        let rules = builder.rules.as_mut().unwrap();
+        rules.on_enemy_cast_at(1285911, ghost, Some(261218), 0.0, 0.0, 0.0, None, 0);
+        rules.on_aura_from(ghost, 1285911, "Player-1-A", "Alice", true, 0);
+        // de costas para o fantasma (ele está a oeste, ela olha para o leste) o tempo todo
+        for t in (0..=6_000).step_by(500) {
+            rules.on_player_pos("Player-1-A", 40.0, 0.0, 0.0, t);
+        }
+        rules.on_aura_from(ghost, 1285911, "Player-1-A", "Alice", false, 6_000);
+        rules.ghost_paths();
+        let results = builder.rules.take().unwrap().finish(&HashMap::new());
+        let yards = results.iter().find_map(|m| m.ghost_yards.as_ref()).expect("jardas do fantasma");
+        assert_eq!((yards.spell_id, yards.players.len(), yards.players[0].ghosts), (1285911, 1, 1));
+        // anda a partir da espera (2s) até a fixação acabar (6s), a 4,5 jd/s
+        assert!((16.0..=19.0).contains(&yards.players[0].yards), "{}", yards.players[0].yards);
     }
 
     // Linhas reais do build 12.1.0 (nomes trocados).

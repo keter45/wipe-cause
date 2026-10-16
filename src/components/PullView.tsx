@@ -154,7 +154,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
     { label: t.groups.fight, tabs: [{ key: 'replay', label: t.tabs.replay }, { key: 'spells', label: t.tabs.spells }] },
       ];
 
-  // os destaques da try (causa do wipe e falhas gravíssimas), para o clipe do Compartilhar
+  // os erros que levaram ao wipe (a causa e as falhas que mataram antes da cascata), para o clipe do Compartilhar
   const clipShare = useMemo(() => {
     const moments = clipMoments(pull);
     return moments.length ? { pull, moments } : null;

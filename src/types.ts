@@ -507,6 +507,18 @@ export interface MechanicResult {
   pairings?: PairFault[];
   /** replays das falhas (um por culpado, ou por falha coletiva) */
   replays?: ReplayRef[];
+  /** fantasmas (gaze com simulação): quantas jardas o fantasma de cada um andou no pull */
+  ghostYards?: GhostYards;
+}
+
+/** Quanto o fantasma de cada player andou no pull (caminho simulado): cada jarda é tempo de costas para ele. */
+export interface GhostYards {
+  /** a fixação do fantasma (ícone) */
+  spellId: number;
+  /** nome do fantasma */
+  name: string;
+  /** quem deixou andar mais primeiro */
+  players: { guid: string; name: string; yards: number; ghosts: number }[];
 }
 
 /** Encontro de players com soma errada num debuff de parear (ex.: Helical Toxins, soma 4). */

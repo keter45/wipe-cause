@@ -6246,6 +6246,13 @@ button.kpi:hover {
 .metric-people li .small {
   text-align: right;
 }
+/* jardas dos fantasmas: "12 fantasmas · 24 jd cada" numa linha só */
+.metric-people.wide li {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.metric-people.wide li .small {
+  white-space: nowrap;
+}
 .metric-options {
   display: flex;
   flex-direction: column;
