@@ -97,13 +97,20 @@ export function reachedPhase(p: Pick<Pull, 'phaseMarks'> & Partial<Pick<Pull, 'c
  * Até onde o pull foi na luta toda (0 a 1): as fases já passadas mais o que foi da vida da fase em
  * que acabou. Kill = 1. Sem fases, só a vida do boss. Serve para ordenar ("melhor pull") e desenhar.
  */
-export function pullProgress(p: Pull): number {
+export function pullProgress(p: Pull, phases: number = phaseCountOf([p])): number {
   if (p.success) return 1;
   const done = (100 - (lowestBossHp(p) ?? 100)) / 100;
   const phase = reachedPhase(p);
-  const n = p.phaseCount ?? 0;
-  if (n < 2) return done;
-  return Math.min(1, ((phase?.index ?? 0) + done) / n);
+  if (phases < 2) return done;
+  return Math.min(1, ((phase?.index ?? 0) + done) / phases);
+}
+
+/**
+ * Quantas fases o boss tem: o que o núcleo diz ou, em análise antiga (sem isso), o máximo de
+ * fases que algum dos pulls alcançou. Para comparar pulls entre si, passe todos.
+ */
+export function phaseCountOf(pulls: Pull[]): number {
+  return Math.max(0, ...pulls.map((p) => p.phaseCount ?? p.phaseMarks?.length ?? 0));
 }
 
 /** "Kill", "P3 82%" ou "36.3%": o resultado do pull como o Warcraft Logs mostra. */
@@ -116,5 +123,6 @@ export function progressLabel(p: Pull): string {
 
 /** O wipe que mais avançou (fase, depois vida). */
 export function bestWipe(pulls: Pull[]): Pull | null {
-  return pulls.filter((p) => !p.success).reduce<Pull | null>((b, p) => (!b || pullProgress(p) > pullProgress(b) ? p : b), null);
+  const n = phaseCountOf(pulls);
+  return pulls.filter((p) => !p.success).reduce<Pull | null>((b, p) => (!b || pullProgress(p, n) > pullProgress(b, n) ? p : b), null);
 }

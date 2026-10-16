@@ -14,6 +14,7 @@ import { phaseLabel } from './phases';
 import { messagesOf, tr } from '../i18n';
 import { aiMsg } from './aiContext.i18n';
 import { progressLabel } from './phases';
+import { mechanicMistakes } from './blame';
 
 /** Limites para não estourar o contexto dos modelos gratuitos. */
 const MAX_DEATHS_DETAILED = 12;
@@ -105,7 +106,7 @@ export function pullContext(p: Pull, nightPulls: Pull[] = [], assignments: Assig
     for (const m of failed) {
       const blamed = m.players.filter((x) => !x.credit);
       const credit = m.players.filter((x) => x.credit);
-      const lines = [`- ${m.name} [${t.kind[m.kind] ?? m.kind}, ${sev(m.severity)}] — ${t.failed(m.failures)}${tr(m.summary) ? ` ${tr(m.summary)}.` : ''}${tr(m.tip) ? t.tip(tr(m.tip)) : ''}`];
+      const lines = [`- ${m.name} [${t.kind[m.kind] ?? m.kind}, ${sev(m.severity)}] — ${t.failed(mechanicMistakes(m))}${tr(m.summary) ? ` ${tr(m.summary)}.` : ''}${tr(m.tip) ? t.tip(tr(m.tip)) : ''}`];
       if (blamed.length)
         lines.push(t.involved(blamed.map((x) => `${shortName(x.name)} (${m.kind === 'stack_limit' ? t.stacks(x.count) : `${x.count}×`}${x.firstT != null ? t.firstTime(mmss(x.firstT)) : ''})`).join(', ')));
       if (credit.length) lines.push(t.helped(credit.map((x) => `${shortName(x.name)} (${x.count})`).join(', ')));

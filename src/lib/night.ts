@@ -4,7 +4,7 @@
 import type { Pull } from '../types';
 import { analyzePull, lowestBossHp } from './verdict';
 import { bestWipe, progressLabel } from './phases';
-import { blameFactor, PERSONAL_BLAME } from './blame';
+import { blameFactor, mechanicMistakes, mistakes, PERSONAL_BLAME } from './blame';
 import { scorePull } from './score';
 import { deathKey, massDeathKeys } from './massDeaths';
 
@@ -131,7 +131,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
     if (p.trigger && !p.success) cause(p.trigger.key, p.trigger.name).triggers++;
     // mortes depois do corte ("ignorar após N mortes") não entram
     for (const d of p.deaths) if (d.causedBy && !d.ignored) cause(d.causedBy.key, d.causedBy.name).deaths++;
-    for (const m of p.mechanics) if (m.failures > 0 && m.severity !== 'none') cause(m.key, m.name).failures += m.failures;
+    for (const m of p.mechanics) if (m.failures > 0 && m.severity !== 'none') cause(m.key, m.name).failures += mechanicMistakes(m);
   }
 
   // ---- players
@@ -141,7 +141,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
     const scores = scorePull(p);
     const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
     // mortes num mass wipe não contam para o player
-    const mass = massDeathKeys(p.deaths.filter((d) => !d.ignored));
+    const mass = massDeathKeys(p.deaths);
     const passedInterruptible = p.enemySpells.some((e) => e.interruptible && e.casts > 0);
     const errorsThisPull = new Map<string, number>();
     const roleOf = new Map(p.players.map((x) => [x.guid, x.role]));
@@ -155,7 +155,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
         }
         if (!PERSONAL_BLAME.has(m.kind)) continue;
         // stack_limit conta como 1 erro (count = stacks)
-        const n = m.kind === 'stack_limit' ? 1 : mp.count;
+        const n = m.kind === 'stack_limit' ? 1 : mistakes(mp);
         a.mechanicErrors += n;
         a.mechanicErrorsWeighted += n * (SEVERITY_WEIGHT[m.severity] ?? 0) * blameFactor(m, roleOf.get(mp.guid));
         errorsThisPull.set(mp.guid, (errorsThisPull.get(mp.guid) ?? 0) + n);

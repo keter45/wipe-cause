@@ -511,6 +511,8 @@ export interface MechanicResult {
   stackOrigins?: PlayerStackOrigins[];
   /** debuff de parear (Helical Toxins): cada encontro com soma errada */
   pairings?: PairFault[];
+  /** dano evitável: erros por ocorrência (ticks seguidos são um só), somando os culpados */
+  incidents?: number;
   /** replays das falhas (um por culpado, ou por falha coletiva) */
   replays?: ReplayRef[];
   /** fantasmas (gaze com simulação): quantas jardas o fantasma de cada um andou no pull */
@@ -634,6 +636,8 @@ export interface MechanicPlayer {
   guid: string;
   name: string;
   count: number;
+  /** dano evitável: ocorrências (ticks seguidos são uma só); é o número de erros */
+  incidents?: number;
   amount: number;
   firstT: number | null;
   /** true = ajudou (interrupt, soak); false = errou */

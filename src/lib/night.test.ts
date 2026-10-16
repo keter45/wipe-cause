@@ -80,3 +80,15 @@ it('mortes ignoradas (depois do corte) não entram nas causas', () => {
   });
   expect(summarizeNight([p]).causes[0].deaths).toBe(1);
 });
+
+describe('erros por ocorrência', () => {
+  it('ticks seguidos do mesmo dano evitável contam como um erro (incidents), não por acerto', async () => {
+    const { summarizeNight } = await import('./night');
+    const fx = await import('./test-fixtures');
+    const axe = { key: 'axe', name: 'Axegrinder', spellId: 1, kind: 'avoidable_damage', severity: 'minor', tip: '', evaluated: true, failures: 40, incidents: 3, summary: '',
+      players: [{ guid: 'A', name: 'A-Realm', count: 44, incidents: 3, amount: 0, firstT: 0, credit: false, message: '' }], events: [] } as unknown as import('../types').MechanicResult;
+    const s = summarizeNight([fx.pull(0, 0, 60_000, { mechanics: [axe] })]);
+    expect(s.players.find((p) => p.guid === 'A')!.mechanicErrors).toBe(3);
+    expect(s.causes.find((c) => c.key === 'axe')!.failures).toBe(3);
+  });
+});

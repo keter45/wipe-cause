@@ -6,7 +6,7 @@ import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummar
 import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
 import { lowestBossHp } from '../lib/verdict';
-import { progressLabel, pullProgress, reachedPhase } from '../lib/phases';
+import { phaseCountOf, progressLabel, pullProgress, reachedPhase } from '../lib/phases';
 import { SpellName } from './SpellIcon';
 import { scoreTier } from '../lib/score';
 import { mechanicSpellId } from '../lib/spells';
@@ -215,6 +215,7 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
   const H = 180;
   const pad = { l: 34, r: 8, t: 14, b: 22 };
   const band = (W - pad.l - pad.r) / Math.max(1, pulls.length);
+  const phases = phaseCountOf(pulls);
   const barW = Math.min(24, band - 2);
   const y = (v: number) => pad.t + (1 - v / 100) * (H - pad.t - pad.b);
   const base = y(0);
@@ -232,7 +233,7 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
         ))}
         {pulls.map((p, i) => {
           // até onde foi na luta toda (fases passadas + vida da fase): mais alto = mais perto do kill
-          const progress = pullProgress(p) * 100;
+          const progress = pullProgress(p, phases) * 100;
           const phase = p.success ? null : reachedPhase(p);
           const cx = pad.l + band * i + band / 2;
           const top = y(progress);

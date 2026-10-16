@@ -4,7 +4,7 @@ import { historyTrends } from '../lib/api';
 import { classColor, pct, shortName } from '../lib/format';
 import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
 import { scoreTier } from '../lib/score';
-import { pullProgress } from '../lib/phases';
+import { phaseCountOf, pullProgress } from '../lib/phases';
 import { SpellName } from './SpellIcon';
 import { Markdown } from './AskView';
 import { withErrorBoundary } from './ErrorBoundary';
@@ -119,11 +119,12 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
       <section className="panel">
         <h3>{m.progress} <Hint>{m.progressHint}</Hint></h3>
         <div className="night-cols">
-          {t.nights.map((n) => {
+          {t.nights.map((n, _i, all) => {
+            const phases = phaseCountOf(all.flatMap((x) => x.summary.pulls));
             const s = n.summary;
             // o melhor pull da noite: fase e vida ("P3 82%"); a barra é até onde ele foi na luta toda
             const label = s.kills ? 'Kill' : s.best?.label ?? pct(100);
-            const progress = s.kills ? 1 : s.best ? pullProgress(s.best.pull) : 0;
+            const progress = s.kills ? 1 : s.best ? pullProgress(s.best.pull, phases) : 0;
             return (
               <div key={n.id} className="night-col" title={m.nightTitle(n.label, s.pulls.length, s.kills ? 'kill' : m.best(label))}>
                 <span className="night-col-value">{label}</span>

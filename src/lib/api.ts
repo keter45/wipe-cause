@@ -351,6 +351,8 @@ export interface HistoryEntry {
   pulls: number;
   kills: number;
   bestHp: number | null;
+  /** fase em que acabou o wipe que mais avançou ("P2"), quando passou da primeira */
+  bestPhase?: string | null;
   deathCutoff: number;
   pinned: boolean;
   size: number;
@@ -368,9 +370,23 @@ const demoHistory = (): HistoryEntry[] =>
     : [];
 
 /** Análises salvas, enxutas (sem recap/eventos), da mais antiga para a mais nova — para a Evolução. */
+/** Análises salvas para a Evolução, com a mesma pessoa num GUID só entre noites do log e do WCL. */
 export async function historyTrends(): Promise<{ id: string; title: string; raidStartMs: number | null; report: LogReport }[]> {
+  const nights = await historyTrendsRaw();
+  const { unifyPlayerGuids } = await import('./guids');
+  unifyPlayerGuids(nights.flatMap((n) => n.report.pulls));
+  return nights;
+}
+
+async function historyTrendsRaw(): Promise<{ id: string; title: string; raidStartMs: number | null; report: LogReport }[]> {
   if (import.meta.env.DEV && !hasBackend && new URLSearchParams(window.location.search).has('demoTrends')) {
-    // dev no navegador: relatórios gerados com wipe-cli em samples/trends/n1..n3.json
+    // dev no navegador: ?demoTrends=history lê cópias do histórico do app (samples/trends-history/list.json
+    // + um .compact.json por noite); sem valor, relatórios gerados com wipe-cli em samples/trends/n1..n3.json
+    if (new URLSearchParams(window.location.search).get('demoTrends') === 'history') {
+      const list = (await fetch('/samples/trends-history/list.json').then((r) => r.json())) as { id: string; title: string; raidStartMs: number | null; file: string }[];
+      const sorted = [...list].sort((a, b) => (a.raidStartMs ?? 0) - (b.raidStartMs ?? 0));
+      return Promise.all(sorted.map(async (e) => ({ id: e.id, title: e.title, raidStartMs: e.raidStartMs, report: (await fetch('/samples/trends-history/' + e.file).then((r) => r.json())) as LogReport })));
+    }
     const { logTitle } = await import('./format');
     const reports = await Promise.all([1, 2, 3].map((i) => fetch(`/samples/trends/n${i}.json`).then((r) => r.json() as Promise<LogReport>)));
     return reports.map((r, i) => ({ id: `n${i}`, title: logTitle(r.pulls), raidStartMs: r.pulls[0]?.startMs ?? null, report: r }));

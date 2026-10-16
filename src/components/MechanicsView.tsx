@@ -17,6 +17,7 @@ import { tr, useMessages } from '../i18n';
 import { mechMsg } from './MechanicsView.i18n';
 import { Hint } from './ui/Hint';
 import { Clamp } from './ui/Clamp';
+import { mechanicMistakes } from '../lib/blame';
 
 /** `onRulesChanged`: os ajustes foram salvos; reanalisar o log aberto. */
 export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesChanged?: () => void }) {
@@ -127,7 +128,7 @@ function MechanicCard({ m, classes, data, expanded, onToggle }: { m: MechanicRes
             {t.adjusted}
           </span>
         ) : null}
-        <span className="mechanic-count">{m.failures}×</span>
+        <span className="mechanic-count">{mechanicMistakes(m)}×</span>
       </button>
       {expanded && (
         <div className="mechanic-body">

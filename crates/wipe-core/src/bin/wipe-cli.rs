@@ -178,6 +178,9 @@ fn print_summary(r: &LogReport) {
         r.parse_ms,
         r.pulls.len()
     );
+    if let Some((hp, phase)) = wipe_core::summary::best_wipe(r) {
+        println!("melhor wipe: {}{hp:.1}%", phase.map(|p| format!("{p} ")).unwrap_or_default());
+    }
     for p in &r.pulls {
         let hp = p
             .bosses

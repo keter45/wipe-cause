@@ -4,6 +4,7 @@
 // de cada um andou na noite (`<mecânica>:yards`).
 
 import type { MechanicResult, MechanicSeverity, Pull } from '../types';
+import { mechanicMistakes, mistakes } from './blame';
 
 export interface MetricOption {
   key: string;
@@ -70,7 +71,7 @@ export function metricOptions(pulls: Pull[]): MetricOption[] {
       const o =
         byKey.get(m.key) ??
         byKey.set(m.key, { key: m.key, name: m.name, spellId: m.spellId, kind: m.kind, severity: m.severity, failures: 0, pullsWithFailure: 0 }).get(m.key)!;
-      o.failures += m.failures;
+      o.failures += mechanicMistakes(m);
       if (m.failures > 0) o.pullsWithFailure++;
     }
   }
@@ -144,15 +145,15 @@ export function metricNight(pulls: Pull[], key: string): MetricNight | null {
       key: m.key, name: m.name, spellId: m.spellId, kind: m.kind, severity: m.severity, tip: m.tip,
       collective: COLLECTIVE.has(m.kind), perPull: [], total: 0, pullsWithFailure: 0, players: [], helpers: [],
     };
-    out.perPull.push({ pull, failures: m.failures });
-    out.total += m.failures;
+    out.perPull.push({ pull, failures: mechanicMistakes(m) });
+    out.total += mechanicMistakes(m);
     if (m.failures > 0) out.pullsWithFailure++;
     const cls = new Map(pull.players.map((x) => [x.guid, x.class]));
     for (const mp of m.players) {
       const map = mp.credit ? helps : errs;
       const p = map.get(mp.guid) ?? map.set(mp.guid, { guid: mp.guid, name: mp.name, class: null, count: 0, pulls: 0, max: 0 }).get(mp.guid)!;
       p.class ??= cls.get(mp.guid) ?? null;
-      p.count += m.kind === 'stack_limit' && !mp.credit ? 1 : mp.count;
+      p.count += m.kind === 'stack_limit' && !mp.credit ? 1 : mp.credit ? mp.count : mistakes(mp);
       p.pulls++;
       p.max = Math.max(p.max, mp.count);
     }

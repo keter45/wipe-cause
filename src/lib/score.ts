@@ -7,7 +7,7 @@
 import type { Pull } from '../types';
 import { assignmentsFor, checkAssignments, type Assignments } from './assignments';
 import { mmss, shortName } from './format';
-import { blameFactor, PERSONAL_BLAME } from './blame';
+import { blameFactor, PERSONAL_BLAME, mistakes } from './blame';
 import { analyzePull } from './verdict';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from './massDeaths';
 import { getMarks } from './marks';
@@ -60,7 +60,7 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
       if (mp.credit) continue;
       const factor = blameFactor(m, roleOf.get(mp.guid));
       const per = Math.round(base * factor);
-      const n = m.kind === 'stack_limit' ? 1 : Math.min(mp.count, MAX_PER_MECHANIC);
+      const n = m.kind === 'stack_limit' ? 1 : Math.min(mistakes(mp), MAX_PER_MECHANIC);
       add(mp.guid, n * per, `${m.focus ? '★ ' : ''}${m.name}${n > 1 ? ` (${n}×)` : ''}${factor < 1 ? ` ${t.tankHalf}` : ''}`);
     }
   }

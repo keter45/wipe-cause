@@ -5,7 +5,7 @@ import { mechanicSpellId } from '../../lib/spells';
 import { scoreTier } from '../../lib/score';
 import { SpellName } from '../SpellIcon';
 import { BossName } from '../Names';
-import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight, progressLabel, pullProgress, reachedPhase } from '../../lib/phases';
+import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight, phaseCountOf, progressLabel, pullProgress, reachedPhase } from '../../lib/phases';
 import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, type CardDetail } from './common';
 import { intlLocale, useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
@@ -61,6 +61,7 @@ export function PullBars({ pulls }: { pulls: Pull[] }) {
   const TOP = 16;
   const BOTTOM = 16;
   const band = W / Math.max(1, pulls.length);
+  const phases = phaseCountOf(pulls);
   const labelHp = band >= 34;
   const labelN = band >= 14;
   return (
@@ -69,7 +70,7 @@ export function PullBars({ pulls }: { pulls: Pull[] }) {
         {pulls.map((p, i) => {
           // até onde foi na luta toda (fases passadas + vida da fase), na cor da fase
           const phase = p.success ? null : reachedPhase(p);
-          const h = p.success ? H : Math.max(2, pullProgress(p) * H);
+          const h = p.success ? H : Math.max(2, pullProgress(p, phases) * H);
           const fill = p.success ? 'var(--kill)' : phase ? (phase.index >= 3 ? '#b48cf2' : '#6ea8fe') : (p.phaseCount ?? 0) >= 2 ? '#d4a54a' : '#3987e5';
           const x = i * band + 1;
           const w = Math.max(2, band - 2);

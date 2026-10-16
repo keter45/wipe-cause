@@ -176,7 +176,7 @@ function EntryRow({
   const info = [
     t.pulls(e.pulls),
     e.kills ? t.kills(e.kills) : null,
-    e.bestHp != null && !e.kills ? t.best(pct(e.bestHp)) : null,
+    e.bestHp != null && !e.kills ? t.best(e.bestPhase ? `${e.bestPhase} ${pct(e.bestHp)}` : pct(e.bestHp)) : null,
     e.deathCutoff ? t.cutoff(e.deathCutoff) : null,
     t.saved(savedLabel(e.savedAt)),
     `${(e.size / 1e6).toFixed(1)} MB`,

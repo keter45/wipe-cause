@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildTrends, playerMoves, trendBosses, type NightInput, type PlayerTrend } from './trends';
+import { buildTrends, byGroup, dedupeNights, playerMoves, trendBosses, type NightInput, type PlayerTrend } from './trends';
 import * as fx from './test-fixtures';
 import { death, player, pull } from './test-fixtures';
 
@@ -120,5 +120,35 @@ describe('progressão: melhor e pior nos wipes antes da kill', () => {
     expect(pr.bestPerf).toMatchObject({ guid: 'B', killParse: 95 });
     expect(pr.worstPerf).toMatchObject({ guid: 'D', killParse: 12 });
     expect([pr.best, pr.worst, pr.bestPerf, pr.worstPerf].some((x) => x?.guid === 'E')).toBe(false);
+  });
+});
+
+describe('mass wipe na Evolução', () => {
+  it('mortes de mass wipe não contam nas mortes nem no "mais morre para" de ninguém', () => {
+    const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    const blast = { key: 'boom', name: 'Detonation', amount: 1, pct: 100, failT: 90_000 };
+    const pullWith = (id: number) =>
+      fx.pull(id, id * 100_000, 95_000, {
+        players: names.map((n) => fx.player(n)),
+        deaths: [fx.death('A', 30_000, { causedBy: { ...blast, key: 'axe', name: 'Axegrinder' } }), ...names.map((n, i) => fx.death(n, 90_000 + i * 50, { causedBy: blast }))],
+      });
+    const n = (id: string, start: number) => ({ id, title: `${id} · Boss Mythic`, raidStartMs: start, pulls: [pullWith(0), pullWith(1)] });
+    const tr = buildTrends([n('n1', 0), n('n2', 10_000_000)], 'Boss · Mythic');
+    const a = tr.players.find((p) => p.guid === 'A')!;
+    expect(a.deaths).toBe(4); // só as do Axegrinder, 1 por pull
+    expect(a.topKiller?.[0]).toBe('Axegrinder');
+    expect(tr.players.find((p) => p.guid === 'B')?.deaths ?? 0).toBe(0);
+  });
+});
+
+describe('noite salva duas vezes', () => {
+  it('cada pull conta uma vez e a cópia sem pull novo sai', () => {
+    const pulls = (base: number) => [0, 1, 2].map((i) => fx.pull(i, base + i * 300_000, 60_000));
+    const a = { id: 'a', title: '26/09 · Boss Mythic', raidStartMs: 0, pulls: pulls(1_000_000) };
+    // a mesma raide de outro arquivo (ou do WCL, com o início 1s diferente)
+    const b = { id: 'b', title: '26/09 · Boss Mythic', raidStartMs: 0, pulls: pulls(1_001_000) };
+    const c = { id: 'c', title: '27/09 · Boss Mythic', raidStartMs: 0, pulls: pulls(90_000_000) };
+    expect(dedupeNights([a, b, c]).map((n) => n.id)).toEqual(['a', 'c']);
+    expect(trendBosses(byGroup([a, b, c], 'all').nights)[0].nights).toBe(2);
   });
 });

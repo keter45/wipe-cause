@@ -70,6 +70,9 @@ export function deathsUntilCascade(sorted: Death[], threshold: number): Death[] 
   return start < 0 ? sorted : sorted.slice(0, start + 2);
 }
 
+/** Abaixo disso o boss de uma fase anterior conta como morto (a vida pode parar em 1 ponto na troca). */
+const PHASE_DEAD_PCT = 0.1;
+
 /**
  * HP do boss no fim do pull: no corte ("ignorar após N mortes"), se houver; kill = 0. Boss de várias
  * fases: a vida dos bosses da fase em que o pull acabou (P2 = 69%, não o boss da P1 a 0%).
@@ -79,6 +82,14 @@ export function lowestBossHp(p: Pull): number | null {
   const phase = p.cutoffT != null ? (p.phaseHpPctAtCutoff ?? p.phaseHpPct) : p.phaseHpPct;
   if (phase != null) return phase;
   const hps = p.bosses.map((b) => (p.cutoffT != null ? b.hpPctAtCutoff ?? b.hpPct : b.hpPct)).filter((x): x is number => x != null);
+  // análise antiga (sem a vida por fase) de um pull que passou da primeira fase: o boss da P1 já
+  // morreu (0%); vale o menor entre os que ainda estavam vivos
+  const marks = (p.phaseMarks ?? []).filter((m) => p.cutoffT == null || m.t <= p.cutoffT);
+  if (marks.length >= 2) {
+    // sem nenhum boss vivo na lista (o da fase nem entrou nela): a vida da fase é desconhecida
+    const alive = hps.filter((h) => h > PHASE_DEAD_PCT);
+    return alive.length ? Math.min(...alive) : null;
+  }
   return hps.length ? Math.min(...hps) : null;
 }
 
@@ -105,7 +116,8 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   const deaths = [...p.deaths].sort((a, b) => a.t - b.t);
   // mass wipe (muita gente morrendo junto): consequência do wipe, não culpa de quem morreu. Essas
   // mortes não viram "morreu sem defensivo", "tank morreu" nem pesam na noite do player
-  const mass = massDeathKeys(deaths.filter((d) => !d.ignored));
+  // todas as mortes: o corte de mortes marca como ignoradas as que vêm depois, mas o mass wipe é o mesmo
+  const mass = massDeathKeys(deaths);
   // com "ignorar após N mortes" ligado, as decisivas são as N primeiras; senão, janela de cascata
   const decisive = (p.cutoffT != null ? deaths.filter((d) => !d.ignored) : decisiveDeaths(deaths, cascadeThreshold(p))).filter((d) => !mass.has(deathKey(d)));
   const bossHp = lowestBossHp(p);

@@ -53,6 +53,9 @@ const EXCLUSIVE_MASS_MIN: usize = 7;
 const CONFIRM_MS: i64 = 250;
 /// Acertos guardados por player (marcas no replay).
 const MAX_HIT_TIMES: usize = 50;
+/// Acertos do mesmo player com até isso entre eles são uma ocorrência só (ficar 3s no machado
+/// são 12 ticks e um erro).
+const INCIDENT_GAP_MS: i64 = 2_000;
 /// Replays por mecânica (um por culpado, ou por falha coletiva).
 const MAX_REPLAYS: usize = 12;
 /// ... e um por culpado, até o tamanho de uma raid (o modo solo mostra o replay de cada um).
@@ -675,6 +678,9 @@ struct PlayerHits {
     first_t: Option<i64>,
     /// momento de cada acerto (para marcar no replay)
     times: Vec<i64>,
+    /// ocorrências: acertos separados por mais de INCIDENT_GAP_MS
+    incidents: u32,
+    last_t: Option<i64>,
 }
 
 #[derive(Default)]
@@ -1602,6 +1608,7 @@ impl RuleTracker {
                         guid: guid.clone(),
                         name: p.name.clone(),
                         count: if m.kind == MechanicType::StackLimit { p.max_stacks } else { p.count },
+                        incidents: m.kind.per_hit_blame().then_some(p.incidents),
                         amount: p.amount,
                         first_t: p.first_t,
                         credit: false,
@@ -1637,6 +1644,7 @@ impl RuleTracker {
                 MechanicType::StackLimit => players.len() as u32,
                 _ => players.iter().map(|p| p.count.saturating_sub(m.tolerance)).sum(),
             };
+            let incidents = m.kind.per_hit_blame().then(|| players.iter().filter_map(|p| p.incidents).sum::<u32>());
             // créditos (quem cortou / soakou) vêm depois dos culpados
             players.sort_by(|a, b| b.count.cmp(&a.count).then(a.name.cmp(&b.name)));
             let mut credits: Vec<MechanicPlayer> = st
@@ -1646,6 +1654,7 @@ impl RuleTracker {
                     guid: guid.clone(),
                     name: p.name.clone(),
                     count: p.count,
+                    incidents: None,
                     amount: p.amount,
                     first_t: p.first_t,
                     credit: true,
@@ -1713,6 +1722,7 @@ impl RuleTracker {
                 tank_full_weight: m.tank_full_weight,
                 evaluated: m.kind.evaluated(),
                 failures,
+                incidents,
                 summary,
                 players,
                 events: st.events,
@@ -2194,6 +2204,10 @@ fn bump(map: &mut HashMap<String, PlayerHits>, guid: &str, name: &str, amount: i
     p.count += 1;
     p.amount += amount;
     p.first_t.get_or_insert(t);
+    if p.last_t.is_none_or(|last| t - last > INCIDENT_GAP_MS) {
+        p.incidents += 1;
+    }
+    p.last_t = Some(t);
     if p.times.len() < MAX_HIT_TIMES {
         p.times.push(t);
     }
@@ -2218,6 +2232,20 @@ fn render(template: &Text, player: &str, count: u32, lethal: Option<u32>) -> Tex
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ticks_close_together_are_one_incident() {
+        let mut map = HashMap::new();
+        // 3s no machado (um tick a cada 0,25s), sai, e encosta de novo 5s depois
+        for t in (0..3_000).step_by(250) {
+            bump(&mut map, "A", "Alice", 1, t);
+        }
+        for t in (8_000..8_500).step_by(250) {
+            bump(&mut map, "A", "Alice", 1, t);
+        }
+        let p = &map["A"];
+        assert_eq!((p.count, p.incidents), (14, 2));
+    }
 
     const YAML: &str = r#"
 name: "Boss"

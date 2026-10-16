@@ -8,7 +8,7 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
-use wipe_core::summary::{best_hp, has_raid, main_encounter, title_of};
+use wipe_core::summary::{best_hp, best_phase, has_raid, main_encounter, title_of};
 use wipe_core::LogReport;
 use wipe_core::i18n::pick;
 
@@ -28,8 +28,11 @@ pub struct HistoryEntry {
     pub log_path: String,
     pub pulls: usize,
     pub kills: usize,
-    /// menor HP de boss entre os wipes (0-100)
+    /// vida do boss no wipe que mais avançou (0-100)
     pub best_hp: Option<f32>,
+    /// fase em que esse wipe acabou ("P2"), quando passou da primeira
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub best_phase: Option<String>,
     pub death_cutoff: u32,
     /// fixada = o usuário quer manter (não sai no "apagar não fixadas")
     pub pinned: bool,
@@ -114,6 +117,7 @@ fn save_in(dir: &Path, report: &LogReport, log_path: &str) -> Result<(), String>
         pulls: report.pulls.len(),
         kills: report.pulls.iter().filter(|p| p.success).count(),
         best_hp: best_hp(report),
+        best_phase: best_phase(report),
         death_cutoff: report.death_cutoff,
         pinned,
         size: bytes.len() as u64,

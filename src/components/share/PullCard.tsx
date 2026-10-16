@@ -11,6 +11,7 @@ import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, timeOf, 
 import { tr, useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
 import { progressLabel } from '../../lib/phases';
+import { mechanicMistakes } from '../../lib/blame';
 
 const SUMMARY = { findings: 3, deaths: 3, scores: 4 };
 
@@ -149,7 +150,7 @@ function PullDetails({ pull: p }: { pull: Pull }) {
               const who = m.players.filter((x) => !x.credit && x.count > 0);
               return (
                 <li key={m.key} className={m.severity}>
-                  {m.spellId != null && <SpellIcon spellId={m.spellId} size={16} />} <strong>{m.name}</strong> — {tr(m.summary) || t.failures(m.failures)}
+                  {m.spellId != null && <SpellIcon spellId={m.spellId} size={16} />} <strong>{m.name}</strong> — {tr(m.summary) || t.failures(mechanicMistakes(m))}
                   {who.length > 0 && (
                     <span className="share-muted">
                       {' '}

@@ -13,6 +13,7 @@ export interface Summary {
   title: string;
   encounterId: number | null;
   bestHp: number | null;
+  bestPhase?: string | null;
 }
 
 const INDEX = 'history:index';
@@ -60,6 +61,7 @@ export async function saveAnalysis(report: LogReport, summary: Summary, logPath:
     pulls: report.pulls.length,
     kills: report.pulls.filter((p) => p.success).length,
     bestHp: summary.bestHp,
+    bestPhase: summary.bestPhase ?? null,
     deathCutoff: report.deathCutoff,
     pinned,
     size,

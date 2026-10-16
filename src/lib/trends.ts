@@ -10,6 +10,7 @@ import { raidOnly } from './content';
 import { mechanicSpellId } from './spells';
 import { scorePull } from './score';
 import { difficultyRank, raidOrder } from './raids';
+import { deathKey, massDeathKeys } from './massDeaths';
 import { coreRoster, isGuildGroup } from './roster';
 
 export interface NightInput {
@@ -191,7 +192,30 @@ export function progressionOf(nights: TrendNight[]): Progression | null {
  * salvas (pelo nome: o GUID pode mudar entre o log do PC e o Warcraft Logs). Sem noites suficientes
  * para saber, tudo conta como guilda.
  */
-export function byGroup(input: NightInput[], group: 'guild' | 'pug' | 'all'): { nights: NightInput[]; pugPulls: number } {
+/** Pulls do mesmo boss que começam com menos disso de diferença são o mesmo pull (log e WCL arredondam diferente). */
+const SAME_PULL_MS = 5_000;
+
+/**
+ * A mesma raide salva duas vezes (de dois arquivos, ou do log e do WCL) contaria em dobro: cada
+ * pull entra uma vez só (o da noite mais antiga na lista), e a noite que fica sem pull novo sai.
+ */
+export function dedupeNights(input: NightInput[]): NightInput[] {
+  const seen = new Map<number, number[]>();
+  const out: NightInput[] = [];
+  for (const n of input) {
+    const pulls = n.pulls.filter((p) => {
+      const starts = seen.get(p.encounterId) ?? [];
+      if (starts.some((t) => Math.abs(t - p.startMs) < SAME_PULL_MS)) return false;
+      seen.set(p.encounterId, [...starts, p.startMs]);
+      return true;
+    });
+    if (pulls.length) out.push(pulls.length === n.pulls.length ? n : { ...n, pulls });
+  }
+  return out;
+}
+
+export function byGroup(all: NightInput[], group: 'guild' | 'pug' | 'all'): { nights: NightInput[]; pugPulls: number } {
+  const input = dedupeNights(all);
   const names = (p: Pull) => p.players.map((x) => x.name);
   const roster = coreRoster(input.map((n) => raidOnly(n.pulls).flatMap(names)));
   let pugPulls = 0;
@@ -206,7 +230,7 @@ export function byGroup(input: NightInput[], group: 'guild' | 'pug' | 'all'): { 
   return { nights, pugPulls };
 }
 
-/** Bosses presentes no histórico, do mais jogado para o menos. */
+/** Boss presente no histórico (uma dificuldade). */
 export interface TrendBoss {
   key: string;
   encounterId: number;
@@ -237,8 +261,15 @@ export function trendBosses(nights: NightInput[]): TrendBoss[] {
 
 const pctOf = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
-/** Nome do que matou: a mecânica ligada à morte, senão o golpe final. */
-const killerOf = (d: Pull['deaths'][number]) => d.causedBy?.name ?? d.killingBlowMechanic ?? d.killingBlow?.spellName ?? null;
+/**
+ * O que matou: a mecânica ligada à morte (pela chave: análises antigas guardaram o nome em
+ * português), senão o golpe final. `name` é o que aparece.
+ */
+const killerOf = (d: Pull['deaths'][number]): { key: string; name: string } | null => {
+  if (d.causedBy) return { key: `mech:${d.causedBy.key}`, name: d.causedBy.name };
+  const name = d.killingBlowMechanic ?? d.killingBlow?.spellName ?? null;
+  return name ? { key: name, name } : null;
+};
 
 export function buildTrends(input: NightInput[], boss: string): Trends {
   const nights: TrendNight[] = input
@@ -258,6 +289,8 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
     for (const c of n.summary.causes) {
       if (!c.triggers) continue;
       const row = causeMap.get(c.key) ?? { key: c.key, name: c.name, spellId: mechanicSpellId(n.summary.pulls, c.key), perNight: nights.map(() => 0), total: 0 };
+      // análises antigas guardaram o nome em português: vale o da noite mais recente
+      row.name = c.name;
       row.perNight[i] = c.triggers;
       row.total += c.triggers;
       causeMap.set(c.key, row);
@@ -269,6 +302,7 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
   const acc = new Map<string, PlayerTrend & { killers: Map<string, Set<number>>; killerCount: Map<string, number>; killerNoDef: Map<string, number> }>();
   // nome do que matou -> spell (ícone)
   const killerSpell = new Map<string, number>();
+  const killerName = new Map<string, string>();
   nights.forEach((n, i) => {
     for (const pn of n.summary.players) {
       const a = acc.get(pn.guid) ?? {
@@ -282,15 +316,20 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
     }
     const deathsThisNight = new Map<string, number>();
     for (const p of n.summary.pulls) {
+      // mortes num mass wipe (muita gente junto) não são culpa de quem morreu: ficam fora
+      const mass = massDeathKeys(p.deaths);
       for (const d of p.deaths) {
-        if (d.ignored) continue;
+        if (d.ignored || mass.has(deathKey(d))) continue;
         const a = acc.get(d.guid);
         if (!a) continue;
         a.deaths++;
         deathsThisNight.set(d.guid, (deathsThisNight.get(d.guid) ?? 0) + 1);
         const noDef = d.defensivesRecent.length === 0 && d.defensivesAvailable.length > 0;
         if (noDef) a.deathsNoDefensive++;
-        const k = killerOf(d);
+        const killer = killerOf(d);
+        const k = killer?.key;
+        // a noite mais recente dá o nome
+        if (killer) killerName.set(killer.key, killer.name);
         if (k && !killerSpell.has(k)) {
           const id = d.causedBy ? mechanicSpellId(p, d.causedBy.key) : d.killingBlow?.spellId;
           if (id != null) killerSpell.set(k, id);
@@ -310,8 +349,9 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
     }
   });
   const players: PlayerTrend[] = [...acc.values()].map(({ killers, killerCount, killerNoDef, ...a }) => {
-    const top = [...killerCount.entries()].sort((x, y) => y[1] - x[1])[0] ?? null;
-    return { ...a, topKiller: top, topKillerSpellId: top ? killerSpell.get(top[0]) ?? null : null, topKillerNights: top ? killers.get(top[0])!.size : 0, topKillerNoDefensive: top ? killerNoDef.get(top[0]) ?? 0 : 0 };
+    const best = [...killerCount.entries()].sort((x, y) => y[1] - x[1])[0] ?? null;
+    const top: [string, number] | null = best ? [killerName.get(best[0]) ?? best[0], best[1]] : null;
+    return { ...a, topKiller: top, topKillerSpellId: best ? killerSpell.get(best[0]) ?? null : null, topKillerNights: best ? killers.get(best[0])!.size : 0, topKillerNoDefensive: best ? killerNoDef.get(best[0]) ?? 0 : 0 };
   });
   // quem mais morreu no total (taxa por pull desempata: quem jogou pouco não vai para o topo)
   players.sort((a, b) => b.deaths - a.deaths || b.deaths / Math.max(1, b.pulls) - a.deaths / Math.max(1, a.pulls));

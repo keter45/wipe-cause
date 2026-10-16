@@ -30,6 +30,7 @@ import { PlayerClassesContext, playerClasses } from './lib/players';
 import { SettingsView } from './components/settings/SettingsView';
 import { messagesOf, useLocale, useLocaleChoice, useMessages } from './i18n';
 import { appMsg } from './App.i18n';
+import { unifyPlayerGuids } from './lib/guids';
 import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
 
 /** O que ocupa a área principal: a análise aberta, a lista de logs, a evolução ou as configurações. */
@@ -144,7 +145,7 @@ export default function App() {
     const sameFile = report != null && sameLog(report.file, r.file);
     const lastId = report?.pulls[report.pulls.length - 1]?.id;
     const following = page !== 'settings' && (!sameFile || summary === NIGHT || page === 'browse' || selected === lastId);
-    if (sameFile) setReport(r);
+    if (sameFile) setReport(withUnifiedGuids(r));
     else showReport(r);
     setStatus({ kind: 'idle' });
     refreshHistory();
@@ -239,7 +240,7 @@ export default function App() {
       rememberFile(path);
       // noite completada com o Warcraft Logs: a análise só do log do PC fica redundante no histórico
       for (const e of history.filter((h) => r.localLogs?.some((l) => sameLog(h.logPath, l)))) await historyDelete(e.id).catch(() => {});
-      if (keepView) setReport(r);
+      if (keepView) setReport(withUnifiedGuids(r));
       else showReport(r);
       setPage('analysis');
       setStatus({ kind: 'idle' });
@@ -249,8 +250,14 @@ export default function App() {
     }
   }
 
+  /** Pulls do WCL e do log da mesma noite: a mesma pessoa com um GUID só. */
+  function withUnifiedGuids(r: LogReport): LogReport {
+    unifyPlayerGuids(r.pulls);
+    return r;
+  }
+
   function showReport(r: LogReport) {
-    setReport(r);
+    setReport(withUnifiedGuids(r));
     setDeathCutoff(r.deathCutoff);
     // abre no último wipe (normalmente o que a raid quer ver)
     const raid = raidOnly(r.pulls);

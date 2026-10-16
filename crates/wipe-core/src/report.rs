@@ -482,6 +482,9 @@ pub struct MechanicResult {
     /// false = tipo de regra que o motor ainda não avalia (só dica)
     pub evaluated: bool,
     pub failures: u32,
+    /// dano evitável: erros contados por ocorrência (somando os culpados), não por tick
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub incidents: Option<u32>,
     /// mensagem da falha coletiva (soak, interrupt, enrage), já renderizada
     pub summary: Text,
     /// culpados primeiro; depois quem ajudou (`credit`: interrupts, soaks)
@@ -687,6 +690,10 @@ pub struct MechanicPlayer {
     pub name: String,
     /// hits, stacks máximos ou vezes que ajudou
     pub count: u32,
+    /// dano evitável: ocorrências (acertos com mais de 2s entre eles; ticks seguidos são uma só).
+    /// É o número de erros; `count` (os acertos) segue para a tolerância e as mensagens
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub incidents: Option<u32>,
     pub amount: i64,
     pub first_t: Option<i64>,
     pub credit: bool,

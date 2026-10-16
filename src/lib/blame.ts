@@ -16,3 +16,12 @@ export const TANK_AVOIDABLE_FACTOR = 0.5;
 /** Multiplicador do peso de um erro pela regra e pela role de quem errou (a regra pode pedir peso inteiro). */
 export const blameFactor = (m: { kind: string; tankFull?: boolean }, role: string | null | undefined) =>
   m.kind === 'avoidable_damage' && role === 'tank' && !m.tankFull ? TANK_AVOIDABLE_FACTOR : 1;
+
+/**
+ * Erros do player numa mecânica: as ocorrências (dano evitável: ticks seguidos, como ficar 3s no
+ * machado, são um erro só). Relatório antigo, sem ocorrências: os acertos.
+ */
+export const mistakes = (mp: { count: number; incidents?: number }) => mp.incidents ?? mp.count;
+
+/** Erros da mecânica no pull: as ocorrências somadas (dano evitável) ou as falhas. */
+export const mechanicMistakes = (m: { failures: number; incidents?: number }) => m.incidents ?? m.failures;

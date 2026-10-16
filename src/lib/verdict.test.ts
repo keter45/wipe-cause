@@ -58,3 +58,13 @@ describe('mass wipe', () => {
     expect(v.findings.filter((f) => f.player).map((f) => f.player)).toContain('Solo');
   });
 });
+
+describe('mass wipe com corte de mortes', () => {
+  // 15/10 pull 2 salvo com corte de 3: 18 mortes juntas, 15 delas marcadas como ignoradas pelo corte
+  it('as mortes depois do corte também contam para reconhecer o mass wipe', () => {
+    const shield = [{ spellId: 1, name: 'Shield Wall', readyIn: 0 }] as unknown as Death['defensivesAvailable'];
+    const deaths = Array.from({ length: 18 }, (_, i) => fx.death(`P${i}`, 96_444 + i, { ignored: i >= 3, defensivesAvailable: shield }));
+    const v = analyzePull(fx.pull(1, 0, 104_000, { players: [], deaths, cutoffT: 96_446 }));
+    expect(v.decisiveDeaths).toEqual([]);
+  });
+});

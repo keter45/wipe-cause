@@ -11,7 +11,7 @@ use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use wasm_bindgen::prelude::*;
 use wipe_core::i18n::pick;
 use wipe_core::rules::{RuleBook, Tuning, TUNABLE_FIELDS};
-use wipe_core::summary::{best_hp, has_raid, main_encounter, title_of};
+use wipe_core::summary::{best_hp, best_phase, has_raid, main_encounter, title_of};
 use wipe_core::wcl::{dedupe, is_short_wipe, slim_events, WclAnalyzer};
 use wipe_core::LogReport;
 
@@ -77,6 +77,7 @@ fn with_summary(report: &LogReport) -> Result<String, JsError> {
         "title": title_of(report),
         "encounterId": main_encounter(report),
         "bestHp": best_hp(report),
+        "bestPhase": best_phase(report),
     });
     serde_json::to_string(&json!({ "report": report, "summary": summary })).map_err(err)
 }
