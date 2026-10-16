@@ -61,7 +61,7 @@ export function pullPayload(p: Pull, wclCode?: string | null): DiscordPayload {
     : `Wipe ${p.pullNumber} · ${p.encounterName} ${p.difficultyName}${hp != null ? ` — ${progressLabel(p)}` : ''}`;
 
   const mechanics = p.mechanics
-    .filter((m) => m.failures > 0 && (m.severity === 'wipe' || m.severity === 'major'))
+    .filter((m) => m.failures > 0 && m.severity === 'wipe')
     .map((m) => {
       const who = m.players
         .filter((x) => !x.credit)

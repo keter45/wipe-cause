@@ -6,6 +6,7 @@ import { analyzePull, lowestBossHp } from './verdict';
 import { bestWipe, progressLabel } from './phases';
 import { blameFactor, PERSONAL_BLAME } from './blame';
 import { scorePull } from './score';
+import { deathKey, massDeathKeys } from './massDeaths';
 
 /** Intervalo entre trys acima disso vira "pausa" (break, troca de boss, reset de estratégia). */
 export const BREAK_MS = 10 * 60_000;
@@ -139,6 +140,8 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
     const verdict = analyzePull(p);
     const scores = scorePull(p);
     const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
+    // mortes num mass wipe não contam para o player
+    const mass = massDeathKeys(p.deaths.filter((d) => !d.ignored));
     const passedInterruptible = p.enemySpells.some((e) => e.interruptible && e.casts > 0);
     const errorsThisPull = new Map<string, number>();
     const roleOf = new Map(p.players.map((x) => [x.guid, x.role]));
@@ -164,7 +167,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
       a.class ??= ps.class;
       a.role ??= ps.role;
       a.pulls++;
-      a.deaths += ps.deaths;
+      a.deaths += Math.max(0, ps.deaths - p.deaths.filter((d) => d.guid === ps.guid && !d.ignored && mass.has(deathKey(d))).length);
       a.interrupts += ps.interrupts;
       a.dpsSum += ps.dps;
       a.hpsSum += ps.hps;

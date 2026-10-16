@@ -110,9 +110,9 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
   const verdict = analyzePull(pull);
   const bossHp = bossHpOf(pull);
   const decisive = new Set(verdict.decisiveDeaths.map((d) => `${d.guid}:${d.t}`));
-  // causas e problemas graves sempre visíveis; avisos menores recolhidos
-  const main = verdict.findings.filter((f) => f.severity === 'wipe' || f.severity === 'major');
-  const minor = verdict.findings.filter((f) => f.severity === 'minor' || f.severity === 'info');
+  // no resumo da try, só o que causou o wipe; o resto (erros graves e avisos) fica recolhido
+  const main = verdict.findings.filter((f) => f.severity === 'wipe');
+  const minor = verdict.findings.filter((f) => f.severity !== 'wipe');
   const deathCount = pull.deaths.filter((d) => !d.ignored).length;
   // abas por assunto: o que deu errado · quem jogou como · a luta · IA
   const tabGroups: { label: string; tabs: { key: Tab; label: string; count?: number }[] }[] = solo

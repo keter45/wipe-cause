@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Death, Pull } from '../types';
-import { decisiveDeaths, wipeCause } from './verdict';
+import { analyzePull, decisiveDeaths, wipeCause } from './verdict';
+import * as fx from './test-fixtures';
 
 const death = (name: string, t: number) => ({ name, guid: name, t }) as Death;
 
@@ -35,5 +36,25 @@ describe('wipeCause', () => {
     expect(wipeCause(pull(14, trig(1)))).toBeNull();
     expect(wipeCause(pull(3, trig(5), true))).toBeNull();
     expect(wipeCause(pull(3, null))).toBeNull();
+  });
+});
+
+describe('mass wipe', () => {
+  // pull 2 de 15/10: o orb roxo detona aos 1:36 e 17 morrem juntos; ninguém ali tinha o que fazer
+  it('mortes do mass wipe não viram "morreu sem defensivo" nem "tank morreu"', () => {
+    const shield = [{ spellId: 1, name: 'Shield Wall', readyIn: 0 }] as unknown as Death['defensivesAvailable'];
+    const deaths = Array.from({ length: 8 }, (_, i) => fx.death(`P${i}`, 96_000 + i * 100, { role: i === 0 ? 'tank' : 'dps', defensivesAvailable: shield }));
+    const v = analyzePull(fx.pull(1, 0, 104_000, { players: [], deaths }));
+    expect(v.decisiveDeaths).toEqual([]);
+    expect(v.findings.filter((f) => f.player)).toEqual([]);
+  });
+
+  it('morte isolada antes do mass wipe continua contando', () => {
+    const shield = [{ spellId: 1, name: 'Shield Wall', readyIn: 0 }] as unknown as Death['defensivesAvailable'];
+    const lone = fx.death('Solo', 40_000, { defensivesAvailable: shield });
+    const deaths = [lone, ...Array.from({ length: 8 }, (_, i) => fx.death(`P${i}`, 96_000 + i * 100, { defensivesAvailable: shield }))];
+    const v = analyzePull(fx.pull(1, 0, 104_000, { players: [], deaths }));
+    expect(v.decisiveDeaths.map((d) => d.guid)).toEqual(['Solo']);
+    expect(v.findings.filter((f) => f.player).map((f) => f.player)).toContain('Solo');
   });
 });

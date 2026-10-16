@@ -9,6 +9,7 @@ import { PERSONAL_BLAME } from './blame';
 import { messagesOf, tr } from '../i18n';
 import { verdictMsg } from './verdict.i18n';
 import { progressLabel } from './phases';
+import { deathKey, massDeathKeys } from './massDeaths';
 
 export type Severity = 'wipe' | 'major' | 'minor' | 'info';
 
@@ -102,8 +103,11 @@ export function analyzePull(p: Pull, assignments: Assignments = assignmentsFor(p
   const t = messagesOf(verdictMsg);
   const findings: Finding[] = [];
   const deaths = [...p.deaths].sort((a, b) => a.t - b.t);
+  // mass wipe (muita gente morrendo junto): consequência do wipe, não culpa de quem morreu. Essas
+  // mortes não viram "morreu sem defensivo", "tank morreu" nem pesam na noite do player
+  const mass = massDeathKeys(deaths.filter((d) => !d.ignored));
   // com "ignorar após N mortes" ligado, as decisivas são as N primeiras; senão, janela de cascata
-  const decisive = p.cutoffT != null ? deaths.filter((d) => !d.ignored) : decisiveDeaths(deaths, cascadeThreshold(p));
+  const decisive = (p.cutoffT != null ? deaths.filter((d) => !d.ignored) : decisiveDeaths(deaths, cascadeThreshold(p))).filter((d) => !mass.has(deathKey(d)));
   const bossHp = lowestBossHp(p);
 
   // 0. Regras do boss: falhas de mecânica graves entram primeiro (e as do foco, mesmo leves)

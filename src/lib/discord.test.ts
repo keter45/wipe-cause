@@ -31,7 +31,8 @@ describe('pullPayload', () => {
   });
 
   it('respeita o limite de 1024 caracteres por campo', () => {
-    const many = Array.from({ length: 80 }, (_, i) => death(`Player${i}`, 1000 + i));
+    // uma a cada 2 s: 80 mortes juntas seriam um mass wipe (que não vira morte decisiva)
+    const many = Array.from({ length: 80 }, (_, i) => death(`Player${i}`, 1000 + i * 2000));
     const e = pullPayload(pull(0, 0, 60_000, { deaths: many, cutoffT: 999_999 })).embeds[0];
     for (const f of e.fields) expect(f.value.length).toBeLessThanOrEqual(1024);
     expect(e.fields.find((f) => f.name === 'Mortes decisivas')!.value).toMatch(/\+\d+ mais$/);

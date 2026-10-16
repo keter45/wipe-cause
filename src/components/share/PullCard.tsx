@@ -27,7 +27,8 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
   const scores = scorePull(p);
   const scored = p.players.map((x) => ({ guid: x.guid, name: x.name, class: x.class, score: scores.get(x.guid)?.score ?? 100 })).sort((a, b) => a.score - b.score);
   const lowest = scored.filter((r) => r.score < ATTENTION_SCORE);
-  const findings = v.findings.filter((f) => full || (f.severity !== 'minor' && f.severity !== 'info'));
+  // resumo: só o que causou o wipe; completo: tudo
+  const findings = v.findings.filter((f) => full || f.severity === 'wipe');
   const shownFindings = full ? findings : findings.slice(0, SUMMARY.findings);
   const decisive = full ? v.decisiveDeaths : v.decisiveDeaths.slice(0, SUMMARY.deaths);
   const trigger = p.trigger ? p.mechanics.find((m) => m.key === p.trigger!.key) : null;
