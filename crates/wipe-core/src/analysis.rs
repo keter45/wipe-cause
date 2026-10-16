@@ -20,6 +20,8 @@ const RECAP_WINDOW_MS: i64 = 15_000;
 const RECENT_DEFENSIVE_MS: i64 = 10_000;
 const MAX_RECAP_ENTRIES: usize = 150;
 const FEIGN_DEATH: u32 = 5384;
+/// Reincarnation do xamã: ele volta sozinho, sem SPELL_RESURRECT no log (só este cast, já morto).
+const REINCARNATION: u32 = 21169;
 /// Abaixo disso de vida o player "precisa de cura": o tempo parado do healer só conta com alguém assim.
 const INJURED_PCT: f32 = 80.0;
 /// Histórico de HP guardado por player (para slow death).
@@ -1256,7 +1258,9 @@ impl PullBuilder {
             return;
         }
         if let Some(fc) = self.fight.as_mut() {
-            fc.event(rel, fight::EV_CAST, src_guid, spell_id, &spell_name, 0, f[6]);
+            // Reincarnation vale como battle rez no replay: volta vivo (sem fonte: foi ele mesmo)
+            let kind = if spell_id == REINCARNATION { fight::EV_RESURRECT } else { fight::EV_CAST };
+            fc.event(rel, kind, src_guid, spell_id, &spell_name, 0, if kind == fight::EV_CAST { f[6] } else { "" });
         }
         let consumable = data.consumable(spell_id, &spell_name);
         let defensive = data.defensives.get(&spell_id).filter(|d| d.kind == "personal").map(|d| d.name.clone());

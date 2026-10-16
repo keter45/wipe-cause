@@ -884,6 +884,25 @@ mod tests {
     }
 
     #[test]
+    fn shaman_reincarnation_brings_the_player_back_in_the_replay() {
+        // o log mostra só a morte e, ~8s depois, o cast de Reincarnation do próprio xamã
+        let events = slim_events(vec![
+            json!({ "timestamp": 20_000, "type": "death", "targetID": 6 }),
+            json!({ "timestamp": 28_000, "type": "cast", "sourceID": 6, "targetID": -1, "abilityGameID": 21169 }),
+        ]);
+        let mut analyzer = WclAnalyzer::single(&report(), RuleBook::embedded(), 4, -3.0).unwrap();
+        analyzer.begin_replay(0, 2).unwrap();
+        analyzer.push_events(&events);
+        let pull = analyzer.replay().expect("pull");
+        let fight = pull.fight.as_ref().expect("replay");
+        let shaman = fight.players.iter().position(|guid| guid == "Player-0-000000DE").expect("shaman");
+        let event = fight.events.iter().find(|event| event.1 == crate::fight::EV_RESURRECT).expect("reincarnation");
+        assert_eq!((event.0, event.2, event.3, event.5), (18_000, shaman as u16, 21169, crate::fight::NO_UNIT));
+        // uma linha só no quadro de eventos (sem o cast repetido)
+        assert!(!fight.events.iter().any(|event| event.1 == crate::fight::EV_CAST && event.3 == 21169));
+    }
+
+    #[test]
     fn imported_battle_resurrection_survives_slimming_and_reaches_replay() {
         let events = slim_events(vec![
             json!({ "timestamp": 20_000, "type": "death", "targetID": 6 }),
