@@ -1,6 +1,6 @@
 // Clipe (WebP animado) do replay: o replay é desenhado fora da tela instante a instante, cada quadro
 // vira imagem (com uma faixa em cima: o que foi e quanto falta para o erro), o canvas codifica cada
-// um em WebP e webp.ts junta a animação. O clipe do pull é o resumo da try: os erros graves e a causa
+// um em WebP e webp.ts junta a animação. O clipe do pull mostra só as falhas gravíssimas e a causa
 // do wipe, em ordem, cada um com um quadro de abertura; vai ao Discord junto com o cartão do wipe.
 //
 // O mapa é o mesmo da aba Replay: o pull relido sozinho no log (posições de todo mundo, mortes, áreas,
@@ -13,7 +13,8 @@ import { invoke } from './backend';
 import type { Death, Pull, ReplayRef } from '../types';
 import { inDesktop } from './api';
 import { decodeReplay, deathReplayExtras, type ReplayData, type ReplayHit } from './replay';
-import { cascadeThreshold, decisiveDeaths, wipeCause } from './verdict';
+import { wipeCause } from './verdict';
+import { clipBounds } from './clipFraming';
 import { fightView } from './fight';
 import { canLoadFull, fightOverlays, headBadge, loadFullPull } from './fullReplay';
 import * as prefs from './replayPrefs';
@@ -51,8 +52,8 @@ export const DISCORD_MAX_BYTES = 9_500_000;
 /** O clipe mira neste tamanho (a qualidade baixa aos poucos se passar). */
 const TARGET_BYTES = 7_000_000;
 
-/** O que foi o momento: a causa do wipe, um erro grave, a morte de um tank. */
-export type ClipKind = 'trigger' | 'mistake' | 'death';
+/** O que foi o momento: a causa do wipe ou outra falha gravíssima. */
+export type ClipKind = 'trigger' | 'mistake';
 
 /** Um trecho do pull para virar clipe. */
 export interface ClipMoment {
@@ -65,6 +66,8 @@ export interface ClipMoment {
   kind?: ClipKind;
   /** habilidade do momento (ícone) */
   spellId?: number | null;
+  /** mecânica da falha, para localizar sua origem no mapa */
+  mechanicKey?: string;
   /** quem errou, quando é um só */
   who?: string;
   /** replay de morte: a vida e os golpes de quem morreu */
@@ -79,7 +82,7 @@ function triggerMoment(p: Pull, deaths: Death[]): ClipMoment | null {
   const trig = wipeCause(p) ?? p.trigger;
   if (!trig) return null;
   const m = p.mechanics.find((x) => x.key === trig.key);
-  const base = { label: trig.name, kind: 'trigger' as const, spellId: m?.spellId ?? null };
+  const base = { label: trig.name, kind: 'trigger' as const, spellId: m?.spellId ?? null, mechanicKey: trig.key };
   const covers = (r?: ReplayRef) => !!r && r.from <= trig.t && r.to >= trig.t;
   const mech = (m?.replays ?? []).find(covers);
   if (mech) return { ...base, replay: mech, t: trig.t, who: whoOf(p, mech) };
@@ -96,17 +99,13 @@ function whoOf(p: Pull, r: ReplayRef): string | undefined {
   return name ? shortName(name) : undefined;
 }
 
-const SEVERITY_ORDER: Record<string, number> = { wipe: 0, major: 1, minor: 2, none: 3 };
-
 /**
- * O resumo da try: a causa do wipe (o gatilho), os erros graves das regras do boss (a primeira vez
- * de cada um, na ordem do veredito: foco, gravidade, importância) e a morte de um tank entre as
- * decisivas. No máximo 4, em ordem de tempo; dois perto demais viram um só. Sem nada disso, a
- * primeira morte.
+ * Só a causa do wipe e as falhas de gravidade `wipe`. Erros graves/leves, mesmo marcados como
+ * foco, e mortes isoladas não viram highlights. Sem causa ou falha gravíssima, não há clipe.
+ * No máximo 4, em ordem de tempo; dois perto demais viram um só, com preferência pelo gatilho.
  */
 export function clipMoments(p: Pull): ClipMoment[] {
   if (p.success) return [];
-  const t = messagesOf(clipLibMsg);
   const deaths = p.deaths.filter((d) => !d.ignored && d.replay).sort((a, b) => a.t - b.t);
   const picked: ClipMoment[] = [];
   const add = (m: ClipMoment | null) => {
@@ -115,22 +114,12 @@ export function clipMoments(p: Pull): ClipMoment[] {
   add(triggerMoment(p, deaths));
   const trig = picked[0]?.kind === 'trigger' ? (wipeCause(p) ?? p.trigger)?.key : undefined;
   const severe = p.mechanics
-    .filter((m) => m.failures > 0 && m.key !== trig && m.replays?.length && (m.severity === 'wipe' || m.severity === 'major' || (m.severity === 'minor' && m.focus)))
-    .sort((a, b) => Number(!!b.focus) - Number(!!a.focus) || SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || (b.priority ?? 0) - (a.priority ?? 0));
+    .filter((m) => m.failures > 0 && m.key !== trig && m.replays?.length && m.severity === 'wipe')
+    .sort((a, b) => Number(!!b.focus) - Number(!!a.focus) || (b.priority ?? 0) - (a.priority ?? 0));
   for (const m of severe) {
-    const r = [...m.replays!].sort((a, b) => a.t - b.t)[0];
-    add({ replay: r, t: r.t, label: m.name, kind: 'mistake', spellId: m.spellId, who: whoOf(p, r) });
+    const r = [...m.replays!].filter((r) => p.cutoffT == null || r.t <= p.cutoffT).sort((a, b) => a.t - b.t)[0];
+    if (r) add({ replay: r, t: r.t, label: m.name, kind: 'mistake', spellId: m.spellId, mechanicKey: m.key, who: whoOf(p, r) });
   }
-  // tank entre as mortes decisivas (antes da cascata)
-  const all = [...p.deaths].sort((a, b) => a.t - b.t);
-  const decisive = p.cutoffT != null ? all.filter((d) => !d.ignored) : decisiveDeaths(all, cascadeThreshold(p));
-  for (const d of decisive) {
-    if (d.role !== 'tank' || !d.replay || d.ignored) continue;
-    add({ replay: d.replay, t: d.t, label: t.died(shortName(d.name), d.killingBlow?.spellName ?? null), kind: 'death', spellId: d.killingBlow?.spellId ?? null, death: d });
-  }
-  const first = deaths[0];
-  if (!picked.length && first?.replay)
-    picked.push({ replay: first.replay, t: first.t, label: first.causedBy?.name ?? first.killingBlow?.spellName ?? first.name, spellId: first.killingBlow?.spellId ?? null, death: first });
   return picked.sort((a, b) => a.t - b.t);
 }
 
@@ -231,6 +220,7 @@ export async function replayClip(pull: Pull, list: ClipMoment | ClipMoment[], op
   const screen = recap ? undefined : opts.view;
   // o mapa enquadra o trecho do clipe (onde a raid esteve nele)
   const replays = moments.map((m, i): ReplayRef => ({ ...m.replay, from: spans[i][0], to: spans[i][1] }));
+  const bounds = moments.map((m, i) => screen ? undefined : clipBounds(data, m, spans[i], src.fight));
   const images = new Map<string, Promise<string>>();
   // ícones das habilidades na tela (casts dos bosses nos trechos): buscados antes, para não aparecerem no meio
   const ids = new Set<number>();
@@ -270,7 +260,7 @@ export async function replayClip(pull: Pull, list: ClipMoment | ClipMoment[], op
             ...extras,
             ...(overlays ?? {}),
             badge,
-            ...(screen ? { initial: screen.view, full: screen.full, frame: screen.frame } : {}),
+            ...(screen ? { initial: screen.view, full: screen.full, frame: screen.frame } : { initial: { wide: false }, bounds: bounds[i] }),
           }),
         ),
       ),
@@ -297,7 +287,7 @@ export async function replayClip(pull: Pull, list: ClipMoment | ClipMoment[], op
     const bg = color('--panel', '#171a21');
     const fg = color('--text', '#e6e8ee');
     const muted = color('--muted', '#8b93a5');
-    const kindColor: Record<ClipKind, string> = { trigger: color('--wipe', '#e05656'), mistake: color('--major', '#e8904a'), death: color('--wipe', '#e05656') };
+    const kindColor: Record<ClipKind, string> = { trigger: color('--wipe', '#e05656'), mistake: color('--wipe', '#e05656') };
     const font = getComputedStyle(document.body).fontFamily || 'system-ui, sans-serif';
     const setFont = (size: number, weight = 600) => (ctx.font = `${weight} ${size}px ${font}`);
 

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ReplayView } from './ReplayView';
 import { decodeReplay } from '../lib/replay';
 
-function renderReplay(now: number, interrupted = false) {
+function renderReplay(now: number, interrupted = false, framed = false) {
   const data = decodeReplay({
     tracks: { stepMs: 250, units: [
       { guid: 'P1', name: 'Player', kind: 'player', segs: [{ t0: 0, xy: Array.from({ length: 49 }, () => [100, 100]).flat() }] },
@@ -15,10 +15,19 @@ function renderReplay(now: number, interrupted = false) {
   });
   return renderToStaticMarkup(<ReplayView data={data} replay={{ t: 7000, from: 0, to: 12000, focus: [], stacks: [], marks: [] }}
     classes={new Map()} moment="hit" autoplay={false} initial={{ wide: true }}
+    bounds={framed ? [-24, 4, -4, 24] : undefined}
     playback={{ now, setNow: () => {}, playing: false, setPlaying: () => {}, speed: 1, setSpeed: () => {}, nowRef: { current: now } }} />);
 }
 
 describe('replay hazard rendering', () => {
+  it('mantém a câmera do clipe na falha sem abrir para o raio inteiro da explosão', () => {
+    const markup = renderReplay(3000, false, true);
+    // O centro do player (-10, 10) fica no centro do mapa (360, 220).
+    const player = markup.match(/<circle[^>]+class="posmap-player"[^>]*>/)?.[0];
+    expect(player).toContain('cx="360"');
+    expect(player).toContain('cy="220"');
+    expect(renderReplay(3000)).not.toContain(player);
+  });
   it('keeps the frontal warning throughout the cast, with impact only at its end', () => {
     for (const now of [0, 2500, 4999]) {
       const markup = renderReplay(now);

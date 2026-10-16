@@ -11,25 +11,20 @@ export const clipLibMsg = defineMessages(
     /** o que foi cada momento do resumo */
     kind: {
       trigger: 'Causa do wipe',
-      mistake: 'Erro grave',
-      death: 'Morte do tank',
+      mistake: 'Falha gravíssima',
     },
     /** quadro de abertura do resumo */
     recap: 'Resumo da try',
     at: (time: string) => `em ${time}`,
     toMoment: (ms: number) => secs(ms, true),
-    /** morte do tank: quem e o golpe */
-    died: (who: string, spell: string | null) => (spell ? `${who} · ${spell}` : who),
   },
   {
     kind: {
       trigger: 'Wipe cause',
-      mistake: 'Major mistake',
-      death: 'Tank death',
+      mistake: 'Wipe-level failure',
     },
     recap: 'Try recap',
     at: (time: string) => `at ${time}`,
     toMoment: (ms: number) => secs(ms, false),
-    died: (who: string, spell: string | null) => (spell ? `${who} · ${spell}` : who),
   },
 );

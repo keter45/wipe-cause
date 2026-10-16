@@ -34,20 +34,30 @@ describe('clipMoments: o resumo da try', () => {
     deaths: [death('A', 22_987, { replay: ref(22_987, ['A']) }), ...['B', 'C'].map((g) => death(g, 85_200, { replay: ref(85_200, [g]) }))],
   });
 
-  it('erros graves e a causa do wipe, em ordem de tempo', () => {
+  it('inclui só a causa do wipe, sem Sever ou Widow’s Kiss graves', () => {
     const ms = clipMoments(p1);
     expect(ms.map((m) => [m.kind, m.label, m.t])).toEqual([
-      ['mistake', 'sever', 22_985],
-      ['mistake', 'widows_kiss', 53_994],
       ['trigger', 'Virulent Mutation (detonation)', 85_156],
     ]);
     // um só culpado: o nome dele; falha coletiva: ninguém
-    expect(ms.map((m) => m.who)).toEqual(['A', 'B', undefined]);
+    expect(ms.map((m) => m.who)).toEqual([undefined]);
   });
 
-  it('erro leve só entra se for o foco da progressão', () => {
-    const p = { ...p1, mechanics: p1.mechanics.map((m) => (m.key === 'axegrinder' ? { ...m, focus: true } : m)) };
-    expect(clipMoments(p).map((m) => m.label)).toContain('axegrinder');
+  it('erros graves e leves não entram nem como foco da progressão', () => {
+    const p = { ...p1, mechanics: p1.mechanics.map((m) => ({ ...m, focus: true })) };
+    expect(clipMoments(p).map((m) => m.kind)).toEqual(['trigger']);
+  });
+
+  it('inclui falhas gravíssimas em ordem de tempo e identifica um culpado único', () => {
+    const extra = mech('failed_soak', 'wipe', [ref(40_000, ['A'])]);
+    expect(clipMoments({ ...p1, mechanics: [...p1.mechanics, extra] }).map(m => [m.kind, m.t, m.who])).toEqual([
+      ['mistake', 40_000, 'A'], ['trigger', 85_156, undefined],
+    ]);
+  });
+
+  it('mantém a causa real mesmo se a regra tem gravidade major', () => {
+    const p = { ...p1, mechanics: p1.mechanics.map(m => ({ ...m, severity: 'major' as const })) };
+    expect(clipMoments(p).map(m => m.kind)).toEqual(['trigger']);
   });
 
   it('dois momentos a menos de 5 s viram um só (fica o mais importante)', () => {
@@ -56,19 +66,29 @@ describe('clipMoments: o resumo da try', () => {
   });
 
   it('no máximo 4 momentos', () => {
-    const extra = [100, 200, 300, 400].map((s) => mech(`m${s}`, 'major', [ref(s * 100, ['A'])]));
+    const extra = [100, 200, 300, 400].map((s) => mech(`m${s}`, 'wipe', [ref(s * 100, ['A'])]));
     expect(clipMoments({ ...p1, mechanics: [...p1.mechanics, ...extra] })).toHaveLength(4);
   });
 
-  it('a morte do tank entre as decisivas entra', () => {
+  it('mortes de tank sem causa ligada não entram', () => {
     const tank = death('T', 40_000, { role: 'tank', replay: ref(40_000, ['T']), killingBlow: { t: 40_000, kind: 'damage', spellId: 9, spellName: 'Rend', source: 'Boss', amount: 1, overkill: 0, absorbed: 0, hpPct: 0 } });
     const ms = clipMoments({ ...p1, deaths: [tank, ...p1.deaths] });
-    expect(ms.find((m) => m.kind === 'death')).toMatchObject({ t: 40_000, label: 'T · Rend', spellId: 9 });
+    expect(ms.map(m => m.t)).toEqual([85_156]);
   });
 
-  it('sem gatilho nem erro grave: a primeira morte', () => {
+  it('sem gatilho nem falha gravíssima: não gera clipe de uma morte comum', () => {
     const p = pull(0, 0, 60_000, { deaths: [death('B', 30_000, { replay: ref(30_000, ['B']) }), death('A', 20_000, { replay: ref(20_000, ['A']) })] });
-    expect(clipMoments(p).map((m) => [m.kind, m.t])).toEqual([[undefined, 20_000]]);
+    expect(clipMoments(p)).toEqual([]);
+  });
+
+  it('não inclui falhas depois do corte de mortes', () => {
+    const p = { ...p1, cutoffT: 90_000, mechanics: [...p1.mechanics, mech('late', 'wipe', [ref(95_000)])] };
+    expect(clipMoments(p).map(m => m.t)).toEqual([85_156]);
+  });
+
+  it('usa a morte ligada ao gatilho quando falta replay da mecânica', () => {
+    const p = { ...p1, mechanics: [], deaths: [death('A', 85_200, { causedBy: { key: 'detonation', name: 'Detonation', amount: 1, pct: 100, failT: 85_156 }, replay: ref(85_200, ['A']) })] };
+    expect(clipMoments(p)[0]).toMatchObject({ kind: 'trigger', t: 85_156, death: { guid: 'A' } });
   });
 
   it('kill: nada', () => {

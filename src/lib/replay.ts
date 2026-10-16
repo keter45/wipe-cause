@@ -20,6 +20,9 @@ export interface ReplayUnit {
 
 export type GroundKind = PullGround['kinds'][number];
 
+/** Limites da câmera em jardas do mapa: x mínimo/máximo, y mínimo/máximo. */
+export type ReplayBounds = [number, number, number, number];
+
 export function coneDirection(facing: number | undefined, done: boolean, origin: [number, number], target: [number, number] | null): number | undefined {
   if (done && facing != null) return facing;
   return target ? Math.atan2(target[1] - origin[1], target[0] - origin[0]) : facing;

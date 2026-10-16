@@ -19,7 +19,7 @@ type Action = 'copy' | 'png' | 'html' | 'pdf' | 'clip' | 'discord' | 'discordTex
  * em duas versões: o resumo (padrão) ou o completo (tudo aberto).
  * `name`: base do nome do arquivo e título. `pdf`: oferece PDF (links clicáveis).
  * `discord`: a mensagem de texto (resumo) para o canal da raid; sem webhook, o menu leva às
- * Configurações. `clip`: o pull e os momentos do resumo da try (erros graves e a causa do wipe): dá para salvar o clipe
+ * Configurações. `clip`: o pull e os destaques da try (causa do wipe e falhas gravíssimas): dá para salvar o clipe
  * (WebP animado), e a imagem no Discord vai junto com ele.
  */
 export function ShareMenu({ card: makeCard, name, pdf = false, discord, clip }: { card: (detail: CardDetail) => ReactElement; name: string; pdf?: boolean; discord?: () => unknown; clip?: { pull: Pull; moments: ClipMoment[] } | null }) {

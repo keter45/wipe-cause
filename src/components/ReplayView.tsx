@@ -2,7 +2,7 @@ import { useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode
 import { ChevronDown, CircleDot, Crosshair, Maximize2, Minimize2, Pause, Play, Radius, RotateCcw, Tag, MapPin } from 'lucide-react';
 import type { ReplayRef } from '../types';
 import { classColor, mmss, num, shortName } from '../lib/format';
-import { coneDirection, movedUntil, npcOf, posAt, valueAt, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
+import { coneDirection, movedUntil, npcOf, posAt, valueAt, type ReplayBounds, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
 import { tr } from '../i18n';
 import { useMessages } from '../i18n';
 import * as prefs from '../lib/replayPrefs';
@@ -63,6 +63,8 @@ interface Props {
   initial?: Partial<MapView>;
   /** trecho que o enquadramento cobre (no clipe, o trecho escolhido); sem ele, o replay inteiro */
   frame?: [number, number];
+  /** Clipe automático: câmera fixa na origem da falha, sem expandir para a raid ou a arena. */
+  bounds?: ReplayBounds;
 }
 
 /** Câmera do usuário por cima do enquadramento automático: deslocamento (jardas) e zoom. */
@@ -413,7 +415,7 @@ function WorldMarkerIcon({ marker, x, y, title }: { marker: number; x: number; y
 }
 
 /** Replay das posições em volta de um momento (morte, acerto, falha, encontro). */
-export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, vacated, vanished, zones = [], range, initial, frame }: Props) {
+export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, vacated, vanished, zones = [], range, initial, frame, bounds }: Props) {
   const clipCtx = useContext(ClipPullContext);
   const t = useMessages(replayMsg);
   // tempo: o de fora (replay completo) ou o próprio
@@ -587,6 +589,12 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       reachX = Math.max(reachX, Math.abs(blast.x - cx) + blast.radius + 2);
       reachY = Math.max(reachY, Math.abs(blast.y - cy) + blast.radius + 2);
     }
+    if (bounds) {
+      cx = (bounds[0] + bounds[1]) / 2;
+      cy = (bounds[2] + bounds[3]) / 2;
+      reachX = Math.max(1, (bounds[1] - bounds[0]) / 2);
+      reachY = Math.max(1, (bounds[3] - bounds[2]) / 2);
+    }
     const scale = Math.min((W / 2 - PAD) / reachX, (H / 2 - PAD) / reachY) * cam.zoom;
     cx += cam.x;
     cy += cam.y;
@@ -624,7 +632,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       enemyLabel.set(e.guid, ok);
     }
     return { cx, cy, players, focus, enemies, areaUnits, ghosts, keyGhosts, sx, sy, scale, stacks, ground, groundKinds, gridX, gridY, enemyLabel, floor: arena && arena.cells.length ? arena : null, map: data.map, casts, casters };
-  }, [data, r, wide, cam, full, frameWin?.[0], frameWin?.[1]]);
+  }, [data, r, wide, cam, full, frameWin?.[0], frameWin?.[1], bounds]);
   const viewRef = useRef(view);
   viewRef.current = view;
 
