@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { historyQuery, killParseOf, metricFor, ownPreviousParses, parseColor, rankingEntries, serverSlug, splitName, storedKillParses, wholeParse } from './wclParses';
+import { historyQuery, killParseOf, metricFor, needsKillParses, ownPreviousParses, parseColor, rankingEntries, realmKey, serverSlug, splitName, storedKillParses, wholeParse } from './wclParses';
 import { player as fixturePlayer, pull } from './test-fixtures';
 import type { PlayerStats } from '../types';
 
@@ -34,6 +34,14 @@ describe('wclParses', () => {
     expect([...rankingEntries(json, 'dps').keys()].sort()).toEqual(['mage|azralon', 'tank|azralon']);
     expect([...rankingEntries(json, 'hps').keys()]).toEqual(['heal|azralon']);
     expect(rankingEntries(null, 'dps').size).toBe(0);
+  });
+
+  it('reino com espaço: o do log (Area52) bate com o do ranking (Area 52)', () => {
+    expect(realmKey('Area 52')).toBe(realmKey(splitName('Foo-Area52-US').server));
+    expect(realmKey("Quel'Thalas")).toBe(realmKey('QuelThalas'));
+    expect(realmKey('Burning Legion')).toBe(realmKey('Burning-Legion'));
+    const json = { data: [{ roles: { dps: { characters: [{ name: 'Foo', server: { name: 'Area 52' }, rankPercent: 80 }] } } }] };
+    expect(rankingEntries(json, 'dps').has(`foo|${realmKey('Area52')}`)).toBe(true);
   });
 
   it('histórico pede a métrica do papel de cada player', () => {
@@ -82,6 +90,18 @@ describe('parses salvos', () => {
     save(kill(9_000), { 'A-Realm': 10 }); // depois: não entra
     expect(ownPreviousParses(kill(4_000), 'A-Realm')).toEqual({ previous: { percent: 80, startMs: 3_000 }, avg: 65, kills: 3 });
     expect(ownPreviousParses(kill(500), 'A-Realm')).toEqual({ previous: null, avg: null, kills: 0 });
+  });
+
+  it('busca de novo, uma vez, o kill salvo antes de comparar reinos por realmKey', () => {
+    const two = (start: number) => pull(0, start, 300_000, { success: true, difficultyId: 16, players: [fixturePlayer('A'), fixturePlayer('B')] });
+    expect(needsKillParses(two(20_000))).toBe(true); // nunca buscado
+    save(two(21_000), { 'A-Realm': 70 }); // salvo antes: B (reino com espaço) ficou de fora
+    expect(needsKillParses(two(21_000))).toBe(true);
+    save(two(22_000), { 'A-Realm': 70, 'B-Realm': 40 }); // antes, mas completo
+    expect(needsKillParses(two(22_000))).toBe(false);
+    const k = two(23_000);
+    store.set(`wipe-cause:parses:${k.encounterId}:${k.startMs}`, JSON.stringify({ difficultyId: 16, byName: { 'A-Realm': { metric: 'dps', kind: 'kill', percent: 70 } }, realmKey: true }));
+    expect(needsKillParses(k)).toBe(false); // já buscado com realmKey: B não tem parse mesmo
   });
 
   it('wipe não tem parse', () => {

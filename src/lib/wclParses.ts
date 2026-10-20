@@ -45,6 +45,11 @@ export function parseColor(p: number | null | undefined): string {
 const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('en');
 /** Reino como o WCL escreve no slug: minúsculo, sem apóstrofo, espaços viram hífen. */
 export const serverSlug = (server: string) => norm(server).replace(/['’]/g, '').replace(/\s+/g, '-');
+/**
+ * Reino para comparar o log com o ranking: sem espaços, hífens e apóstrofos. O log escreve "Area52" e o
+ * ranking do Warcraft Logs "Area 52"; pelo slug ("area52" x "area-52") os dois nunca batiam.
+ */
+export const realmKey = (server: string) => norm(server).replace(/[\s'’-]/g, '');
 
 /** "Markíno-Azralon-US" -> nome, reino e região. */
 export function splitName(full: string): { name: string; server: string; region: string } {
@@ -68,13 +73,13 @@ export function rankingEntries(json: unknown, metric: ParseMetric): Map<string, 
   const roles = fight?.roles ?? {};
   const groups = metric === 'hps' ? [roles.healers] : [roles.dps, roles.tanks];
   const out = new Map<string, RankedCharacter>();
-  for (const g of groups) for (const c of g?.characters ?? []) out.set(`${norm(c.name)}|${serverSlug(c.server?.name ?? '')}`, c);
+  for (const g of groups) for (const c of g?.characters ?? []) out.set(`${norm(c.name)}|${realmKey(c.server?.name ?? '')}`, c);
   return out;
 }
 
 const keyOf = (p: PlayerStats) => {
   const { name, server } = splitName(p.name);
-  return `${norm(name)}|${serverSlug(server)}`;
+  return `${norm(name)}|${realmKey(server)}`;
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -90,6 +95,8 @@ const PARSES_KEY = 'wipe-cause:parses:';
 interface SavedKill {
   difficultyId: number;
   byName: Record<string, PlayerParse>;
+  /** salvo já comparando reinos por `realmKey` (os de antes deixavam de fora quem é de reino com espaço) */
+  realmKey?: boolean;
 }
 
 /** Parse como o site mostra: inteiro. */
@@ -103,8 +110,8 @@ function readSaved(key: string): SavedKill | null {
     if (!raw) return null;
     const v = JSON.parse(raw) as SavedKill | Record<string, PlayerParse>;
     // formato antigo: só o parse de cada player, sem a dificuldade
-    const saved: { difficultyId?: number; byName: Record<string, PlayerParse> } = 'byName' in v && typeof v.byName === 'object' ? (v as SavedKill) : { byName: v as Record<string, PlayerParse> };
-    return { difficultyId: saved.difficultyId ?? -1, byName: Object.fromEntries(Object.entries(saved.byName).map(([k, p]) => [k, rounded(p)])) };
+    const saved: { difficultyId?: number; byName: Record<string, PlayerParse>; realmKey?: boolean } = 'byName' in v && typeof v.byName === 'object' ? (v as SavedKill) : { byName: v as Record<string, PlayerParse> };
+    return { difficultyId: saved.difficultyId ?? -1, byName: Object.fromEntries(Object.entries(saved.byName).map(([k, p]) => [k, rounded(p)])), realmKey: saved.realmKey === true };
   } catch {
     return null;
   }
@@ -115,9 +122,20 @@ export function storedKillParses(p: PullRef): Record<string, PlayerParse> | null
   return readSaved(PARSES_KEY + noteKey(p))?.byName ?? null;
 }
 
+/**
+ * O kill precisa buscar o parse de novo: nunca buscado, ou salvo antes de `realmKey` e faltando alguém do
+ * pull (quem é de reino com espaço, como Area 52, ficava sem parse para sempre). Uma busca só: o que é salvo
+ * depois já leva a marca, então um player que realmente não tem parse não faz buscar de novo.
+ */
+export function needsKillParses(p: PullRef & Pick<Pull, 'players'>): boolean {
+  const saved = readSaved(PARSES_KEY + noteKey(p));
+  if (!saved) return true;
+  return !saved.realmKey && p.players.some((pl) => !(pl.name in saved.byName));
+}
+
 function saveKillParses(p: PullRef, byName: Record<string, PlayerParse>) {
   try {
-    localStorage.setItem(PARSES_KEY + noteKey(p), JSON.stringify({ difficultyId: p.difficultyId, byName } satisfies SavedKill));
+    localStorage.setItem(PARSES_KEY + noteKey(p), JSON.stringify({ difficultyId: p.difficultyId, byName, realmKey: true } satisfies SavedKill));
   } catch {
     /* sem storage: vale só nesta sessão */
   }
@@ -179,7 +197,7 @@ const KILL_QUERY = `query Ranks($code: String!, $fight: Int!) {
 /** Parse de cada player no kill (guid -> parse), cada um no ranking do seu papel. */
 export async function fetchKillParses(code: string, pull: Pull): Promise<Map<string, PlayerParse>> {
   const saved = storedKillParses(pull);
-  if (saved) return byGuid(pull, saved);
+  if (saved && !needsKillParses(pull)) return byGuid(pull, saved);
   const fight = await ownFight(code, pull);
   if (!fight) throw new Error(messagesOf(wclMsg).killMissing);
   const d = await query<any>(KILL_QUERY, { code, fight: fight.fightId }, `ranks-${code}-${fight.fightId}-${today()}`);
@@ -205,7 +223,7 @@ export async function fetchKillParses(code: string, pull: Pull): Promise<Map<str
 /** Busca (e salva) o parse dos kills que ainda não têm; devolve quantos kills ganharam parse. */
 export async function fetchMissingKillParses(code: string, pulls: Pull[]): Promise<number> {
   let n = 0;
-  for (const p of pulls.filter((p) => p.success && !storedKillParses(p))) {
+  for (const p of pulls.filter((p) => p.success && needsKillParses(p))) {
     try {
       await fetchKillParses(code, p);
       n++;
