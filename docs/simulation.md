@@ -42,21 +42,51 @@ primeiro), igual ao corte que a análise já faz.
 
 ## 4. Como montar o perfil do SimC
 
-Tudo sai do log daquele pull, nada é pedido ao player.
+Tudo sai do log daquele pull, nada é pedido ao player. Código em `src/lib/simProfile.ts`; o núcleo
+guarda o que falta em `PlayerStats` (`setup.items[].bonusIds`, `setup.faction`, `setup.auras`,
+`buffsReceived`).
 
-- **Personagem:** classe, spec, raça, nível; itens com ilvl, encantamentos, gemas e **bonus IDs**
-  (hoje o `setup.rs` descarta os bonus IDs; eles definem crafted, sockets e faixa de upgrade).
-- **Talentos:** os nós do `COMBATANT_INFO` convertidos no código de talentos que o SimC lê.
-- **Consumíveis e buffs:** os mesmos que o player tinha **naquele pull** — frasco, comida, runa e
-  poção pelas auras; Bloodlust, Power Infusion e outros buffs externos nos **mesmos momentos** em que
-  chegaram nele; buffs de raid conforme a composição real.
-- **Luta:** duração fixa igual à janela (sem variação de duração), número de alvos e janelas de AoE
-  pelo contexto alvo único × AoE que já calculamos, tempo sem alvo (intermissões, boss intocável)
-  como pausa. *(decidido por nós)* Fases de execute seguem a vida real do boss: se o boss não chegou
-  a 20%, o robô também não usa execute.
+- **Personagem:** classe e spec no formato do SimC (`demonhunter`, `beast_mastery`), nível 90,
+  itens com `bonus_id` (crafted, sockets, faixa de upgrade), encantamento, gemas e `ilevel`. Camisa e
+  tabardo ficam de fora.
+- **Raça:** o log não traz. Sai da racial usada no pull (Berserking → troll, Blood Fury → orc…);
+  Evoker é Dracthyr; sem racial, humano (Aliança) ou orc (Horda) pela facção do `COMBATANT_INFO`, e a
+  tela avisa que a raça foi deduzida.
+- **Talentos:** cada entrada do `COMBATANT_INFO` vai na opção da sua árvore (`class_talents`,
+  `spec_talents`, `hero_talents`, como `id_da_entrada:rank`). A árvore de cada entrada vem do
+  `talents.json` do Raidbots que o app já usa. A escolha da árvore de herói (nó de subárvore) fica de
+  fora: o SimC a deduz dos nós de herói.
+- **Consumíveis:** pelas auras do início do pull. Com os nomes (Warcraft Logs), o que o player **não**
+  tinha vira `flask=disabled`, `food=disabled`, `augmentation=disabled`; o que tinha fica com o padrão
+  da spec no SimC (não mapeamos qual frasco/comida exato). Log local só traz ids: frascos e comidas
+  conhecidos contam; sem como saber, fica o padrão e a tela avisa. Poção e óleo de arma: padrão do
+  SimC.
+- **Buffs de raid:** `optimal_raid=0` e cada `override.*` ligado só se a classe que dá o buff estava
+  no pull (Mage → Arcane Intellect, Warrior → Battle Shout, Druid, Priest, Shaman, Evoker, DH → Chaos
+  Brand, Monk → Mystic Touch, Hunter → Hunter's Mark). Mortal Wounds e sangramento sempre ligados.
+- **Buffs de fora:** o primeiro Bloodlust (ou tambor, pelo Sated/Exhaustion) no mesmo segundo
+  (`bloodlust_time`); Power Infusion em todos os momentos em que chegou
+  (`external_buffs.power_infusion`). Buffs de Augmentation não têm opção no SimC.
+- **Luta:** `max_time` = a janela, `vary_combat_length=0`, `fixed_time=1`. O HP do boss no fim da
+  janela é estimado em linha reta entre 100% e o HP no corte (`enemy_death_pct`): num wipe a 40% o
+  robô não chega na fase de execute. **Sem `fight_style`**: o padrão já é Patchwerk e a opção apaga os
+  `raid_events`.
+- **Alvos:** quantos inimigos havia para acertar a cada 2s = quantil 75% dos DPS do pull (a mediana
+  some com os packs de adds, porque metade da raid fica no boss), suavizado em 6s. Trechos de 6s ou
+  mais com 2+ alvos viram `adds`; sem alvo, `invulnerable`.
 - **Movimento:** **padrão**, não o do player (o player da guilda costuma se mover mais do que
-  precisa). *(decidido por nós)* Mesmo padrão do estilo *LightMovement* do SimC, para todos os papéis;
-  depois dá para trocar por um padrão por boss.
+  precisa): o mesmo evento do estilo *LightMovement* do SimC, para todos os papéis; depois dá para
+  trocar por um padrão por boss.
+
+**Conferido em 2026-10-20** com uma noite de Mythic (19 players, SimC 1210-01): todos os perfis rodam.
+DPS real ÷ robô: mediana 98%, a maioria entre 76% e 110%. Fora disso:
+
+- Thigaz (Balance) 167%, Divo (Ret) 135%, Zerokis (Elemental) 132% no Nymrissa Wavecaller: packs de
+  até 19 adds curtos; o robô de AoE fica abaixo. Calibrar o modelo de adds por boss.
+- Tanks variam muito (35%–217%): o dano do tank depende de pegar os adds. O número do tank é só
+  contexto; a comparação dele é de rotação.
+
+Falta: talentos *omnium* (12.0.7, `omnium_talents` no SimC): ainda não vimos onde aparecem no log; hoje ficam de fora.
 
 ## 5. O que comparar (mix de números e decisões)
 

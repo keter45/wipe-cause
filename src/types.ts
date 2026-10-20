@@ -329,6 +329,8 @@ export interface PlayerStats {
   /** Tempo vivo dentro do tempo analisado */
   aliveMs?: number;
   setup?: Setup | null;
+  /** Bloodlust e afins e Power Infusion recebidos até o corte (análises antigas não têm) */
+  buffsReceived?: SpellUse[];
   /** leitura da rotação (specs com rotação base escrita) */
   rotation?: RotationResult;
   /** dano / cura por janela de 5s (pets somados), até o corte; análises antigas não têm */
@@ -359,6 +361,16 @@ export interface Setup {
   items: GearItem[];
   /** [nó, entrada, rank] */
   talents: [number, number, number][];
+  /** 0 = Horda, 1 = Aliança */
+  faction?: number;
+  /** auras no início do pull; o nome só vem do Warcraft Logs */
+  auras?: StartAura[];
+}
+
+export interface StartAura {
+  spellId: number;
+  name?: string;
+  source?: string;
 }
 
 export interface SetupStats {
@@ -382,6 +394,7 @@ export interface GearItem {
   ilvl: number;
   enchant: number | null;
   gems: number[];
+  bonusIds?: number[];
 }
 
 export interface InterruptUse {

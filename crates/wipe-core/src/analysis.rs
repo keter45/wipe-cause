@@ -20,6 +20,12 @@ const RECAP_WINDOW_MS: i64 = 15_000;
 const RECENT_DEFENSIVE_MS: i64 = 10_000;
 const MAX_RECAP_ENTRIES: usize = 150;
 const FEIGN_DEATH: u32 = 5384;
+/// Bloodlust e afins (inclui os tambores pelo debuff que eles deixam) e Power Infusion: os buffs de
+/// fora que o SimC reproduz no mesmo momento (docs/simulation.md).
+const BLOODLUST: &[u32] = &[2825, 32182, 80353, 264667, 390386, 466904, 444257];
+/// Sated, Exhaustion, Temporal Displacement, Fatigued, Exhaustion (Evoker): entram junto com o lust
+const SATED: &[u32] = &[57724, 57723, 80354, 264689, 390435];
+const POWER_INFUSION: u32 = 10060;
 /// Reincarnation do xamã: ele volta sozinho, sem SPELL_RESURRECT no log (só este cast, já morto).
 const REINCARNATION: u32 = 21169;
 /// Falhas do raid que podem fazer o grupo desistir (gatilho da call de wipe): as coletivas.
@@ -142,6 +148,8 @@ struct PlayerAcc {
     defensive_casts: Vec<SpellUse>,
     /// defensivos externos recebidos (aura aplicada no player)
     externals_received: Vec<SpellUse>,
+    /// Bloodlust (id do próprio lust; o Sated vira "Bloodlust" se o lust não veio) e Power Infusion
+    buffs_received: Vec<SpellUse>,
     taken: HashMap<(u32, String), (String, i64, u32)>,
     recap: VecDeque<RecapEntry>,
     last_hp_pct: Option<f32>,
@@ -1386,6 +1394,18 @@ impl PullBuilder {
         if !applied {
             return;
         }
+        if BLOODLUST.contains(&spell_id) || SATED.contains(&spell_id) || spell_id == POWER_INFUSION {
+            let rel = self.rel(t);
+            let (name, source) = (f.get(10).map_or("", |v| v.trim_matches('"')).to_string(), f[1].to_string());
+            let p = self.player(dst_guid, dst_name);
+            let lust = |id: u32| BLOODLUST.contains(&id) || SATED.contains(&id);
+            // lust e Sated chegam juntos: um registro por lust
+            if !(lust(spell_id) && p.buffs_received.iter().any(|u| lust(u.spell_id) && (rel - u.t).abs() < 2_000)) {
+                let (spell_id, name) = if SATED.contains(&spell_id) { (BLOODLUST[0], "Bloodlust".to_string()) } else { (spell_id, name) };
+                p.buffs_received.push(SpellUse { spell_id, name, t: rel, source: Some(source) });
+            }
+            return;
+        }
         // defensivos externos/de raid recebidos (Pain Suppression, Ironbark, ...)
         let Some(def) = data.defensives.get(&spell_id).filter(|d| d.kind != "personal") else { return };
         let (name, src_guid, src_name) = (def.name.clone(), f[1].to_string(), f[2].to_string());
@@ -1631,6 +1651,7 @@ impl PullBuilder {
                 healing_by_spell: by_spell(&p.healing_by_spell),
                 alive_ms: (analyzed_ms - p.dead_ms.min(analyzed_ms) - p.dead_since.map_or(0, |d| (analyzed_ms - d).max(0))).max(0),
                 setup: p.setup.clone(),
+                buffs_received: p.buffs_received.iter().filter(|u| before_cut(u.t)).cloned().collect(),
                 // healer parado só conta com alguém da raid precisando de cura
                 rotation: rotations.remove(guid).map(|r| r.finish(analyzed_ms, if healer { &self.injured_secs } else { &self.raid_active })),
                 damage_timeline: timeline(&p.damage_timeline, analyzed_ms),
@@ -2305,6 +2326,29 @@ mod tests {
         assert_eq!(p.healing_done, 25970);
         assert_eq!(p.healing_by_spell.get(&(17, false)).map(|x| x.1), Some(25970));
         assert_eq!(p.mana_timeline, vec![75]);
+    }
+
+    #[test]
+    fn records_bloodlust_once_and_power_infusion() {
+        let data = GameData::embedded();
+        let start = ["ENCOUNTER_START", "1", "Boss", "16", "20", "1"];
+        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::default(), 0);
+        let me = "Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000";
+        let lines = [
+            (5000, format!("SPELL_AURA_APPLIED,Player-3209-0B7FC6E4,\"Xama-Azralon-US\",0x514,0x80000000,{me},2825,\"Bloodlust\",0x1,BUFF")),
+            (5000, format!("SPELL_AURA_APPLIED,Player-3209-0B7FC6E4,\"Xama-Azralon-US\",0x514,0x80000000,{me},57724,\"Sated\",0x1,DEBUFF")),
+            (9000, format!("SPELL_AURA_APPLIED,Player-3209-0B7FC6E5,\"Padre-Azralon-US\",0x514,0x80000000,{me},10060,\"Power Infusion\",0x2,BUFF")),
+            // tambores: só o Exhaustion aparece
+            (300000, format!("SPELL_AURA_APPLIED,Player-3209-0B7FC6E4,\"Xama-Azralon-US\",0x514,0x80000000,{me},57723,\"Exhaustion\",0x1,DEBUFF")),
+        ];
+        let mut f = Vec::new();
+        for (t, l) in &lines {
+            split_fields(l, &mut f);
+            b.feed(&f, *t, &data);
+        }
+        let p = b.players.get("Player-3209-0B7FC171").unwrap();
+        let got: Vec<(u32, &str, i64)> = p.buffs_received.iter().map(|u| (u.spell_id, u.name.as_str(), u.t)).collect();
+        assert_eq!(got, vec![(2825, "Bloodlust", 5000), (10060, "Power Infusion", 9000), (2825, "Bloodlust", 300000)]);
     }
 
     #[test]

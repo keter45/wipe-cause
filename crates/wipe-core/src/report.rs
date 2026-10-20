@@ -757,6 +757,9 @@ pub struct PlayerStats {
     pub alive_ms: i64,
     /// Talentos, itens e status (COMBATANT_INFO do início do pull)
     pub setup: Option<Setup>,
+    /// buffs de dano vindos de fora (Bloodlust e afins, Power Infusion) até o corte, para o SimC
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub buffs_received: Vec<SpellUse>,
     /// rotação da spec (se ela tiver rotação base escrita): achados e aproveitamento
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rotation: Option<crate::rotation::RotationResult>,
@@ -801,6 +804,24 @@ pub struct Setup {
     pub items: Vec<GearItem>,
     /// entradas de talento escolhidas: (nó, entrada, rank)
     pub talents: Vec<[u32; 3]>,
+    /// 0 = Horda, 1 = Aliança
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub faction: Option<u8>,
+    /// auras no player no início do pull (frasco, comida, buffs da raid…), para o perfil do SimC
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub auras: Vec<StartAura>,
+}
+
+/// Aura do COMBATANT_INFO. O log local só traz o id; o Warcraft Logs traz o nome também.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartAura {
+    pub spell_id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// guid de quem aplicou
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 /// Rating secundário (não %) e atributos primários, como vêm no log.
@@ -829,6 +850,9 @@ pub struct GearItem {
     pub ilvl: u32,
     pub enchant: Option<u32>,
     pub gems: Vec<u32>,
+    /// definem crafted, sockets e faixa de upgrade (o SimC precisa deles)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub bonus_ids: Vec<u32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
