@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, Crosshair, Settings } from 'lucide-react';
 import type { LogReport, Pull } from './types';
-import { analyzeLog, historyDelete, historyDeleteUnpinned, historyList, historyLoad, historySetPinned, discordGetConfig, hasBackend, pickLogFile, rememberFile, sameLog, sourceName, setBackendLocale, type HistoryEntry, inDesktop, inWeb, rememberDroppedFile } from './lib/api';
+import { analyzeLog, historyDelete, historyDeleteUnpinned, historyList, historyLoad, historySetPinned, discordGetConfig, hasBackend, parseWclCode, pickLogFile, rememberFile, sameLog, sourceName, setBackendLocale, type HistoryEntry, inDesktop, inWeb, rememberDroppedFile, WCL_SOURCE } from './lib/api';
 import { BossSummary, NightOverview } from './components/NightSummary';
 import { LogBrowser } from './components/LogBrowser';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -373,6 +373,30 @@ export default function App() {
     await historyDeleteUnpinned();
     setHistory((h) => h.filter((x) => x.pinned));
   }
+
+  // Site: `?report=CÓDIGO&fight=ID` abre o report do Warcraft Logs direto naquele fight (links de fora, como
+  // o do pull no Discord ou na página da guilda). Sem `fight`, abre no resumo da noite, como qualquer report.
+  const linkedFight = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hasBackend) return;
+    const params = new URLSearchParams(window.location.search);
+    const code = parseWclCode(params.get('report') ?? '');
+    if (!code) return;
+    linkedFight.current = Number(params.get('fight')) || null;
+    void analyzePath(WCL_SOURCE + code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const fight = linkedFight.current;
+    if (!report || fight == null) return;
+    linkedFight.current = null;
+    const p = report.pulls.find((x) => x.logOffset === fight);
+    if (p) {
+      setPage('analysis');
+      setSelected(p.id);
+      setSummary(null);
+    }
+  }, [report]);
 
   const selectPull = (id: number) => {
     setPage('analysis');

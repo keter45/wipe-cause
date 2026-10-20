@@ -93,6 +93,8 @@ In **Live** mode, see the analysis between pulls and automatically send the wipe
 
 The desktop app adds live monitoring, Warcraft Recorder videos, automatic Discord posts and automatic updates. **The browser runs the same analysis locally**, with no install.
 
+To link straight to a pull, add the Warcraft Logs report and fight: `https://keter45.github.io/wipe-cause/?report=<code>&fight=<id>` (Warcraft Logs has to be connected; without `fight` it opens the night summary).
+
 <details>
 <summary>Windows installation notice</summary>
 

@@ -93,6 +93,8 @@ No **modo ao vivo**, veja a análise entre pulls e envie automaticamente o cart�
 
 O app adiciona monitoramento ao vivo, vídeos do Warcraft Recorder, posts automáticos no Discord e atualizações automáticas. **O navegador faz a mesma análise localmente**, sem instalar.
 
+Para linkar direto um pull, passe o report e o fight do Warcraft Logs: `https://keter45.github.io/wipe-cause/?report=<código>&fight=<id>` (com o Warcraft Logs conectado; sem `fight`, abre no resumo da noite).
+
 <details>
 <summary>Aviso na instalação do Windows</summary>
 
