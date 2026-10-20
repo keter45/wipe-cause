@@ -5,6 +5,7 @@ mod live;
 mod logs;
 mod rule_tuning;
 mod settings;
+mod simc;
 pub mod startup;
 mod talents;
 mod tray;
@@ -234,7 +235,11 @@ pub fn run() {
             history::history_set_pinned,
             history::history_delete,
             history::history_delete_unpinned,
-            history::history_trends
+            history::history_trends,
+            simc::simc_status,
+            simc::simc_install,
+            simc::simc_run,
+            simc::simc_cancel
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Wipe Cause");

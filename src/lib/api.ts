@@ -318,6 +318,64 @@ export const onLiveStatus = (cb: (s: LiveStatus) => void) => listen<LiveStatus>(
 export const onLiveReport = (cb: (r: LogReport) => void) => listen<LogReport>('live-report', (e) => cb(e.payload));
 
 // ---------------------------------------------------------------------------
+// SimulationCraft ("comparar com o robô", docs/simulation.md): só no app. O simc.exe é baixado do
+// release `simc` na primeira simulação e atualizado sozinho.
+
+export interface SimcManifest {
+  commit: string;
+  /** "SimulationCraft 1205-01 for World of Warcraft 12.0.5.xxxxx Live …" */
+  banner: string;
+  built: string;
+  /** código-fonte do commit (GPL-3) */
+  source: string;
+  asset: { name: string; url: string; size: number; sha256: string };
+}
+
+export interface SimcStatus {
+  /** false na versão web: o botão fica apagado com o aviso de que é só do app */
+  available: boolean;
+  installed: SimcManifest | null;
+  latest: SimcManifest | null;
+  update: boolean;
+  error: string | null;
+}
+
+export interface SimcResult {
+  /** o json2 do simc */
+  json: unknown;
+  /** log de ações (`log: true`) */
+  log: string | null;
+  commit: string;
+  banner: string;
+  seconds: number;
+}
+
+/** `check` consulta o release para saber se há build novo. */
+export const simcStatus = (check = false) => invoke<SimcStatus>('simc_status', { check });
+export async function simcInstall(onProgress?: (fraction: number) => void): Promise<SimcManifest> {
+  const unlisten = await listen<{ done: number; total: number }>('simc-progress', (e) => {
+    if (e.payload.total > 0) onProgress?.(e.payload.done / e.payload.total);
+  });
+  try {
+    return await invoke<SimcManifest>('simc_install');
+  } finally {
+    unlisten();
+  }
+}
+/** Roda um perfil do simc. Instala ou atualiza antes, se precisar (o progresso vem em `onProgress`). */
+export async function simcRun(input: string, opts: { log?: boolean; onProgress?: (fraction: number) => void } = {}): Promise<SimcResult> {
+  const unlisten = await listen<{ done: number; total: number }>('simc-progress', (e) => {
+    if (e.payload.total > 0) opts.onProgress?.(e.payload.done / e.payload.total);
+  });
+  try {
+    return await invoke<SimcResult>('simc_run', { input, log: opts.log ?? false });
+  } finally {
+    unlisten();
+  }
+}
+export const simcCancel = () => invoke<void>('simc_cancel');
+
+// ---------------------------------------------------------------------------
 // Discord (webhook do canal da raid)
 
 export interface DiscordConfig {

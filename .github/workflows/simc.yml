@@ -1,0 +1,131 @@
+# SimulationCraft para o "comparar com o robô" (docs/simulation.md).
+#
+# Os downloads oficiais do SimC são só HTTP e sem assinatura, então compilamos a linha de comando
+# aqui e publicamos no release `simc` (pré-release: não vira o "latest" que o atualizador do app lê).
+# O app baixa o `simc.json` desse release, confere o SHA-256 e guarda o simc.exe na pasta de dados.
+#
+# Toda segunda e quando chamado à mão. Em PR que mexe neste arquivo só compila (sem publicar).
+
+name: SimC
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Publicar mesmo se o commit do SimC não mudou'
+        type: boolean
+        default: false
+  pull_request:
+    paths: ['.github/workflows/simc.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: simc
+  cancel-in-progress: false
+
+env:
+  TAG: simc
+  # quantos builds antigos ficam no release (o simc.json aponta só para o último)
+  KEEP: 3
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: simulationcraft/simc
+          path: simc
+
+      - name: Commit do SimC e o que já está publicado
+        id: check
+        run: |
+          commit=$(git -C simc rev-parse HEAD)
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          published=""
+          if gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p simc.json -O published.json 2>/dev/null; then
+            published=$(node -p "require('./published.json').commit")
+          fi
+          echo "publicado: ${published:-nada}; simc agora: $commit"
+          skip=false
+          if [ "$GITHUB_EVENT_NAME" != pull_request ] && [ "$published" = "$commit" ] && [ "${{ inputs.force }}" != true ]; then
+            skip=true
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar (só a linha de comando, runtime estático)
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          cmake -S simc -B build -DBUILD_GUI=OFF -DSC_NO_NETWORKING=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          cmake --build build --config Release --target simc --parallel
+
+      - name: Empacotar
+        if: steps.check.outputs.skip != 'true'
+        id: pack
+        run: |
+          exe=$(find build -name simc.exe -path '*Release*' | head -1)
+          [ -n "$exe" ] || { echo "simc.exe não encontrado"; exit 1; }
+          # "SimulationCraft 1210-01 for World of Warcraft 12.1.5.70448 Live (hotfix …, git build midnight 7bc1071, no-networking)"
+          banner=$("$exe" spell_query=spell.id=1 2>&1 | grep -m1 -o 'SimulationCraft .*' | tr -d '\r' || true)
+          [ -n "$banner" ] || { echo "o simc.exe não rodou"; exit 1; }
+          # sanidade: uma luta curta com um perfil de exemplo do próprio SimC
+          # (o do tier mais novo: profiles/MID1, MID2, …)
+          profile=$(find simc/profiles -maxdepth 2 -name '*_Mage_Fire.simc' | sort -V | tail -1)
+          "$exe" "$profile" iterations=20 max_time=60 threads=2 json2=check.json > /dev/null
+          node -e "const j=require('./check.json'); const d=j.sim.players[0].collected_data.dps.mean; if(!(d>0)) process.exit(1); console.log('dps', Math.round(d))"
+          short=${{ steps.check.outputs.commit }}
+          short=${short:0:7}
+          asset="simc-$(date -u +%Y%m%d)-$short-win64.exe.gz"
+          cp "$exe" simc.exe
+          gzip -9 -c simc.exe > "$asset"
+          node -e "
+            const fs = require('fs'), crypto = require('crypto');
+            const buf = fs.readFileSync(process.argv[1]);
+            const m = {
+              commit: process.argv[2],
+              banner: process.argv[3],
+              built: new Date().toISOString(),
+              source: 'https://github.com/simulationcraft/simc/tree/' + process.argv[2],
+              asset: {
+                name: process.argv[1],
+                url: 'https://github.com/' + process.env.GITHUB_REPOSITORY + '/releases/download/' + process.env.TAG + '/' + process.argv[1],
+                size: buf.length,
+                sha256: crypto.createHash('sha256').update(buf).digest('hex'),
+              },
+            };
+            fs.writeFileSync('simc.json', JSON.stringify(m, null, 2) + '\n');
+            console.log(JSON.stringify(m, null, 2));
+          " "$asset" "${{ steps.check.outputs.commit }}" "$banner"
+          echo "asset=$asset" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.skip != 'true'
+        with:
+          name: simc-win64
+          path: |
+            ${{ steps.pack.outputs.asset }}
+            simc.json
+
+      - name: Publicar no release simc
+        if: steps.check.outputs.skip != 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease --title "SimulationCraft (Windows)" \
+              --notes "SimulationCraft compilado para o \"comparar com o robô\" do app. GPL-3: código em https://github.com/simulationcraft/simc (o commit de cada build está no simc.json). / SimulationCraft built for the app's \"compare with the bot\". GPL-3: source at https://github.com/simulationcraft/simc (each build's commit is in simc.json)."
+          fi
+          # o arquivo novo sobe antes do simc.json que aponta para ele
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" "${{ steps.pack.outputs.asset }}" --clobber
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" simc.json --clobber
+          # apaga os builds mais antigos (o nome começa pela data)
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' \
+            | grep '^simc-.*-win64\.exe\.gz$' | sort -r | tail -n +$((KEEP + 1)) \
+            | while read -r old; do gh release delete-asset "$TAG" "$old" -R "$GITHUB_REPOSITORY" -y; done
