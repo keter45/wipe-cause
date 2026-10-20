@@ -23,6 +23,7 @@ import { TrendingDown } from 'lucide-react';
 import { messagesOf, useMessages } from '../../i18n';
 import { perfViewMsg } from './perf.i18n';
 import { Hint } from '../ui/Hint';
+import { PlayerPicker } from './PlayerPicker';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
 
@@ -77,24 +78,14 @@ export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid, solo =
   return (
     <div className="perf">
       {!solo && (
-        <label className="perf-field">
-          <span className="muted small">{t.player}</span>
-          <select
-            className="select"
-            value={player.guid}
-            onChange={(e) => {
-              setGuid(e.target.value);
-              const p = players.find((x) => x.guid === e.target.value);
-              if (p) rememberPlayer(p.name);
-            }}
-          >
-            {players.map((p) => (
-              <option key={p.guid} value={p.guid}>
-                {shortName(p.name)} — {specLabel(p.specId)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PlayerPicker
+          players={players}
+          value={player.guid}
+          onPick={(p) => {
+            setGuid(p.guid);
+            rememberPlayer(p.name);
+          }}
+        />
       )}
       {solo ? null : player.rotation ? (
         <ErrorBoundary label={t.errorRotation(shortName(player.name))} resetKey={player.guid}>
