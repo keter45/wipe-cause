@@ -501,7 +501,12 @@ code,
   font-variant-numeric: tabular-nums;
 }
 .pull-row:hover {
-  background: var(--panel-2);
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+}
+.pull-row:active,
+.summary-link:active,
+.boss-summary-link:active {
+  scale: 0.985;
 }
 .pull-row.active {
   background: var(--panel-2);
@@ -4914,18 +4919,34 @@ svg.wcl-mark {
   vertical-align: -2px;
 }
 
-/* barra lateral: uma linha por boss (resumo), pulls no chevron */
+/* barra lateral: uma linha por boss; a linha inteira abre e fecha os pulls dele */
 .boss-row {
   display: flex;
   align-items: center;
   gap: 2px;
+  width: 100%;
+  padding: 0 8px 0 0;
+  border: none;
   border-radius: var(--radius-sm);
-  transition-property: background-color;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition-property: background-color, color, scale;
   transition-duration: 120ms;
+  transition-timing-function: var(--ease-out);
 }
-.boss-row:hover,
+.boss-row:hover {
+  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
+  color: var(--text);
+}
 .boss-row.active {
   background: var(--panel-2);
+  color: var(--text);
+}
+.boss-row:active {
+  scale: 0.985;
 }
 .boss-row-main {
   display: flex;
@@ -4935,22 +4956,56 @@ svg.wcl-mark {
   flex: 1;
   min-width: 0;
   padding: 5px 4px 5px 8px;
-  border: none;
-  background: none;
   color: var(--text);
-  font: inherit;
   font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
 }
 .boss-row-main .boss-name {
   max-width: 100%;
 }
-.boss-row-main:focus-visible,
-.boss-row-toggle:focus-visible {
+.boss-row:focus-visible {
   outline: none;
   box-shadow: var(--ring);
+}
+/* "Resumo do boss": a primeira linha dentro do boss aberto */
+.boss-summary-link {
+  display: block;
+  width: calc(100% - 8px);
+  height: 30px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.boss-summary-link:hover,
+.boss-summary-link.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+/* abrir e fechar com a altura animada (Fold) */
+.fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 220ms var(--ease-out);
+}
+.fold.open {
+  grid-template-rows: 1fr;
+}
+.fold > div {
+  min-height: 0;
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fold,
+  .chev-down,
+  .boss-row {
+    transition: none;
+  }
 }
 .boss-row-meta {
   padding-left: 24px;
@@ -4961,10 +5016,6 @@ svg.wcl-mark {
 }
 .boss-row-meta.kill {
   color: var(--kill);
-}
-.boss-row-toggle {
-  flex-shrink: 0;
-  color: var(--muted);
 }
 .boss-group + .boss-group {
   margin-top: 2px;
