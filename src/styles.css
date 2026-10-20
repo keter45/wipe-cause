@@ -3597,6 +3597,69 @@ td.warn {
   gap: 4px;
   max-width: 420px;
 }
+/* quem ver no Desempenho: cartões por papel, o escolhido marcado na cor da classe */
+.player-picker {
+  display: grid;
+  gap: 8px;
+}
+.player-picker-group {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.player-picker-role {
+  padding-top: 10px;
+}
+.player-picker-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 6px;
+}
+.player-card {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  padding: 5px 8px 5px 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.player-card img,
+.player-card-blank {
+  grid-row: span 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: var(--panel-2);
+}
+.player-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--class);
+  font-weight: 600;
+  font-size: 13px;
+}
+.player-card-spec {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+.player-card:hover {
+  background: var(--panel-2);
+}
+.player-card.active {
+  border-color: var(--class);
+  background: var(--panel-2);
+}
 .select {
   appearance: none;
   height: 32px;
