@@ -5435,7 +5435,7 @@ dependencies = [
 
 [[package]]
 name = "wipe-cause-app"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "base64 0.23.1",
  "flate2",
@@ -5457,7 +5457,7 @@ dependencies = [
 
 [[package]]
 name = "wipe-core"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -5467,7 +5467,7 @@ dependencies = [
 
 [[package]]
 name = "wipe-wasm"
-version = "0.32.0"
+version = "0.33.0"
 dependencies = [
  "js-sys",
  "serde_json",
