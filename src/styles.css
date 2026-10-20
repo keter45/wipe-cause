@@ -716,48 +716,47 @@ code,
   display: flex;
   /* janela estreita: as abas quebram em outra linha em vez de sumir na borda */
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 2px;
-  margin: 0 -28px 14px;
-  padding: 0 28px;
+  align-items: center;
+  gap: 6px;
+  margin: 0 -28px 22px;
+  padding: 10px 28px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(8px);
 }
 .tabs button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  margin-bottom: 6px;
-  padding: 0 12px;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
   background: none;
   border: none;
   border-radius: var(--radius-pill);
   cursor: pointer;
   color: var(--muted);
-  transition-property: color, background-color;
+  transition-property: color, background-color, scale;
   transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
 }
 .tabs button:hover {
   color: var(--text);
 }
+.tabs button:active {
+  scale: 0.96;
+}
+/* a aba aberta: pílula clara, como o botão principal */
 .tabs button.active {
-  color: var(--text);
-  background: var(--panel-2);
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
 }
 .tab-count {
-  min-width: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--panel-2);
-  font-size: 11px;
-  line-height: 18px;
-  text-align: center;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-}
-.tabs button.active .tab-count {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--accent);
 }
 
 /* ---------------------------------------------------------------- mortes */
@@ -4195,22 +4194,15 @@ td.warn {
   background: var(--border);
 }
 
-/* abas agrupadas por assunto: um separador fino entre os grupos */
+/* abas agrupadas por assunto só para leitores de tela (aria-label): na tela, uma fileira só */
 .tab-group {
-  position: relative;
-  display: flex;
-  gap: 2px;
-}
-.tab-group + .tab-group .tab-group-label {
-  left: 20px;
-}
-.tab-group + .tab-group {
-  margin-left: 8px;
-  padding-left: 8px;
-  background: linear-gradient(var(--border), var(--border)) left calc(50% + 7px) / 1px 16px no-repeat;
+  display: contents;
 }
 .tabs .tab-ask svg {
   color: var(--accent);
+}
+.tabs .tab-ask.active svg {
+  color: inherit;
 }
 
 /* topo estreito: primeiro somem os estados ("pausado", "seguindo…"); depois os rótulos, e os
