@@ -717,21 +717,20 @@ code,
   /* janela estreita: as abas quebram em outra linha em vez de sumir na borda */
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   /* na largura do conteúdo: as bordas da barra batem com as do componente de baixo */
   margin: 0 0 16px;
   padding: 6px 0;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-  border-radius: var(--radius-pill);
   backdrop-filter: blur(8px);
 }
 .tabs button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 16px;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
   background: none;
   border: none;
   border-radius: var(--radius-pill);
@@ -766,6 +765,10 @@ code,
   flex-direction: column;
   gap: 0;
   border-top: 1px solid var(--border);
+}
+/* logo abaixo das abas, a linha delas já separa: sem um segundo traço 16px depois */
+.tabs + .deaths {
+  border-top: none;
 }
 /* uma morte por linha, separadas por traços; aberta, ganha o fundo do painel */
 .death {
