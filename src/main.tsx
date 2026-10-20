@@ -5,6 +5,12 @@ import { ErrorBoundary, ErrorToasts } from './components/ErrorBoundary';
 import { installGlobalErrorHandlers } from './lib/errors';
 import { useMessages } from './i18n';
 import { errorMsg } from './components/ErrorBoundary.i18n';
+import '@fontsource/instrument-sans/400.css';
+import '@fontsource/instrument-sans/500.css';
+import '@fontsource/instrument-sans/600.css';
+import '@fontsource/unbounded/300.css';
+import '@fontsource/unbounded/400.css';
+import '@fontsource/unbounded/500.css';
 import './styles.css';
 
 installGlobalErrorHandlers();
