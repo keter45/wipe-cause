@@ -18,6 +18,8 @@
     "refresh": "node --experimental-strip-types scripts/refresh.mjs"
   },
   "dependencies": {
+    "@fontsource/instrument-sans": "^5.2.5",
+    "@fontsource/unbounded": "^5.2.5",
     "@tauri-apps/api": "^2.12.0",
     "@tauri-apps/plugin-dialog": "^2.8.0",
     "@tauri-apps/plugin-notification": "^2.5.0",
