@@ -615,59 +615,90 @@ code,
 .pull-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: 24px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin: 8px 0 22px;
 }
 .pull-header h2 {
-  margin: 0 0 4px;
-  font-size: 20px;
+  margin: 0;
+  font-size: 40px;
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
-.boss-bars {
+/* o traço da tela sob o nome do boss */
+.pull-heading h2::after {
+  content: '';
+  display: block;
+  width: 88px;
+  height: 3px;
+  margin-top: 14px;
+  background: var(--title-rule);
+}
+.pull-facts {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.pull-outcome {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 260px;
+  align-items: flex-end;
+  gap: 4px;
+  text-align: right;
 }
-.boss-bar {
-  position: relative;
-  height: 24px;
-  background: var(--panel-2);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+.pull-outcome-big {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1;
 }
-.boss-bar-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: color-mix(in srgb, var(--wipe) 40%, transparent);
+.pull-outcome-big.kill {
+  color: var(--kill);
 }
-.boss-bar span {
-  position: relative;
-  padding: 0 10px;
-  font-size: 12px;
-  line-height: 24px;
+.pull-outcome-big.wipe {
+  color: var(--wipe);
 }
-
-.verdict {
-  background: var(--panel);
-  padding: 16px 18px;
-  margin-bottom: 18px;
-}
-.verdict h3 {
+.boss-hp-pills {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+.boss-hp-pill {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  font-size: 12px;
+}
+.boss-hp-pill b {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+/* o que mais pesou: linhas separadas por traços, sem caixa colorida */
+.verdict {
+  margin-bottom: 28px;
+}
+.verdict h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
+}
+.verdict-headline {
+  margin: 4px 0 12px;
+  color: var(--muted);
 }
 .findings {
   list-style: none;
   padding: 0;
-  margin: 12px 0 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  border-top: 1px solid var(--border);
 }
 .findings.minor {
   margin-top: 8px;
@@ -678,10 +709,69 @@ code,
 }
 .finding {
   display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 10px;
-  align-items: baseline;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--border);
   line-height: 1.45;
+}
+.finding > .spell-icon img {
+  border-radius: 8px;
+}
+/* sem ícone: um ponto na cor da gravidade, no lugar do ícone */
+.finding-dot {
+  justify-self: center;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.finding-dot.wipe {
+  background: var(--wipe);
+}
+.finding-dot.major {
+  background: var(--major);
+}
+.finding-dot.minor {
+  background: var(--minor);
+}
+.finding-dot.info {
+  background: var(--info);
+}
+.finding-title {
+  font-size: 14px;
+}
+.finding-who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.who-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  background: var(--panel-2);
+  box-shadow: var(--ring);
+  font-size: 12px;
+  font-weight: 500;
+}
+.finding-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+}
+.finding-count .small {
+  margin-top: 4px;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
 }
 .badge {
   font-size: 10px;
@@ -1743,7 +1833,6 @@ ul.plain {
 .panel,
 .tile,
 .death,
-.verdict,
 .mechanic,
 .video-panel {
   border: none;
@@ -4227,20 +4316,6 @@ td.warn {
   position: relative;
   display: flex;
   gap: 2px;
-  padding-top: 14px;
-}
-/* o assunto de cada grupo de abas, em cima delas */
-.tab-group-label {
-  position: absolute;
-  top: 6px;
-  left: 12px;
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-  white-space: nowrap;
-  pointer-events: none;
 }
 .tab-group + .tab-group .tab-group-label {
   left: 20px;
