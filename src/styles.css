@@ -624,29 +624,32 @@ code,
   align-items: baseline;
   line-height: 1.45;
 }
+/* gravidade: um ponto e a palavra na cor dela (sem selo colorido em maiúsculas) */
 .badge {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 2px 0;
-  border-radius: 4px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .finding.wipe .badge {
-  background: color-mix(in srgb, var(--wipe) 18%, transparent);
   color: var(--wipe);
 }
 .finding.major .badge {
-  background: color-mix(in srgb, var(--major) 18%, transparent);
   color: var(--major);
 }
 .finding.minor .badge {
-  background: color-mix(in srgb, var(--minor) 14%, transparent);
   color: var(--minor);
 }
 .finding.info .badge {
-  background: color-mix(in srgb, var(--info) 14%, transparent);
   color: var(--info);
 }
 .more-toggle {
@@ -718,9 +721,15 @@ code,
 .deaths {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
+  border-top: 1px solid var(--border);
 }
+/* uma morte por linha, separadas por traços; aberta, ganha o fundo do painel */
 .death {
+  background: none;
+  border-bottom: 1px solid var(--border);
+}
+.death.open {
   background: var(--panel);
 }
 .death.cascade {
@@ -757,6 +766,8 @@ code,
   text-align: right;
 }
 .death-time {
+  font-family: var(--font-display);
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 .death-who {
@@ -1149,12 +1160,14 @@ ul.plain {
 .mechanics {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
 }
+/* uma mecânica por linha, separadas por traços */
 .mechanic {
   display: block;
-  background: var(--panel);
-  padding: 12px 16px;
+  background: none;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border);
 }
 .mechanic-head {
   display: flex;
@@ -1202,7 +1215,9 @@ ul.plain {
 }
 .mechanic-count {
   margin-left: auto;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 .mechanic-summary {
@@ -1370,6 +1385,17 @@ ul.plain {
 }
 .night-head h2 {
   margin: 0;
+  font-size: 34px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+.night-head h2::after {
+  content: '';
+  display: block;
+  width: 88px;
+  height: 3px;
+  margin-top: 14px;
+  background: var(--title-rule);
 }
 .boss-cards {
   display: grid;
@@ -1399,8 +1425,9 @@ ul.plain {
   font-weight: 600;
 }
 .boss-card-result {
-  font-size: 22px;
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 .boss-card-cause {
@@ -1683,9 +1710,7 @@ ul.plain {
    separadores de layout, tabelas e estados. */
 .panel,
 .tile,
-.death,
 .verdict,
-.mechanic,
 .video-panel {
   border: none;
   border-radius: var(--radius);
@@ -5330,6 +5355,8 @@ svg.wcl-mark {
 }
 button.kpi {
   border: none;
+  border-top: 1px solid var(--border);
+  background: none;
   font: inherit;
   color: inherit;
   text-align: left;
@@ -5342,7 +5369,7 @@ button.kpi:hover {
   background: var(--panel-2);
 }
 .kpi.tone-neutral {
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 /* explicação sob demanda: (i) ao lado do título */
@@ -5449,15 +5476,14 @@ button.kpi:hover {
 .clamp-toggle {
   flex-shrink: 0;
 }
+/* número em destaque: sem cartão, só um traço em cima e o valor em Unbounded */
 .kpi {
   --tone: var(--muted);
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 12px 14px;
-  border-radius: var(--radius);
-  background: var(--panel);
-  box-shadow: var(--shadow-card);
+  padding: 12px 2px 0;
+  border-top: 1px solid var(--border);
 }
 .kpi.tone-good {
   --tone: var(--kill);
@@ -5482,7 +5508,9 @@ button.kpi:hover {
   background: var(--tone);
 }
 .kpi-value {
-  font-size: 22px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
   line-height: 1.2;
   color: var(--text);
 }
