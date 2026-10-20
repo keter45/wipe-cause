@@ -468,7 +468,6 @@ code,
   color: var(--wipe);
 }
 
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -504,111 +503,6 @@ code,
 .content > * {
   max-width: 1320px;
   margin-inline: auto;
-}
-
-/* ---------------------------------------------------------------- lista de pulls */
-.pull-tree h3 {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-  margin: 10px 8px 4px;
-}
-.group-count {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-}
-.summary-link {
-  width: 100%;
-  height: 36px;
-  padding: 0 10px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  cursor: pointer;
-  font-weight: 600;
-  text-align: left;
-}
-.summary-link:hover {
-  background: var(--panel-2);
-}
-.summary-link.active {
-  background: var(--panel-2);
-}
-.pull-row {
-  display: grid;
-  grid-template-columns: 22px 52px 1fr auto auto;
-  gap: 8px;
-  align-items: center;
-  width: 100%;
-  height: 34px;
-  padding: 0 8px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  cursor: pointer;
-  text-align: left;
-  font-variant-numeric: tabular-nums;
-}
-.pull-row:hover {
-  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
-}
-.pull-row:active,
-.summary-link:active,
-.boss-summary-link:active {
-  scale: 0.985;
-}
-.pull-row.active {
-  background: var(--panel-2);
-}
-.pull-num {
-  color: var(--muted);
-  font-size: 12px;
-  text-align: right;
-}
-.pull-result {
-  font-weight: 600;
-}
-.pull-row.kill .pull-result {
-  color: var(--kill);
-}
-/* progresso até o kill */
-.pull-meter {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--panel-2);
-  overflow: hidden;
-}
-.pull-row:hover .pull-meter,
-.pull-row.active .pull-meter {
-  background: var(--bg);
-}
-.pull-meter span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  opacity: 0.75;
-  transform-origin: left;
-}
-.pull-row.kill .pull-meter span {
-  background: var(--kill);
-}
-.pull-meta,
-.pull-deaths {
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.pull-deaths {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  min-width: 30px;
-  justify-content: flex-end;
 }
 
 /* ---------------------------------------------------------------- pull */
@@ -814,56 +708,56 @@ code,
   rotate: 180deg;
 }
 
-/* abas fixas no topo enquanto rola a lista */
+/* abas fixas no topo enquanto rola a lista (a cápsula flutua 8px abaixo da borda) */
 .tabs {
   position: sticky;
-  top: -20px;
+  top: -12px;
   z-index: 5;
   display: flex;
   /* janela estreita: as abas quebram em outra linha em vez de sumir na borda */
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 2px;
-  margin: 0 -28px 14px;
-  padding: 0 28px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  align-items: center;
+  gap: 4px;
+  /* uma cápsula na largura do conteúdo: as bordas batem com as do componente de baixo */
+  margin: 0 0 16px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--ring);
+  backdrop-filter: blur(8px);
 }
 .tabs button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
-  margin-bottom: 6px;
-  padding: 0 12px;
+  height: 34px;
+  padding: 0 13px;
   background: none;
   border: none;
   border-radius: var(--radius-pill);
   cursor: pointer;
   color: var(--muted);
-  transition-property: color, background-color;
+  transition-property: color, background-color, scale;
   transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
 }
 .tabs button:hover {
   color: var(--text);
 }
+.tabs button:active {
+  scale: 0.96;
+}
+/* a aba aberta: pílula clara, como o botão principal */
 .tabs button.active {
-  color: var(--text);
-  background: var(--panel-2);
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
 }
 .tab-count {
-  min-width: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--panel-2);
-  font-size: 11px;
-  line-height: 18px;
-  text-align: center;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
-}
-.tabs button.active .tab-count {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--accent);
 }
 
 /* ---------------------------------------------------------------- mortes */
@@ -872,6 +766,10 @@ code,
   flex-direction: column;
   gap: 0;
   border-top: 1px solid var(--border);
+}
+/* logo abaixo das abas, a linha delas já separa: sem um segundo traço 16px depois */
+.tabs + .deaths {
+  border-top: none;
 }
 /* uma morte por linha, separadas por traços; aberta, ganha o fundo do painel */
 .death {
@@ -1831,26 +1729,9 @@ ul.plain {
 .award-people .first {
   font-weight: 600;
 }
-.summary-link {
-  width: 100%;
-  text-align: left;
-  padding: 8px;
-  margin-bottom: 4px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: none;
-  cursor: pointer;
-  font-weight: 600;
-}
-.summary-link:hover,
-.summary-link.active {
-  background: var(--panel-2);
-  border-color: var(--border);
-}
 .scoreboard th .sort {
   font-size: 12px;
 }
-
 
 /* ---------------------------------------------------------------- formulários */
 .field {
@@ -1899,11 +1780,6 @@ ul.plain {
 .awards.good h3 {
   color: var(--kill);
 }
-.pull-row,
-.summary-link {
-  transition-property: background-color, color, box-shadow;
-  transition-duration: 120ms;
-}
 .tile.clickable {
   transition-property: box-shadow, background-color;
   transition-duration: 150ms;
@@ -1913,11 +1789,9 @@ ul.plain {
 }
 
 /* números que mudam não empurram o layout */
-.pull-row,
 .tile-value,
 .tile-sub,
 .death-time,
-.pull-meta,
 .boss-bar span,
 .mechanic-count,
 .count-badge {
@@ -1929,11 +1803,6 @@ ul.plain {
   display: inline-block;
   vertical-align: -2px;
   flex-shrink: 0;
-}
-.summary-link {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .play {
@@ -1989,7 +1858,6 @@ ul.plain {
 .recap-table tr.kb-row td {
   background: color-mix(in srgb, var(--wipe) 8%, transparent);
 }
-
 
 /* ícones de habilidade (Wowhead) */
 .spell-icon {
@@ -2070,9 +1938,6 @@ ul.plain {
   border-right: 1px solid var(--border);
   background: var(--sidebar);
 }
-.sidebar-top {
-  padding: 10px 8px 6px;
-}
 .sidebar-scroll {
   flex: 1;
   min-height: 0;
@@ -2099,12 +1964,6 @@ ul.plain {
 .side-item.active {
   background: var(--panel-2);
 }
-.side-item.new {
-  font-weight: 600;
-}
-.side-item.new svg {
-  color: var(--accent);
-}
 .side-item:disabled {
   opacity: 0.45;
   cursor: default;
@@ -2123,57 +1982,7 @@ ul.plain {
   font-weight: 500;
   color: var(--muted);
 }
-/* entrada do histórico: título + ações que aparecem no hover (como no Claude) */
-.side-item.entry {
-  padding: 0 4px 0 0;
-  cursor: default;
-}
-.entry-main {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-  height: 34px;
-  padding: 0 0 0 6px;
-  border: none;
-  background: none;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.entry-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.side-item.entry.active .entry-title {
-  font-weight: 600;
-}
-.entry-chev {
-  flex-shrink: 0;
-  color: var(--muted);
-  transition: rotate 150ms var(--ease-out);
-}
-.side-entry.open .entry-chev {
-  rotate: 90deg;
-}
-.entry-missing {
-  flex-shrink: 0;
-  color: var(--major);
-}
-.entry-actions {
-  display: flex;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 120ms;
-}
-.side-item.entry:hover .entry-actions,
-.side-item.entry:focus-within .entry-actions {
-  opacity: 1;
-}
+
 .confirm-inline {
   display: inline-flex;
   align-items: center;
@@ -2224,36 +2033,6 @@ ul.plain {
   font-size: 12px;
   color: var(--muted);
   line-height: 1.5;
-}
-/* análise aberta: resumo + pulls num nível abaixo, com guia vertical */
-.pull-tree {
-  margin: 2px 0 6px 13px;
-  padding-left: 8px;
-  border-left: 1px solid var(--border);
-}
-.pull-tree .summary-link {
-  height: 32px;
-  font-weight: 500;
-}
-/* ações por cima do fim do título (o título usa a largura toda quando não há hover) */
-.side-item.entry {
-  position: relative;
-}
-.entry-actions {
-  position: absolute;
-  top: 50%;
-  right: 4px;
-  translate: 0 -50%;
-  padding-left: 20px;
-  background: linear-gradient(to right, transparent, var(--panel-2) 16px);
-  pointer-events: none;
-}
-.side-item.entry:hover .entry-actions,
-.side-item.entry:focus-within .entry-actions {
-  pointer-events: auto;
-}
-.side-item.entry.confirming {
-  background: var(--panel-2);
 }
 
 /* ---------------------------------------------------------------- pasta de logs */
@@ -2651,9 +2430,6 @@ ul.plain {
   margin: -6px 0 12px;
   color: var(--muted);
   font-style: italic;
-}
-.pull-num {
-  position: relative;
 }
 .pull-note-dot {
   position: absolute;
@@ -4423,22 +4199,15 @@ td.warn {
   background: var(--border);
 }
 
-/* abas agrupadas por assunto: um separador fino entre os grupos */
+/* abas agrupadas por assunto só para leitores de tela (aria-label): na tela, uma fileira só */
 .tab-group {
-  position: relative;
-  display: flex;
-  gap: 2px;
-}
-.tab-group + .tab-group .tab-group-label {
-  left: 20px;
-}
-.tab-group + .tab-group {
-  margin-left: 8px;
-  padding-left: 8px;
-  background: linear-gradient(var(--border), var(--border)) left calc(50% + 7px) / 1px 16px no-repeat;
+  display: contents;
 }
 .tabs .tab-ask svg {
   color: var(--accent);
+}
+.tabs .tab-ask.active svg {
+  color: inherit;
 }
 
 /* topo estreito: primeiro somem os estados ("pausado", "seguindo…"); depois os rótulos, e os
@@ -4791,35 +4560,6 @@ td.warn {
   flex: 0 0 auto;
 }
 
-/* ---- masmorras (M+): compartimento à parte, o foco é raid */
-.dungeon-block {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-.dungeon-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 4px 8px;
-  border: none;
-  background: none;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-.dungeon-toggle:hover {
-  color: var(--text);
-  background: var(--panel-2);
-}
-.dungeon-toggle .group-count {
-  margin-left: auto;
-}
 .pull-tree-note {
   padding: 8px;
   margin: 0;
@@ -4842,9 +4582,6 @@ td.warn {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.pull-tree h3 .boss-name {
-  flex: 1;
 }
 .player-name {
   font-weight: inherit;
@@ -5030,18 +4767,6 @@ svg.wcl-mark {
 }
 
 /* barra lateral recolhida: coluna de ícones */
-.sidebar-top {
-  position: relative;
-}
-.sidebar-collapse {
-  position: absolute;
-  top: 10px;
-  right: 8px;
-  z-index: 1;
-}
-.sidebar-top .side-item.new {
-  width: calc(100% - 40px);
-}
 .sidebar-rail {
   display: flex;
   flex-direction: column;
@@ -5160,74 +4885,6 @@ svg.wcl-mark {
   vertical-align: -2px;
 }
 
-/* barra lateral: uma linha por boss; a linha inteira abre e fecha os pulls dele */
-.boss-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  width: 100%;
-  padding: 0 8px 0 0;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition-property: background-color, color, scale;
-  transition-duration: 120ms;
-  transition-timing-function: var(--ease-out);
-}
-.boss-row:hover {
-  background: color-mix(in srgb, var(--panel-2) 60%, transparent);
-  color: var(--text);
-}
-.boss-row.active {
-  background: var(--panel-2);
-  color: var(--text);
-}
-.boss-row:active {
-  scale: 0.985;
-}
-.boss-row-main {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  flex: 1;
-  min-width: 0;
-  padding: 5px 4px 5px 8px;
-  color: var(--text);
-  font-weight: 500;
-}
-.boss-row-main .boss-name {
-  max-width: 100%;
-}
-.boss-row:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
-}
-/* "Resumo do boss": a primeira linha dentro do boss aberto */
-.boss-summary-link {
-  display: block;
-  width: calc(100% - 8px);
-  height: 30px;
-  margin-left: 8px;
-  padding: 0 8px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.boss-summary-link:hover,
-.boss-summary-link.active {
-  background: var(--panel-2);
-  color: var(--text);
-}
 /* abrir e fechar com a altura animada (Fold) */
 .fold {
   display: grid;
@@ -5243,27 +4900,9 @@ svg.wcl-mark {
 }
 @media (prefers-reduced-motion: reduce) {
   .fold,
-  .chev-down,
-  .boss-row {
+  .chev-down {
     transition: none;
   }
-}
-.boss-row-meta {
-  padding-left: 24px;
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.boss-row-meta.kill {
-  color: var(--kill);
-}
-.boss-group + .boss-group {
-  margin-top: 2px;
-}
-.boss-group .pull-row {
-  margin-left: 8px;
-  width: calc(100% - 8px);
 }
 
 /* rodapé da barra lateral: Configurações + versão numa linha */
@@ -7274,28 +6913,7 @@ button.kpi:hover {
   stroke-width: 2.5px;
   pointer-events: none;
 }
-/* pull que passou da primeira fase (boss de várias fases): a fase e a vida dos bosses dela, a barra
-   na cor da fase (P2 azul, P3 em diante violeta) */
-.pull-result.phase {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  white-space: nowrap;
-}
-.pull-phase {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--info);
-}
-.pull-result.ph-3 .pull-phase {
-  color: var(--phase-3);
-}
-.pull-meter.phase span {
-  background: var(--info);
-}
-.pull-meter.ph-3 span {
-  background: var(--phase-3);
-}
+
 /* orbs e áreas das habilidades no replay */
 .replay-area circle,
 .replay-orb circle {
@@ -7606,4 +7224,350 @@ button.kpi:hover {
   fill-opacity: .22;
   stroke-width: 2;
   stroke-dasharray: none;
+}
+
+/* ---------------------------------------------------------------- barra lateral: noites em árvore */
+/* topo: Nova análise e Evolução em pílula, recolher à direita */
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px 8px 12px;
+}
+.sidebar-top .sidebar-collapse {
+  margin-left: auto;
+}
+.side-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition-property: background-color, box-shadow, color, scale;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out);
+}
+.side-pill:hover {
+  box-shadow: inset 0 0 0 1px oklch(0.95 0.01 330 / 0.28);
+}
+.side-pill.active {
+  background: var(--panel-2);
+}
+.side-pill.primary {
+  background: var(--text);
+  box-shadow: none;
+  color: var(--bg);
+  font-weight: 600;
+}
+.side-pill.primary:hover {
+  background: var(--accent);
+}
+.side-pill:active {
+  scale: 0.96;
+}
+.side-section > h3 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* uma noite: data em destaque, ícone e nome do boss principal; fixar/apagar ao passar o mouse */
+.side-night-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+.side-night-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out);
+}
+.side-night-main:hover {
+  background: var(--panel-2);
+}
+.side-night-date {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.side-night-title {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+.side-night-title .boss-name {
+  gap: 8px;
+}
+.side-night:not(.active) .side-night-title {
+  color: color-mix(in srgb, var(--text) 75%, var(--muted));
+}
+.side-night-pinned,
+.side-night-missing {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.side-night-main .chev-down {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.side-night-actions {
+  position: absolute;
+  top: 50%;
+  right: 30px;
+  display: none;
+  gap: 2px;
+  padding-left: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  translate: 0 -50%;
+}
+.side-night-head:hover .side-night-actions,
+.side-night-head:focus-within .side-night-actions {
+  display: flex;
+}
+.side-night-head.confirming {
+  min-height: 40px;
+  padding-right: 4px;
+}
+
+/* a árvore da noite: linhas-guia à esquerda, como uma lista de pastas */
+.side-night-tree {
+  margin-left: 18px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+.night-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0 10px;
+}
+.tree-sum {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition-property: background-color, color;
+  transition-duration: 120ms;
+}
+.tree-sum.sm {
+  height: 28px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.tree-sum:hover,
+.tree-sum.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.tree-sum.active {
+  font-weight: 600;
+}
+
+/* boss: ícone e nome em destaque, pulls e melhor tentativa embaixo */
+.tree-boss-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out);
+}
+.tree-boss-head:hover {
+  background: var(--panel-2);
+}
+.tree-boss-name {
+  display: flex;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+}
+.tree-boss-name .boss-name {
+  gap: 8px;
+}
+.tree-boss-meta {
+  grid-column: 1;
+  padding-left: 28px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.tree-boss-meta.kill {
+  color: var(--kill);
+}
+.tree-boss-head .chev-down {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: var(--muted);
+}
+.tree-count {
+  margin-left: 4px;
+  color: var(--muted);
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  font-size: 12px;
+}
+.tree-dungeons {
+  padding-left: 8px;
+}
+
+/* pulls: número, barra do progresso, fase e vida, duração e o ícone da causa do wipe */
+.tree-pulls {
+  margin: 0 0 6px 15px;
+  padding: 0 0 0 8px;
+  border-left: 1px solid var(--border);
+  list-style: none;
+}
+.tree-pull {
+  display: grid;
+  /* a vida tem largura fixa (cabe "P2 100%" com folga) e a barra fica com o que sobra: nunca se encostam */
+  grid-template-columns: 20px minmax(24px, 1fr) 52px 32px 22px;
+  column-gap: 6px;
+  align-items: center;
+  width: 100%;
+  height: 30px;
+  padding: 0 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 120ms var(--ease-out);
+}
+.tree-pull:hover,
+.tree-pull.active {
+  background: var(--panel-2);
+}
+.tree-pull.active {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.tp-n {
+  position: relative;
+  justify-self: end;
+  color: var(--muted);
+  font-size: 12px;
+}
+.tp-bar {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+.tp-bar i {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transform-origin: left;
+}
+.tree-pull.kill .tp-bar i {
+  background: var(--kill);
+}
+.tp-pct {
+  justify-self: end;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tp-pct small {
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 400;
+}
+.tree-pull.kill .tp-pct {
+  color: var(--kill);
+}
+.tp-dur {
+  justify-self: end;
+  color: var(--muted);
+  font-size: 12px;
+}
+.tp-cause {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  color: var(--muted);
+  font-size: 11px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-night-main,
+  .tree-sum,
+  .tree-boss-head,
+  .tree-pull,
+  .side-pill {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------- topo responsivo */
+/* quem cede é o chip do log (com reticências); o anel do seletor de noites também precisa encolher */
+.log-group .popover-anchor {
+  display: flex;
+  min-width: 0;
+}
+/* depois somem os detalhes do log, os nomes Guilda/Solo e o nome do app (fica o ícone; o nome vai no title) */
+@media (max-width: 1100px) {
+  .topbar .log-meta {
+    display: none;
+  }
+}
+@media (max-width: 920px) {
+  .topbar {
+    gap: 8px;
+    padding: 0 10px 0 14px;
+  }
+  .mode-switch {
+    margin-left: 0;
+  }
+  .topbar .mode-label {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .topbar .brand-name,
+  .topbar .topbar-divider {
+    display: none;
+  }
+  .log-chip {
+    padding: 0 10px;
+  }
 }
