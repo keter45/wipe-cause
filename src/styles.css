@@ -1006,14 +1006,10 @@ code,
 }
 .role-tag {
   flex-shrink: 0;
+  font-family: var(--font-display);
   font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
   color: var(--muted);
-  background: var(--panel-2);
-  border-radius: 4px;
-  padding: 1px 5px;
-  margin-left: 6px;
+  margin-left: 8px;
   font-weight: 500;
 }
 
@@ -1274,6 +1270,34 @@ tbody tr:last-child td {
 }
 .player-row:hover td {
   background: var(--panel);
+}
+/* aba Jogadores: linhas mais altas, só um traço fino entre elas, nome em destaque, números em Unbounded */
+table.players th {
+  padding-bottom: 10px;
+  font-size: 13px;
+}
+table.players td {
+  height: 44px;
+  font-size: 14px;
+  border-bottom-color: color-mix(in srgb, var(--border) 55%, transparent);
+}
+table.players td:first-child > span:first-child {
+  font-weight: 600;
+}
+table.players .player-row:hover td:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+table.players .player-row:hover td:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+table.players .parse strong {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+table.players .score-pill {
+  min-width: 36px;
+  font-family: var(--font-display);
+  font-weight: 500;
 }
 .player-detail > td {
   background: var(--panel);
