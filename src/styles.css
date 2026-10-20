@@ -718,8 +718,9 @@ code,
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin: 0 -28px 22px;
-  padding: 10px 28px;
+  /* na largura do conteúdo: as bordas da barra batem com as do componente de baixo */
+  margin: 0 0 16px;
+  padding: 6px 0;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   border-radius: var(--radius-pill);
