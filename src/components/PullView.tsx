@@ -6,7 +6,7 @@ import { PullMarks } from './PullMarks';
 import { useWclParses } from '../lib/useWclParses';
 import { BossName, Colored } from './Names';
 import type { Pull } from '../types';
-import { mmss, pct } from '../lib/format';
+import { classColor, mmss, pct, shortName } from '../lib/format';
 import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
 import { DeathList } from './DeathList';
 import { Hint } from './ui/Hint';
@@ -170,14 +170,12 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
     <SeekContext.Provider value={seek}>
     <div className="pull-view">
       <div className="pull-header">
-        <div>
+        <div className="pull-heading">
           <h2>
-            <BossName encounterId={pull.encounterId} name={pull.encounterName} size={26}>
-              <span className="muted">· {pull.difficultyName} · pull {pull.pullNumber}</span>
-            </BossName>
+            <BossName encounterId={pull.encounterId} name={pull.encounterName} size={30} />
           </h2>
-          <div className="muted">
-            {pull.startLocal.split(' ')[1]?.slice(0, 8)} · {mmss(pull.durationMs)}
+          <div className="pull-facts muted">
+            {pull.difficultyName} · pull {pull.pullNumber} · {pull.startLocal.split(' ')[1]?.slice(0, 5)} · {t.fightLength(mmss(pull.durationMs))}
             {pull.incomplete && <span className="warn">{t.incomplete}</span>}
             {call ? (
               <span title={call.detail} className={call.possible ? '' : 'wipe-call'}>
@@ -195,15 +193,19 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
             )}
           </div>
         </div>
-        <div className="boss-bars">
-          {pull.bosses.map((b) => (
-            <div key={b.guid} className="boss-bar" title={`${b.name}: ${pct(bossHp(b))}`}>
-              <div className="boss-bar-fill" style={{ width: `${bossHp(b) ?? 0}%` }} />
-              <span>
-                {b.name} {pct(bossHp(b))}
+        <div className="pull-outcome">
+          <div className={`pull-outcome-big ${pull.success ? 'kill' : 'wipe'}`}>{pull.success ? 'Kill' : 'Wipe'}</div>
+          <div className="muted small">
+            {t.deathsN(deathCount)}
+            {!pull.success && lowestBossHpAtEnd(pull) != null && <> · {t.bossAt(pct(lowestBossHpAtEnd(pull)))}</>}
+          </div>
+          <div className="boss-hp-pills">
+            {pull.bosses.map((b) => (
+              <span key={b.guid} className="boss-hp-pill" title={`${b.name}: ${pct(bossHp(b))}`}>
+                {b.name} <b className="tabular">{pct(bossHp(b))}</b>
               </span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -246,15 +248,16 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
       )}
       {(!solo || showVerdict) && (
       <section className={`verdict ${pull.success ? 'kill' : 'wipe'}`}>
-        <h3>
+        <h3>{t.weighedMost}</h3>
+        <p className="verdict-headline">
           {callTrigger ? (
-            callTrigger.spellId != null && <SpellIcon spellId={callTrigger.spellId} size={20} />
+            callTrigger.spellId != null && <SpellIcon spellId={callTrigger.spellId} size={18} />
           ) : (
-            pull.trigger && <SpellIcon spellId={mechanicSpellId(pull, pull.trigger.key)} size={20} />
+            pull.trigger && <SpellIcon spellId={mechanicSpellId(pull, pull.trigger.key)} size={18} />
           )}
-          {verdict.headline}
+          <Colored text={verdict.headline} />
           {callTrigger ? <PlayAt t={callTrigger.t} seek={seek} label={t.seeTrigger} /> : pull.trigger && <PlayAt t={pull.trigger.t} seek={seek} label={t.seeTrigger} />}
-        </h3>
+        </p>
         {call && (
           <p className="small wipe-call-note">
             <span className={`sev-tag ${call.possible ? 'minor' : 'none'}`}>{call.possible ? t.callPossibleTag : t.callTag}</span> {call.explain}
@@ -263,7 +266,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
         {main.length > 0 && (
           <ul className="findings">
             {main.map((f, i) => (
-              <Finding key={i} f={f} />
+              <Finding key={i} f={f} pull={pull} decisive={verdict.decisiveDeaths} />
             ))}
           </ul>
         )}
@@ -276,7 +279,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
             {showMinor && (
               <ul className="findings minor">
                 {minor.map((f, i) => (
-                  <Finding key={i} f={f} />
+                  <Finding key={i} f={f} pull={pull} decisive={verdict.decisiveDeaths} />
                 ))}
               </ul>
             )}
@@ -287,10 +290,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
 
       <div className="tabs" role="tablist" aria-label={t.tabsAria}>
         {tabGroups.map((g) => (
-          <div key={g.label} className="tab-group" role="presentation">
-            <span className="tab-group-label" aria-hidden>
-              {g.label}
-            </span>
+          <div key={g.label} className="tab-group" role="presentation" aria-label={g.label}>
             {g.tabs.map((t) => (
               <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? 'active' : ''} onClick={() => setTab(t.key)}>
                 {t.label}
@@ -370,32 +370,68 @@ function PullNote({ pull }: { pull: Pull }) {
   );
 }
 
-function Finding({ f }: { f: ReturnType<typeof analyzePull>['findings'][number] }) {
+type FindingT = ReturnType<typeof analyzePull>['findings'][number];
+type Who = { key: string; name: string; cls: string | null; x: string };
+
+/** Quem o achado envolve, dos mesmos dados que o verdict leu: os players da mecânica, ou as mortes que ele agrupa. */
+function whoOf(f: FindingT, pull: Pull, decisive: Pull['deaths']): Who[] {
+  if (f.spellId == null) return [];
+  const cls = (guid: string) => pull.players.find((p) => p.guid === guid)?.class ?? null;
+  const m = pull.mechanics.find((x) => x.spellId === f.spellId && x.failures > 0);
+  const blamed = m ? m.players.filter((x) => !x.credit) : [];
+  if (blamed.length) return [...blamed].sort((a, b) => b.count - a.count).map((x) => ({ key: x.guid, name: shortName(x.name), cls: cls(x.guid), x: `${x.incidents ?? x.count}×` }));
+  const ds = decisive.filter((d) => d.killingBlow?.spellId === f.spellId);
+  return ds.length >= 2 ? ds.map((d) => ({ key: `${d.guid}:${d.t}`, name: shortName(d.name), cls: d.class ?? cls(d.guid), x: mmss(d.t) })) : [];
+}
+
+/** Uma linha do que pesou: ícone, o achado, quem (cor da classe, quantas vezes) e quantos jogadores à direita. */
+function Finding({ f, pull, decisive }: { f: FindingT; pull: Pull; decisive: Pull['deaths'] }) {
   const t = useMessages(pullMsg);
+  const who = whoOf(f, pull, decisive);
+  const shown = who.slice(0, 6);
+  const people = new Set(who.map((w) => w.name)).size;
   return (
     <li className={`finding ${f.severity}`}>
-      <span className="badge">{t.severity[f.severity]}</span>
-      <span>
-        {f.focus && (
-          <span className="focus-mark" title={t.focus}>
-            <Star size={14} strokeWidth={1.75} fill="currentColor" aria-label={t.focusMark} />
-          </span>
+      {f.spellId != null ? <SpellIcon spellId={f.spellId} size={36} /> : <span className={`finding-dot ${f.severity}`} title={t.severity[f.severity]} />}
+      <div className="finding-body">
+        <div className="finding-title">
+          {f.focus && (
+            <span className="focus-mark" title={t.focus}>
+              <Star size={14} strokeWidth={1.75} fill="currentColor" aria-label={t.focusMark} />
+            </span>
+          )}
+          <strong>
+            <Colored text={f.title} plainStart={f.spellId != null} />
+          </strong>
+          {f.tip && (
+            <Hint>
+              <Colored text={f.tip} />
+            </Hint>
+          )}
+        </div>
+        {shown.length > 0 ? (
+          <div className="finding-who">
+            {shown.map((w) => (
+              <span key={w.key} className="who-chip" style={{ color: classColor(w.cls) }}>
+                {w.name} <span className="muted">{w.x}</span>
+              </span>
+            ))}
+            {who.length > shown.length && <span className="who-chip muted">+{who.length - shown.length}</span>}
+          </div>
+        ) : (
+          f.detail && (
+            <Clamp className="finding-detail muted small">
+              <Colored text={f.detail} />
+            </Clamp>
+          )
         )}
-        {f.spellId != null && <SpellIcon spellId={f.spellId} size={18} />}
-        <strong>
-          <Colored text={f.title} plainStart={f.spellId != null} />
-        </strong>
-        {f.tip && (
-          <Hint>
-            <Colored text={f.tip} />
-          </Hint>
-        )}
-        {f.detail && (
-          <Clamp className="finding-detail muted small">
-            <Colored text={f.detail} />
-          </Clamp>
-        )}
-      </span>
+      </div>
+      {people > 0 && (
+        <div className="finding-count">
+          {people}
+          <span className="muted small">{t.players(people)}</span>
+        </div>
+      )}
     </li>
   );
 }

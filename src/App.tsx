@@ -406,6 +406,9 @@ export default function App() {
         liveError={live.error}
         onLiveStart={() => live.start(deathCutoff)}
         onLiveStop={live.stop}
+        history={history}
+        onOpenEntry={openEntry}
+        onBrowse={() => setPage('browse')}
       />
 
       {status.kind === 'loading' && (

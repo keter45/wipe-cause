@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useState, type ReactNode } from 'react';
 import { ChartColumn, ChevronDown, Skull } from 'lucide-react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
@@ -30,8 +30,21 @@ export interface PullListProps {
 /** Vida na fase como o Warcraft Logs: inteira de 10% para cima ("69%"), uma casa abaixo ("3.9%"). */
 const phasePct = (hp: number | null) => (hp == null ? '—' : hp >= 10 ? `${Math.floor(hp)}%` : pct(hp));
 
-export function PullList({ pulls, selected, onSelect, summary, onSummary }: PullListProps) {
+export function PullList({ pulls, selected: selectedProp, onSelect: select, summary: summaryProp, onSummary: openSummary }: PullListProps) {
   const t = useMessages(pullListMsg);
+  // a lista responde ao clique na hora; a tela principal (a análise inteira do pull) vem depois, em transição
+  const [pending, setPending] = useState<{ selected: number | null; summary: string | null } | null>(null);
+  useEffect(() => setPending(null), [selectedProp, summaryProp]);
+  const selected = pending ? pending.selected : selectedProp;
+  const summary = pending ? pending.summary : summaryProp;
+  const onSelect = (id: number) => {
+    setPending({ selected: id, summary: null });
+    startTransition(() => select(id));
+  };
+  const onSummary = (key: string) => {
+    setPending({ selected: selectedProp, summary: key });
+    startTransition(() => openSummary(key));
+  };
   const raid = raidOnly(pulls);
   const dungeons = dungeonsOnly(pulls);
   const [openDungeons, setOpenDungeons] = useState(() => {
@@ -61,7 +74,9 @@ export function PullList({ pulls, selected, onSelect, summary, onSummary }: Pull
             <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${openDungeons ? 'open' : ''}`} aria-hidden />
             {t.dungeons} <span className="group-count">{dungeons.length}</span>
           </button>
-          {openDungeons && <BossGroups pulls={dungeons} {...props} />}
+          <Fold open={openDungeons}>
+            <BossGroups pulls={dungeons} {...props} />
+          </Fold>
         </section>
       )}
     </nav>
@@ -69,19 +84,26 @@ export function PullList({ pulls, selected, onSelect, summary, onSummary }: Pull
 }
 
 /**
- * Uma linha por boss, em acordeão: clicar abre o resumo do boss e mostra os pulls dele,
- * recolhendo os outros. Começa aberto o boss do pull que está na tela.
+ * Uma linha por boss: clicar abre ou fecha os pulls dele, sem fechar os outros nem sair da tela atual.
+ * O resumo do boss é a primeira linha dentro. Começa aberto o boss do pull que está na tela.
  */
 function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListProps) {
   const t = useMessages(pullListMsg);
   const groups = groupByBoss(pulls);
   const current = groups.find((g) => g.pulls.some((p) => p.id === selected))?.key ?? null;
-  const [open, setOpen] = useState<string | null>(current);
-  // foi para um pull de outro boss (lista, atalho, ao vivo): abre o grupo dele
+  // cada boss abre e fecha sozinho (abrir um não fecha os outros); começa aberto o do pull na tela, ou o único
+  const [open, setOpen] = useState<Set<string>>(() => new Set(current ? [current] : groups.length === 1 ? [groups[0].key] : []));
+  // foi para um pull de outro boss (lista, atalho, ao vivo): abre o grupo dele também
   useEffect(() => {
-    if (current) setOpen(current);
+    if (current) setOpen((s) => (s.has(current) ? s : new Set(s).add(current)));
   }, [current]);
-  const toggle = (key: string) => setOpen((prev) => (prev === key ? null : key));
+  const toggle = (key: string) =>
+    setOpen((s) => {
+      const next = new Set(s);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   return (
     <>
@@ -89,32 +111,24 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
         const kills = ps.filter((p) => p.success).length;
         const top = bestWipe(ps);
         const meta = t.meta(ps.length, kills > 0, top ? progressLabel(top) : null);
-        const isOpen = open === key;
-        const active = summary === key;
+        const isOpen = open.has(key);
+        // o boss do que está na tela (o resumo dele ou um pull dele)
+        const here = summary === key || (summary == null && ps.some((p) => p.id === selected));
         return (
           <section key={key} className="boss-group">
-            <div className={`boss-row ${active ? 'active' : ''}`}>
-              <button
-                className="boss-row-main"
-                onClick={() => {
-                  setOpen(key);
-                  onSummary(key);
-                }} title={t.openSummary(key, meta)} aria-current={active ? 'page' : undefined}>
+            {/* a linha inteira abre e fecha os pulls; o resumo do boss é a primeira linha dentro */}
+            <button className={`boss-row ${here ? 'active' : ''}`} onClick={() => toggle(key)} aria-expanded={isOpen} aria-label={t.togglePullsAria(isOpen, key)}>
+              <span className="boss-row-main">
                 <BossName encounterId={ps[0].encounterId} name={key} size={18} />
                 <span className={`boss-row-meta ${kills ? 'kill' : ''}`}>{meta}</span>
+              </span>
+              <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${isOpen ? 'open' : ''}`} aria-hidden />
+            </button>
+            <Fold open={isOpen}>
+              <button className={`boss-summary-link ${summary === key ? 'active' : ''}`} onClick={() => onSummary(key)} aria-current={summary === key ? 'page' : undefined} title={t.openSummary(key, meta)}>
+                {t.bossSummary}
               </button>
-              <button
-                className="icon-btn sm boss-row-toggle"
-                onClick={() => toggle(key)}
-                aria-expanded={isOpen}
-                aria-label={t.togglePullsAria(isOpen, key)}
-                title={t.togglePulls(isOpen)}
-              >
-                <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${isOpen ? 'open' : ''}`} aria-hidden />
-              </button>
-            </div>
-            {isOpen &&
-              ps.map((p) => {
+              {ps.map((p) => {
                 const hp = lowestBossHp(p);
                 // boss de várias fases: até onde o try chegou (o HP é do boss da primeira fase)
                 const phase = p.success ? null : reachedPhase(p);
@@ -165,10 +179,30 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
                   </button>
                 );
               })}
+            </Fold>
           </section>
         );
       })}
     </>
+  );
+}
+
+/** Abre e fecha com a altura animada (linhas da grade de 0fr a 1fr); fechado, sai do DOM no fim da animação. */
+export function Fold({ open, children }: { open: boolean; children: ReactNode }) {
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) setMounted(true);
+  }, [open]);
+  return (
+    <div
+      className={`fold ${open ? 'open' : ''}`}
+      inert={!open}
+      onTransitionEnd={(e) => {
+        if (!open && e.target === e.currentTarget) setMounted(false);
+      }}
+    >
+      <div>{mounted && children}</div>
+    </div>
   );
 }
 

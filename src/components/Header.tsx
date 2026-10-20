@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { CircleAlert, Crosshair, ExternalLink, Link2, MessageSquare, MessageSquareOff, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
+import { ChevronDown, CircleAlert, Crosshair, ExternalLink, Link2, MessageSquare, MessageSquareOff, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { discordSetConfig, hasBackend, migrateWcrDir, openExternal, savedWclAuto, savedWclLink, saveWclAuto, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type LiveStatus, type WcrScan, type WcrVideo, inDesktop } from '../lib/api';
+import { discordSetConfig, hasBackend, migrateWcrDir, openExternal, sameLog, savedWclAuto, savedWclLink, saveWclAuto, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type HistoryEntry, type LiveStatus, type WcrScan, type WcrVideo, inDesktop } from '../lib/api';
 import { reportCode } from '../lib/wcl';
 import { findNightReport } from '../lib/guildNights';
 import { logTitle, mainEncounterId } from '../lib/format';
@@ -35,6 +35,11 @@ interface Props {
   liveError: string | null;
   onLiveStart: () => void;
   onLiveStop: () => void;
+  /** análises salvas: o chip do log abre a lista para trocar de noite */
+  history?: HistoryEntry[];
+  onOpenEntry?: (e: HistoryEntry) => void;
+  /** "Escolher outra noite": a lista de logs */
+  onBrowse?: () => void;
 }
 
 /**
@@ -158,8 +163,9 @@ function ModeSwitch() {
 // ---------------------------------------------------------------------------
 // Log aberto
 
-function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
+function LogGroup({ report, busy, onReanalyze, canReanalyze, history, onOpenEntry, onBrowse }: Props) {
   const t = useMessages(headerMsg);
+  const [open, setOpen] = useState(false);
   if (!report) return null;
 
   const fileName = sourceName(report.file);
@@ -173,21 +179,71 @@ function LogGroup({ report, busy, onReanalyze, canReanalyze }: Props) {
     .join(' · ');
   // o chip corta o texto: o tooltip mostra tudo, com o caminho do log
   const full = [`${logTitle(report.pulls)} · ${meta}`, report.file, ...(report.localLogs ?? [])].join('\n');
+  const chipBody = (
+    <>
+      <div className="log-chip-text">
+        <span className="log-title">
+          <BossName encounterId={mainEncounterId(report.pulls)} name={logTitle(report.pulls)} size={18} />
+        </span>
+        <span className="log-meta">{meta}</span>
+      </div>
+      {!report.advancedLogging && (
+        <span className="warn-pill" title={t.advancedOffTitle}>
+          <CircleAlert size={14} strokeWidth={2} aria-hidden /> {t.advancedOff}
+        </span>
+      )}
+    </>
+  );
+  // com o histórico, o chip abre a lista das noites salvas (trocar de noite sem ir à barra lateral)
+  const pickable = history && onOpenEntry;
   return (
     <div className="topbar-group log-group">
-      <div className="log-chip" title={full}>
-        <div className="log-chip-text">
-          <span className="log-title">
-            <BossName encounterId={mainEncounterId(report.pulls)} name={logTitle(report.pulls)} size={18} />
-          </span>
-          <span className="log-meta">{meta}</span>
+      {pickable ? (
+        <Popover
+          open={open}
+          onClose={() => setOpen(false)}
+          label={t.nights}
+          trigger={
+            <button className={`log-chip pick ${open ? 'pressed' : ''}`} title={full} onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu">
+              {chipBody}
+              <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${open ? 'open' : ''}`} aria-hidden />
+            </button>
+          }
+        >
+          <div className="night-menu" role="menu" aria-label={t.nights}>
+            {history.slice(0, 12).map((e) => (
+              <button
+                key={e.id}
+                role="menuitem"
+                className={sameLog(e.logPath, report.file) ? 'active' : ''}
+                onClick={() => {
+                  setOpen(false);
+                  onOpenEntry(e);
+                }}
+              >
+                <BossName encounterId={e.encounterId} name={e.title} size={16} />
+                <span className="muted small">{t.pulls(e.pulls)}</span>
+              </button>
+            ))}
+            {onBrowse && (
+              <button
+                role="menuitem"
+                className="night-menu-more"
+                onClick={() => {
+                  setOpen(false);
+                  onBrowse();
+                }}
+              >
+                {t.otherNight}
+              </button>
+            )}
+          </div>
+        </Popover>
+      ) : (
+        <div className="log-chip" title={full}>
+          {chipBody}
         </div>
-        {!report.advancedLogging && (
-          <span className="warn-pill" title={t.advancedOffTitle}>
-            <CircleAlert size={14} strokeWidth={2} aria-hidden /> {t.advancedOff}
-          </span>
-        )}
-      </div>
+      )}
       {hasBackend && canReanalyze && (
         <button className="icon-btn" onClick={onReanalyze} disabled={busy} title={t.reanalyze}>
           <RotateCw {...ICON} />
