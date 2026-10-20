@@ -111,8 +111,25 @@ Erro só quando o robô quase nunca faria aquilo naquele estado: "aos 1:42 você
 ativo; o robô usa X em 95% das vezes". É a mesma ideia das *decisões da rotação* (tops X→Y × você
 X→Z), com o robô como referência.
 
+**Decisões (feito em 2026-10-20, `src/lib/botDecisions.ts`):** as 20 lutas avulsas do robô (`seed=1…20`)
+trazem, em cada cast, os buffs ativos. Elas viram 20 "pulls de referência" no formato das decisões
+dos tops (`decisions.ts`): quem gasta cada proc, quanto se perde, cooldown usado na hora ou
+alinhado, com a faixa (mediana/p90) das 20 lutas. O pull do player é comparado com essa faixa
+(`compareDecisions`, os mesmos limites dos tops). E cast a cast: com cada proc ativo, a
+distribuição do que o robô casta; o cast do player que o robô faz em menos de 5% das vezes, quando
+ele tem uma escolha clara (≥ 50%) e com 30+ casts de amostra, aparece com os momentos (duas vezes ou
+mais). Só os buffs que o motor acompanha no player entram; ids do SimC que não batem com o log
+são casados pelo nome. Precisa da leitura de rotação da spec (`rotations/*.yaml`).
+
+Conferido na noite de Mythic: Portallus (Demonology) com Ruination ativo castou Shadow Bolt 6×, o robô
+usa Ruination 81%; Antithesis (MM) perdeu 39% dos Precise Shots (robô 0%).
+
 **Robô × tops:** nesta seção o robô é o certo. Quando os tops (ou a nossa rotação em YAML) fazem
 diferente, mostramos um aviso ao lado: "os top logs fazem outra coisa: …", e o player decide.
+Feito assim: cada achado olha a referência dos tops da spec (`decisionRefFor`) e ganha uma nota quando
+os tops gastam o proc com o que o player usou, também deixam o proc acabar, seguram o cooldown ou
+não alinham com aquilo. E a seção "Onde os top logs fazem diferente do robô" lista, independente do
+player, quem gasta cada proc, tempo segurado (diferença de 3s+) e alinhamentos que só um dos dois tem.
 
 ## 6. De onde vem o SimC *(decidido por nós)*
 

@@ -12,10 +12,14 @@ import type { Sample } from './performance';
 import { BUCKET_MS } from './solo';
 
 export const BOT_ITERATIONS = 1000;
-/** Iterações avulsas para escolher a sequência de casts mais típica. */
-const SEQUENCE_SEEDS = 5;
+/**
+ * Iterações avulsas: cada uma dá uma sequência de casts com os buffs ativos em cada cast. A de DPS
+ * mais perto da média vira a dos gráficos; todas juntas são a referência das decisões
+ * (botDecisions.ts), como os pulls dos tops.
+ */
+export const SEQUENCE_SEEDS = 20;
 /** Versão do que salvamos: mudou o formato, a simulação antiga é refeita. */
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 export const BOT_GUID = 'simc-bot';
 
 /** Ações do SimC que não são casts no log (ataque automático). */
@@ -43,6 +47,16 @@ export interface BotRun {
   damageTimeline: number[];
   /** o perfil usado (para conferir ou rodar no Raidbots) */
   input: string;
+  /** as lutas avulsas: casts [ms, spell] e, em cada cast, os buffs ativos [id, cargas, id, cargas…] */
+  seqs: BotSeq[];
+  /** nome de cada habilidade e de cada buff do SimC (buff: o nome interno, "precise_shots") */
+  names: Record<number, string>;
+  buffNames: Record<number, string>;
+}
+
+export interface BotSeq {
+  casts: [number, number][];
+  active: number[][];
 }
 
 /** A noite de um pull: a data local, com a madrugada contando para o dia anterior. */
@@ -70,6 +84,23 @@ function sequence(p: SimcPlayer): SpellCasts[] {
     by.set(a.id, cur);
   }
   return [...by.values()].sort((a, b) => b.times.length - a.times.length || a.spellId - b.spellId);
+}
+
+/** A luta avulsa no formato salvo, juntando os nomes. */
+function seqOf(p: SimcPlayer, names: Record<number, string>, buffNames: Record<number, string>): BotSeq {
+  const out: BotSeq = { casts: [], active: [] };
+  for (const a of p?.collected_data?.action_sequence ?? []) {
+    if (!a.id || NOT_CASTS.has(a.name)) continue;
+    names[a.id] ??= a.spell_name || a.name;
+    out.casts.push([Math.round(a.time * 1000), a.id]);
+    out.active.push(
+      (a.buffs ?? []).filter((b: any) => b.id).flatMap((b: any) => {
+        buffNames[b.id] ??= b.name;
+        return [b.id, b.stacks ?? 1];
+      }),
+    );
+  }
+  return out;
 }
 
 function damageBySpell(p: SimcPlayer): SpellAmount[] {
@@ -118,8 +149,13 @@ export async function runBot(nightPulls: Pull[], ref: Pull, playerName: string, 
   // a sequência de casts de uma iteração só: a mais perto da média entre algumas
   onStep('sequence');
   let best: { seq: SpellCasts[]; off: number } | null = null;
+  const seqs: BotSeq[] = [];
+  const names: Record<number, string> = {};
+  const buffNames: Record<number, string> = {};
   for (let seed = 1; seed <= SEQUENCE_SEEDS; seed++) {
     const one = first((await simcRun(`${profile.input}iterations=1\nseed=${seed}\n`)).json);
+    onStep('sequence', seed / SEQUENCE_SEEDS);
+    seqs.push(seqOf(one, names, buffNames));
     const off = Math.abs((Number(one?.collected_data?.dps?.mean) || 0) - mean);
     if (!best || off < best.off) best = { seq: sequence(one), off };
   }
@@ -142,6 +178,9 @@ export async function runBot(nightPulls: Pull[], ref: Pull, playerName: string, 
     damageBySpell: damageBySpell(p),
     damageTimeline: timeline(p),
     input: profile.input,
+    seqs,
+    names,
+    buffNames,
   };
   await simcSavedPut(run.key, run);
   return run;

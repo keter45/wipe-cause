@@ -10,7 +10,7 @@ vi.mock('./api', () => ({
   simcRun: vi.fn(async (input: string) => {
     runs.push(input);
     const seed = Number(/seed=(\d+)/.exec(input)?.[1] ?? 0);
-    const dps = seed ? [0, 900, 1010, 1300, 700, 1200][seed] : 1000;
+    const dps = seed ? ([0, 900, 1010, 1300, 700, 1200][seed] ?? 1500) : 1000;
     const seq = [
       { time: 0, id: 0, name: 'snapshot_stats', spell_name: '' },
       { time: 0.5, id: 133, name: 'fireball', spell_name: 'Fireball' },
@@ -43,7 +43,7 @@ vi.mock('./api', () => ({
 }));
 vi.mock('./talents', () => ({ talentTree: vi.fn(async () => new Map()) }));
 
-const { runBot, loadBotRun, botMe, botSample, BOT_ITERATIONS } = await import('./botSim');
+const { runBot, loadBotRun, botMe, botSample, BOT_ITERATIONS, SEQUENCE_SEEDS } = await import('./botSim');
 
 const setup: Setup = {
   stats: { strength: 0, agility: 0, stamina: 0, intellect: 0, crit: 0, haste: 0, mastery: 0, versatility: 0, leech: 0, avoidance: 0, speed: 0 },
@@ -64,7 +64,7 @@ describe('runBot', () => {
     const run = await runBot([pull], pull, 'Fulano-Azralon', () => {});
 
     expect(runs[0]).toContain(`iterations=${BOT_ITERATIONS}`);
-    expect(runs.filter((r) => r.includes('iterations=1\n'))).toHaveLength(5);
+    expect(runs.filter((r) => r.includes('iterations=1\n'))).toHaveLength(SEQUENCE_SEEDS);
     expect(run.dps.mean).toBe(1000);
     // seed 2 (1010) é a mais perto de 1000: Pyroblast aos 2s; ataque automático e precombat ficam de fora
     expect(run.casts).toEqual([
@@ -76,6 +76,9 @@ describe('runBot', () => {
       { spellId: 2, name: 'Frostbolt', amount: 5_000, pet: true },
     ]);
     expect(run.damageTimeline).toEqual([5000, 5000]);
+    expect(run.seqs).toHaveLength(SEQUENCE_SEEDS);
+    expect(run.seqs[1].casts).toEqual([[500, 133], [2000, 11366]]);
+    expect(run.names[11366]).toBe('Pyroblast');
     expect(await loadBotRun(pull, 'Fulano-Azralon')).toEqual(run);
 
     const mine = botMe([pull], run, 'Fulano-Azralon')!;

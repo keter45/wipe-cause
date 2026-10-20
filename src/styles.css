@@ -4175,6 +4175,15 @@ td.warn {
 .bot-step {
   color: var(--accent);
 }
+.bot-sub {
+  margin: 14px 0 6px;
+  font-size: 13px;
+}
+.decision-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--info);
+}
 .bot-profile {
   margin: 16px 0;
 }

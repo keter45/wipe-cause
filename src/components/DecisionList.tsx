@@ -14,7 +14,7 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
  * Decisões diferentes da referência (proc perdido ou esperando, cooldown segurado ou fora do
  * alinhamento), com os momentos. `who`: nome da referência quando é um log só; sem ele, os tops.
  */
-export function DecisionList({ list, who = null }: { list: DecisionFinding[]; who?: string | null }) {
+export function DecisionList({ list, who = null, notes }: { list: DecisionFinding[]; who?: string | null; notes?: Record<string, string> }) {
   const t = useMessages(decisionMsg);
   const mentions = useMentionsSpell();
   const seek = useSeek();
@@ -34,8 +34,9 @@ export function DecisionList({ list, who = null }: { list: DecisionFinding[]; wh
     <ul className="plain bench-list small">
       {list.map((d) => {
         const times = uniqueSeconds(d.times);
+        const key = `${d.kind}-${'buff' in d ? d.buff : d.spellId}`;
         return (
-          <li key={`${d.kind}-${'buff' in d ? d.buff : d.spellId}`}>
+          <li key={key}>
             {!mentions(text(d)) && <SpellIcon spellId={'buff' in d ? d.buff : d.spellId} size={16} />}{' '}
             <span className="warn">
               <Colored text={text(d)} />
@@ -55,6 +56,11 @@ export function DecisionList({ list, who = null }: { list: DecisionFinding[]; wh
                   </span>
                 ))}
                 {times.length > 6 && <span className="muted"> +{times.length - 6}</span>}
+              </span>
+            )}
+            {notes?.[key] && (
+              <span className="decision-note">
+                <Colored text={notes[key]} />
               </span>
             )}
           </li>
