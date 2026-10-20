@@ -7357,8 +7357,8 @@ button.kpi:hover {
 
 /* a árvore da noite: linhas-guia à esquerda, como uma lista de pastas */
 .side-night-tree {
-  margin-left: 22px;
-  padding-left: 10px;
+  margin-left: 18px;
+  padding-left: 8px;
   border-left: 1px solid var(--border);
 }
 .night-nav {
@@ -7452,15 +7452,16 @@ button.kpi:hover {
 
 /* pulls: número, barra do progresso, fase e vida, duração e o ícone da causa do wipe */
 .tree-pulls {
-  margin: 0 0 6px 19px;
+  margin: 0 0 6px 15px;
   padding: 0 0 0 8px;
   border-left: 1px solid var(--border);
   list-style: none;
 }
 .tree-pull {
   display: grid;
-  grid-template-columns: 20px 48px minmax(0, 1fr) 34px 24px;
-  column-gap: 8px;
+  /* a vida tem largura fixa (cabe "P2 100%" com folga) e a barra fica com o que sobra: nunca se encostam */
+  grid-template-columns: 20px minmax(24px, 1fr) 52px 32px 22px;
+  column-gap: 6px;
   align-items: center;
   width: 100%;
   height: 30px;
