@@ -7540,3 +7540,37 @@ button.kpi:hover {
     transition: none;
   }
 }
+
+/* ---------------------------------------------------------------- topo responsivo */
+/* quem cede é o chip do log (com reticências); o anel do seletor de noites também precisa encolher */
+.log-group .popover-anchor {
+  display: flex;
+  min-width: 0;
+}
+/* depois somem os detalhes do log, os nomes Guilda/Solo e o nome do app (fica o ícone; o nome vai no title) */
+@media (max-width: 1100px) {
+  .topbar .log-meta {
+    display: none;
+  }
+}
+@media (max-width: 920px) {
+  .topbar {
+    gap: 8px;
+    padding: 0 10px 0 14px;
+  }
+  .mode-switch {
+    margin-left: 0;
+  }
+  .topbar .mode-label {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .topbar .brand-name,
+  .topbar .topbar-divider {
+    display: none;
+  }
+  .log-chip {
+    padding: 0 10px;
+  }
+}

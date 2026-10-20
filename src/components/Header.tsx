@@ -52,9 +52,9 @@ export function Header(props: Props) {
   const t = useMessages(headerMsg);
   return (
     <header className="topbar">
-      <div className="brand">
+      <div className="brand" title="Wipe Cause">
         <Crosshair size={18} strokeWidth={2} className="brand-mark" aria-hidden />
-        Wipe Cause
+        <span className="brand-name">Wipe Cause</span>
       </div>
       <ModeSwitch />
 
@@ -144,8 +144,9 @@ function ModeSwitch() {
         className={mode === 'guild' ? 'active' : ''}
         onClick={() => setMode('guild')}
         title={t.guildTitle}
+        aria-label={t.guild}
       >
-        <Users size={14} strokeWidth={1.5} aria-hidden /> {t.guild}
+        <Users size={14} strokeWidth={1.5} aria-hidden /> <span className="mode-label">{t.guild}</span>
       </button>
       <button
         role="radio"
@@ -153,8 +154,9 @@ function ModeSwitch() {
         className={mode === 'solo' ? 'active' : ''}
         onClick={() => setMode('solo')}
         title={t.soloTitle}
+        aria-label={t.solo}
       >
-        <User size={14} strokeWidth={1.5} aria-hidden /> {t.solo}
+        <User size={14} strokeWidth={1.5} aria-hidden /> <span className="mode-label">{t.solo}</span>
       </button>
     </div>
   );
