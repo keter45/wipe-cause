@@ -130,6 +130,12 @@ const commands: Record<string, (a: Args) => unknown> = {
   wcr_cloud_set_config: appOnly,
   wcr_cloud_videos: () => [],
   fetch_image: appOnly,
+  simc_status: () => ({ available: false, installed: null, latest: null, update: false, error: null }),
+  simc_install: appOnly,
+  simc_run: appOnly,
+  simc_cancel: () => undefined,
+  simc_saved_get: () => null,
+  simc_saved_put: appOnly,
   save_file: appOnly,
 };
 

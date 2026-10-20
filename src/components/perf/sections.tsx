@@ -16,9 +16,10 @@ import { Stat as StatCard, type Tone } from '../ui/Stat';
 
 
 /** Número seu × da referência, no cartão comum de números. */
-export function Stat({ label, mine, ref, tone = '', extra }: { label: string; mine: string; ref: string; tone?: string; extra?: string }) {
+/** `sub` troca o "referência: X" (o robô diz "robô: X"). */
+export function Stat({ label, mine, ref, tone = '', extra, sub }: { label: string; mine: string; ref: string; tone?: string; extra?: string; sub?: (ref: string) => string }) {
   const t: Tone = tone === 'bad' ? 'bad' : tone === 'warn' ? 'warn' : tone === 'good' ? 'good' : 'neutral';
-  return <StatCard label={label} value={mine} delta={extra} sub={messagesOf(perfViewMsg).refValue(ref)} tone={t} />;
+  return <StatCard label={label} value={mine} delta={extra} sub={(sub ?? messagesOf(perfViewMsg).refValue)(ref)} tone={t} />;
 }
 
 // ---- janelas de burst

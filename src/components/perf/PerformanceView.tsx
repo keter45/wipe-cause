@@ -24,6 +24,8 @@ import { messagesOf, useMessages } from '../../i18n';
 import { perfViewMsg } from './perf.i18n';
 import { Hint } from '../ui/Hint';
 import { PlayerPicker } from './PlayerPicker';
+import { BotComparison } from './BotComparison';
+import { botMsg } from './bot.i18n';
 
 const PLAYER_KEY = 'wipe-cause:perf-player';
 
@@ -106,7 +108,7 @@ export function PerformanceView({ pull, nightPulls, wclCode, defaultGuid, solo =
 
 const topKey = (t: Pick<TopRanking, 'code' | 'fightId'>) => `top:${t.code}:${t.fightId}`;
 
-type Mode = 'tops' | 'raid';
+type Mode = 'tops' | 'raid' | 'bot';
 
 function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[]; wclCode?: string }) {
   const mentions = useMentionsSpell();
@@ -165,8 +167,13 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
             {m.raid}
           </button>
         )}
+        {!healer && (
+          <button role="radio" aria-checked={mode === 'bot'} className={mode === 'bot' ? 'active' : ''} onClick={() => setMode('bot')} title={messagesOf(botMsg).modeTitle}>
+            {messagesOf(botMsg).mode}
+          </button>
+        )}
       </div>
-      {mode === 'tops' ? (
+      {mode === 'bot' ? null : mode === 'tops' ? (
         <>
           <WclTopsButton me={me} onTops={setTops} />
           {tops && tops.length > 0 && (
@@ -209,6 +216,14 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
       <PerfLinks links={links} />
     </>
   );
+
+  if (mode === 'bot')
+    return (
+      <>
+        {picker}
+        <BotComparison me={me} nightPulls={nightPulls} />
+      </>
+    );
 
   if (!ref)
     return (

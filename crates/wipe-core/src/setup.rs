@@ -4,7 +4,7 @@
 //! A quantidade de stats muda entre patches, então tudo é lido a partir da spec (o campo antes
 //! da lista de talentos): os secundários ficam logo antes dela, na mesma ordem desde o 10.x.
 
-use crate::report::{GearItem, Setup, SetupStats};
+use crate::report::{GearItem, Setup, SetupStats, StartAura};
 use crate::tokenizer::split_fields;
 
 const SLOT_SHIRT: u8 = 3;
@@ -62,10 +62,10 @@ pub fn parse_combatant_info(f: &[&str]) -> Option<(Option<u32>, Setup)> {
         })
         .collect();
 
-    // depois dos talentos vem (pvp) e então [itens]
-    let items: Vec<GearItem> = f
-        .get(talents_at + 1..)
-        .and_then(|rest| rest.iter().find(|v| v.starts_with('[')))
+    // depois dos talentos vem (pvp), [itens] e [auras]
+    let mut lists = f.get(talents_at + 1..).unwrap_or_default().iter().filter(|v| v.starts_with('['));
+    let items: Vec<GearItem> = lists
+        .next()
         .map(|list| {
             inner(list)
                 .into_iter()
@@ -85,18 +85,22 @@ pub fn parse_combatant_info(f: &[&str]) -> Option<(Option<u32>, Setup)> {
                             .filter_map(|g| g.parse().ok())
                             .filter(|&g| g != 0)
                             .collect();
+                        let bonus_ids = inner(v.get(3).unwrap_or(&"()")).iter().filter_map(|b| b.parse().ok()).filter(|&b| b != 0).collect();
                         GearItem {
                             slot: slot as u8,
                             item_id,
                             ilvl: n(v.get(1)),
                             enchant,
                             gems,
+                            bonus_ids,
                         }
                     })
                 })
                 .collect()
         })
         .unwrap_or_default();
+
+    let auras = lists.next().map(|l| parse_auras(&inner(l))).unwrap_or_default();
 
     Some((
         spec,
@@ -105,8 +109,28 @@ pub fn parse_combatant_info(f: &[&str]) -> Option<(Option<u32>, Setup)> {
             item_level: item_level(&items),
             items,
             talents,
+            faction: f.get(2).and_then(|v| v.parse().ok()),
+            auras,
         },
     ))
+}
+
+/// `[fonte,spell,(stacks),fonte,spell,…]`: o 12.x põe as stacks depois de cada spell, o 11.x não.
+fn parse_auras(v: &[&str]) -> Vec<StartAura> {
+    let is_guid = |s: &str| s.contains('-') && !s.starts_with('-');
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i + 1 < v.len() {
+        if !is_guid(v[i]) {
+            i += 1;
+            continue;
+        }
+        if let Ok(spell_id) = v[i + 1].trim().parse::<u32>() {
+            out.push(StartAura { spell_id, name: None, source: Some(v[i].to_string()) });
+        }
+        i += 2;
+    }
+    out
 }
 
 /// Média como o jogo mostra: 16 espaços; arma de duas mãos (sem mão secundária) conta duas vezes.
@@ -163,6 +187,10 @@ mod tests {
         assert_eq!(s.items.len(), 14, "slots vazios ficam de fora");
         assert_eq!(s.items[0].enchant, Some(8017));
         assert_eq!(s.items[1].gems, vec![240967, 240914]);
+        assert_eq!(s.items[0].bonus_ids, vec![6652, 13696]);
+        assert_eq!(s.faction, Some(0));
+        assert_eq!(s.auras.len(), 1);
+        assert_eq!((s.auras[0].spell_id, s.auras[0].source.as_deref()), (1303171, Some("Player-1-0A")));
         // 321+334+334+10*300+334*2 (duas mãos) = 4657 / 16
         assert!(
             (s.item_level - 4657.0 / 16.0).abs() < 0.01,

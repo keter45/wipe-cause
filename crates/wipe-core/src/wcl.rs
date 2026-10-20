@@ -8,7 +8,7 @@
 
 use crate::analysis::{finalize, FinishedPull, PullBuilder};
 use crate::data::GameData;
-use crate::report::{GearItem, LogReport, Setup, SetupStats};
+use crate::report::{GearItem, LogReport, Setup, SetupStats, StartAura};
 use crate::rules::RuleBook;
 use crate::timestamp::format_timestamp;
 use serde_json::{Map, Value};
@@ -645,9 +645,22 @@ fn combatant(actors: &HashMap<i64, Actor>, e: &Value) -> Option<(String, Option<
             ilvl: int(&g["itemLevel"]) as u32,
             enchant: Some(int(&g["permanentEnchant"]) as u32).filter(|&v| v > 0),
             gems: g["gems"].as_array().into_iter().flatten().map(|x| int(&x["id"]) as u32).filter(|&v| v > 0).collect(),
+            bonus_ids: g["bonusIDs"].as_array().into_iter().flatten().map(|x| int(x) as u32).filter(|&v| v > 0).collect(),
         })
         .collect();
-    Some((a.guid.clone(), spec, Setup { stats, item_level: crate::setup::item_level(&items), items, talents }))
+    let auras = e["auras"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|x| int(&x["ability"]) > 0)
+        .map(|x| StartAura {
+            spell_id: int(&x["ability"]) as u32,
+            name: x["name"].as_str().map(str::to_string),
+            source: actors.get(&int(&x["source"])).map(|s| s.guid.clone()),
+        })
+        .collect();
+    let faction = e["faction"].as_i64().map(|v| v as u8);
+    Some((a.guid.clone(), spec, Setup { stats, item_level: crate::setup::item_level(&items), items, talents, faction, auras }))
 }
 
 /// Tipos de evento que o motor não usa (fora daqui, só o que vira linha do log).
