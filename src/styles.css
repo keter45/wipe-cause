@@ -506,17 +506,27 @@ code,
 }
 
 /* ---------------------------------------------------------------- pull */
+/* duas colunas sempre lado a lado: o boss e as informações à esquerda, o resultado e a vida dos bosses à
+   direita (as pílulas quebram dentro da coluna, em vez de o bloco inteiro pular para baixo do título) */
 .pull-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  display: grid;
+  /* a direita só ocupa o que precisa, até 42%: com um boss o título fica com quase tudo */
+  grid-template-columns: minmax(0, 1fr) fit-content(42%);
+  align-items: start;
   gap: 24px;
-  flex-wrap: wrap;
   margin: 8px 0 22px;
+}
+.pull-heading {
+  min-width: 0;
+}
+/* nome longo do boss quebra a linha em vez de cortar com reticências */
+.pull-header h2 .spell-name-text {
+  overflow: visible;
+  white-space: normal;
 }
 .pull-header h2 {
   margin: 0;
-  font-size: 40px;
+  font-size: clamp(28px, 3vw, 40px);
   font-weight: 300;
   line-height: 1.05;
   letter-spacing: -0.03em;
@@ -539,6 +549,7 @@ code,
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
+  min-width: 0;
   text-align: right;
 }
 .pull-outcome-big {
@@ -7569,5 +7580,19 @@ button.kpi:hover {
   }
   .log-chip {
     padding: 0 10px;
+  }
+}
+
+/* janela estreita: o resultado desce para baixo do boss, alinhado à esquerda */
+@media (max-width: 760px) {
+  .pull-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pull-outcome {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .pull-outcome .boss-hp-pills {
+    justify-content: flex-start;
   }
 }
