@@ -2,6 +2,7 @@ import { defineMessages } from '../i18n';
 
 export const pullListMsg = defineMessages(
   {
+    pullsAria: 'Pulls da noite',
     nightSummary: 'Resumo da noite',
     bossSummary: 'Resumo do boss',
     noRaidBoss: 'Nenhum boss de raid neste log.',
@@ -18,6 +19,7 @@ export const pullListMsg = defineMessages(
     note: (note: string) => `Anotação: ${note}`,
   },
   {
+    pullsAria: "The night's pulls",
     nightSummary: 'Night summary',
     bossSummary: 'Boss summary',
     noRaidBoss: 'No raid bosses in this log.',

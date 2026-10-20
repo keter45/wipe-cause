@@ -1,5 +1,5 @@
 import { startTransition, useEffect, useState, type ReactNode } from 'react';
-import { ChartColumn, ChevronDown, Skull } from 'lucide-react';
+import { ChevronDown, Skull } from 'lucide-react';
 import type { Pull } from '../types';
 import { mmss, pct } from '../lib/format';
 import { groupByBoss } from '../lib/night';
@@ -65,17 +65,25 @@ export function PullList({ pulls, selected: selectedProp, onSelect: select, summ
   };
   const props = { selected, onSelect, summary, onSummary };
   return (
-    <nav className="pull-tree" aria-label="Pulls">
-      {raid.length > 0 && <SummaryLink active={summary === NIGHT} onClick={() => onSummary(NIGHT)} label={t.nightSummary} />}
+    <nav className="night-nav" aria-label={t.pullsAria}>
+      {raid.length > 0 && (
+        <button className={`tree-sum ${summary === NIGHT ? 'active' : ''}`} onClick={() => onSummary(NIGHT)} aria-current={summary === NIGHT ? 'page' : undefined}>
+          {t.nightSummary}
+        </button>
+      )}
       {raid.length > 0 ? <BossGroups pulls={raid} {...props} /> : <p className="muted small pull-tree-note">{t.noRaidBoss}</p>}
       {dungeons.length > 0 && (
-        <section className="dungeon-block">
-          <button className="dungeon-toggle" onClick={toggleDungeons} aria-expanded={openDungeons}>
+        <section className="tree-boss">
+          <button className="tree-boss-head" onClick={toggleDungeons} aria-expanded={openDungeons}>
+            <span className="tree-boss-name">
+              {t.dungeons} <span className="tree-count">{dungeons.length}</span>
+            </span>
             <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${openDungeons ? 'open' : ''}`} aria-hidden />
-            {t.dungeons} <span className="group-count">{dungeons.length}</span>
           </button>
           <Fold open={openDungeons}>
-            <BossGroups pulls={dungeons} {...props} />
+            <div className="tree-dungeons">
+              <BossGroups pulls={dungeons} {...props} />
+            </div>
           </Fold>
         </section>
       )}
@@ -115,70 +123,75 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
         // o boss do que está na tela (o resumo dele ou um pull dele)
         const here = summary === key || (summary == null && ps.some((p) => p.id === selected));
         return (
-          <section key={key} className="boss-group">
+          <section key={key} className="tree-boss">
             {/* a linha inteira abre e fecha os pulls; o resumo do boss é a primeira linha dentro */}
-            <button className={`boss-row ${here ? 'active' : ''}`} onClick={() => toggle(key)} aria-expanded={isOpen} aria-label={t.togglePullsAria(isOpen, key)}>
-              <span className="boss-row-main">
-                <BossName encounterId={ps[0].encounterId} name={key} size={18} />
-                <span className={`boss-row-meta ${kills ? 'kill' : ''}`}>{meta}</span>
+            <button className={`tree-boss-head ${here ? 'active' : ''}`} onClick={() => toggle(key)} aria-expanded={isOpen} aria-label={t.togglePullsAria(isOpen, key)}>
+              <span className="tree-boss-name">
+                <BossName encounterId={ps[0].encounterId} name={ps[0].encounterName} size={20} />
               </span>
+              {/* a dificuldade vai para a linha de baixo: o nome do boss cabe inteiro na barra */}
+              <small className={`tree-boss-meta ${kills ? 'kill' : ''}`}>{ps[0].difficultyName ? `${ps[0].difficultyName} · ${meta}` : meta}</small>
               <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${isOpen ? 'open' : ''}`} aria-hidden />
             </button>
             <Fold open={isOpen}>
-              <button className={`boss-summary-link ${summary === key ? 'active' : ''}`} onClick={() => onSummary(key)} aria-current={summary === key ? 'page' : undefined} title={t.openSummary(key, meta)}>
-                {t.bossSummary}
-              </button>
-              {ps.map((p) => {
-                const hp = lowestBossHp(p);
-                // boss de várias fases: até onde o try chegou (o HP é do boss da primeira fase)
-                const phase = p.success ? null : reachedPhase(p);
-                const deaths = p.deaths.filter((d) => !d.ignored).length;
-                // o que puxou o wipe (o gatilho que explica as mortes); sem causa comum, a caveira com o número
-                const cause = wipeCause(p);
-                const causeSpell = cause ? mechanicSpellId(p, cause.key) : null;
-                const activePull = summary == null && selected === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    className={`pull-row ${p.success ? 'kill' : 'wipe'} ${activePull ? 'active' : ''}`}
-                    onClick={() => onSelect(p.id)}
-                    aria-current={activePull ? 'page' : undefined}
-                    title={t.pullTitle(p.pullNumber, p.success ? null : pct(hp), mmss(p.durationMs), deaths) + (phase ? t.reached(phase.name) : '') + (cause ? t.cause(cause.name, cause.deaths) : '')}
-                  >
-                    <span className="pull-num">
-                      {p.pullNumber}
-                      <NoteDot pull={p} />
-                    </span>
-                    <span className={`pull-result ${phase ? `phase ph-${Math.min(phase.index, 3)}` : ''}`}>
-                      {p.success ? (
-                        'Kill'
-                      ) : phase ? (
-                        <>
-                          <span className="pull-phase">{phase.short}</span>
-                          {phasePct(hp)}
-                        </>
-                      ) : (
-                        pct(hp)
-                      )}
-                    </span>
-                    {/* progresso na fase em que o pull acabou: quanto da vida dos bosses dela já foi (como o Warcraft Logs) */}
-                    <span className={`pull-meter ${phase ? `phase ph-${Math.min(phase.index, 3)}` : ''}`} aria-hidden>
-                      <span style={{ transform: `scaleX(${p.success ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
-                    </span>
-                    <span className="pull-meta">{mmss(p.durationMs)}</span>
-                    <span className="pull-deaths">
-                      {cause && causeSpell != null ? (
-                        <SpellIcon spellId={causeSpell} size={16} title={t.causeIcon(cause.name, cause.deaths)} hover={false} />
-                      ) : (
-                        <>
-                          {deaths}
-                          <Skull size={12} strokeWidth={1.75} aria-label={t.deaths} />
-                        </>
-                      )}
-                    </span>
+              <ol className="tree-pulls">
+                <li>
+                  <button className={`tree-sum sm ${summary === key ? 'active' : ''}`} onClick={() => onSummary(key)} aria-current={summary === key ? 'page' : undefined} title={t.openSummary(key, meta)}>
+                    {t.bossSummary}
                   </button>
-                );
-              })}
+                </li>
+                {ps.map((p) => {
+                  const hp = lowestBossHp(p);
+                  // boss de várias fases: até onde o try chegou (o HP é do boss da primeira fase)
+                  const phase = p.success ? null : reachedPhase(p);
+                  const deaths = p.deaths.filter((d) => !d.ignored).length;
+                  // o que puxou o wipe (o gatilho que explica as mortes); sem causa comum, a caveira com o número
+                  const cause = wipeCause(p);
+                  const causeSpell = cause ? mechanicSpellId(p, cause.key) : null;
+                  const activePull = summary == null && selected === p.id;
+                  return (
+                    <li key={p.id}>
+                      <button
+                        className={`tree-pull ${p.success ? 'kill' : 'wipe'} ${activePull ? 'active' : ''}`}
+                        onClick={() => onSelect(p.id)}
+                        aria-current={activePull ? 'page' : undefined}
+                        title={t.pullTitle(p.pullNumber, p.success ? null : pct(hp), mmss(p.durationMs), deaths) + (phase ? t.reached(phase.name) : '') + (cause ? t.cause(cause.name, cause.deaths) : '')}
+                      >
+                        <span className="tp-n">
+                          {p.pullNumber}
+                          <NoteDot pull={p} />
+                        </span>
+                        {/* progresso na fase em que o pull acabou: quanto da vida dos bosses dela já foi (como o Warcraft Logs) */}
+                        <span className="tp-bar" aria-hidden>
+                          <i style={{ transform: `scaleX(${p.success ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
+                        </span>
+                        <span className="tp-pct">
+                          {p.success ? (
+                            'Kill'
+                          ) : phase ? (
+                            <>
+                              <small>{phase.short}</small> {phasePct(hp)}
+                            </>
+                          ) : (
+                            phasePct(hp)
+                          )}
+                        </span>
+                        <span className="tp-dur">{mmss(p.durationMs)}</span>
+                        <span className="tp-cause">
+                          {cause && causeSpell != null ? (
+                            <SpellIcon spellId={causeSpell} size={16} title={t.causeIcon(cause.name, cause.deaths)} hover={false} />
+                          ) : (
+                            <>
+                              {deaths}
+                              <Skull size={11} strokeWidth={1.75} aria-label={t.deaths} />
+                            </>
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
             </Fold>
           </section>
         );
@@ -212,12 +225,4 @@ function NoteDot({ pull }: { pull: Pull }) {
   const t = useMessages(pullListMsg);
   if (!note.trim()) return null;
   return <span className="pull-note-dot" title={note} aria-label={t.note(note)} />;
-}
-
-function SummaryLink({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button className={`summary-link ${active ? 'active' : ''}`} onClick={onClick} aria-current={active ? 'page' : undefined}>
-      <ChartColumn size={16} strokeWidth={2} aria-hidden /> {label}
-    </button>
-  );
 }

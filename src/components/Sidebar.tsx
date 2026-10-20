@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronRight, FileX, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronLeft, FileX, PanelLeftOpen, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
 import { hasBackend, historyLoad, readReportFile, sameLog, type HistoryEntry, inDesktop } from '../lib/api';
 import { logTitle, mainEncounterId, pct } from '../lib/format';
@@ -111,16 +111,13 @@ export function Sidebar(props: Props) {
   return (
     <aside className="sidebar" aria-label={t.aria}>
       <div className="sidebar-top">
-        <button className="icon-btn sidebar-collapse" onClick={props.onCollapse} title={t.collapse} aria-label={t.collapse}>
-          <PanelLeftClose size={16} strokeWidth={1.5} aria-hidden />
-        </button>
         {hasBackend ? (
-          <button className={`side-item new ${props.page === 'browse' ? 'active' : ''}`} onClick={props.onNew} aria-current={props.page === 'browse' ? 'page' : undefined}>
-            <Plus size={16} strokeWidth={2} aria-hidden /> {t.newAnalysis}
+          <button className={`side-pill primary ${props.page === 'browse' ? 'active' : ''}`} onClick={props.onNew} aria-current={props.page === 'browse' ? 'page' : undefined}>
+            {t.newAnalysis}
           </button>
         ) : (
-          <label className="side-item new">
-            <Plus size={16} strokeWidth={2} aria-hidden /> {t.openJson}
+          <label className="side-pill primary">
+            {t.openJson}
             <input
               type="file"
               accept=".json"
@@ -132,37 +129,20 @@ export function Sidebar(props: Props) {
             />
           </label>
         )}
-        <button className={`side-item ${props.page === 'trends' ? 'active' : ''}`} onClick={props.onTrends} aria-current={props.page === 'trends' ? 'page' : undefined}>
-          <TrendingUp size={16} strokeWidth={1.5} aria-hidden /> {t.trends}
+        <button className={`side-pill ${props.page === 'trends' ? 'active' : ''}`} onClick={props.onTrends} aria-current={props.page === 'trends' ? 'page' : undefined}>
+          {t.trends}
+        </button>
+        <button className="icon-btn sidebar-collapse" onClick={props.onCollapse} title={t.collapse} aria-label={t.collapse}>
+          <ChevronLeft size={16} strokeWidth={1.5} aria-hidden />
         </button>
       </div>
 
       <div className="sidebar-scroll">
-        {current && (
-          <Section title={t.openNow}>
-            <div className={`side-entry ${expanded.has(CURRENT) ? 'open' : ''}`}>
-              <div className="side-item entry active">
-                <button className="entry-main" onClick={() => toggle(CURRENT)} title={current.file} aria-expanded={expanded.has(CURRENT)}>
-                  <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
-                  <span className="entry-title">
-                    <BossName encounterId={mainEncounterId(current.pulls)} name={logTitle(current.pulls)} size={16} />
-                  </span>
-                </button>
-              </div>
-              <Fold open={expanded.has(CURRENT)}>
-                <PullList {...props} />
-              </Fold>
-            </div>
-          </Section>
-        )}
-
-        {pinned.length > 0 && <Section title={t.pinned}>{pinned.map(row)}</Section>}
-
-        {recent.length > 0 && (
+        {(current || history.length > 0) && (
           <Section
-            title={t.recent}
+            title={t.nights}
             action={
-              confirmAll ? (
+              recent.length === 0 ? null : confirmAll ? (
                 <span className="confirm-inline">
                   <button
                     className="confirm-yes"
@@ -184,6 +164,20 @@ export function Sidebar(props: Props) {
               )
             }
           >
+            {/* a análise aberta que ainda não está no histórico (ex.: relatório JSON), depois as fixadas e as recentes */}
+            {current && (
+              <NightRow
+                title={logTitle(current.pulls)}
+                encounterId={mainEncounterId(current.pulls)}
+                info={current.file}
+                open
+                expanded={expanded.has(CURRENT)}
+                onToggle={() => toggle(CURRENT)}
+              >
+                <PullList {...props} />
+              </NightRow>
+            )}
+            {pinned.map(row)}
             {recent.map(row)}
           </Section>
         )}
@@ -241,9 +235,17 @@ function EntryRow({
     .join(' · ');
 
   return (
-    <div className={`side-entry ${expanded ? 'open' : ''}`}>
-      <div className={`side-item entry ${open ? 'active' : ''} ${confirm ? 'confirming' : ''}`}>
-        {confirm ? (
+    <NightRow
+      title={e.title}
+      encounterId={e.encounterId ?? null}
+      info={info}
+      open={open}
+      expanded={expanded}
+      pinned={e.pinned}
+      missing={!e.logExists}
+      onToggle={() => (open || hasBackend ? onToggle() : props.onOpenEntry(e))}
+      confirm={
+        confirm && (
           <span className="confirm-inline full">
             <span className="confirm-text">{t.confirmDelete(e.title)}</span>
             <button
@@ -259,32 +261,82 @@ function EntryRow({
               {t.cancel}
             </button>
           </span>
-        ) : (
-          <>
-            <button className="entry-main" onClick={() => (open || hasBackend ? onToggle() : props.onOpenEntry(e))} title={info} aria-expanded={expanded}>
-              <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
-              <span className="entry-title">
-                <BossName encounterId={e.encounterId} name={e.title} size={16} />
-              </span>
-              {!e.logExists && <FileX size={13} strokeWidth={1.5} className="entry-missing" aria-label={t.logMissing} />}
-            </button>
-            <span className="entry-actions">
-              <button
-                className="icon-btn sm"
-                onClick={() => props.onTogglePin(e)}
-                title={e.pinned ? t.unpin : t.pinKeep}
-                aria-label={e.pinned ? t.unpin : t.pin}
-              >
-                {e.pinned ? <PinOff size={14} strokeWidth={1.5} aria-hidden /> : <Pin size={14} strokeWidth={1.5} aria-hidden />}
-              </button>
-              <button className="icon-btn sm" onClick={() => setConfirm(true)} title={t.deleteFromHistory} aria-label={t.deleteFromHistory}>
-                <Trash size={14} strokeWidth={1.5} aria-hidden />
-              </button>
+        )
+      }
+      actions={
+        <>
+          <button className="icon-btn sm" onClick={() => props.onTogglePin(e)} title={e.pinned ? t.unpin : t.pinKeep} aria-label={e.pinned ? t.unpin : t.pin}>
+            {e.pinned ? <PinOff size={14} strokeWidth={1.5} aria-hidden /> : <Pin size={14} strokeWidth={1.5} aria-hidden />}
+          </button>
+          <button className="icon-btn sm" onClick={() => setConfirm(true)} title={t.deleteFromHistory} aria-label={t.deleteFromHistory}>
+            <Trash size={14} strokeWidth={1.5} aria-hidden />
+          </button>
+        </>
+      }
+    >
+      {children}
+    </NightRow>
+  );
+}
+
+/** "15/10 · The Coiled Altar Mythic" -> data e título, para a data ficar em destaque à esquerda. */
+function splitTitle(title: string): { date: string | null; name: string } {
+  const m = title.match(/^(\d{1,2}\/\d{1,2})\s*·\s*(.+)$/);
+  return m ? { date: m[1], name: m[2] } : { date: null, name: title };
+}
+
+/**
+ * Uma noite: a data, o ícone e o nome do boss principal; a linha inteira abre e fecha os pulls (com as linhas-guia
+ * da árvore). Fixar e apagar aparecem ao passar o mouse.
+ */
+function NightRow({
+  title,
+  encounterId,
+  info,
+  open,
+  expanded,
+  pinned = false,
+  missing = false,
+  onToggle,
+  confirm,
+  actions,
+  children,
+}: {
+  title: string;
+  encounterId: number | null;
+  info: string;
+  open: boolean;
+  expanded: boolean;
+  pinned?: boolean;
+  missing?: boolean;
+  onToggle: () => void;
+  confirm?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const t = useMessages(sidebarMsg);
+  const { date, name } = splitTitle(title);
+  return (
+    <div className={`side-night ${expanded ? 'expanded' : ''} ${open ? 'active' : ''}`}>
+      {confirm ? (
+        <div className="side-night-head confirming">{confirm}</div>
+      ) : (
+        <div className="side-night-head">
+          <button className="side-night-main" onClick={onToggle} title={info} aria-expanded={expanded}>
+            {date && <span className="side-night-date">{date}</span>}
+            <span className="side-night-title">
+              <BossName encounterId={encounterId} name={name} size={18} />
             </span>
-          </>
-        )}
-      </div>
-      <Fold open={expanded}>{children}</Fold>
+            {pinned && <Pin size={12} strokeWidth={1.75} className="side-night-pinned" aria-label={t.pinned} />}
+            {missing && <FileX size={13} strokeWidth={1.5} className="side-night-missing" aria-label={t.logMissing} />}
+            <ChevronDown size={14} strokeWidth={1.5} className={`chev-down ${expanded ? 'open' : ''}`} aria-hidden />
+          </button>
+          {actions && <span className="side-night-actions">{actions}</span>}
+        </div>
+      )}
+      <Fold open={expanded}>
+        <div className="side-night-tree">{children}</div>
+      </Fold>
     </div>
   );
 }
