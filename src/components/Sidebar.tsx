@@ -1,12 +1,15 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronRight, FileX, PanelLeftClose, PanelLeftOpen, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
-import type { LogReport } from '../types';
-import { hasBackend, readReportFile, sameLog, type HistoryEntry, inDesktop } from '../lib/api';
+import type { LogReport, Pull } from '../types';
+import { hasBackend, historyLoad, readReportFile, sameLog, type HistoryEntry, inDesktop } from '../lib/api';
 import { logTitle, mainEncounterId, pct } from '../lib/format';
 import { BossIcon, BossName } from './Names';
 import type { UpdateState } from '../lib/updater';
 import { missingRequired, useSetup } from '../lib/setup';
-import { NIGHT, PullList, type PullListProps } from './PullList';
+import { Fold, PullList, type PullListProps } from './PullList';
+
+/** A análise aberta que ainda não está no histórico (ex.: relatório JSON). */
+const CURRENT = 'current';
 import { intlLocale, useMessages } from '../i18n';
 import { sidebarMsg } from './Sidebar.i18n';
 
@@ -44,16 +47,65 @@ export function Sidebar(props: Props) {
   const recent = history.filter((e) => !e.pinned);
   const current = report && !history.some(isOpen) ? report : null;
   const [confirmAll, setConfirmAll] = useState(false);
-  // a análise aberta começa expandida; clicar nela recolhe/expande a lista de pulls
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => setCollapsed(false), [report]);
-  const toggleOpen = () => {
-    if (collapsed) props.onSummary(NIGHT); // reabrir leva ao resumo da noite
-    setCollapsed(!collapsed);
+  // Cada noite abre e fecha sozinha e só mostra os pulls: não troca a tela. Uma noite salva que não está aberta
+  // é lida do histórico só para a lista; escolher um pull ou um resumo nela é que abre a noite.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [loaded, setLoaded] = useState<Map<string, Pull[] | 'loading' | 'error'>>(() => new Map());
+  const openKey = report ? (history.find(isOpen)?.id ?? CURRENT) : null;
+  useEffect(() => {
+    if (openKey) setExpanded((s) => (s.has(openKey) ? s : new Set(s).add(openKey)));
+  }, [openKey]);
+  const toggle = (key: string, e?: HistoryEntry) => {
+    setExpanded((s) => {
+      const next = new Set(s);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    if (e && !isOpen(e) && !loaded.has(e.id) && hasBackend) {
+      setLoaded((m) => new Map(m).set(e.id, 'loading'));
+      historyLoad(e.id)
+        .then((r) => setLoaded((m) => new Map(m).set(e.id, r.pulls)))
+        .catch(() => setLoaded((m) => new Map(m).set(e.id, 'error')));
+    }
+  };
+  // pull ou resumo escolhido numa noite que não está aberta: abre a noite e vai até ele quando ela carregar
+  const pendingGo = useRef<{ logPath: string; startMs?: number; summary?: string } | null>(null);
+  useEffect(() => {
+    const go = pendingGo.current;
+    if (!go || !report || !sameLog(report.file, go.logPath)) return;
+    pendingGo.current = null;
+    if (go.startMs != null) {
+      const p = report.pulls.find((x) => x.startMs === go.startMs);
+      if (p) props.onSelect(p.id);
+    } else if (go.summary) props.onSummary(go.summary);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report]);
+  const pullsOf = (e: HistoryEntry): ReactNode => {
+    if (isOpen(e)) return <PullList {...props} />;
+    const got = loaded.get(e.id);
+    if (!Array.isArray(got)) return <p className="muted small pull-tree-note">{got === 'error' ? t.loadFailed : t.loading}</p>;
+    return (
+      <PullList
+        pulls={got}
+        selected={null}
+        summary=""
+        onSelect={(id) => {
+          pendingGo.current = { logPath: e.logPath, startMs: got.find((p) => p.id === id)?.startMs };
+          props.onOpenEntry(e);
+        }}
+        onSummary={(key) => {
+          pendingGo.current = { logPath: e.logPath, summary: key };
+          props.onOpenEntry(e);
+        }}
+      />
+    );
   };
 
   const row = (e: HistoryEntry) => (
-    <EntryRow key={e.id} entry={e} open={isOpen(e)} expanded={isOpen(e) && !collapsed} onToggle={toggleOpen} {...props} />
+    <EntryRow key={e.id} entry={e} open={isOpen(e)} expanded={expanded.has(e.id)} onToggle={() => toggle(e.id, e)} {...props}>
+      {pullsOf(e)}
+    </EntryRow>
   );
 
   return (
@@ -88,16 +140,18 @@ export function Sidebar(props: Props) {
       <div className="sidebar-scroll">
         {current && (
           <Section title={t.openNow}>
-            <div className={`side-entry ${collapsed ? '' : 'open'}`}>
+            <div className={`side-entry ${expanded.has(CURRENT) ? 'open' : ''}`}>
               <div className="side-item entry active">
-                <button className="entry-main" onClick={toggleOpen} title={current.file} aria-expanded={!collapsed}>
+                <button className="entry-main" onClick={() => toggle(CURRENT)} title={current.file} aria-expanded={expanded.has(CURRENT)}>
                   <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
                   <span className="entry-title">
                     <BossName encounterId={mainEncounterId(current.pulls)} name={logTitle(current.pulls)} size={16} />
                   </span>
                 </button>
               </div>
-              {!collapsed && <PullList {...props} />}
+              <Fold open={expanded.has(CURRENT)}>
+                <PullList {...props} />
+              </Fold>
             </div>
           </Section>
         )}
@@ -169,8 +223,9 @@ function EntryRow({
   open,
   expanded,
   onToggle,
+  children,
   ...props
-}: { entry: HistoryEntry; open: boolean; expanded: boolean; onToggle: () => void } & Props) {
+}: { entry: HistoryEntry; open: boolean; expanded: boolean; onToggle: () => void; children: ReactNode } & Props) {
   const t = useMessages(sidebarMsg);
   const [confirm, setConfirm] = useState(false);
   const info = [
@@ -206,7 +261,7 @@ function EntryRow({
           </span>
         ) : (
           <>
-            <button className="entry-main" onClick={() => (open ? onToggle() : props.onOpenEntry(e))} title={info} aria-expanded={expanded}>
+            <button className="entry-main" onClick={() => (open || hasBackend ? onToggle() : props.onOpenEntry(e))} title={info} aria-expanded={expanded}>
               <ChevronRight size={14} strokeWidth={1.5} className="entry-chev" aria-hidden />
               <span className="entry-title">
                 <BossName encounterId={e.encounterId} name={e.title} size={16} />
@@ -229,7 +284,7 @@ function EntryRow({
           </>
         )}
       </div>
-      {expanded && <PullList {...props} />}
+      <Fold open={expanded}>{children}</Fold>
     </div>
   );
 }

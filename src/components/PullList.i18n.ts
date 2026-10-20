@@ -3,6 +3,7 @@ import { defineMessages } from '../i18n';
 export const pullListMsg = defineMessages(
   {
     nightSummary: 'Resumo da noite',
+    bossSummary: 'Resumo do boss',
     noRaidBoss: 'Nenhum boss de raid neste log.',
     dungeons: 'Masmorras (M+)',
     meta: (pulls: number, kill: boolean, best: string | null) => `${pulls} ${pulls === 1 ? 'pull' : 'pulls'}${kill ? ' · kill' : best != null ? ` · melhor ${best}` : ''}`,
@@ -18,6 +19,7 @@ export const pullListMsg = defineMessages(
   },
   {
     nightSummary: 'Night summary',
+    bossSummary: 'Boss summary',
     noRaidBoss: 'No raid bosses in this log.',
     dungeons: 'Dungeons (M+)',
     meta: (pulls: number, kill: boolean, best: string | null) => `${pulls} ${pulls === 1 ? 'pull' : 'pulls'}${kill ? ' · kill' : best != null ? ` · best ${best}` : ''}`,
