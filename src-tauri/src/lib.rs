@@ -239,7 +239,9 @@ pub fn run() {
             simc::simc_status,
             simc::simc_install,
             simc::simc_run,
-            simc::simc_cancel
+            simc::simc_cancel,
+            simc::simc_saved_get,
+            simc::simc_saved_put
         ])
         .run(tauri::generate_context!())
         .expect("erro ao iniciar o Wipe Cause");

@@ -350,8 +350,13 @@ export interface SimcResult {
   seconds: number;
 }
 
+/** Dev no navegador (sem o app): o vite roda o simc de WIPE_DEV_SIMC_EXE em /__simc. */
+const devSimc = import.meta.env.DEV && !hasBackend;
+const DEV_MANIFEST: SimcManifest = { commit: 'dev', banner: 'SimulationCraft (dev)', built: '', source: '', asset: { name: '', url: '', size: 0, sha256: '' } };
+
 /** `check` consulta o release para saber se há build novo. */
-export const simcStatus = (check = false) => invoke<SimcStatus>('simc_status', { check });
+export const simcStatus = (check = false): Promise<SimcStatus> =>
+  devSimc ? Promise.resolve({ available: true, installed: DEV_MANIFEST, latest: null, update: false, error: null }) : invoke<SimcStatus>('simc_status', { check });
 export async function simcInstall(onProgress?: (fraction: number) => void): Promise<SimcManifest> {
   const unlisten = await listen<{ done: number; total: number }>('simc-progress', (e) => {
     if (e.payload.total > 0) onProgress?.(e.payload.done / e.payload.total);
@@ -364,6 +369,11 @@ export async function simcInstall(onProgress?: (fraction: number) => void): Prom
 }
 /** Roda um perfil do simc. Instala ou atualiza antes, se precisar (o progresso vem em `onProgress`). */
 export async function simcRun(input: string, opts: { log?: boolean; onProgress?: (fraction: number) => void } = {}): Promise<SimcResult> {
+  if (devSimc) {
+    const r = await fetch('/__simc', { method: 'POST', body: JSON.stringify({ input, log: opts.log ?? false }) });
+    if (!r.ok) throw await r.json().catch(() => r.statusText);
+    return r.json();
+  }
   const unlisten = await listen<{ done: number; total: number }>('simc-progress', (e) => {
     if (e.payload.total > 0) opts.onProgress?.(e.payload.done / e.payload.total);
   });
@@ -374,6 +384,29 @@ export async function simcRun(input: string, opts: { log?: boolean; onProgress?:
   }
 }
 export const simcCancel = () => invoke<void>('simc_cancel');
+
+/** Simulação salva no computador (no navegador de dev, no localStorage). */
+export async function simcSavedGet<T>(key: string): Promise<T | null> {
+  if (devSimc) {
+    try {
+      return JSON.parse(localStorage.getItem(`wipe-cause:sim:${key}`) ?? 'null') as T | null;
+    } catch {
+      return null;
+    }
+  }
+  return invoke<T | null>('simc_saved_get', { key });
+}
+export async function simcSavedPut(key: string, value: unknown): Promise<void> {
+  if (devSimc) {
+    try {
+      localStorage.setItem(`wipe-cause:sim:${key}`, JSON.stringify(value));
+    } catch {
+      /* sem storage */
+    }
+    return;
+  }
+  return invoke<void>('simc_saved_put', { key, value });
+}
 
 // ---------------------------------------------------------------------------
 // Discord (webhook do canal da raid)

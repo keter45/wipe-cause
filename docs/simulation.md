@@ -90,6 +90,16 @@ Falta: talentos *omnium* (12.0.7, `omnium_talents` no SimC): ainda não vimos on
 
 ## 5. O que comparar (mix de números e decisões)
 
+**Na tela (feito em 2026-10-20):** a opção *Robô (SimulationCraft)* em "Comparar com" (não aparece
+para healer). Um clique simula: 1000 iterações dão as médias (DPS, dano por habilidade, dano a cada
+5s) e 5 iterações avulsas (`seed=1…5`) dão sequências de casts, das quais fica a de DPS mais perto da
+média. O resultado vira um `Sample` (o mesmo pull, com um player "SimulationCraft"), e as seções da
+comparação com os tops (KPIs, diferenças principais, onde abriu vantagem, bursts, cooldowns, casts
+por habilidade, poção) comparam com ele. Fica salvo em `<dados>/simc/saved/` por player + boss +
+dificuldade + noite (`src/lib/botSim.ts`). O perfil usado aparece no fim, para conferir ou colar no
+Raidbots. Em dev no navegador: `WIPE_DEV_SIMC_EXE` (config `ui-simc`) faz o vite rodar um simc local.
+
+
 **A) Números agregados**, com várias iterações (≈1000): DPS, casts por minuto de cada skill, atraso
 médio dos cooldowns, procs desperdiçados, tempo com cada buff, tempo parado. Mesma tela da comparação
 com os tops, com o robô no lugar deles.

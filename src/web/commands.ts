@@ -134,6 +134,8 @@ const commands: Record<string, (a: Args) => unknown> = {
   simc_install: appOnly,
   simc_run: appOnly,
   simc_cancel: () => undefined,
+  simc_saved_get: () => null,
+  simc_saved_put: appOnly,
   save_file: appOnly,
 };
 

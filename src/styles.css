@@ -4161,6 +4161,33 @@ td.warn {
   margin: 0;
   line-height: 1.5;
 }
+.bot-cta {
+  max-width: 900px;
+  margin: 12px 0;
+}
+.bot-cta p + p {
+  margin-top: 4px;
+}
+.bot-actions {
+  display: flex;
+  gap: 8px;
+}
+.bot-step {
+  color: var(--accent);
+}
+.bot-profile {
+  margin: 16px 0;
+}
+.bot-profile pre {
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 .intro-setup {
   display: inline-flex;
   align-items: center;

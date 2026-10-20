@@ -183,8 +183,21 @@ fn checked_recently(dir: &Path) -> bool {
         .is_some_and(|age| age < CHECK_EVERY)
 }
 
+/// Desenvolvimento: `WIPE_SIMC_EXE` aponta para um simc.exe compilado na máquina (sem download).
+fn dev_exe() -> Option<(PathBuf, Manifest)> {
+    let exe = PathBuf::from(std::env::var("WIPE_SIMC_EXE").ok()?);
+    exe.is_file().then(|| {
+        let asset = Asset { name: String::new(), url: String::new(), size: 0, sha256: String::new() };
+        let m = Manifest { commit: "local".into(), banner: format!("SimulationCraft (local: {})", exe.display()), built: String::new(), source: String::new(), asset };
+        (exe, m)
+    })
+}
+
 /// O simc pronto para rodar: instala na primeira vez e atualiza quando há build novo.
 fn ensure(app: &AppHandle) -> Result<(PathBuf, Manifest), String> {
+    if let Some(dev) = dev_exe() {
+        return Ok(dev);
+    }
     let dir = dir(app)?;
     match installed(&dir) {
         Some(cur) if checked_recently(&dir) => Ok((exe_path(&dir), cur)),
@@ -313,7 +326,7 @@ fn execute(exe: &Path, work: &Path, input: &str, log: bool) -> Result<(serde_jso
 #[tauri::command]
 pub async fn simc_status(app: AppHandle, check: Option<bool>) -> Result<SimcStatus, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let installed = installed(&dir(&app)?);
+        let installed = dev_exe().map(|(_, m)| m).or(installed(&dir(&app)?));
         let (latest, error) = if check.unwrap_or(false) {
             match fetch_manifest() {
                 Ok(m) => (Some(m), None),
@@ -355,6 +368,33 @@ pub async fn simc_run(app: AppHandle, input: String, log: Option<bool>) -> Resul
 #[tauri::command]
 pub fn simc_cancel() {
     CANCEL.store(true, Ordering::SeqCst);
+}
+
+/// Simulações salvas (uma por player + boss + noite): `<dados>/simc/saved/<chave>.json`.
+fn saved_path(app: &AppHandle, key: &str) -> Result<PathBuf, String> {
+    // a chave vem da UI: só letras, números e - _ . no nome do arquivo
+    let safe: String = key.chars().map(|c| if c.is_ascii_alphanumeric() || "-_.".contains(c) { c } else { '_' }).take(160).collect();
+    if safe.is_empty() || safe.starts_with('.') {
+        return Err("invalid key".into());
+    }
+    Ok(dir(app)?.join("saved").join(format!("{safe}.json")))
+}
+
+#[tauri::command]
+pub fn simc_saved_get(app: AppHandle, key: String) -> Result<Option<serde_json::Value>, String> {
+    let p = saved_path(&app, &key)?;
+    let Ok(text) = std::fs::read_to_string(p) else { return Ok(None) };
+    // arquivo estragado conta como sem simulação
+    Ok(serde_json::from_str(&text).ok())
+}
+
+#[tauri::command]
+pub fn simc_saved_put(app: AppHandle, key: String, value: serde_json::Value) -> Result<(), String> {
+    let p = saved_path(&app, &key)?;
+    if let Some(d) = p.parent() {
+        std::fs::create_dir_all(d).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(p, serde_json::to_vec(&value).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
