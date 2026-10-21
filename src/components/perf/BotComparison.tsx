@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bot, Play, RotateCcw, X } from 'lucide-react';
 import type { Pull } from '../../types';
-import { mmss, num, shortName, uniqueSeconds } from '../../lib/format';
-import { detectCooldowns, outputPerSec, perfInsights, totalCpm, type Sample } from '../../lib/performance';
+import { mmss, shortName } from '../../lib/format';
+import { detectCooldowns, perfInsights, totalCpm, type Sample } from '../../lib/performance';
 import { BOT_ITERATIONS, botMe, botSample, loadBotRun, NoPullError, runBot, type BotRun, type BotStep } from '../../lib/botSim';
 import { openExternal, simcCancel, simcStatus, type SimcStatus } from '../../lib/api';
 import { messagesOf, useMessages } from '../../i18n';
@@ -15,12 +15,11 @@ import { Hint } from '../ui/Hint';
 import { Stat, Bursts, Rotation, Potions } from './sections';
 import { CooldownCompare } from './CooldownCompare';
 import { Advantage } from './Advantage';
-import { DecisionList } from '../DecisionList';
-import { PlayAt } from '../VideoPanel';
-import { useSeek } from '../../lib/wcr';
 import { specLabel } from '../../lib/specs';
 import { decisionRefFor } from '../../lib/bench';
 import { botDecisions, findingKey, type BotDecisions, type TopsDiff, type TopsNote } from '../../lib/botDecisions';
+import { fixes, potential } from '../../lib/botView';
+import { DecisionCards, PotentialGauge, SimSheet, TOP_FIXES, TopFixes, fixCost } from './BotParts';
 
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
 
@@ -74,11 +73,8 @@ export function BotComparison({ me, nightPulls }: { me: Sample; nightPulls: Pull
         : step.progress != null && step.progress < 1
           ? t.stepDownload(Math.round(step.progress * 100))
           : t.stepSimulating(BOT_ITERATIONS);
-  const button = (
-    <button className={`btn ${run ? '' : 'primary'}`} onClick={simulate} disabled={!available || busy} title={available ? undefined : t.appOnly}>
-      {run ? <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> : <Play size={14} strokeWidth={1.5} aria-hidden />} {run ? t.again : t.simulate}
-    </button>
-  );
+  const cur = status?.installed?.commit;
+  const old = !!run && !!cur && cur !== run.commit && !['local', 'dev'].includes(cur) && !['local', 'dev'].includes(run.commit);
 
   if (!loaded) return null;
   return (
@@ -87,14 +83,14 @@ export function BotComparison({ me, nightPulls }: { me: Sample; nightPulls: Pull
         <Bot size={20} strokeWidth={1.5} className="muted" aria-hidden />
         <div>
           <h3>{t.ctaTitle(shortName(name))}</h3>
-          {run ? (
-            <RunInfo run={run} me={me} status={status} />
-          ) : (
+          {!run && (
             <p className="muted small">
               {t.ctaText} {available && !status?.installed && t.firstDownload}
               {!available && <> {t.appOnly}</>}
             </p>
           )}
+          {run && run.pullStartMs !== me.pull.startMs && <p className="muted small">{t.otherPull(run.pullNumber)}</p>}
+          {old && <p className="small warn">{t.oldSimc}</p>}
           {stepText && (
             <p className="small bot-step" role="status">
               {stepText}
@@ -108,7 +104,9 @@ export function BotComparison({ me, nightPulls }: { me: Sample; nightPulls: Pull
               <X size={14} strokeWidth={1.5} aria-hidden /> {t.cancel}
             </button>
           )}
-          {button}
+          <button className={`btn ${run ? '' : 'primary'}`} onClick={simulate} disabled={!available || busy} title={available ? undefined : t.appOnly}>
+            {run ? <RotateCcw size={14} strokeWidth={1.5} aria-hidden /> : <Play size={14} strokeWidth={1.5} aria-hidden />} {run ? t.again : t.simulate}
+          </button>
         </div>
       </div>
       {run && <BotResult run={run} nightPulls={nightPulls} name={name} />}
@@ -116,19 +114,23 @@ export function BotComparison({ me, nightPulls }: { me: Sample; nightPulls: Pull
   );
 }
 
-function RunInfo({ run, me, status }: { run: BotRun; me: Sample; status: SimcStatus | null }) {
+/** Chips de quando e com qual SimC (o código-fonte do commit, GPL-3). */
+function RunChips({ run }: { run: BotRun }) {
   const t = useMessages(botMsg);
-  const cur = status?.installed?.commit;
-  const old = cur && cur !== run.commit && !['local', 'dev'].includes(cur) && !['local', 'dev'].includes(run.commit);
-  const assumed = run.assumed.map((a) => t.assumed[a]);
+  const version = /SimulationCraft (\d\S*)/.exec(run.banner)?.[1];
   return (
     <>
-      <p className="muted small">
-        {t.simulatedPull(run.pullNumber, mmss(run.windowMs))} — {run.clean ? t.cleanPull : t.dirtyPull} · {t.when(fmtWhen(run.created))}
-      </p>
-      {run.pullStartMs !== me.pull.startMs && <p className="muted small">{t.otherPull(run.pullNumber)}</p>}
-      {assumed.length > 0 && <p className="muted small">{t.assumedNote(assumed.join(', '))}</p>}
-      {old && <p className="small warn">{t.oldSimc}</p>}
+      <span className="bot-chip">{t.when(fmtWhen(run.created))}</span>
+      {version && (
+        <span className="bot-chip" title={run.banner}>
+          SimC {version}
+          {/^[0-9a-f]{7,40}$/.test(run.commit) && (
+            <a href="#" onClick={(e) => (e.preventDefault(), void openExternal(`https://github.com/simulationcraft/simc/tree/${run.commit}`))}>
+              {t.source}
+            </a>
+          )}
+        </span>
+      )}
     </>
   );
 }
@@ -140,20 +142,26 @@ function BotResult({ run, nightPulls, name }: { run: BotRun; nightPulls: Pull[];
   const me = useMemo(() => botMe(nightPulls, run, name) ?? null, [nightPulls, run, name]);
   const ref = useMemo(() => (me ? botSample(me, run) : null), [me, run]);
   const cds = useMemo(() => (me && ref ? detectCooldowns([me, ref]) : new Map()), [me, ref]);
+  const d: BotDecisions | null = useMemo(() => (me ? botDecisions(me, run, decisionRefFor(me.player)) : null), [me, run]);
   if (!me || !ref) return <p className="muted small">{t.otherPull(run.pullNumber)}</p>;
 
-  const [mo, ro] = [outputPerSec(me), outputPerSec(ref)];
-  const diff = ro > 0 ? ((mo - ro) / ro) * 100 : 0;
+  const pot = potential(me, run);
   const insights = perfInsights(me, ref, cds);
+  const notes = d ? Object.fromEntries(Object.entries(d.topsNotes).map(([k, n]) => [k, noteText(n)])) : {};
+  const fixList = d ? fixes(me, run, d, findingKey) : [];
   return (
     <>
-      <p className="muted small perf-note">{t.caveat}</p>
-      <div className="kpis">
-        <Stat label={m.perSecondAlive(false)} mine={num(mo)} ref={num(ro)} sub={t.botValue} tone={diff <= -15 ? 'bad' : diff < -3 ? 'warn' : 'good'} extra={`${diff >= 0 ? '+' : ''}${diff.toFixed(0)}%`} />
-        <Stat label={m.timeAlive} mine={mmss(run.windowMs)} ref={mmss(run.windowMs)} sub={t.botValue} />
-        <Stat label={m.cpm} mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref).toFixed(1)} sub={t.botValue} />
+      <SimSheet run={run} me={me} extra={<RunChips run={run} />} />
+      <div className="bot-top">
+        {pot && <PotentialGauge p={pot} />}
+        <div className="kpis">
+          <Stat label={m.timeAlive} mine={mmss(run.windowMs)} ref={mmss(run.windowMs)} sub={t.botValue} />
+          <Stat label={m.cpm} mine={totalCpm(me).toFixed(1)} ref={totalCpm(ref).toFixed(1)} sub={t.botValue} />
+        </div>
       </div>
-      <p className="muted small">{t.dpsRange(num(run.dps.min), num(run.dps.max))}</p>
+
+      <TopFixes list={fixList} windowMs={run.windowMs} notes={notes} />
+      <BotDecisionsView me={me} d={d} notes={notes} costs={new Map(fixList.map((f) => [f.key, fixCost(f, run.windowMs)]))} shown={new Set(fixList.slice(0, TOP_FIXES).map((f) => f.key))} />
 
       {insights.length > 0 && (
         <section className="perf-section">
@@ -168,7 +176,6 @@ function BotResult({ run, nightPulls, name }: { run: BotRun; nightPulls: Pull[];
           </ul>
         </section>
       )}
-      <BotDecisionsView me={me} run={run} />
       <section className="perf-section">
         <h4>
           {messagesOf(soloPullMsg).advantage} <Hint>{messagesOf(soloPullMsg).alignedHint}</Hint>
@@ -179,21 +186,6 @@ function BotResult({ run, nightPulls, name }: { run: BotRun; nightPulls: Pull[];
       <CooldownCompare me={me} ref_={ref} cds={cds} />
       <Rotation me={me} ref_={ref} cds={cds} />
       <Potions me={me} ref_={ref} />
-      <details className="bot-profile small">
-        <summary>{t.profile}</summary>
-        <p className="muted">
-          {t.profileHint} {run.banner}
-          {/^[0-9a-f]{7,40}$/.test(run.commit) && (
-            <>
-              {' · '}
-              <a href="#" onClick={(e) => (e.preventDefault(), void openExternal(`https://github.com/simulationcraft/simc/tree/${run.commit}`))}>
-                {t.source}
-              </a>
-            </>
-          )}
-        </p>
-        <pre>{run.input}</pre>
-      </details>
     </>
   );
 }
@@ -226,66 +218,23 @@ function diffText(d: TopsDiff): string {
   }
 }
 
-function Times({ times }: { times: number[] }) {
-  const seek = useSeek();
-  const list = uniqueSeconds(times);
-  return (
-    <span className="rot-times">
-      {list.slice(0, 6).map((at) => (
-        <span key={at} className="rot-time">
-          {mmss(at)}
-          <PlayAt t={at} seek={seek} />
-        </span>
-      ))}
-      {list.length > 6 && <span className="muted"> +{list.length - 6}</span>}
-    </span>
-  );
-}
-
-/** Procs e cooldowns contra as 20 lutas do robô, o cast a cast e onde os tops fazem diferente. */
-function BotDecisionsView({ me, run }: { me: Sample; run: BotRun }) {
+/** Procs, cooldowns e o cast a cast contra as 20 lutas do robô, e onde os tops fazem diferente. */
+function BotDecisionsView({ me, d, notes, costs, shown }: { me: Sample; d: BotDecisions | null; notes: Record<string, string>; costs: Map<string, string>; shown: Set<string> }) {
   const t = useMessages(botMsg);
-  const mentions = useMentionsSpell();
-  const d: BotDecisions | null = useMemo(() => botDecisions(me, run, decisionRefFor(me.player)), [me, run]);
   if (!d) return <p className="muted small">{t.needsRotation(specLabel(me.player.specId))}</p>;
-  const notes = Object.fromEntries(Object.entries(d.topsNotes).map(([k, n]) => [k, noteText(n)]));
+  // os que já estão em "o que mudar primeiro" não se repetem
+  const rest = [...d.choices, ...d.findings].filter((x) => !shown.has(findingKey(x)));
   const empty = d.findings.length === 0 && d.choices.length === 0;
   return (
     <>
-      <section className="perf-section">
-        <h4>
-          {t.decisions} <Hint>{t.decisionsHint}</Hint>
-        </h4>
-        {empty && <p className="muted small">{t.noDecisions}</p>}
-        {d.findings.length > 0 && <DecisionList list={d.findings} who={t.botWho} notes={notes} />}
-        {d.choices.length > 0 && (
-          <>
-            <h5 className="bot-sub">
-              {t.choices} <Hint>{t.choicesHint}</Hint>
-            </h5>
-            <ul className="plain bench-list small">
-              {d.choices.map((c) => {
-                const text = t.choice(c.buffName, c.spell.name, c.times.length, c.bot.name, Math.round(c.botShare * 100), Math.round(c.botYours * 100));
-                const note = notes[findingKey(c)];
-                return (
-                  <li key={findingKey(c)}>
-                    {!mentions(text) && <SpellIcon spellId={c.spell.spellId} size={16} />}{' '}
-                    <span className="warn">
-                      <Colored text={text} />
-                    </span>
-                    <Times times={c.times} />
-                    {note && (
-                      <span className="decision-note">
-                        <Colored text={note} />
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        )}
-      </section>
+      {(empty || rest.length > 0) && (
+        <section className="perf-section">
+          <h4>
+            {shown.size ? t.moreDecisions : t.decisions} <Hint>{`${t.decisionsHint} ${t.choicesHint}`}</Hint>
+          </h4>
+          {empty ? <p className="muted small">{t.noDecisions}</p> : <DecisionCards items={rest} notes={notes} costs={costs} />}
+        </section>
+      )}
       {d.topsDiffs.length > 0 && (
         <section className="perf-section">
           <h4>
