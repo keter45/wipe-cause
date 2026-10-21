@@ -3,9 +3,9 @@
 // defensivos em área e o debuff crucial na cabeça. A aba Replay e o clipe usam os mesmos.
 
 import type { Pull } from '../types';
-import type { ZoneView } from '../components/ReplayView';
+import type { AuraHolder, ZoneView } from '../components/ReplayView';
 import { hasBackend, loadFight } from './api';
-import { auraHolders, crucialAt, deadAt, idleAxegrinders, vacatedAreas, vacatedSince, vanishedAreas, type FightView } from './fight';
+import { auraSpans, aurasAt, bossHpAt, crucialAt, deadAt, idleAxegrinders, vacatedAreas, vacatedSince, vanishedAreas, type FightView } from './fight';
 import type { ReplayData } from './replay';
 
 /** Pulls já relidos nesta sessão (trocar de aba ou gerar outro clipe não relê o log). */
@@ -50,10 +50,14 @@ export function loadFullPull(pull: Pull): Promise<Pull> {
 /** O que a aba Replay passa ao mapa, além das posições. */
 export interface FightOverlays {
   isDead: (guid: string, t: number) => boolean;
-  holders: (aura: number, t: number) => string[];
+  holders: (aura: number, t: number) => AuraHolder[];
   vacated: (guid: string, t: number) => number | null;
   vanished: (guid: string, t: number) => boolean;
   zones: ZoneView[];
+  /** vida (%) dos adds que importam, para a barra embaixo deles no mapa */
+  unitHp: (guid: string, t: number) => number | null;
+  /** stacks de uma aura num player (quantos fragmentos faltam pegar) */
+  auraStacks: (aura: number, guid: string, t: number) => number | null;
 }
 
 export function fightOverlays(pull: Pull, view: FightView, data: ReplayData): FightOverlays {
@@ -62,15 +66,21 @@ export function fightOverlays(pull: Pull, view: FightView, data: ReplayData): Fi
   const idleMap = idleAxegrinders(view, data);
   const vanishedMap = vanishedAreas(view, data);
   const names = new Map(pull.players.map((p) => [p.guid, p.name] as const));
+  const adds = new Map((view.data.adds ?? []).map((a) => [a.guid, a] as const));
   return {
     isDead: (g, t) => deadAt(view, g, t),
     // centros das áreas em volta de players: quem tem a aura no instante (e está vivo)
-    holders: (aura, t) => auraHolders(view, aura, t).filter((g) => !deadAt(view, g, t)),
+    holders: (aura, t) => auraSpans(view, aura, t).filter((h) => !deadAt(view, h.guid, t)),
     vacated: (g, t) => {
       const since = [vacatedSince(vacatedMap.get(g), t), vacatedSince(idleMap.get(g), t)].filter((value): value is number => value != null);
       return since.length ? Math.min(...since) : null;
     },
     vanished: (g, t) => vacatedSince(vanishedMap.get(g), t) != null,
+    auraStacks: (aura, g, t) => aurasAt(view, g, t).find((a) => a.spellId === aura)?.stacks ?? null,
+    unitHp: (g, t) => {
+      const a = adds.get(g);
+      return a ? bossHpAt(a, t) : null;
+    },
     // defensivos de raid em área (AMZ, Darkness, Spirit Link...), no mapa com o norte para cima
     zones: (view.data.zones ?? []).map((z) => {
       const caster = view.data.players[z.caster];

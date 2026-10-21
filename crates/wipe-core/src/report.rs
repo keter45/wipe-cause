@@ -127,6 +127,68 @@ pub struct Pull {
     /// inteiro: a barra de um cast cortado para no ponto em que foi cortado
     #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
     pub cast_ms: std::collections::BTreeMap<u32, i64>,
+    /// fragmentos que alguém tinha que pegar (regra com `pickup`): onde cada um foi pego
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pickups: Option<Pickups>,
+    /// auras nos inimigos que o mapa mostra (regra com `unit_aura`): escudo do add, véu do boss
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub unit_auras: Vec<UnitAuraView>,
+    /// poças de tamanho conhecido (regra com `pool`): cada vez que o cast saiu
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub pools: Vec<PoolView>,
+}
+
+/// Poça no replay: anunciada no cast (`from`), no chão de `on` a `to` (cresce e recua em `grow_ms`),
+/// em círculos (x, y, raio) nas coordenadas do log.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PoolView {
+    pub key: String,
+    pub name: String,
+    pub spell_id: u32,
+    pub from: i64,
+    pub on: i64,
+    pub to: i64,
+    pub grow_ms: i64,
+    pub circles: Vec<(f32, f32, f32)>,
+}
+
+/// Fragmentos para pegar (ex.: Gravebound): quem tem a aura pega um a cada acerto, e o acerto mostra
+/// onde o fragmento estava (onde o player estava ao pegar).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Pickups {
+    pub kinds: Vec<PickupKind>,
+    /// (tipo, player, desde quando estava no chão, quando foi pego, x, y em décimos de jarda)
+    pub items: Vec<(u8, String, i64, i64, i32, i32)>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PickupKind {
+    pub key: String,
+    pub name: String,
+    /// spell do acerto ao pegar (ícone)
+    pub spell_id: u32,
+    /// a aura de quem tem que pegar: as stacks dela são quantos faltam
+    pub aura: u32,
+}
+
+/// Aura num inimigo no replay: de quando até quando, as stacks e quanto ela já absorveu (escudo).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnitAuraView {
+    pub key: String,
+    pub name: String,
+    pub spell_id: u32,
+    pub guid: String,
+    pub from: i64,
+    pub to: i64,
+    /// mudanças de stack: (t, stacks)
+    pub stacks: Vec<(i64, u32)>,
+    /// escudo: dano absorvido somado até cada instante (t, total)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub absorbed: Vec<(i64, i64)>,
 }
 
 /// Marca de chão (world marker): qual (0-7, a ordem do /wm: quadrado azul, triângulo verde, losango roxo,
@@ -189,6 +251,8 @@ pub struct OrbTracks {
     pub ground: Vec<(i64, i64, i32, i32, u8)>,
     /// (player, de, até, tipo)
     pub carries: Vec<(String, i64, i64, u8)>,
+    /// quando um cast do boss explodiu o que sobrou no chão (`cleared_by`, ex.: o Toxic Deluge)
+    pub clears: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -258,6 +322,9 @@ pub struct FightData {
     pub heal_in: Vec<(u32, u16, i64)>,
     /// defensivos de raid em área (AMZ, Darkness, Spirit Link...)
     pub zones: Vec<FightZone>,
+    /// vida dos adds que importam (`units` com `replay: true`), para a barra embaixo deles no mapa
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub adds: Vec<FightBoss>,
 }
 
 /// Defensivo em área no replay completo: onde ficou (coordenadas do log), raio e quando.

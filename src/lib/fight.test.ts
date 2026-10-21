@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Pull } from '../types';
-import { aurasAt, bossHpAt, crucialAt, deadAt, eventsBetween, EV, fightMarkers, fightView, hpAt, idleAxegrinders, meterAt, seriesAt, vacatedAreas, vacatedSince, vanishedAreas } from './fight';
+import { aurasAt, bossHpAt, crucialAt, deadAt, eventsBetween, EV, fightMarkers, fightView, hpAt, idleAxegrinders, mechanicLanes, meterAt, seriesAt, vacatedAreas, vacatedSince, vanishedAreas } from './fight';
 import type { ReplayData, ReplayUnit } from './replay';
 
 const pull = {
@@ -200,5 +200,43 @@ describe('stacks e áreas desmentidas', () => {
     const other: ReplayUnit = { ...axe, guid: 'Creature-0-0-0-0-12345-01' };
     const data = { units: new Map([axe, far, other].map((unit) => [unit.guid, unit])), areas: [{ key: 'axe', name: 'Axegrinder', spellId: 99, npc: 260474, radius: 4 }], ground: [], groundKinds: [], casts: [], soaks: [], markers: [] } as ReplayData;
     expect([...idleAxegrinders(v, data)]).toEqual([[axe.guid, [[5000, 10250]]]]);
+  });
+});
+
+describe('faixas por mecânica', () => {
+  const lanesPull = {
+    players: [{ guid: 'P1', name: 'Alice-R' }],
+    deaths: [],
+    mechanics: [
+      { key: 'guillotine', name: 'Guillotine', spellId: 5, kind: 'soak', severity: 'wipe', failures: 1, events: [{ t: 21_000, player: null, detail: { pt: '', en: '' } }] },
+      { key: 'wail', name: 'Wail', spellId: 6, kind: 'interrupt', severity: 'major', failures: 1, events: [], casts: [{ t: 3000, sourceGuid: 'A', source: 'Add', interruptedBy: 'Alice-R', interruptedByGuid: 'P1' }, { t: 9000, sourceGuid: 'A', source: 'Add', interruptedBy: null, interruptedByGuid: null }] },
+      { key: 'sever', name: 'Sever', spellId: 11, kind: 'avoidable_damage', severity: 'major', failures: 0, events: [{ t: 3500, player: 'Alice-R', detail: { pt: '', en: '' } }] },
+      { key: 'bite', name: 'Bite', spellId: 9, kind: 'avoidable_damage', severity: 'minor', failures: 1, events: [{ t: 4000, player: 'Alice-R', detail: { pt: '', en: '' } }] },
+      { key: 'quiet', name: 'Quiet', spellId: 7, kind: 'info', severity: 'none', failures: 0, events: [] },
+    ],
+    soaks: [
+      { key: 'guillotine', name: 'Guillotine', spellId: 5, from: 1000, at: 5000, x: 0, y: 0, radius: 9, needs: 5, hit: 4 },
+      { key: 'guillotine', name: 'Guillotine', spellId: 5, from: 16_000, at: 20_000, x: 0, y: 0, radius: 9, needs: 5, hit: 5 },
+    ],
+    casts: [{ t: 3000, end: 3500, guid: 'B', spellId: 11, name: 'Sever', cone: { halfAngle: 40, range: 40 } }],
+    orbs: { kinds: [], contactYd: 7, ground: [[1000, 4000, 0, 0, 0], [2000, 6000, 0, 0, 1]], carries: [] },
+  } as unknown as Pull;
+
+  it('cada vez que a mecânica aconteceu: vazada se deu certo, cheia se deu errado', () => {
+    const lanes = mechanicLanes(lanesPull);
+    const by = new Map(lanes.map((l) => [l.key, l] as const));
+    // soak: errado só onde a regra deu falha (o número de atingidos não basta: imune não conta)
+    expect(by.get('guillotine')!.marks.map((m) => [m.t, m.ok, m.label])).toEqual([[5000, true, '4/5'], [20_000, false, '5/5']]);
+    expect(by.get('wail')!.marks.map((m) => [m.t, m.ok, m.guid])).toEqual([[3000, true, 'P1'], [9000, false, undefined]]);
+    // frontal sem falha (dentro da tolerância): só a marca vazada do cast
+    expect(by.get('sever')!.marks.map((m) => [m.t, m.ok])).toEqual([[3500, true]]);
+    expect(by.get('bite')!.marks.map((m) => [m.t, m.ok, m.guid])).toEqual([[4000, false, 'P1']]);
+    expect(by.has('quiet')).toBe(false);
+    // as que mais pesam em cima, depois dos orbs
+    expect(lanes.map((l) => l.key)).toEqual(['orbs', 'guillotine', 'wail', 'sever', 'bite']);
+  });
+
+  it('orbs no chão ao longo do pull', () => {
+    expect(mechanicLanes(lanesPull)[0].series).toEqual([[1000, 1], [2000, 2], [4000, 1], [6000, 0]]);
   });
 });

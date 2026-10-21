@@ -22,7 +22,7 @@ units:
   - { key: virulent_mutation, name: "Virulent Mutation", npc_id: 271982 }
   - { key: axegrinder, name: "Axegrinder", npc_id: 260474 }
   - { key: manifestation, name: "Manifestation of Dread", npc_id: 261218 }
-  - { key: soulcoiler, name: "Spiteful Soulcoiler", npc_id: 261521 }
+  - { key: soulcoiler, name: "Spiteful Soulcoiler", npc_id: 261521, replay: true }   # a vida e o Spirit Shield embaixo deles no mapa
 
 # hp: bosses cuja vida (somada) é o progresso da fase, como o Warcraft Logs mostra (conferido em 14 e 15/10:
 # P2 = vida do Malacrass; P3 = Zul'jan, que volta como outra unidade, + Malacrass)
@@ -134,6 +134,18 @@ mechanics:
     severity: minor
     detect: { damage_ids: [1283290] }
     ground: { lingers_s: 3, contour_cell_yd: 2 }
+    # 21/10, 14 e 15/10 Mythic (17 mil posições, 1.755 ticks): a poça sai dos dois lados do altar ~4,5s depois
+    # do Fangs of the Coiled Altar e fica ~22s. 1º Fangs: centros a 50 jd do meio, raio 40 (sobra um corredor
+    # de 10 jd); do 2º em diante: centros a 42,5 jd, raio 42,5 (as duas se encontram no meio). Meio do altar
+    # no log: x 1160, y 0. Medido cruzando quem tomou tick com quem estava perto e não tomou.
+    pool:
+      cast_id: 1282487
+      delay_s: 4.5
+      duration_s: 22
+      grow_s: 3
+      shapes:
+        - { centers: [[1160, 50], [1160, -50]], radius: 40 }
+        - { centers: [[1160, 42.5], [1160, -42.5]], radius: 42.5 }
     tolerance: 1
     tip: { pt: "Sair das poças que saem das bocas do altar.", en: "Get out of the pools coming from the altar's mouths." }
     message: { pt: "{player} tomou {count} ticks de Noxious Ground", en: "{player} took {count} ticks of Noxious Ground" }
@@ -220,9 +232,10 @@ mechanics:
     source_unit: zuljan
     severity: minor   # dano no raid, raramente mata: não é erro grave (nem no Mythic)
     detect: { damage_ids: [1283623] }
-    blast: { from_soak: guillotine, radius: 40, delay_ms: 6000, event_ids: [1283631] }
+    # 21/10 (14 e 15/10 Mythic, 55 Kiss e 920 Touch): Kiss até ~45 jd do meio do soak, Touch além (o tooltip diz 40)
+    blast: { from_soak: guillotine, radius: 45, delay_ms: 6000, event_ids: [1283631] }
     ground: false
-    tip: { pt: "Depois do soak, correr para mais de 40 jardas do machado antes de ele explodir.", en: "After the soak, run more than 40 yards from the axe before it explodes." }
+    tip: { pt: "Depois do soak, correr para mais de 45 jardas do machado antes de ele explodir.", en: "After the soak, run more than 45 yards from the axe before it explodes." }
     message: { pt: "{player} estava perto do machado no Widow's Kiss", en: "{player} was near the axe at Widow's Kiss" }
     notes: "No kill Heroic o raid inteiro tomou (dá para curar); no Mythic mata. Pull 6 de 28/09: matou 3. Widow's Touch (1283631) é o dano pequeno de quem está longe."
 
@@ -327,6 +340,9 @@ mechanics:
     source_unit: malacrass
     severity: major
     detect: { damage_ids: [1308330], aura_id: 1286837 }
+    # 15/10: Gravebound entra com 3 stacks; cada fragmento pego é um acerto de 1308330 (com a posição de
+    # quem pegou) e tira 1 stack. O log não põe os fragmentos no chão: no replay ficam onde foram pegos.
+    pickup: { aura: 1286837, hit_ids: [1308330] }
     tip: { pt: "Quem recebe Gravebound pega os próprios fragmentos antes do debuff acabar, senão morre.", en: "Whoever gets Gravebound picks up their own fragments before the debuff ends, or dies." }
     message: { pt: "Gravebound", en: "Gravebound" }
 
@@ -337,6 +353,7 @@ mechanics:
     severity: wipe
     detect: { cast_id: 1286918 }
     accept: [interrupt]
+    unit_aura: { aura: 1286912, absorb: true }   # Veil of Twilight no Malacrass: o escudo e quanto já absorveu (15/10)
     tip: { pt: "Quebrar o escudo (Veil of Twilight) e cortar o cast; se passar, wipe.", en: "Break the shield (Veil of Twilight) and interrupt the cast; if it goes through, wipe." }
     message: { pt: "Eternal Nightfall completou {count}x", en: "Eternal Nightfall went through {count}x" }
 
@@ -388,9 +405,10 @@ mechanics:
     difficulty: [mythic]
     severity: wipe
     detect: { aura_id: 1309105 }
+    unit_aura: { aura: 1309105 }   # 15/10: entra com 2 stacks no add; cada Gloombomb tira 1
     tip: { pt: "Cada Gloombomb no add tira um stack do escudo; add sem escudo quebrado = wipe.", en: "Each Gloombomb on the add removes a shield stack; an add without its shield broken = wipe." }
     message: { pt: "Spirit Shield", en: "Spirit Shield" }
-    notes: "ID do guia; não visto em log (só Heroic). Regra de CC/escudo ainda não avaliada."
+    notes: "Visto no Mythic de 15/10: aura no Spiteful Soulcoiler com 2 stacks (dois APPLIED seguidos). Regra de CC/escudo ainda não avaliada."
 
   - key: dreadful_presence
     name: "Dreadful Presence"
@@ -515,9 +533,9 @@ mechanics:
     overrides:
       mythic: { severity: major }
     detect: { damage_ids: [1299396] }
-    blast: { from_soak: grim_guillotine, radius: 40, delay_ms: 6000 }
+    blast: { from_soak: grim_guillotine, radius: 45, delay_ms: 6000 }   # o mesmo raio medido no Widow's Kiss
     ground: false
-    tip: { pt: "Sair para mais de 40 jardas do machado depois do soak.", en: "Move more than 40 yards from the axe after the soak." }
+    tip: { pt: "Sair para mais de 45 jardas do machado depois do soak.", en: "Move more than 45 yards from the axe after the soak." }
     message: { pt: "{player} estava perto do machado no Death's Embrace", en: "{player} was near the axe at Death's Embrace" }
 
   - key: soulbound

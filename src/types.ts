@@ -85,6 +85,42 @@ export interface Pull {
   markers?: WorldMarker[];
   /** tempo de cast típico (ms) de cada spell dos inimigos (medido no log inteiro) */
   castMs?: Record<number, number>;
+  /** replay completo: fragmentos que alguém tinha que pegar (regra com `pickup`) */
+  pickups?: Pickups;
+  /** replay completo: auras nos inimigos que o mapa mostra (escudo do add, véu do boss) */
+  unitAuras?: UnitAuraView[];
+  /** poças de tamanho conhecido (regra com `pool`), cada vez que o cast saiu */
+  pools?: PoolView[];
+}
+
+/** Poça: anunciada no cast (`from`), no chão de `on` a `to`, crescendo e recuando em `growMs`; círculos [x, y, raio] no log. */
+export interface PoolView {
+  key: string;
+  name: string;
+  spellId: number;
+  from: number;
+  on: number;
+  to: number;
+  growMs: number;
+  circles: [number, number, number][];
+}
+
+/** Fragmentos para pegar: onde cada um estava (onde foi pego). Itens: [tipo, player, no chão desde, pego em, x, y em décimos de jarda]. */
+export interface Pickups {
+  kinds: { key: string; name: string; spellId: number; aura: number }[];
+  items: [number, string, number, number, number, number][];
+}
+
+/** Aura num inimigo: de quando até quando, as stacks ([t, n]) e o que o escudo já absorveu ([t, total]). */
+export interface UnitAuraView {
+  key: string;
+  name: string;
+  spellId: number;
+  guid: string;
+  from: number;
+  to: number;
+  stacks: [number, number][];
+  absorbed?: [number, number][];
 }
 
 /** Orbs no replay completo: no chão [de, até, x, y em décimos de jarda, tipo] e carregados [player, de, até, tipo]. */
@@ -94,6 +130,8 @@ export interface OrbTracks {
   contactYd: number;
   ground: [number, number, number, number, number][];
   carries: [string, number, number, number][];
+  /** quando um cast do boss explodiu o que sobrou no chão, ex.: o Toxic Deluge (ausente nos replays antigos) */
+  clears?: number[];
 }
 
 /** Área de uma habilidade do boss: em volta de quem tem um debuff (`aura`) ou de uma unidade (`npc`). */
@@ -218,6 +256,8 @@ export interface FightData {
   healIn: [number, number, number][];
   /** defensivos de raid em área (AMZ, Darkness, Spirit Link...); ausente nos replays antigos */
   zones?: FightZone[];
+  /** vida dos adds que importam (`units` com `replay: true`): [t, por mil] */
+  adds?: { guid: string; name: string; maxHp: number; hp: [number, number][] }[];
 }
 
 /** Cast de um boss: começo, fim (cast com tempo) e para onde ele olhava ao terminar. */

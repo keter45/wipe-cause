@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, CircleUserRound, X, ZoomOut } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, CircleUserRound, X, ZoomOut } from 'lucide-react';
 import type { Pull, ReplayRef } from '../types';
 import { classColor, mmss, num, shortName } from '../lib/format';
 import { decodeReplay } from '../lib/replay';
-import { aurasAt, bossHpAt, crucialAt, crucialSpells, deadAt, EV, eventsBetween, fightView, hpAt, meterAt, METERS, type FightEventView, type FightMarker, type FightView, type MeterKind } from '../lib/fight';
+import { aurasAt, bossHpAt, crucialAt, crucialSpells, deadAt, EV, eventsBetween, fightView, hpAt, mechanicLanes, meterAt, METERS, type FightEventView, type FightMarker, type FightView, type MeterKind } from '../lib/fight';
 import { canLoadFull, fightOverlays, headBadge, loadFullPull } from '../lib/fullReplay';
+import { nextCast, UPCOMING_MS } from '../lib/replayTimers';
 import { useMessages } from '../i18n';
 import * as prefs from '../lib/replayPrefs';
 import { fightMsg } from './FightReplay.i18n';
@@ -75,7 +76,7 @@ function FightReplayInner({ pull }: { pull: Pull }) {
   const [selected, setSelected] = useState<string | null>(null);
   const replay = useMemo<ReplayRef>(() => ({ t: 0, from: 0, to: duration, focus: selected ? [selected] : [] }), [duration, selected]);
   // mortes, áreas, machados e defensivos em área (os mesmos do clipe)
-  const { isDead, holders, vacated, vanished, zones } = useMemo(() => fightOverlays(pull, view, data), [pull, view, data]);
+  const { isDead, holders, unitHp, auraStacks, vacated, vanished, zones } = useMemo(() => fightOverlays(pull, view, data), [pull, view, data]);
   // debuffs na cabeça: o usuário escolhe quais (os cruciais do pull, todos ligados no começo)
   const heads = useMemo(() => crucialSpells(view), [view]);
   const [hidden, setHidden] = useState<Set<number>>(() => prefs.hiddenHead(pull.encounterId));
@@ -139,6 +140,8 @@ function FightReplayInner({ pull }: { pull: Pull }) {
           </>
         }
         holders={holders}
+        unitHp={unitHp}
+        auraStacks={auraStacks}
         vacated={vacated}
         vanished={vanished}
         zones={zones}
@@ -176,8 +179,27 @@ interface MeterChoice {
 function RaidFrames({ pull, view, now, selected, onSelect, classes }: { pull: Pull; view: FightView; now: number; selected: string | null; onSelect: (g: string) => void; classes: Map<string, string | null> }) {
   const t = useMessages(fightMsg);
   const order = useMemo(() => [...pull.players].sort((a, b) => (ROLE_RANK[a.role ?? 'dps'] ?? 2) - (ROLE_RANK[b.role ?? 'dps'] ?? 2) || a.name.localeCompare(b.name)), [pull]);
+  // recolhido: só um botão no canto (o mapa fica livre); o player selecionado continua no painel de baixo
+  const [collapsed, setCollapsed] = useState(prefs.framesCollapsed);
+  const toggle = () => {
+    prefs.setFramesCollapsed(!collapsed);
+    setCollapsed(!collapsed);
+  };
+  const dead = order.filter((p) => deadAt(view, p.guid, now)).length;
+  if (collapsed) {
+    return (
+      <button className="raid-frames-open fight-overlay btn sm ghost" onClick={toggle} aria-expanded={false} title={t.framesShow}>
+        <ChevronUp size={14} strokeWidth={1.75} aria-hidden />
+        {t.framesTitle}
+        <span className="num muted">{t.framesAlive(order.length - dead, order.length)}</span>
+      </button>
+    );
+  }
   return (
     <div className="raid-frames fight-overlay" role="group" aria-label={t.framesAria}>
+      <button className="raid-frames-close btn sm ghost" onClick={toggle} aria-expanded title={t.framesHide} aria-label={t.framesHide}>
+        <ChevronDown size={12} strokeWidth={1.75} aria-hidden />
+      </button>
       {order.map((p) => {
         const dead = deadAt(view, p.guid, now);
         const hp = dead ? 0 : (hpAt(view, p.guid, now) ?? 100);
@@ -217,6 +239,8 @@ function BossBars({ pull, view, now, onPick }: { pull: Pull; view: FightView; no
         const hp = bossHpAt(b, now);
         if (hp == null) return null;
         const cast = (pull.casts ?? []).find((c) => c.guid === b.guid && c.end != null && now >= c.t && now <= c.end && !c.interrupted);
+        // o que vem depois (é replay: o próximo cast já está no log)
+        const next = cast ? null : nextCast(pull.casts ?? [], b.guid, now, UPCOMING_MS);
         return (
           <div key={b.guid} className="fight-boss">
             <button className="fight-boss-bar" onClick={() => onPick(b.name)} title={t.bossTitle(b.name)}>
@@ -231,6 +255,12 @@ function BossBars({ pull, view, now, onPick }: { pull: Pull; view: FightView; no
                 <span className="fight-boss-cast-fill" style={{ width: `${((now - cast.t) / Math.max(1, cast.end - cast.t)) * 100}%` }} aria-hidden />
                 <SpellName spellId={cast.spellId} name={cast.name} size={14} />
                 <span className="num">{((cast.end - now) / 1000).toFixed(1)}s</span>
+              </div>
+            )}
+            {next && (
+              <div className="fight-boss-cast next" title={t.nextCastTitle(next.name)}>
+                <SpellName spellId={next.spellId} name={next.name} size={14} />
+                <span className="num">{t.nextIn(next.t - now)}</span>
               </div>
             )}
           </div>
@@ -436,6 +466,10 @@ function FightTimeline({
   const names = useMemo(() => new Map(pull.players.map((p) => [p.guid, shortName(p.name)] as const)), [pull]);
   const shown = (m: FightMarker) => m.kind !== 'failure' || m.severity === 'wipe' || m.severity === 'major' || (selected != null && m.guid === selected);
   const markers = view.markers.filter(shown);
+  // uma faixa por mecânica (ou só a faixa das falhas, como antes)
+  const lanes = useMemo(() => mechanicLanes(pull), [pull]);
+  const [byMechanic, setByMechanic] = useState(prefs.mechanicLanes);
+  const failed = lanes.reduce((n, l) => n + l.failures, 0);
   const lane = (kind: FightMarker['kind']) => markers.filter((m) => m.kind === kind && inWin(m.t));
   const phases = pull.phaseMarks ?? [];
   // a faixa fica mesmo sem nada no trecho com zoom (senão as faixas pulam)
@@ -479,9 +513,27 @@ function FightTimeline({
       'phase',
     ],
     [t.lanes.deaths, lane('death').map(markerButton), 'death'],
-    [t.lanes.failures, lane('failure').map(markerButton), 'failure'],
-    [t.lanes.casts, lane('cast').map(markerButton), 'cast'],
+    // com as faixas por mecânica, as falhas e os frontais aparecem nelas
+    ...(byMechanic ? [] : ([[t.lanes.failures, lane('failure').map(markerButton), 'failure'], [t.lanes.casts, lane('cast').map(markerButton), 'cast']] as [string, React.ReactNode, string][])),
   ];
+  const toggleLanes = () => {
+    prefs.setMechanicLanes(!byMechanic);
+    setByMechanic(!byMechanic);
+  };
+  // gráfico dos orbs no chão: degraus no trecho mostrado (0 a 1000 na largura, 0 a 100 na altura)
+  const seriesPath = (pts: [number, number][]) => {
+    const max = Math.max(1, ...pts.map((p) => p[1]));
+    const x = (tt: number) => Math.min(1000, Math.max(0, ((tt - w0) / span) * 1000));
+    const y = (n: number) => 100 - (n / max) * 88;
+    let d = 'M0,100';
+    let last = 0;
+    for (const [tt, n] of pts) {
+      if (tt > w1) break;
+      d += `L${x(tt).toFixed(1)},${y(last).toFixed(1)}L${x(tt).toFixed(1)},${y(n).toFixed(1)}`;
+      last = n;
+    }
+    return `${d}L1000,${y(last).toFixed(1)}L1000,100Z`;
+  };
   return (
     <div className={`fight-timeline ${zoomed ? 'pannable' : ''} ${panning ? 'panning' : ''}`} aria-label={t.timelineAria} role="group" ref={rootRef} onClickCapture={swallowClick}>
       <div className="fight-axis">
@@ -514,6 +566,60 @@ function FightTimeline({
             </div>
           </div>
         ))}
+      {lanes.length > 0 && (
+        <div className="fight-lane fight-lanes-head">
+          <button className="btn sm ghost fight-lanes-toggle" aria-expanded={byMechanic} onClick={toggleLanes} title={`${byMechanic ? t.lanesHide : t.lanesShow} · ${t.lanesKey}`}>
+            {byMechanic ? <ChevronDown size={12} strokeWidth={1.75} aria-hidden /> : <ChevronRight size={12} strokeWidth={1.75} aria-hidden />}
+            {t.lanes.mechanics}
+            {!byMechanic && failed > 0 && <span className="num fight-lane-fails">{failed}</span>}
+          </button>
+          <span />
+        </div>
+      )}
+      {/* as faixas rolam sozinhas: a linha do tempo não empurra o mapa para fora da tela */}
+      {byMechanic && (
+      <div className="fight-lanes">
+      {lanes.map((l) => {
+          const name = l.key === 'orbs' ? t.lanes.orbs : l.name;
+          return (
+            <div key={l.key} className="fight-lane mech">
+              <span className="small muted fight-lane-label" title={name}>
+                {l.spellId ? <SpellIcon spellId={l.spellId} size={12} hover={false} /> : null}
+                <span className="fight-lane-name">{name}</span>
+                {l.failures > 0 && <span className="num fight-lane-fails">{l.failures}</span>}
+              </span>
+              <div className="fight-track" onClick={seekFromTrack} onPointerDown={startPan}>
+                {l.series && (
+                  <svg className="fight-series" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden>
+                    <path d={seriesPath(l.series)} />
+                  </svg>
+                )}
+                {l.marks
+                  .filter((m) => inWin(m.t))
+                  .map((m, i) => {
+                    const who = m.guid ? (names.get(m.guid) ?? null) : (m.label ?? null);
+                    const label = t.markerTitle(mmss(m.t), m.ok ? name : `${name} · ${t.laneFailed}`, who);
+                    return (
+                      <button
+                        key={`${m.t}-${i}`}
+                        className={`fight-mark ${m.ok ? 'ok' : 'bad'} ${l.severity} ${selected != null && m.guid && m.guid !== selected ? 'dim' : ''} ${m.guid && m.guid === selected ? 'mine' : ''}`}
+                        style={{ left: pct(m.t) }}
+                        title={label}
+                        aria-label={label}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          onSeek(Math.max(0, m.t - MARKER_LEAD_MS), m.guid);
+                        }}
+                      />
+                    );
+                  })}
+                <span className="fight-now" style={{ left: pct(now) }} aria-hidden />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      )}
     </div>
   );
 }

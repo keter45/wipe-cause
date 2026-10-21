@@ -221,3 +221,36 @@ estimados; o cone do Soul Sever (30°/45 jd) também é calibração, não núme
 
 Com os caminhos novos, cada pull guarda quantas jardas o fantasma de cada um andou
 (`MechanicResult.ghostYards`); o resumo do boss soma na noite como métrica do grupo.
+
+## Fase 2, contagens e faixas por mecânica (21/10)
+
+Conferido no pull 16 de 15/10 (Mythic, P3 82%).
+
+- **Gravebound** (`pickup`): entra com 3 stacks; cada fragmento pego é um acerto de 1308330 com
+  a posição de quem pegou, e tira 1 stack. Os fragmentos (NPC 261763) quase nunca aparecem no log
+  como unidade (6 em 75 pegos), então o mapa põe cada um onde foi pego, desde a explosão da bomba.
+  Fragmento que ninguém pegou não tem posição: só o número no debuff da cabeça.
+- **Spirit Shield** (`unit_aura`, 1309105): no Mythic entra no Spiteful Soulcoiler com 2 stacks
+  (dois `SPELL_AURA_APPLIED` seguidos); cada Gloombomb tira 1. Os adds agora têm `replay: true`,
+  com a vida guardada para a barra embaixo deles.
+- **Veil of Twilight** (`unit_aura` com `absorb`, 1286912): o escudo do Eternal Nightfall. O
+  absorvido é a soma dos `SPELL_ABSORBED` com esse spell no Malacrass: 34,8 mi em cada um dos dois
+  Nightfalls do pull, os dois cortados.
+- **Roxos até o Toxic Deluge**: a contagem vale só para os casts de `cleared_by`. Os que somem com o
+  Zul'jan zerando dependem do dano da raide e ficam sem contagem.
+- **Noxious Ground como círculo** (`pool`): a primeira tentativa mediu só a borda por faixas de altura
+  e concluiu errado que nenhum círculo servia. Refeito com busca de centro e raio (índice de Youden
+  entre quem tomou tick e quem estava perto sem tomar, 17 mil posições, 1.755 ticks): dois círculos,
+  um de cada lado do altar, explicam bem melhor que qualquer outro formato (0,41 contra 0,13). Por vez
+  que o Fangs of the Coiled Altar sai: no 1º, centros a 50 jd do meio e raio 40 (0,87; sobra um
+  corredor de 10 jd); do 2º em diante, centros a 42,5 jd e raio 42,5 (0,73; as poças se encontram no
+  meio). Os ticks começam ~4,5s depois do cast e duram ~22s; a poça do Fangs que sai logo antes da P2
+  some na troca de fase. O contorno pelos contatos continua, escondido por padrão.
+- **Widow's Kiss / Death's Embrace**: 45 jd, não os 40 do tooltip. Em 55 Kiss e 920 Touch, o Kiss vai
+  até ~45 jd do meio do soak e o Touch começa depois disso (o menor erro fica entre 44 e 46 jd).
+- **Sever**: o tamanho não dá para medir pelos orbs (eles não têm `UNIT_DIED`, e sumir do log mistura
+  orb pego com orb quebrado); continua 40°/40 jd, a calibração que bate com as stacks de Venom Rupture.
+  No mapa ele virou setor (a borda em arco, do tamanho do alcance); o triângulo antigo esticava os
+  cantos além do alcance.
+- **Twilight / Suffocating Darkness**: sem anel. O log não mostra a poça escura, só o absorb de
+  cura (1286947) em quem entrou nela.

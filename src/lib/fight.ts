@@ -172,10 +172,15 @@ export function crucialAt(v: FightView, guid: string, t: number, allow?: (spellI
 
 /** Players com a aura `spellId` ativa em `t` (centros das áreas em volta de quem carrega algo). */
 export function auraHolders(v: FightView, spellId: number, t: number): string[] {
-  const out: string[] = [];
+  return auraSpans(v, spellId, t).map((h) => h.guid);
+}
+
+/** Players com a aura `spellId` ativa em `t`, com quando ela entrou e quando sai (a contagem no mapa). */
+export function auraSpans(v: FightView, spellId: number, t: number): { guid: string; from: number; to: number }[] {
+  const out: { guid: string; from: number; to: number }[] = [];
   for (const a of v.data.auras) {
     if (a[2] > t) break;
-    if (a[1] === spellId && a[3] > t) out.push(v.data.players[a[0]]);
+    if (a[1] === spellId && a[3] > t) out.push({ guid: v.data.players[a[0]], from: a[2], to: a[3] });
   }
   return out;
 }
@@ -249,6 +254,81 @@ export function fightMarkers(pull: Pull): FightMarker[] {
     if (c.cone && !c.interrupted) out.push({ t: c.end ?? c.t, kind: 'cast', label: c.name, spellId: c.spellId });
   }
   return out.sort((a, b) => a.t - b.t);
+}
+
+/** Marca de uma faixa de mecânica: deu errado (cheia) ou aconteceu e tudo bem (vazada). */
+export interface LaneMark {
+  t: number;
+  ok: boolean;
+  guid?: string;
+  /** quem errou ou o detalhe (ex.: "3/5") */
+  label?: string;
+}
+
+/** Uma faixa da linha do tempo por mecânica do boss, com o que aconteceu nela. */
+export interface MechanicLane {
+  key: string;
+  name: string;
+  spellId: number | null;
+  severity: MechanicResult['severity'];
+  failures: number;
+  marks: LaneMark[];
+  /** quantos estavam no chão ao longo do pull (orbs): [t, n] a cada mudança */
+  series?: [number, number][];
+}
+
+/** Falha da regra até isto (ms) do soak é dele. */
+const SOAK_FAIL_MS = 3_000;
+/** Ordem das faixas: as que mais pesam em cima. */
+const SEVERITY_RANK: Record<string, number> = { wipe: 0, major: 1, minor: 2, none: 3 };
+
+/**
+ * Faixas da linha do tempo por mecânica: cada vez que a mecânica aconteceu (soak, frontal, cast para
+ * cortar) vazada ou cheia, as falhas cheias, e os orbs no chão como um gráfico. Só as mecânicas que
+ * aparecem no pull.
+ */
+export function mechanicLanes(pull: Pull): MechanicLane[] {
+  const byName = new Map(pull.players.map((p) => [p.name, p.guid] as const));
+  const lanes: MechanicLane[] = [];
+  for (const m of pull.mechanics) {
+    if (m.kind === 'phase_duration' || m.kind === 'hp_balance') continue;
+    const marks: LaneMark[] = [];
+    // o que aconteceu, deu certo ou não: soaks, casts para cortar, frontais
+    // soak: errado quando a regra deu falha nele (quem soakou imune não conta nos atingidos, então o
+    // número sozinho não basta)
+    for (const k of (pull.soaks ?? []).filter((k) => k.key === m.key)) {
+      const failed = m.failures > 0 && m.events.some((e) => Math.abs(e.t - k.at) <= SOAK_FAIL_MS);
+      marks.push({ t: k.at, ok: !failed, label: k.needs != null ? `${k.hit}/${k.needs}` : String(k.hit) });
+    }
+    for (const c of m.casts ?? []) marks.push({ t: c.t, ok: c.interruptedBy != null, guid: c.interruptedByGuid ?? undefined, label: c.interruptedBy ?? undefined });
+    if (m.spellId != null) for (const c of pull.casts ?? []) if (c.cone && c.spellId === m.spellId && !c.interrupted) marks.push({ t: c.end ?? c.t, ok: true });
+    // as falhas de cada um (as que já não vieram de um soak ou cast acima); dentro da tolerância não conta
+    if (m.failures > 0 && !m.casts && !(pull.soaks ?? []).some((k) => k.key === m.key)) {
+      for (const e of m.events) {
+        const guid = e.player ? byName.get(e.player) : undefined;
+        if (e.player && !guid) continue;
+        marks.push({ t: e.t, ok: false, guid, label: e.player ?? undefined });
+      }
+    }
+    if (!marks.length) continue;
+    marks.sort((a, b) => a.t - b.t);
+    lanes.push({ key: m.key, name: m.name, spellId: m.spellId, severity: m.severity, failures: marks.filter((k) => !k.ok).length, marks });
+  }
+  lanes.sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) || b.failures - a.failures);
+  // orbs no chão: a contagem ao longo do pull, em cima de tudo
+  const orbs = pull.orbs;
+  if (orbs?.ground.length) {
+    const deltas: [number, number][] = orbs.ground.flatMap(([from, to]) => [[from, 1], [to, -1]] as [number, number][]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const series: [number, number][] = [];
+    let n = 0;
+    for (const [t, d] of deltas) {
+      n += d;
+      if (series.length && series[series.length - 1][0] === t) series[series.length - 1][1] = n;
+      else series.push([t, n]);
+    }
+    lanes.unshift({ key: 'orbs', name: '', spellId: null, severity: 'none', failures: 0, marks: [], series });
+  }
+  return lanes;
 }
 
 /** Medidores do replay (como os do Warcraft Logs), acumulados do começo do pull até o instante. */
