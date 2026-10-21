@@ -34,6 +34,9 @@ const STALE_MS = 2_000;
 /** Menor área mostrada (jardas), para um grupo junto não virar um borrão. */
 const MIN_SPAN = 30;
 
+/** Largura média de um caractere dos rótulos, em em (a fonte do app; sobra um pouco). */
+const CHAR_EM = 0.6;
+
 /** Distância entre duas unidades, em jardas. */
 export const dist = (a: UnitPos, b: UnitPos) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -67,6 +70,14 @@ export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
   const enemies = units.filter((u) => u.kind === 'enemy');
   // destacados por cima dos outros
   const order = (u: UnitPos) => (marks?.has(u.guid) ? 1 : 0);
+  // rótulo centrado no ponto, mas sem sair do mapa (na borda ele encosta do lado de dentro)
+  const labelX = (x: number, text: string, fontSize: number) => {
+    const half = (text.length * fontSize * CHAR_EM) / 2;
+    return Math.min(size - 2 - half, Math.max(2 + half, x));
+  };
+  // adds repetidos (4 Manifestation of Dread): o nome vai só no primeiro
+  const named = new Set<string>();
+  const enemyLabel = (e: UnitPos) => !named.has(e.name) && !!named.add(e.name);
 
   return (
     <svg className="posmap" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={t.aria}>
@@ -83,9 +94,12 @@ export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
           <rect x={sx(e) - 6} y={sy(e) - 6} width={12} height={12} transform={`rotate(45 ${sx(e)} ${sy(e)})`} className="posmap-enemy" style={STYLE.enemy}>
             <title>{e.name}</title>
           </rect>
-          <text x={sx(e)} y={sy(e) - 11} className="posmap-label" style={STYLE.label} textAnchor="middle">
-            {e.name}
-          </text>
+          {enemyLabel(e) && (
+            // em cima do losango; colado no topo, embaixo
+            <text x={labelX(sx(e), e.name, STYLE.label.fontSize)} y={sy(e) - 11 < STYLE.label.fontSize ? sy(e) + 19 : sy(e) - 11} className="posmap-label" style={STYLE.label} textAnchor="middle">
+              {e.name}
+            </text>
+          )}
         </g>
       ))}
       {[...players].sort((a, b) => order(a) - order(b)).map((p) => {
@@ -98,7 +112,8 @@ export function PositionMap({ snap, classes, marks, size = 240 }: Props) {
               <title>{`${shortName(p.name)}${d}${p.ageMs > STALE_MS ? t.stale((p.ageMs / 1000).toFixed(1)) : ''}`}</title>
             </circle>
             {mark && (
-              <text x={sx(p)} y={sy(p) + 19} className="posmap-label strong" style={STYLE.strong} textAnchor="middle">
+              // embaixo do ponto; colado no pé do mapa, em cima
+              <text x={labelX(sx(p), shortName(p.name), STYLE.strong.fontSize)} y={sy(p) + 19 > size - 3 ? sy(p) - 12 : sy(p) + 19} className="posmap-label strong" style={STYLE.strong} textAnchor="middle">
                 {shortName(p.name)}
               </text>
             )}
