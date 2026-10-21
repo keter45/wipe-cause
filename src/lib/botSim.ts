@@ -21,6 +21,8 @@ export const SEQUENCE_SEEDS = 20;
 /** Versão do que salvamos: mudou o formato, a simulação antiga é refeita. */
 const SAVE_VERSION = 2;
 export const BOT_GUID = 'simc-bot';
+/** Pulls que começam a menos disso um do outro são o mesmo pull. */
+const SAME_PULL_MS = 10_000;
 
 /** Ações do SimC que não são casts no log (ataque automático). */
 const NOT_CASTS = new Set(['auto_attack', 'auto_shot', 'melee', 'main_hand', 'off_hand']);
@@ -190,7 +192,8 @@ export class NoPullError extends Error {}
 
 /** O pull simulado e o player nele (o "você" da comparação com o robô). */
 export function botMe(nightPulls: Pull[], run: BotRun, playerName: string): Sample | null {
-  const pull = nightPulls.find((p) => p.startMs === run.pullStartMs);
+  // o mesmo pull analisado de outra fonte (log local x Warcraft Logs) começa uns ms diferente
+  const pull = nightPulls.find((p) => p.startMs === run.pullStartMs) ?? nightPulls.find((p) => Math.abs(p.startMs - run.pullStartMs) < SAME_PULL_MS);
   const player = pull?.players.find((p) => p.name === playerName);
   return pull && player ? { pull, player } : null;
 }

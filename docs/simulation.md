@@ -124,6 +124,16 @@ são casados pelo nome. Precisa da leitura de rotação da spec (`rotations/*.ya
 Conferido na noite de Mythic: Portallus (Demonology) com Ruination ativo castou Shadow Bolt 6×, o robô
 usa Ruination 81%; Antithesis (MM) perdeu 39% dos Precise Shots (robô 0%).
 
+**Tela (2026-10-20, v0.36):** a ficha "O que o robô jogou" (`BotParts.tsx`) é lida do perfil salvo
+(`simFacts` em `src/lib/botView.ts`): chips do pull e do SimC, linha do tempo (Bloodlust, PI, adds,
+tempo sem alvo, movimento padrão, vida do boss) e consumíveis/buffs da raide/personagem em verde
+(tinha), vermelho (não tinha) e cinza (padrão do SimC). O DPS vira "% do potencial" com a faixa das
+1000 lutas. As decisões viram cartões você × robô, e as 3 de maior custo estimado ficam em "O que
+mudar primeiro" (`fixes`: casts trocados × diferença de dano por cast; procs perdidos × dano de quem
+gasta; usos perdidos de cooldown × dano dele). "Robô para a raide" no resumo do boss simula todos em
+fila (`botRaid.ts`); a aba Jogadores e a Evolução mostram o % de quem tem simulação salva. O pull
+simulado é achado pelo começo (até 10s de diferença: o log local e o Warcraft Logs diferem em ms).
+
 **Robô × tops:** nesta seção o robô é o certo. Quando os tops (ou a nossa rotação em YAML) fazem
 diferente, mostramos um aviso ao lado: "os top logs fazem outra coisa: …", e o player decide.
 Feito assim: cada achado olha a referência dos tops da spec (`decisionRefFor`) e ganha uma nota quando

@@ -54,6 +54,30 @@ export function usePotentials(pulls: Pull[], ref: Pull | null, version = 0): Map
   return map;
 }
 
+/**
+ * Evolução: o % do potencial de cada player em cada noite do boss (null = sem simulação naquela
+ * noite). Lê as simulações salvas; nada é simulado aqui.
+ */
+export function useNightPotentials(nights: { pulls: Pull[] }[], names: string[]): Map<string, (number | null)[]> {
+  const [map, setMap] = useState<Map<string, (number | null)[]>>(new Map());
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const out = new Map<string, (number | null)[]>(names.map((n) => [n, nights.map(() => null)]));
+      for (const [i, n] of nights.entries()) {
+        const ref = n.pulls[0];
+        if (!ref) continue;
+        for (const x of await loadPotentials(n.pulls, ref, names.filter((name) => n.pulls.some((p) => p.players.some((pl) => pl.name === name))))) out.get(x.name)![i] = x.pct;
+      }
+      if (alive) setMap(out);
+    })().catch(() => alive && setMap(new Map()));
+    return () => {
+      alive = false;
+    };
+  }, [nights, names]);
+  return map;
+}
+
 export interface RaidProgress {
   index: number;
   total: number;

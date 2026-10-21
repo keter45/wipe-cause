@@ -13,6 +13,7 @@ import { BossName } from './Names';
 import { messagesOf, useMessages } from '../i18n';
 import { trendsViewMsg } from './TrendsView.i18n';
 import { Hint } from './ui/Hint';
+import { useNightPotentials } from '../lib/botRaid';
 
 /**
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
@@ -93,6 +94,11 @@ function TrendsViewInner() {
 
 function TrendsBody({ tr: t }: { tr: Trends }) {
   const m = useMessages(trendsViewMsg);
+  // % do potencial do robô por noite, das simulações salvas (coluna só aparece com alguma)
+  const nightPulls = useMemo(() => t.nights.map((n) => ({ pulls: n.summary.pulls })), [t]);
+  const names = useMemo(() => t.players.map((p) => p.name), [t]);
+  const potentials = useNightPotentials(nightPulls, names);
+  const hasPotential = [...potentials.values()].some((xs) => xs.some((v) => v != null));
   // nomes de habilidades citados nas frases ganham ícone
   const spells = useMemo(() => {
     const m = new Map<string, number>();
@@ -200,6 +206,7 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
                 <th title={m.deathsPerPullTitle}>{m.deathsPerPull}</th>
                 <th title={m.scorePerNightTitle}>{m.scorePerNight}</th>
                 <th title={m.perfPerNightTitle}>{m.perfPerNight}</th>
+                {hasPotential && <th title={m.potentialPerNightTitle}>{m.potentialPerNight}</th>}
                 <th className="num">{m.total}</th>
                 <th>{m.diesTo}</th>
                 <th className="num" title={m.noDefTitle}>
@@ -229,6 +236,15 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
                       </span>
                     ))}
                   </td>
+                  {hasPotential && (
+                    <td className="score-trail">
+                      {(potentials.get(p.name) ?? t.nights.map(() => null)).map((v, i) => (
+                        <span key={i} className={v == null ? 'muted' : `score-pill ${potentialTone(v)}`} title={t.nights[i].label}>
+                          {v == null ? '—' : `${Math.round(v * 100)}%`}
+                        </span>
+                      ))}
+                    </td>
+                  )}
                   <td className="num">
                     {p.deaths}/{p.pulls}
                   </td>
@@ -252,6 +268,9 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
     </>
   );
 }
+
+/** % do potencial do robô: perto da média dele, um pouco abaixo, bem abaixo. */
+const potentialTone = (v: number) => (v >= 0.97 ? 'good' : v >= 0.85 ? 'mid' : 'bad');
 
 /** Faixa do parse: da mediana do Warcraft Logs para cima, um pouco abaixo, bem abaixo. */
 const perfTone = (v: number) => (v >= 50 ? 'good' : v >= 25 ? 'mid' : 'bad');
