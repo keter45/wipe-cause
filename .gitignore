@@ -20,6 +20,11 @@ Thumbs.db
 .claude/settings.local.json
 *.tsbuildinfo
 
+# saídas de plugins e skills de terceiros instaladas no projeto (as skills do projeto em .claude/skills entram)
+brag-output
+.agents
+.claude/skills/make-interfaces-feel-better/
+
 # núcleo em WASM da versão web (npm run wasm)
 src/web/pkg/
 dist-web/

@@ -154,8 +154,10 @@ function Timeline({ f }: { f: SimFacts }) {
           </span>
         ))}
       </div>
-      <span className="bot-tl-label muted small">{t.boss}</span>
-      <div className="bot-track hp">
+      <span className="bot-tl-label muted small" title={t.bossHint}>
+        {t.boss}
+      </span>
+      <div className="bot-track hp" title={t.bossHint}>
         <svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden>
           <line x1="0" y1="2" x2="100" y2={2 + 16 * (1 - f.bossEndPct / 100)} vectorEffect="non-scaling-stroke" />
         </svg>

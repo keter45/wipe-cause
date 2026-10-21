@@ -244,8 +244,26 @@ export function movementEvents(windows: MoveWindow[]): string[] {
     });
 }
 
-/** HP do boss principal no fim da janela, interpolando entre o começo (100%) e o corte. */
-function bossEndPct(pull: Pull, windowMs: number): number {
+/** Limiares de execute que a vida do robô acerta (os mais comuns nas specs). */
+const EXECUTE_PCTS = [20, 35];
+
+/**
+ * Vida do boss no fim da janela. O SimC leva a vida em linha reta de 100% até ela, e a luta tem uma
+ * barra por fase (a P1 até 0%, a P2 de novo de 100%...). Com a vida do alvo da vez a cada 5s
+ * (`bossHpTimeline`), o fim da reta é o que deixa o robô abaixo de 20% e de 35% o mesmo tempo que a
+ * luta deixou; entre os que empatam, o mais perto da vida real no fim. Sem ela (análise antiga), a
+ * reta vai de 100% até a vida do boss principal no corte.
+ */
+export function bossEndPct(pull: Pull, windowMs: number): number {
+  const line = pull.bossHpTimeline?.slice(0, Math.ceil(windowMs / 5_000));
+  if (line?.length) {
+    const real = EXECUTE_PCTS.map((x) => (line.filter((v) => v < x * 10).length * 5_000) / windowMs);
+    const errOf = (e: number) => EXECUTE_PCTS.reduce((s, x, i) => s + (Math.max(0, x - e) / (100 - e) - real[i]) ** 2, 0);
+    const ends = Array.from({ length: 200 }, (_, i) => i / 2);
+    const min = Math.min(...ends.map(errOf));
+    const last = line[line.length - 1] / 10;
+    return ends.filter((e) => errOf(e) <= min + 1e-6).reduce((a, b) => (Math.abs(b - last) < Math.abs(a - last) ? b : a));
+  }
   const end = pull.cutoffT ?? pull.analyzedMs;
   const boss = [...pull.bosses].sort((a, b) => (a.hpPctAtCutoff ?? a.hpPct ?? 100) - (b.hpPctAtCutoff ?? b.hpPct ?? 100))[0];
   const atEnd = boss?.hpPctAtCutoff ?? boss?.hpPct ?? (pull.success ? 0 : 50);

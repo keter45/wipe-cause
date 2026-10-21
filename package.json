@@ -15,7 +15,9 @@
     "fixture": "node crates/wipe-core/tests/fixtures/gen-fixture.mjs > crates/wipe-core/tests/fixtures/twin-fangs.txt",
     "test": "vitest run",
     "release:build": "node scripts/release-build.mjs",
-    "refresh": "node --experimental-strip-types scripts/refresh.mjs"
+    "refresh": "node --experimental-strip-types scripts/refresh.mjs",
+    "sim:check": "node scripts/sim-check.mjs",
+    "replay:check": "node scripts/replay-check.mjs"
   },
   "dependencies": {
     "@fontsource/instrument-sans": "^5.2.5",

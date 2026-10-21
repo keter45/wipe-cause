@@ -9,8 +9,9 @@
 | `crates/wipe-core` | parser do combat log e análise dos pulls (Rust, sem dependência de UI) |
 | `src-tauri` | app desktop (Tauri) que expõe o `wipe-core` para a UI |
 | `src` | interface (React + TypeScript) |
-| `encounters/` | regras por boss (YAML), geradas pela skill `boss-rules` |
-| `rotations/` | rotação base por spec (YAML) |
+| `encounters/` | regras por boss (YAML), geradas pela skill `boss-rules`; o que cada habilidade desenha no replay vem da skill `replay-build` |
+| `rotations/` | rotação base por spec (YAML), mantida pelo `npm run refresh` e pela skill `rotation-refresh` |
+| `src/lib/simProfile.ts` | o modelo da luta que o robô do SimulationCraft joga, conferido por boss pelo `npm run sim:check` e pela skill `sim-calibrate` |
 | `data/` | tabelas editáveis: defensivos por classe, consumíveis |
 | `docs/screenshots/` | prints e clipes animados do README (`pt/` e `en/`) |
 
@@ -38,6 +39,19 @@ Todo texto novo entra em português e inglês na mesma mudança.
 - **Interface:** os textos ficam em dicionários (`*.i18n.ts`, com `defineMessages(pt, en)`); o inglês é tipado contra o português, então faltar uma frase não compila. Um teste falha se aparecer português fora dos dicionários, e outro se o lado inglês de um dicionário tiver português.
 - **Regras de boss e rotações (YAML):** dicas, mensagens, títulos e notas são `{ pt: "...", en: "..." }`; os nomes ficam em inglês. O teste do `wipe-core` confere as duas coisas.
 - **Notas de versão:** uma seção `## Português` e uma `## English` (o app mostra a do idioma escolhido).
+
+### Processos padrão
+
+Cada peça de um boss e de uma spec tem o seu processo: um script faz o que é número (sem IA) e escreve um relatório com **OK**, **ATENÇÃO** ou **REVISAR**; uma skill do Claude Code cuida dos itens REVISAR.
+
+| O quê | Números | REVISAR |
+|---|---|---|
+| Regras do boss (o que é erro, quem leva a culpa) | `wipe-cli spells` / `wipe-cli radius` | skill `boss-rules` |
+| Replay do boss (habilidades no mapa, arena) | `npm run replay:check` | skill `replay-build` |
+| Rotação da spec | `npm run refresh` | skill `rotation-refresh` |
+| Simulação do boss (o robô do SimulationCraft) | `npm run sim:check` | skill `sim-calibrate` |
+
+Um boss novo passa pelos dois primeiros e pelo último; um patch ou uma raide nova, também pelo `refresh`.
 
 <details>
 <summary><b>Atualizar tudo depois de patch, raide nova ou nerf</b></summary>
@@ -70,6 +84,28 @@ Sem escrever à mão nem usar IA: `scripts/rotation.mjs` monta o YAML a partir d
 Tipos de checagem: `proc` (buff que precisa ser gasto, carga por carga — ex.: Precise Shots, Demonic Core), `requires_buff` (casts que pedem um buff — ex.: Trick Shots, Demonbolt com Demonic Core), `downtime` (tempo sem castar, só quando a raid estava batendo), `cooldown` (usos vs. possíveis no tempo vivo), `resource_waste` (recurso estourado, ex.: Maelstrom, Astral Power, Soul Shards), `dot_uptime` (DoT no alvo, ex.: Flame Shock), `aoe_swap` (com N+ alvos o cast deveria ser outro, ex.: Chain Lightning) e `after_cast` (cast que precisa vir logo antes ou depois de outro, ex.: Demonic Tyrant com os Dreadstalkers fora).
 
 Os textos saem em modelo ("X perdido: use antes de acabar"): vale revisar os pontos principais antes de publicar.
+
+</details>
+
+<details>
+<summary><b>Montar o replay de um boss</b></summary>
+
+Regra do projeto: as habilidades do boss aparecem sempre no replay (frontais como cone, o que fica no chão, áreas em volta de quem carrega algo ou de uma unidade do boss, linhas, soaks, explosões, orbs, adds), em cima da arena do boss (imagem do raidplan.io alinhada com as coordenadas do log, `data/arenas.json`).
+
+`npm run replay:check -- <WoWCombatLog.txt> --boss "<nome>" --difficulty Mythic` cruza o log com a regra do boss e com a arena e escreve `samples/replay/<data>-<boss>.md`: cada habilidade inimiga que acertou players, a regra em que ela está e o que desenha; os casts do boss que nenhuma regra conhece (frontais e linhas costumam começar aí); unidades que fazem dano e não aparecem no mapa; arena que falta ou mal encaixada. Precisa do `wipe-cli` compilado em release.
+
+REVISAR é uma forma ou uma regra a escrever: a skill `replay-build` do Claude Code cuida disso (formas, tamanhos medidos com `wipe-cli radius`, a arena com `scripts/arena-fit.mjs`, os fantasmas com `scripts/ghost-calibrate.mjs`). Auditoria de exemplo: [docs/coiled-altar-replay-audit.md](coiled-altar-replay-audit.md).
+
+</details>
+
+<details>
+<summary><b>Configurar a simulação de um boss (o robô do SimulationCraft)</b></summary>
+
+O robô joga **o modelo da luta**, o mesmo para a raide toda, tirado do log: o pull (kill → o mais longo sem morrer → o de mais tempo vivo), quanto a luta fez andar (a cada 30s, o quarto dos DPS que menos andaram), alvos e adds, tempo sem alvo, vida por fase (para o robô ficar em execute o mesmo tempo que a luta) e Bloodlust/Power Infusion nos mesmos momentos. Nada é escrito à mão por boss; quem decide é o log e as regras do boss (`phases` em `encounters/`).
+
+`npm run sim:check -- <WoWCombatLog.txt> --boss "<nome>" --difficulty Mythic` simula a raide toda no boss com o próprio código do app, compara com o que cada um fez e escreve `samples/sim/<data>-<boss>.md` com **OK**, **ATENÇÃO** ou **REVISAR**: mediana dos DPS fora de 85–105% do robô (o modelo da luta está fácil ou difícil demais), DPS acima de 110% (o robô está fraco para aquela spec: adds, execute ou a APL da spec), perfil que o SimulationCraft não rodou. Precisa do `wipe-cli` compilado em release e do SimulationCraft do app (ou `WIPE_SIMC_EXE`).
+
+REVISAR é o que muda o modelo da luta (uma medida no núcleo, as fases do boss, uma constante do modelo): a skill `sim-calibrate` do Claude Code cuida disso. As regras completas estão em [docs/simulation.md](simulation.md).
 
 </details>
 

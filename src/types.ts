@@ -49,6 +49,8 @@ export interface Pull {
   phaseHpPctAtCutoff?: number;
   /** quantas fases o boss tem (regra com fases) */
   phaseCount?: number;
+  /** vida do alvo da vez (por mil) a cada 5s até o corte: a da fase ou a menor entre os bosses; análises antigas não têm */
+  bossHpTimeline?: number[];
   /** call de wipe: o grupo desistiu e o resto morreu de propósito; a análise para nela (cutoffT) */
   wipeCall?: WipeCall;
   players: PlayerStats[];

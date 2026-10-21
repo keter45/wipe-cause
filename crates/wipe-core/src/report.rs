@@ -70,6 +70,10 @@ pub struct Pull {
     /// quantas fases o boss tem (regra com `phases`), para o progresso de cada pull na luta toda
     #[serde(skip_serializing_if = "is_zero")]
     pub phase_count: u32,
+    /// vida do alvo da vez (por mil) a cada 5s até o corte: a da fase (P2 = Malacrass...) ou a menor
+    /// entre os bosses. A simulação acerta por ela quanto tempo o robô fica em execute
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub boss_hp_timeline: Vec<u16>,
     /// call de wipe: o grupo desistiu da try e o resto morreu de propósito. Quando acha uma, a
     /// análise para nela (`cutoff_t`), como no corte de mortes
     #[serde(skip_serializing_if = "Option::is_none")]
