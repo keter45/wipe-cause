@@ -6,15 +6,15 @@ encounter_id: 3455
 source:
   - https://www.mythictrap.com/en/venomous-abyss/vashnik-the-malignant/mythic
   - "log: Archive-WoWCombatLog-091626 (6 pulls míticos) e 092226 (mítico + heroico) — IDs calibrados"
-updated: 2026-09-29
+updated: 2026-10-21
 difficulties: [normal, heroic, mythic]
 
 units:
   - { key: vashnik, name: "Vashnik the Malignant", npc_id: 259181, boss: true }
   - { key: burning_venom, name: "Burning Venom", npc_id: 260905, replay: true }
   - { key: shrouded_venom, name: "Shrouded Venom", npc_id: 260895, replay: true }
-  - { key: clotting_venom, name: "Clotting Venom", npc_id: null }
-  - { key: malignant_totem, name: "Malignant Totem", npc_id: null }
+  - { key: clotting_venom, name: "Clotting Venom", npc_id: 259408 }
+  - { key: malignant_totem, name: "Malignant Totem", npc_id: 269430 }   # Mítico: os tumores; o log não dá a posição deles (SUMMON, CAST_START e UNIT_DIED sem o bloco advanced), então não entram no mapa
 
 mechanics:
   # ---------- Fontes ----------
@@ -53,8 +53,10 @@ mechanics:
     difficulty: [mythic]
     severity: wipe
     detect: { fail_ids: [1304459] }
+    ground: false   # pulso no raid do tumor que sobrou: nada no chão
     tip: { pt: "Destruir todos os Malignant Tumors com as ondas da Plague Froth; tumor que sobra pulsa no raid até wipar.", en: "Destroy every Malignant Tumor with the Plague Froth waves; a leftover tumor pulses on the raid until it wipes." }
     message: { pt: "{count} pulso(s) de Malignance — tumor não destruído", en: "{count} Malignance pulse(s) — tumor not destroyed" }
+    notes: "21/10: cada tumor (npc 269430) nasce por SPELL_SUMMON, começa o Malignance (cast de ~85s) 2,5s depois e some com UNIT_DIED quando a onda passa; ~50 por pull, 367 de 461 morreram, 5 terminaram o cast. Só o fim do cast traz a posição (bloco advanced): os tumores destruídos nunca têm posição no log, e por isso não aparecem no replay."
 
   # ---------- Plague Froth ----------
   - key: plague_froth
@@ -63,6 +65,7 @@ mechanics:
     source_unit: vashnik
     severity: none
     detect: { damage_ids: [1281925], aura_id: 1281913 }
+    area: { aura: 1281913, radius: 5 }   # 21/10: o DoT pega também quem está a até ~5 jd do marcado (Youden 4,75 jd: 89% dos acertos, 7% dos de fora)
     tip: { pt: "Marcados com a cruz se espalham; as ondas saem nas direções marcadas.", en: "Players marked with the cross spread; the waves go out in the marked directions." }
     message: { pt: "Plague Froth", en: "Plague Froth" }
 
@@ -85,6 +88,7 @@ mechanics:
     detect:
       damage_ids: [1282602]     # Catalytic Bile em quem soaka
       fail_ids: [1282616]       # círculo sem ninguém: explode no raid todo
+      cast_id: 1282516          # 5s de cast; os círculos caem ~7s depois do fim
     soak: { radius: 4, players: 1 }   # 06/10: 1 player por círculo, até ~5 jd
     tip: { pt: "Ter alguém em cada círculo de soak.", en: "Have someone in every soak circle." }
     message: { pt: "{count} círculo(s) do Malignant Catalyst sem soak", en: "{count} Malignant Catalyst circle(s) without a soak" }
@@ -108,7 +112,7 @@ mechanics:
     detect: { damage_ids: [1295209, 1295173], aura_id: 1295173 }
     tip: { pt: "Marcado sai para longe do raid antes de explodir (o dano cai com a distância).", en: "The marked player moves away from the raid before it explodes (the damage falls off with distance)." }
     message: { pt: "Caustic Explosion", en: "Caustic Explosion" }
-    notes: "Caustic Explosion (1295209) pega o raid inteiro com queda por distância: sem culpa pelo log."
+    notes: "Caustic Explosion (1295209) pega o raid inteiro: sem culpa pelo log. 21/10: o dano não cai com a distância de quem explode (~222k sem mitigação de 0 a 55 jd, 4664 acertos), então o mapa não desenha círculo em volta do marcado."
 
   - key: stygian_infection
     name: "Stygian Infection"
@@ -155,6 +159,16 @@ mechanics:
     detect: { damage_ids: [1305833], aura_id: 1305833 }
     tip: { pt: "Matar os Shrouded Venom atravessando o escudo; os stacks do bolt somam.", en: "Kill the Shrouded Venoms through the shield; the bolt stacks add up." }
     message: { pt: "Congealing Bolt", en: "Congealing Bolt" }
+
+  - key: miasmic_coating
+    name: "Miasmic Coating"
+    type: info
+    source_unit: shrouded_venom
+    severity: none
+    detect: { aura_id: 1312366 }
+    unit_aura: { aura: 1312366, absorb: true, stacks: false }   # o escudo do add: anel no mapa e quanto já absorveu (o log repete o APPLIED)
+    tip: { pt: "Shrouded Venom nasce com um escudo enorme: quebrar o escudo antes de matar.", en: "Shrouded Venom spawns with a huge shield: break the shield before killing it." }
+    message: { pt: "Miasmic Coating", en: "Miasmic Coating" }
 
   - key: umbral_ejection
     name: "Umbral Ejection"

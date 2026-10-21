@@ -974,7 +974,7 @@ impl PullBuilder {
 
     /// Aura num inimigo que o mapa mostra (regra com `unit_aura`): abre, muda de stack, fecha.
     fn unit_aura(&mut self, f: &[&str], spell_id: u32, stacks: u32, rel: i64) {
-        let Some((key, name, _)) = self.rules.as_ref().and_then(|r| r.unit_aura_for(spell_id)) else { return };
+        let Some((key, name, _, has_stacks)) = self.rules.as_ref().and_then(|r| r.unit_aura_for(spell_id)) else { return };
         let k = (f[5].to_string(), spell_id);
         match (f[0], self.unit_aura_open.get(&k).copied()) {
             ("SPELL_AURA_REMOVED", Some(i)) => {
@@ -982,7 +982,7 @@ impl PullBuilder {
                 self.unit_auras[i].to = rel;
             }
             // o log põe as stacks iniciais como vários APPLIED seguidos
-            ("SPELL_AURA_APPLIED", Some(i)) => {
+            ("SPELL_AURA_APPLIED", Some(i)) if has_stacks => {
                 let n = self.unit_auras[i].stacks.last().map_or(1, |s| s.1) + 1;
                 self.unit_auras[i].stacks.push((rel, n));
             }
@@ -1864,10 +1864,12 @@ impl PullBuilder {
                     .collect::<HashSet<usize>>()
                     .into_iter()
                     .filter_map(|i| r.soak_info(i).map(|s| (i, s)))
+                    .chain(r.cast_soaks())
                     .collect()
             })
             .unwrap_or_default();
         let replay_npcs: HashSet<u32> = self.rules.as_ref().map(|r| r.replay_npcs().iter().copied().collect()).unwrap_or_default();
+        let unit_clears = self.rules.as_ref().map(|r| r.unit_clears().to_vec()).unwrap_or_default();
         let pickup_kinds = self.rules.as_ref().map(|r| r.pickup_kinds()).unwrap_or_default();
         let pool_specs = self.rules.as_ref().map(|r| r.pool_specs()).unwrap_or_default();
         let interrupt_casters: Vec<String> = self.rules.as_ref().map(|r| self.boss_casts.iter().filter(|c| r.is_interrupt_cast(c.spell_id)).map(|c| c.guid.clone()).collect()).unwrap_or_default();
@@ -1933,6 +1935,24 @@ impl PullBuilder {
         let area_npcs: HashSet<u32> = areas.iter().filter_map(|a| a.npc).collect();
         let area_units: HashSet<String> = self.trails.guids().filter(|g| npc_id(g).is_some_and(|n| area_npcs.contains(&n))).cloned().collect();
         cone_casters.extend(area_units.iter().cloned());
+        // unidade com aura no mapa (o escudo do add) aparece desde a aura, no primeiro lugar em que o log a
+        // viu: enquanto o escudo absorve tudo, o log não dá a posição dela (SPELL_ABSORBED sem o bloco advanced)
+        for a in &self.unit_auras {
+            self.trails.backfill(&a.guid, a.from, UNIT_BACKFILL_MAX_MS);
+        }
+        // unidades que o log nunca mata (o orb no chão): somem quando o soak as limpa ou no fim da vida
+        for c in &unit_clears {
+            let guids: Vec<String> = self.trails.guids().filter(|g| npc_id(g) == Some(c.npc)).cloned().collect();
+            for g in guids {
+                let Some((t0, x, y)) = self.trails.first(&g) else { continue };
+                let cleared = c.cleared_by.and_then(|(i, r)| {
+                    self.soak_hits.iter().filter(|h| h.3 == i && h.0 >= t0 && (h.1 - x).hypot(h.2 - y) <= r + UNIT_CLEAR_SLACK_YD).map(|h| h.0).min()
+                });
+                if let Some(end) = cleared.into_iter().chain(c.lifetime_ms.map(|ms| t0 + ms)).min() {
+                    self.trails.on_enemy_died(&g, end);
+                }
+            }
+        }
         let mut tracks = self.trails.build(&refs, &cone_casters, &area_units);
         if let (Some(t), Some((name, paths))) = (tracks.as_mut(), &ghosts) {
             t.units.extend(replay::ghost_tracks(paths, &refs, name));
@@ -2211,10 +2231,20 @@ const MIN_CAST_MS: i64 = 200;
 /// Acertos do mesmo soak: até isto depois do primeiro, e até tantos raios do centro.
 const SOAK_HIT_WINDOW_MS: i64 = 600;
 const SOAK_JOIN_RADII: f32 = 1.6;
+/// Soak na frente de quem lança: quem tomou o acerto a até isto além do raio conta como dentro
+/// (a direção do boss no log e a posição do player têm ~1-2 jd de folga).
+const SOAK_AHEAD_SLACK_YD: f32 = 3.0;
 /// Sem cast que anuncie, o círculo aparece isto antes de cair.
 const SOAK_LEAD_MS: i64 = 3_000;
-/// O cast que anuncia o soak vem até isto antes dele cair.
-const SOAK_CAST_MAX_MS: i64 = 12_000;
+/// Unidade com aura no mapa: aparece desde a aura no primeiro lugar conhecido, se ele vem até isto depois
+/// (o Shrouded Venom do Vashnik só ganha posição ~4s depois de nascer, quando o escudo cai).
+const UNIT_BACKFILL_MAX_MS: i64 = 10_000;
+/// Unidade limpa por um soak (`cleared_by`): quem pegou estava a até o raio do soak mais isto dela (o
+/// player encosta na borda do orb; 99% a até 8 jd de um orb de 5 jd no Twin Fangs).
+const UNIT_CLEAR_SLACK_YD: f32 = 3.0;
+/// O cast que anuncia o soak vem até isto antes dele cair (o Malignant Catalyst: 5s de cast e os
+/// círculos ~7s depois do fim).
+const SOAK_CAST_MAX_MS: i64 = 15_000;
 /// Add de interrupt fica no mapa até isto depois do último cast.
 const INTERRUPT_ADD_LINGER_MS: i64 = 1_000;
 
@@ -2226,8 +2256,21 @@ fn build_soaks(hits: &[(i64, f32, f32, usize, String)], meta: &HashMap<usize, So
     for (t, x, y, i, g) in hits {
         by_mech.entry(*i).or_default().push((*t, *x, *y, g.as_str()));
     }
+    // soak na frente de quem lança: um círculo por cast, onde a direção dele aponta no fim do cast
+    for (&i, m) in meta.iter().filter(|(_, m)| m.ahead.is_some()) {
+        let (Some(id), Some(ahead)) = (m.cast_id, m.ahead) else { continue };
+        for cast in casts.iter().filter(|c| c.spell_id == id && !c.interrupted) {
+            let at = cast.end.unwrap_or(cast.t);
+            let (Some(face), Some((bx, by))) = (cast.facing, trails.position_at(&cast.guid, at, GROUND_POS_MAX_AGE_MS)) else { continue };
+            let (x, y) = (bx + ahead * face.cos(), by + ahead * face.sin());
+            let inside: HashSet<&str> = hits.iter().filter(|h| h.3 == i && (h.0 - at).abs() <= SOAK_HIT_WINDOW_MS && (h.1 - x).hypot(h.2 - y) <= m.radius + SOAK_AHEAD_SLACK_YD).map(|h| h.4.as_str()).collect();
+            if refs.iter().any(|r| at + 12_000 >= r.from && cast.t <= r.to) {
+                out.push(SoakView { key: m.key.clone(), name: m.name.clone(), spell_id: m.spell_id, from: cast.t, at, x, y, radius: m.radius, needs: m.players, hit: inside.len() as u32, caster: Some(cast.guid.clone()) });
+            }
+        }
+    }
     for (i, mut hs) in by_mech {
-        let Some(m) = meta.get(&i) else { continue };
+        let Some(m) = meta.get(&i).filter(|m| m.ahead.is_none()) else { continue };
         let radius = m.radius;
         hs.sort_by_key(|h| h.0);
         let mut k = 0;
@@ -2421,7 +2464,7 @@ mod tests {
             facing: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None,
             target: Some("Player-1-A".into()), line: None,
         };
-        let meta = HashMap::from([(0, SoakInfo { key: "guillotine".into(), name: "Guillotine".into(), spell_id: 1283594, cast_id: Some(1283489), radius: 9.0, players: Some(5) })]);
+        let meta = HashMap::from([(0, SoakInfo { key: "guillotine".into(), name: "Guillotine".into(), spell_id: 1283594, cast_id: Some(1283489), radius: 9.0, players: Some(5), ahead: None })]);
         let hits = vec![(8_000, 55.0, 0.0, 0, "Player-1-B".into()), (8_010, 57.0, 0.0, 0, "Player-1-C".into()), (8_020, 57.0, 0.0, 0, "Player-1-C".into())];
         let reference = replay::around(8_000, 1_000, vec![]);
         let soaks = build_soaks(&hits, &meta, &[cast], &[&reference], &trails);
@@ -2430,6 +2473,27 @@ mod tests {
         assert_eq!((soaks[0].x, soaks[0].y, soaks[0].radius), (51.0, 0.0, 9.0));
         let fallback = build_soaks(&hits, &meta, &[], &[&reference], &trails);
         assert_eq!((fallback[0].from, fallback[0].x, fallback[0].hit), (5_000, 56.0, 2));
+    }
+
+    #[test]
+    fn soak_ahead_sits_in_front_of_the_caster_once_per_cast() {
+        let mut trails = Trails::default();
+        for t in (0..=5_000).step_by(500) {
+            trails.on_pos("Boss", "Ithraz", true, 100, 100.0, 0.0, t);
+        }
+        let cast = |t: i64, facing: f32| BossCast {
+            t, end: Some(t + 1_500), guid: "Boss".into(), spell_id: 7, name: "Stone Breaker".into(),
+            facing: Some(facing), interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None,
+        };
+        let meta = HashMap::from([(0, SoakInfo { key: "smash".into(), name: "Stone Breaker".into(), spell_id: 8, cast_id: Some(7), radius: 3.0, players: Some(1), ahead: Some(25.0) })]);
+        // o tank pega o primeiro (a 1 jd do ponto); ninguém pega o segundo, virado para o outro lado
+        let hits = vec![(1_500, 76.0, 1.0, 0, "Player-1-T".into())];
+        let reference = replay::around(2_000, 5_000, vec![]);
+        let soaks = build_soaks(&hits, &meta, &[cast(0, std::f32::consts::PI), cast(3_000, 0.0)], &[&reference], &trails);
+        assert_eq!(soaks.len(), 2);
+        assert_eq!((soaks[0].from, soaks[0].at, soaks[0].hit), (0, 1_500, 1));
+        assert!((soaks[0].x - 75.0).abs() < 0.01 && soaks[0].y.abs() < 0.01);
+        assert_eq!((soaks[1].x, soaks[1].hit), (125.0, 0));
     }
 
     #[test]
