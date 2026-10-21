@@ -32,18 +32,7 @@ Leia `references/schema.md` antes de escrever qualquer arquivo. `encounters/veno
    Se nenhum evento de log prova a falha, use `type: info` e explique em `notes` — não invente detecção.
 4. **Severidade**: `wipe` (falha sozinha acaba a try), `major` (mata alguém ou gasta CDs), `minor` (dano/stack evitável).
 5. **Resolver spell IDs** (ver abaixo). Nunca chute um ID.
-6. **Mostrar no replay** (regra do projeto: as habilidades do boss aparecem sempre). Releia a descrição de cada habilidade:
-   - **frontal / cone / "na frente do boss"** → `cone: { cast_id, half_angle, range }` na mecânica. O cone aponta para o alvo do boss durante o cast; se o boss não bate corpo a corpo, ponha em `target_spells` um spell que só vai no alvo dele (ex.: o Dread Bolt do Malacrass). Sem tamanho no guia, comece em 40°/40yd e meça com os players atingidos num log (ângulo e distância até o boss no `SPELL_CAST_SUCCESS`).
-   - **área em volta de alguém ou de uma unidade** (raio em volta de quem carrega algo, unidade que gira pela sala) → `area: { aura | npc, radius }` (ver o schema).
-   - **deixa algo no chão** (poça, gota, área, rastro, círculo, projétil que cai) → `ground` ligado nos `damage_ids` (já é o padrão em `avoidable_damage`, `soak`, `positioning` e `spread`); para outro `type` (ex.: `unavoidable` que deixa poça), ponha `ground: true`, e `ground: { lingers_s: N }` quando a poça fica.
-   - **dano em quem está perto de quem tem um debuff** (`avoidable_damage` com `excludes_aura`: o splash do orb, a bomba, o cuspe) → quase sempre é uma `area: { aura: <o excludes_aura>, radius }`.
-   - **unidade do boss que some** (machado que para de girar, add que despawna sem morrer no log) → `area.vanish: { idle_s, from }`: some depois de N s sem acertar ninguém perto dela.
-   - **add que precisa ser interrompido** → basta a regra `interrupt` com o `cast_id` certo: quem solta o cast entra no mapa com a barra de cast (cortado em vermelho) e some logo depois do último cast.
-   - **add que importa** (tem que morrer, solta linhas, fica no meio) → `units` com `npc_id` e `replay: true`.
-   - **linha do lançador até o alvo** ("sair da linha de quem é o alvo") → `line: { cast_id, width, target_aura }`.
-   - **soak** (um ou mais players precisam estar onde a mecânica cai) → `soak: { radius, players }`; mede com `wipe-cli radius --soak`. O círculo do soak substitui as marcas de chão da mesma mecânica (tire o `ground`).
-   Só fica de fora o que não tem forma no chão (dano no raid inteiro, DoT que segue o player). Na dúvida, mostre.
-   **Medir o raio:** `wipe-cli radius <log> --damage <id> (--aura <id> | --npc <id>)` mostra a distância de cada atingido até o portador (ou a unidade) mais perto, num histograma por jarda: o raio é onde a contagem despenca (os golpes mais longe vêm de outros centros). Ex.: Mutagenic Venom cai de 92 para 33 na jarda 6; Axegrinder tem 90% até 5,6 jd (raio 4).
+6. **Mostrar no replay** (regra do projeto: as habilidades do boss aparecem sempre): siga a skill `replay-build` para dar a cada mecânica a forma dela no mapa (cone, chão, área, linha, soak, explosão), medir os tamanhos no log e encaixar a arena. Depois de escrever a regra, rode `npm run replay:check -- <log> --boss "<nome>"`: ele lista o dano do boss que ainda não está em nenhuma regra ou não desenha nada.
 7. **Escrever o YAML**, validar mentalmente contra o schema (todo `type` com os campos obrigatórios; `difficulty` coerente) e mostrar ao usuário um resumo em tabela: mecânica → tipo → severidade → ID resolvido?
 
 ## Resolver spell IDs
@@ -71,11 +60,7 @@ Uma habilidade pode ter vários IDs (cast, dano, debuff, explosão). Coloque cad
 
 ## Arena
 
-A imagem de fundo e o chão andável de cada boss ficam em `data/arenas.json` (fora das regras: o Kith'ix não tem regra e tem arena). Para um boss novo:
-1. Achar a imagem no raidplan.io (`/plan/create?raid=wow.<expansão>.<raid>&boss=N`; a URL do mapa aparece nos recursos da página, `cdn.raidplan.io/raid/.../map/...jpg`). O app carrega da CDN na hora, como os ícones do Wowhead; a imagem não entra no repositório.
-2. `wipe-cli positions <log>` em logs com o boss (onde os players pisaram) e juntar por boss.
-3. Marcar o chão em `scripts/arena-fit.mjs` (polígono na imagem com 1224 de largura, `holes` para buracos; ou `hazard` com amostras da cor do perigo; `disk`/`holeDisk` para sala redonda com poço; `core` quando o raid sai da sala principal) e rodar. Ele acha escala e posição com o norte para cima (o Twin Fangs, sem simetria, confirmou: X do log = norte, Y = oeste) e grava uma imagem de conferência por boss: os pisões têm que cair no chão, inclusive em detalhes (pontes, poço). Nota acima de ~0,9.
-4. Copiar o resultado para `data/arenas.json`.
+A imagem de fundo e o chão andável de cada boss: seção "Arena" da skill `replay-build`.
 
 ## Validar
 

@@ -4,6 +4,7 @@
 //!                                                      --cutoff N ignora eventos após N mortes;
 //!                                                      --tuning <pasta> aplica os ajustes do usuário (<encounter>.json)
 //!   wipe-cli spells <arquivo>             spells inimigas por encontro (para calibrar regras de boss)
+//!   wipe-cli rules                        regras de boss embutidas, em JSON (para scripts/replay-check.mjs)
 //!   wipe-cli peek <arquivo>               só os encontros do log (leitura rápida, como a lista de logs do app)
 //!   wipe-cli positions <arquivo>          onde os players pisaram em cada boss (para alinhar a imagem da arena)
 //!   wipe-cli radius <arquivo> --damage <id> (--aura <id> | --npc <id> | --soak)  raio de uma área: distância de
@@ -17,6 +18,19 @@ use wipe_core::{analyze_file, AnalyzeOptions, LogReport};
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // regras de boss embutidas, em JSON (para os scripts de conferência, que não leem YAML)
+    if args.first().map(String::as_str) == Some("rules") {
+        let all: Vec<serde_json::Value> = wipe_core::rules::embedded_sources()
+            .iter()
+            .filter_map(|(file, src)| {
+                let mut v: serde_json::Value = yaml_serde::from_str(src).ok()?;
+                v["file"] = (*file).into();
+                Some(v)
+            })
+            .collect();
+        println!("{}", serde_json::to_string(&all).unwrap_or_default());
+        return ExitCode::SUCCESS;
+    }
     let (Some(cmd), Some(path)) = (args.first(), args.get(1)) else {
         eprintln!("uso: wipe-cli <analyze|spells|peek|fight> <WoWCombatLog.txt> [--json] [--pull <id>]");
         return ExitCode::from(2);

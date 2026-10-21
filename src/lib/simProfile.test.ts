@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as fx from './test-fixtures';
-import { buildSimProfile, fightMovement, movementEvents, pickSimPull, simcSpec, targetWindows } from './simProfile';
+import { bossEndPct, buildSimProfile, fightMovement, movementEvents, pickSimPull, simcSpec, targetWindows } from './simProfile';
 import type { TalentTree } from './talents';
 import type { PlayerStats, Setup } from '../types';
 
@@ -64,6 +64,21 @@ describe('pickSimPull', () => {
   it('outro boss ou sem setup não conta', () => {
     const pulls = [fx.pull(0, 0, 300_000, { players: [mage({ setup: null })] }), fx.pull(1, 0, 300_000, { encounterName: 'Outro', players: [mage()] })];
     expect(pickSimPull(pulls, pulls[0], 'Fulano-Azralon')).toBeNull();
+  });
+});
+
+describe('bossEndPct', () => {
+  it('duas barras até o fim (P1 e P2): a reta do robô quase zera, com o mesmo tempo em execute', () => {
+    // 200s: P1 de 100% a 5% em 100s, P2 de novo (a cada 5s): 15% do tempo abaixo de 20%, 30% abaixo de 35%
+    const bar = Array.from({ length: 20 }, (_, i) => 1000 - i * 50);
+    const pull = fx.pull(0, 0, 200_000, { bossHpTimeline: [...bar, ...bar], bosses: [{ guid: 'b', name: 'B', npcId: 1, maxHp: 1, hpPct: 50, hpPctAtCutoff: 50 }] });
+    // sem a linha, a reta iria até 50% (sem execute nenhum)
+    expect(bossEndPct(pull, 200_000)).toBe(6.5);
+  });
+
+  it('sem execute na luta: termina na vida real (não inventa execute)', () => {
+    const line = Array.from({ length: 20 }, (_, i) => 1000 - i * 25); // 100% -> 52,5%
+    expect(bossEndPct(fx.pull(0, 0, 100_000, { bossHpTimeline: line }), 100_000)).toBe(52.5);
   });
 });
 

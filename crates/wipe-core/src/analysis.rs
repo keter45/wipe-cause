@@ -309,6 +309,9 @@ pub(crate) struct PullBuilder {
     hp_at_cutoff: HashMap<String, f32>,
     /// vida da fase no corte (bosses da fase em que o corte caiu)
     phase_hp_at_cutoff: Option<f32>,
+    /// vida do alvo da vez (por mil, -1 = sem leitura) a cada janela de TIMELINE_MS, e quando foi lida
+    boss_hp_line: Vec<i16>,
+    boss_hp_at: Option<i64>,
     /// corte num instante dado (call de wipe achada numa primeira leitura do pull)
     cut_at: Option<i64>,
     /// último cast de cada player (sempre, mesmo depois do corte): quanto tempo estava parado ao morrer
@@ -388,6 +391,8 @@ impl PullBuilder {
             cutoff_t: None,
             hp_at_cutoff: HashMap::new(),
             phase_hp_at_cutoff: None,
+            boss_hp_line: Vec::new(),
+            boss_hp_at: None,
             cut_at: None,
             last_cast: HashMap::new(),
             rezzes: Vec::new(),
@@ -566,7 +571,27 @@ impl PullBuilder {
             if let Some(fc) = self.fight.as_mut() {
                 fc.enemy_hp(adv.info_guid, name, adv.hp, adv.max_hp, rel);
             }
+            self.note_boss_hp(rel);
         }
+    }
+
+    /// Vida do alvo da vez, no máximo uma leitura por segundo: a da fase (boss com fases na regra:
+    /// P1 = Zul'jan, P2 = Malacrass, P3 = os dois) ou a menor entre os bosses vivos.
+    fn note_boss_hp(&mut self, rel: i64) {
+        if self.boss_hp_at.is_some_and(|t| rel - t < 1_000) {
+            return;
+        }
+        self.boss_hp_at = Some(rel);
+        let top = self.enemies.values().map(|e| e.max_hp).max().unwrap_or(0);
+        let lowest = || {
+            self.enemies.values().filter(|e| top > 0 && e.max_hp * 2 >= top && e.hp > 0).map(|e| e.hp as f32 / e.max_hp as f32 * 100.0).reduce(f32::min)
+        };
+        let Some(pct) = self.phase_hp(rel).or_else(lowest) else { return };
+        let i = (rel.max(0) / TIMELINE_MS) as usize;
+        if self.boss_hp_line.len() <= i {
+            self.boss_hp_line.resize(i + 1, -1);
+        }
+        self.boss_hp_line[i] = (pct * 10.0).round() as i16;
     }
 
     /// Posições de todos agora: players vistos nos últimos segundos e os inimigos grandes
@@ -1714,6 +1739,20 @@ impl PullBuilder {
         bosses.truncate(5);
         let phase_hp_pct = if success { self.phase_hp(duration_ms).map(|_| 0.0) } else { self.phase_hp(duration_ms) };
         let phase_hp_pct_at_cutoff = self.phase_hp_at_cutoff;
+        // janela sem leitura repete a anterior (começa cheia)
+        let boss_hp_timeline: Vec<u16> = if self.boss_hp_line.iter().all(|&v| v < 0) {
+            Vec::new()
+        } else {
+            let mut last = 1000;
+            (0..((analyzed_ms + TIMELINE_MS - 1) / TIMELINE_MS).max(0) as usize)
+                .map(|i| {
+                    if let Some(&v) = self.boss_hp_line.get(i).filter(|&&v| v >= 0) {
+                        last = v as u16;
+                    }
+                    last
+                })
+                .collect()
+        };
         let phase_count = self.rules.as_ref().map_or(0, |r| r.phase_count()) as u32;
 
         let mut defensives_by_player: HashMap<String, HashSet<u32>> = HashMap::new();
@@ -1984,6 +2023,7 @@ impl PullBuilder {
                 phase_hp_pct,
                 phase_hp_pct_at_cutoff,
                 phase_count,
+                boss_hp_timeline,
                 wipe_call,
                 players,
                 deaths: Vec::new(),

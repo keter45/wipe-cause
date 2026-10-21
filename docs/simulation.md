@@ -67,10 +67,14 @@ guarda o que falta em `PlayerStats` (`setup.items[].bonusIds`, `setup.faction`, 
 - **Buffs de fora:** o primeiro Bloodlust (ou tambor, pelo Sated/Exhaustion) no mesmo segundo
   (`bloodlust_time`); Power Infusion em todos os momentos em que chegou
   (`external_buffs.power_infusion`). Buffs de Augmentation não têm opção no SimC.
-- **Luta:** `max_time` = a janela, `vary_combat_length=0`, `fixed_time=1`. O HP do boss no fim da
-  janela é estimado em linha reta entre 100% e o HP no corte (`enemy_death_pct`): num wipe a 40% o
-  robô não chega na fase de execute. **Sem `fight_style`**: o padrão já é Patchwerk e a opção apaga os
-  `raid_events`.
+- **Luta:** `max_time` = a janela, `vary_combat_length=0`, `fixed_time=1`. **Sem `fight_style`**: o
+  padrão já é Patchwerk e a opção apaga os `raid_events`.
+- **Vida e execute:** *(decidido em 2026-10-21)* o SimC leva a vida em linha reta de 100% até
+  `enemy_death_pct`, e a luta tem uma barra por fase. O núcleo guarda a vida do alvo da vez a cada 5s
+  (`bossHpTimeline`: a vida da fase pela regra do boss, P1 = Zul'jan, P2 = Malacrass, P3 = os dois;
+  sem `phases` na regra, o boss vivo mais baixo). O fim da reta é o que deixa o robô abaixo de 20% e
+  de 35% o mesmo tempo que a luta deixou (somando as fases); entre os que empatam, o mais perto da
+  vida real no fim. Análises antigas: reta até a vida do boss principal no corte.
 - **Alvos:** quantos inimigos havia para acertar a cada 2s = quantil 75% dos DPS do pull (a mediana
   some com os packs de adds, porque metade da raid fica no boss), suavizado em 6s. Trechos de 6s ou
   mais com 2+ alvos viram `adds`; sem alvo, `invulnerable`.
@@ -87,9 +91,13 @@ guarda o que falta em `PlayerStats` (`setup.items[].bonusIds`, `setup.faction`, 
   SimC dá ~5%. O robô caiu 2–18% conforme a spec, e a mediana dos DPS foi de 86% para 94% do
   potencial (de 83% a 108%). Nos bosses heroicos da mesma noite, o quartil de baixo ficou entre 15%
   e 34% da luta.
-- **Vida do boss por fase:** conferido no mesmo pull. O Zul'jan vai a 0% no fim da P1 e o Hex Lord
-  chegou a 3,9% no corte da P2: somadas as duas barras, o tempo abaixo de 20% e de 35% é o mesmo da
-  reta 100% → 0% do robô. Fica a reta; vale rever num boss que troca de fase sem a vida acabar.
+  Conferido com o `sim:check` (Coiled Altar Mythic, 20/10, corte em 4 mortes; com o Feign Death
+  fora das mortes, o pull 15 vai até 6:36, entrando no intermission e na P3): a reta antiga ia até
+  36% (sem execute), e a luta ficou 90s abaixo de 20% e 140s abaixo de 35% somando P1 e P2. Com a
+  vida por fase, a reta vai a 0%, e a mediana dos DPS foi de 108% para 104% do robô (Balance
+  136% → 116%, Affliction 125% → 119%, Destruction 120% → 111%). Ainda acima de 110%: specs de DoT e
+  cleave (Affliction, Balance, Havoc, Subtlety, Arcane, Destruction), provavelmente o modelo de
+  adds (os Manifestation of Dread viram "2 alvos").
 
 **Conferido em 2026-10-20** com uma noite de Mythic (19 players, SimC 1210-01): todos os perfis rodam.
 DPS real ÷ robô: mediana 98%, a maioria entre 76% e 110%. Fora disso:
@@ -98,6 +106,18 @@ DPS real ÷ robô: mediana 98%, a maioria entre 76% e 110%. Fora disso:
   até 19 adds curtos; o robô de AoE fica abaixo. Calibrar o modelo de adds por boss.
 - Tanks variam muito (35%–217%): o dano do tank depende de pegar os adds. O número do tank é só
   contexto; a comparação dele é de rotação.
+
+### Configurar a simulação de um boss (processo)
+
+É um processo do app, como cadastrar um boss (`boss-rules`) e manter a rotação (`npm run refresh` +
+`rotation-refresh`). `npm run sim:check -- <log> --boss "<nome>" --difficulty Mythic`
+(`scripts/sim-check.mjs`) simula a raide toda com o próprio código do app (`simProfile.ts`,
+empacotado na hora), com o mesmo corte de mortes do app (4) e 1000 iterações, e escreve
+`samples/sim/<data>-<boss>.md`: OK / ATENÇÃO / REVISAR, a tabela real × robô por player e o modelo da
+luta que o robô jogou (fases, vida e execute, Bloodlust, movimento por trecho, alvos). REVISAR:
+mediana dos DPS fora de 85–105%, DPS acima de 110%, perfil que o SimC não roda, perfil sem o
+movimento medido. A skill `sim-calibrate` resolve cada item (onde corrigir: a medida no núcleo, as
+fases na regra do boss, ou uma constante do modelo, que muda todos os bosses).
 
 Falta: talentos *omnium* (12.0.7, `omnium_talents` no SimC): ainda não vimos onde aparecem no log; hoje ficam de fora.
 

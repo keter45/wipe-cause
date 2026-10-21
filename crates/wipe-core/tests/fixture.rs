@@ -347,3 +347,15 @@ fn full_replay_rereads_one_pull_with_hp_auras_and_events() {
     let end = seg.t0 + (seg.xy.len() as i64 / 2 - 1) * tracks.step_ms;
     assert!(seg.t0 <= 15_000 && end >= full.duration_ms - 5_000, "trecho {}..{}", seg.t0, end);
 }
+
+#[test]
+fn boss_hp_timeline_follows_the_lowest_boss() {
+    let r = report();
+    // pull 1: sem fases na regra, vale o boss mais baixo (Vexhul termina em 79%), a cada 5s
+    let p = &r.pulls[0];
+    assert_eq!(p.boss_hp_timeline.len(), 30);
+    assert_eq!((p.boss_hp_timeline[0], p.boss_hp_timeline[29]), (994, 790));
+    assert!(p.boss_hp_timeline.windows(2).all(|w| w[1] <= w[0]));
+    // kill: desce até o fim
+    assert!(r.pulls[2].boss_hp_timeline.last().is_some_and(|&v| v < 50));
+}
