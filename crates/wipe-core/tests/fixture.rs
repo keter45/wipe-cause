@@ -258,6 +258,23 @@ fn kill_ignores_the_death_cutoff() {
 }
 
 #[test]
+fn feign_death_is_not_a_death() {
+    // no Midnight o Feign Death só aparece como UNIT_DIED com unconsciousOnDeath = 1 (sem a aura 5384)
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/twin-fangs.txt");
+    let text = std::fs::read_to_string(path).unwrap();
+    let feign = "9/28/2026 21:15:30.0000-3  UNIT_DIED,0000000000000000,nil,0x80000000,0x80000000,Player-3209-0A1B2C3D,\"Magozin-Azralon\",0x511,0x80000000,1
+";
+    let at = text.find("9/28/2026 21:15:30").expect("linha do pull 3 aos 0:30");
+    let log = format!("{}{}{}", &text[..at], feign, &text[at..]);
+    let book = wipe_core::rules::RuleBook::embedded();
+    let r = wipe_core::analyze_reader(std::io::Cursor::new(log.into_bytes()), 0, &book, 1, |_, _| {}).unwrap();
+
+    let kill = &r.pulls[2];
+    assert!(kill.deaths.is_empty());
+    assert!(kill.players.iter().all(|p| p.deaths == 0));
+}
+
+#[test]
 fn deaths_carry_positions_until_the_cutoff() {
     let r = report_with(1);
     let p = r.pulls.iter().find(|p| p.deaths.len() >= 2).expect("pull com 2+ mortes");

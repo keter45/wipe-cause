@@ -1448,6 +1448,11 @@ impl PullBuilder {
         if !Self::is_group_player(dst_guid, dst_flags) {
             return;
         }
+        // Feign Death não é morte: no log do Midnight a aura nem aparece, só o UNIT_DIED com
+        // unconsciousOnDeath = 1 (e o hunter segue castando)
+        if f.get(9).is_some_and(|v| v.trim() == "1") || self.players.get(dst_guid).is_some_and(|p| p.feigning) {
+            return;
+        }
         self.injured.remove(dst_guid);
         let rel = self.rel(t);
         if let Some(fc) = self.fight.as_mut() {
@@ -1459,9 +1464,6 @@ impl PullBuilder {
         let positions = (!ignored).then(|| self.snapshot(rel));
         let idle_ms = self.last_cast.get(dst_guid).map(|&c| rel - c);
         let p = self.player(dst_guid, dst_name);
-        if p.feigning {
-            return;
-        }
         if !ignored {
             p.deaths += 1;
             p.dead_since.get_or_insert(rel);
