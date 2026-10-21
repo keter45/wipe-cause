@@ -1,6 +1,6 @@
 // Escolhas do usuário no replay que valem de uma sessão para outra: marcas de chão escondidas,
-// debuffs tirados da cabeça dos players (por boss) e medidores recolhidos. Ficam no navegador do
-// app; sem storage (modo privado, erro), valem só enquanto o app está aberto.
+// debuffs tirados da cabeça dos players (por boss), medidores recolhidos e as faixas por mecânica.
+// Ficam no navegador do app; sem storage (modo privado, erro), valem só enquanto o app está aberto.
 
 const KEY = 'wipe-cause:replay-prefs';
 const GROUND_DEFAULTS = ['noxious_ground'];
@@ -18,6 +18,10 @@ interface Prefs {
   showNames: boolean;
   /** marcas de chão do grupo no mapa */
   showMarkers: boolean;
+  /** linha do tempo: uma faixa por mecânica (false = só a faixa das falhas) */
+  mechanicLanes: boolean;
+  /** quadro da raide por cima do mapa recolhido */
+  framesCollapsed: boolean;
 }
 
 let cache: Prefs | null = null;
@@ -31,7 +35,7 @@ function load(): Prefs {
     /* sem storage */
   }
   const introduced = GROUND_DEFAULTS.filter((key) => !saved.groundDefaults?.includes(key));
-  cache = { groundDefaults: GROUND_DEFAULTS, hiddenGround: [...new Set([...(saved.hiddenGround ?? []), ...introduced])], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true };
+  cache = { groundDefaults: GROUND_DEFAULTS, hiddenGround: [...new Set([...(saved.hiddenGround ?? []), ...introduced])], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true, mechanicLanes: saved.mechanicLanes ?? true, framesCollapsed: saved.framesCollapsed ?? false };
   return cache;
 }
 
@@ -61,3 +65,9 @@ export const setShowMarkers = (v: boolean) => save({ ...load(), showMarkers: v }
 
 export const metersCollapsed = () => load().metersCollapsed;
 export const setMetersCollapsed = (v: boolean) => save({ ...load(), metersCollapsed: v });
+
+export const mechanicLanes = () => load().mechanicLanes;
+export const setMechanicLanes = (v: boolean) => save({ ...load(), mechanicLanes: v });
+
+export const framesCollapsed = () => load().framesCollapsed;
+export const setFramesCollapsed = (v: boolean) => save({ ...load(), framesCollapsed: v });

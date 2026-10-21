@@ -229,6 +229,42 @@ pub struct SoakInfo {
     pub players: Option<u32>,
 }
 
+/// Fragmentos para pegar: quem tem a `aura` pega um a cada acerto de `hit_ids` (onde ele estava ao
+/// pegar é onde o fragmento estava); as stacks da aura são quantos faltam.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PickupSpec {
+    pub aura: u32,
+    pub hit_ids: Vec<u32>,
+}
+
+/// Poça que um cast do boss abre em lugares fixos da sala (o log só mostra quem pisou nela): `delay_s`
+/// depois do cast ela está no chão por `duration_s`, crescendo e recuando em `grow_s`. `shapes`: o
+/// tamanho de cada vez que o cast sai (o último vale para as seguintes); centros nas coordenadas do log.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PoolSpec {
+    pub cast_id: u32,
+    pub delay_s: f64,
+    pub duration_s: f64,
+    #[serde(default)]
+    pub grow_s: f64,
+    pub shapes: Vec<PoolShape>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PoolShape {
+    pub centers: Vec<(f32, f32)>,
+    pub radius: f32,
+}
+
+/// Aura num inimigo que o mapa mostra (o escudo do add, o véu do boss): anel com as stacks e, com
+/// `absorb`, quanto ela já absorveu.
+#[derive(Debug, Clone, Deserialize)]
+pub struct UnitAuraSpec {
+    pub aura: u32,
+    #[serde(default)]
+    pub absorb: bool,
+}
+
 /// Frontal em cone: o cast que o solta e o tamanho.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConeSpec {
@@ -300,6 +336,12 @@ pub struct Mechanic {
     /// replay: o círculo do soak onde ele cai (no meio de quem foi atingido), com quantos entraram
     pub soak: Option<SoakSpec>,
     pub blast: Option<BlastSpec>,
+    /// replay completo: fragmentos no chão até alguém pegar
+    pub pickup: Option<PickupSpec>,
+    /// replay completo: aura num inimigo (escudo, véu) desenhada em volta dele
+    pub unit_aura: Option<UnitAuraSpec>,
+    /// replay: poça que o cast abre em lugares fixos da sala, com o tamanho medido
+    pub pool: Option<PoolSpec>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -1260,6 +1302,40 @@ impl RuleTracker {
     /// npcs que entram no replay por regra (`units` com `replay: true`).
     pub fn replay_npcs(&self) -> &[u32] {
         &self.replay_npcs
+    }
+
+    /// Fragmentos para pegar: (key, nome, spell do acerto, aura) de cada mecânica com `pickup`, na ordem.
+    pub fn pickup_kinds(&self) -> Vec<crate::report::PickupKind> {
+        self.mechs
+            .iter()
+            .filter_map(|m| {
+                let p = m.pickup.as_ref()?;
+                Some(crate::report::PickupKind { key: m.key.clone(), name: m.name.clone(), spell_id: p.hit_ids.first().copied().unwrap_or(0), aura: p.aura })
+            })
+            .collect()
+    }
+
+    /// Tipo de fragmento (índice em `pickup_kinds`) cuja aura é esta.
+    pub fn pickup_for_aura(&self, aura: u32) -> Option<usize> {
+        self.mechs.iter().filter_map(|m| m.pickup.as_ref()).position(|p| p.aura == aura)
+    }
+
+    /// Tipo de fragmento (índice em `pickup_kinds`) pego com um acerto deste spell.
+    pub fn pickup_for_hit(&self, spell_id: u32) -> Option<usize> {
+        self.mechs.iter().filter_map(|m| m.pickup.as_ref()).position(|p| p.hit_ids.contains(&spell_id))
+    }
+
+    /// Poças de tamanho conhecido: (key, nome, spell do dano, a regra) de cada mecânica com `pool`.
+    pub fn pool_specs(&self) -> Vec<(String, String, u32, PoolSpec)> {
+        self.mechs
+            .iter()
+            .filter_map(|m| Some((m.key.clone(), m.name.clone(), m.detect.damage_ids.iter().flatten().next().copied().unwrap_or(0), m.pool.clone()?)))
+            .collect()
+    }
+
+    /// Aura de inimigo que o mapa mostra: (key, nome, conta o absorvido).
+    pub fn unit_aura_for(&self, aura: u32) -> Option<(&str, &str, bool)> {
+        self.mechs.iter().find_map(|m| m.unit_aura.as_ref().filter(|u| u.aura == aura).map(|u| (m.key.as_str(), m.name.as_str(), u.absorb)))
     }
 
     /// Frontal em cone que este cast solta.
@@ -2558,11 +2634,15 @@ mechanics:
         let blasts = tracker.blast_specs();
         assert_eq!(blasts.len(), 2);
         for blast in blasts {
-            assert_eq!((blast.spec.radius, blast.spec.delay_ms), (40.0, 6_000));
+            // 45 jd medido nos logs de 14 e 15/10 (o tooltip diz 40)
+            assert_eq!((blast.spec.radius, blast.spec.delay_ms), (45.0, 6_000));
             assert!(tracker.ground_for(blast.spell_id).is_none());
         }
         assert!(tracker.is_blast_spell(1283631));
         assert_eq!(tracker.ground_contour_cell(1283290), Some(2.0));
+        // Noxious Ground: poça de tamanho conhecido depois de cada Fangs of the Coiled Altar
+        let pools = tracker.pool_specs();
+        assert_eq!(pools.iter().map(|p| (p.0.as_str(), p.3.cast_id, p.3.shapes.len())).collect::<Vec<_>>(), vec![("noxious_ground", 1282487, 2)]);
         let heroic = RuleTracker::new(&sets, 15).unwrap();
         assert_eq!(heroic.ground_contour_cell(1298591), Some(2.0));
     }

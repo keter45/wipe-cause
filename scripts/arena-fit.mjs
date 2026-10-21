@@ -24,7 +24,10 @@ const MARK = 1224;
 
 /** Arenas: imagem do raidplan, chão (polígono / buracos, ou cores de perigo). */
 const ARENAS = [
-  { id: 3429, img: '07.bargained-ort-v108', url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/07.bargained-ort-v108.jpg', poly: [[292, 18], [935, 18], [935, 665], [292, 665]] },
+  // spanYd: largura do chão (o polígono) em jardas, quando ela é conhecida. No Altar ninguém fica na borda
+  // (as poças saem das laterais), e o encaixe pelos pisões encolhia a plataforma para 83 jd; orbs e
+  // fantasmas (que nunca saem dela) vão até ±47 jd do meio: 100,8 jd (14 e 15/10)
+  { id: 3429, img: '07.bargained-ort-v108', url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/07.bargained-ort-v108.jpg', poly: [[292, 18], [935, 18], [935, 665], [292, 665]], spanYd: 100.8 },
   { id: 3420, img: '05.sszorak-ort-v122', url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/05.sszorak-ort-v122.jpg', poly: [[475, 8], [750, 8], [945, 200], [945, 480], [750, 678], [475, 678], [278, 480], [278, 200]] },
   {
     id: 3421,
@@ -207,7 +210,7 @@ function score(pts, mask, im, t) {
   return prec + rec > 0 ? (2 * prec * rec) / (prec + rec) : 0;
 }
 
-function fit(pts, mask, im) {
+function fit(pts, mask, im, a) {
   let floor = 0;
   let fu = 0;
   let fv = 0;
@@ -216,7 +219,9 @@ function fit(pts, mask, im) {
   fv /= floor;
   const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
   const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-  const s0 = Math.sqrt(floor / pts.length);
+  // largura do chão conhecida (spanYd): a escala fica travada e só a posição é procurada
+  const fixed = a.spanYd && a.poly ? (Math.max(...a.poly.map((q) => q[0])) - Math.min(...a.poly.map((q) => q[0]))) * (WORK / MARK) / a.spanYd : null;
+  const s0 = fixed ?? Math.sqrt(floor / pts.length);
   let best = null;
   // mapa do raidplan com o norte para cima e o X do log para o norte, Y para o oeste: a mesma
   // orientação em todo boss (o Twin Fangs, sem simetria, confirma; ORIENT_ALL=1 testa as 8)
@@ -229,6 +234,7 @@ function fit(pts, mask, im) {
       while (moved) {
         moved = false;
         for (const [ds, du, dv] of [[0.06, 0, 0], [-0.06, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+          if (fixed && ds) continue;
           const n = { ...t, s: t.s * (1 + ds * (step / 8)), u: t.u + du * step, v: t.v + dv * step };
           const ns = score(pts, mask, im, n);
           if (ns > sc + 1e-4) { t = n; sc = ns; moved = true; }
@@ -302,7 +308,7 @@ for (const a of ARENAS) {
   const im = decode(path.join(imgDir, `${a.img}.jpg`));
   const mask = floorMask(a, im);
   const pts = densePoints(o, a.core);
-  const t = fit(pts, mask, im);
+  const t = fit(pts, mask, im, a);
   check(a, im, mask, pts, t, path.join(outDir, `check-${a.id}.png`));
   // canto superior esquerdo e escala da imagem inteira no mundo (para desenhar o fundo)
   const k = im.origW / WORK;

@@ -41,9 +41,10 @@ describe('replay hazard rendering', () => {
     expect(renderReplay(5000, true)).not.toContain('class="replay-cone impact"');
   });
   it('keeps the impact origin fixed after the boss moves', () => {
-    const polygon = (now: number) => renderReplay(now).match(/<polygon points="([^"]+)" data-phase="impact"/)?.[1];
-    expect(polygon(5000)).toBeTruthy();
-    expect(polygon(5250)).toBe(polygon(5000));
+    // o setor do frontal no golpe: o mesmo lugar e a mesma direção, mesmo com o boss andando depois
+    const sector = (now: number) => renderReplay(now).match(/<path d="([^"]+)" data-phase="impact"/)?.[1];
+    expect(sector(5000)).toBeTruthy();
+    expect(sector(5250)).toBe(sector(5000));
   });
   it('draws pool outlines and switches delayed circles from warning to impact', () => {
     expect(renderReplay(3000)).toContain('class="replay-pool-outline"');

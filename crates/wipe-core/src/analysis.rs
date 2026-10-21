@@ -67,6 +67,10 @@ const TYPE_PLAYER: u32 = 0x400;
 const GROUND_REPEAT_MS: i64 = 1_500;
 /// Debuff aplicado marca o chão na última posição do player, se ela tiver até isto (ms).
 const GROUND_POS_MAX_AGE_MS: i64 = 1_000;
+/// Duas linhas do mesmo acerto que pega um fragmento (dano e absorvido) chegam juntas: até isto (ms) é o mesmo.
+const PICKUP_SAME_MS: i64 = 50;
+/// Escudo num inimigo: um ponto do absorvido a cada isto (ms).
+const SHIELD_STEP_MS: i64 = 250;
 const GROUND_REPEAT_YD: f32 = 2.0;
 /// Replay: spell que o boss repete mais que uma vez a cada isto (em média) é ruído (pulso,
 /// energia), não um cast para mostrar.
@@ -337,6 +341,14 @@ pub(crate) struct PullBuilder {
     cast_slows: HashMap<String, HashSet<u32>>,
     /// replay completo: vida, debuffs e eventos de cada player (só ao reler um pull sozinho)
     fight: Option<FightCapture>,
+    /// replay completo, fragmentos para pegar (regra com `pickup`): desde quando cada (player, tipo)
+    /// tem a aura, e cada fragmento pego (tipo, player, desde, quando, x, y em décimos de jarda)
+    pickup_since: HashMap<(String, usize), i64>,
+    pickups: Vec<(u8, String, i64, i64, i32, i32)>,
+    /// replay completo: auras nos inimigos que o mapa mostra (regra com `unit_aura`) e a aberta de cada
+    /// (inimigo, aura)
+    unit_auras: Vec<UnitAuraView>,
+    unit_aura_open: HashMap<(String, u32), usize>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -392,6 +404,10 @@ impl PullBuilder {
             boss_casts: Vec::new(),
             boss_target: HashMap::new(),
             open_casts: HashMap::new(),
+            pickup_since: HashMap::new(),
+            pickups: Vec::new(),
+            unit_auras: Vec::new(),
+            unit_aura_open: HashMap::new(),
             cast_slows: HashMap::new(),
             fight: None,
         }
@@ -617,6 +633,10 @@ impl PullBuilder {
             "SWING_DAMAGE" | "ENVIRONMENTAL_DAMAGE" => self.damage(f, t, 9),
             // hit absorvido inteiro ou imune: não é dano, mas pode aplicar debuff (origem de stacks)
             "SPELL_MISSED" | "SPELL_PERIODIC_MISSED" => {
+                if self.fight.is_some() && Self::is_group_player(f[5], hex(f[7])) {
+                    // fragmento pego com o acerto inteiro absorvido: onde o player estava por último
+                    self.pickup_hit(f[5], f[9].parse().unwrap_or(0), self.rel(t));
+                }
                 if self.counting() && Self::is_group_player(f[5], hex(f[7])) {
                     let rel = self.rel(t);
                     if let Some(r) = self.rules.as_mut() {
@@ -793,6 +813,12 @@ impl PullBuilder {
                 fc.aura(rel, dst_guid, spell_id, f[10], f.get(12) == Some(&"DEBUFF"), enemy, stacks);
             }
         }
+        if self.fight.is_some() {
+            self.pickup_aura(f[0], dst_guid, spell_id, is_player, rel);
+            if !is_player {
+                self.unit_aura(f, spell_id, stacks, rel);
+            }
+        }
         // efeito que aumenta o tempo de cast num inimigo (a barra do cast dele anda mais devagar)
         if !is_player && CAST_SLOWS.iter().any(|c| c.0 == spell_id) {
             match f[0] {
@@ -887,6 +913,64 @@ impl PullBuilder {
         }
     }
 
+    /// Aura de quem tem que pegar fragmentos (regra com `pickup`): desde quando ele tem.
+    fn pickup_aura(&mut self, event: &str, guid: &str, spell_id: u32, is_player: bool, rel: i64) {
+        let Some(kind) = self.rules.as_ref().and_then(|r| r.pickup_for_aura(spell_id)).filter(|_| is_player) else { return };
+        match event {
+            "SPELL_AURA_APPLIED" => {
+                self.pickup_since.insert((guid.to_string(), kind), rel);
+            }
+            "SPELL_AURA_REMOVED" => {
+                self.pickup_since.remove(&(guid.to_string(), kind));
+            }
+            _ => {}
+        }
+    }
+
+    /// Acerto que pega um fragmento (regra com `pickup`): o fragmento estava onde o player estava.
+    fn pickup_hit(&mut self, guid: &str, spell_id: u32, rel: i64) {
+        let Some(kind) = self.rules.as_ref().and_then(|r| r.pickup_for_hit(spell_id)) else { return };
+        let Some(&since) = self.pickup_since.get(&(guid.to_string(), kind)) else { return };
+        let Some((x, y, _)) = self.players.get(guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= GROUND_POS_MAX_AGE_MS) else { return };
+        // o mesmo acerto pode vir em duas linhas (dano e absorvido inteiro): um fragmento só
+        if self.pickups.last().is_some_and(|p| p.0 == kind as u8 && p.1 == guid && rel - p.3 <= PICKUP_SAME_MS) {
+            return;
+        }
+        self.pickups.push((kind as u8, guid.to_string(), since, rel, (x * 10.0).round() as i32, (y * 10.0).round() as i32));
+    }
+
+    /// Aura num inimigo que o mapa mostra (regra com `unit_aura`): abre, muda de stack, fecha.
+    fn unit_aura(&mut self, f: &[&str], spell_id: u32, stacks: u32, rel: i64) {
+        let Some((key, name, _)) = self.rules.as_ref().and_then(|r| r.unit_aura_for(spell_id)) else { return };
+        let k = (f[5].to_string(), spell_id);
+        match (f[0], self.unit_aura_open.get(&k).copied()) {
+            ("SPELL_AURA_REMOVED", Some(i)) => {
+                self.unit_aura_open.remove(&k);
+                self.unit_auras[i].to = rel;
+            }
+            // o log põe as stacks iniciais como vários APPLIED seguidos
+            ("SPELL_AURA_APPLIED", Some(i)) => {
+                let n = self.unit_auras[i].stacks.last().map_or(1, |s| s.1) + 1;
+                self.unit_auras[i].stacks.push((rel, n));
+            }
+            ("SPELL_AURA_APPLIED", None) => {
+                self.unit_aura_open.insert(k, self.unit_auras.len());
+                self.unit_auras.push(UnitAuraView {
+                    key: key.to_string(),
+                    name: name.to_string(),
+                    spell_id,
+                    guid: f[5].to_string(),
+                    from: rel,
+                    to: rel,
+                    stacks: vec![(rel, 1)],
+                    absorbed: Vec::new(),
+                });
+            }
+            ("SPELL_AURA_APPLIED_DOSE" | "SPELL_AURA_REMOVED_DOSE", Some(i)) => self.unit_auras[i].stacks.push((rel, stacks)),
+            _ => {}
+        }
+    }
+
     /// SPELL_INTERRUPT: sufixo extraSpellId (o cast cortado), extraSpellName, extraSchool.
     fn interrupt(&mut self, f: &[&str], t: i64) {
         if !self.counting() {
@@ -978,6 +1062,10 @@ impl PullBuilder {
         let adv = advanced_at(f, adv_at);
         if let Some(a) = &adv {
             self.track_advanced(a, f);
+        }
+        // fragmento pego: a posição que acabou de entrar é a do player que pegou
+        if adv_at == 12 && self.fight.is_some() && Self::is_group_player(f[5], hex(f[7])) {
+            self.pickup_hit(f[5], f[9].parse().unwrap_or(0), self.rel(t));
         }
         let mut s = adv_at + adv.as_ref().map_or(0, |a| a.len);
         // ENVIRONMENTAL_DAMAGE: o tipo (Falling, Lava, ...) vem depois do bloco advanced
@@ -1209,11 +1297,23 @@ impl PullBuilder {
     /// (não vem em golpe corpo a corpo), quem pôs o escudo (guid, nome, flags, raidFlags), o spell do
     /// escudo (id, nome, escola) e o valor absorvido.
     fn absorbed(&mut self, f: &[&str], t: i64) {
-        if !self.counting() {
-            return;
-        }
         let at = if is_guid_like(f[9]) { 9 } else { 12 };
         if f.len() < at + 8 {
+            return;
+        }
+        // escudo num inimigo que o mapa mostra (o véu do boss): quanto ele já absorveu
+        let shield = f[at + 4].parse::<u32>().ok().filter(|&id| self.fight.is_some() && self.rules.as_ref().is_some_and(|r| r.unit_aura_for(id).is_some_and(|a| a.2)));
+        if let Some(&i) = shield.and_then(|id| self.unit_aura_open.get(&(f[5].to_string(), id))) {
+            let rel = self.rel(t);
+            let u = &mut self.unit_auras[i];
+            let total = u.absorbed.last().map_or(0, |a| a.1) + num(f.get(at + 7)).max(0);
+            // um ponto a cada SHIELD_STEP_MS basta para a barra (o escudo leva centenas de acertos por segundo)
+            match u.absorbed.last_mut() {
+                Some(last) if rel - last.0 < SHIELD_STEP_MS => last.1 = total,
+                _ => u.absorbed.push((rel, total)),
+            }
+        }
+        if !self.counting() {
             return;
         }
         let (caster, caster_flags) = (f[at], hex(f[at + 2]));
@@ -1719,6 +1819,8 @@ impl PullBuilder {
             })
             .unwrap_or_default();
         let replay_npcs: HashSet<u32> = self.rules.as_ref().map(|r| r.replay_npcs().iter().copied().collect()).unwrap_or_default();
+        let pickup_kinds = self.rules.as_ref().map(|r| r.pickup_kinds()).unwrap_or_default();
+        let pool_specs = self.rules.as_ref().map(|r| r.pool_specs()).unwrap_or_default();
         let interrupt_casters: Vec<String> = self.rules.as_ref().map(|r| self.boss_casts.iter().filter(|c| r.is_interrupt_cast(c.spell_id)).map(|c| c.guid.clone()).collect()).unwrap_or_default();
         let mechanics = self
             .rules
@@ -1820,6 +1922,7 @@ impl PullBuilder {
                 .cloned()
                 .collect::<Vec<_>>()
         };
+        let pools = build_pools(&pool_specs, &self.boss_casts, &phase_marks);
         let ground = {
             let inside = |t: i64| refs.iter().any(|r| t >= r.from - GROUND_BEFORE_MS && t <= r.to);
             let marks: Vec<(i64, i32, i32, usize)> =
@@ -1886,19 +1989,61 @@ impl PullBuilder {
                 log_file: None,
                 log_offset: None,
                 phase_marks,
-                fight: self.fight.take().map(|fc| fc.finish(duration_ms, rule_spells)),
+                fight: self.fight.take().map(|fc| fc.finish(duration_ms, rule_spells, &replay_npcs)),
                 orbs,
                 areas,
                 soaks,
                 blasts,
                 markers: std::mem::take(&mut self.markers),
                 cast_ms: cast_times(&self.boss_casts),
+                pickups: (!self.pickups.is_empty()).then(|| Pickups {
+                    kinds: pickup_kinds,
+                    items: std::mem::take(&mut self.pickups),
+                }),
+                pools,
+                unit_auras: {
+                    // o que ficou aberto vai até o fim do pull
+                    for &i in self.unit_aura_open.values() {
+                        self.unit_auras[i].to = duration_ms;
+                    }
+                    std::mem::take(&mut self.unit_auras)
+                },
             },
             pending_deaths: pending,
             defensives_by_player,
             healthstone_users,
         }
     }
+}
+
+/// Poças de tamanho conhecido (regra com `pool`): uma por cast, do tamanho daquela vez; a poça some na
+/// troca de fase (o boss que a abriu sai).
+fn build_pools(specs: &[(String, String, u32, crate::rules::PoolSpec)], casts: &[BossCast], phases: &[PhaseMark]) -> Vec<PoolView> {
+    let mut out = Vec::new();
+    for (key, name, spell_id, spec) in specs {
+        for (i, c) in casts.iter().filter(|c| c.spell_id == spec.cast_id).enumerate() {
+            let Some(shape) = spec.shapes.get(i).or(spec.shapes.last()) else { continue };
+            let from = c.end.unwrap_or(c.t);
+            let on = from + (spec.delay_s * 1000.0) as i64;
+            let next_phase = phases.iter().map(|p| p.t).find(|&t| t > from).unwrap_or(i64::MAX);
+            let to = (on + (spec.duration_s * 1000.0) as i64).min(next_phase);
+            // a fase trocou antes de a poça cair: ela não chega a aparecer
+            if to <= on {
+                continue;
+            }
+            out.push(PoolView {
+                key: key.clone(),
+                name: name.clone(),
+                spell_id: *spell_id,
+                from,
+                on,
+                to,
+                grow_ms: (spec.grow_s * 1000.0) as i64,
+                circles: shape.centers.iter().map(|&(x, y)| (x, y, shape.radius)).collect(),
+            });
+        }
+    }
+    out
 }
 
 /// Números da janela antes da morte (HP ao longo do tempo, dano e cura recebidos).
@@ -2250,6 +2395,52 @@ mod tests {
         builder.aura_state(&fields, 5_055);
         let (_, paths) = builder.rules.as_mut().unwrap().ghost_paths().unwrap();
         assert_eq!(paths[0].pts.last().unwrap().0, 5_055);
+    }
+
+    #[test]
+    fn fragmentos_pegos_e_escudos_dos_inimigos_no_replay_completo() {
+        let data = GameData::embedded();
+        let start = ["ENCOUNTER_START", "3429", "The Coiled Altar", "16", "20", "1"];
+        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::embedded(), 0).capture_fight(&data);
+        let boss = "Creature-0-1-3004-1-259854-01";
+        let add = "Creature-0-1-3004-1-261521-02";
+        let feed = |b: &mut PullBuilder, line: String, t: i64| {
+            let mut f = Vec::new();
+            split_fields(&line, &mut f);
+            b.feed(&f, t, &data);
+        };
+        // Gravebound (3 fragmentos): cada acerto de 1308330 é um fragmento pego onde ela estava
+        feed(&mut b, format!("SPELL_AURA_APPLIED,{boss},\"Hex Lord Malacrass\",0xa48,0x0,Player-1-A,\"Alice\",0x512,0x0,1286837,\"Gravebound\",0x20,DEBUFF"), 1_000);
+        let hit = |x: f32| format!("SPELL_DAMAGE,{boss},\"Hex Lord Malacrass\",0xa48,0x0,Player-1-A,\"Alice\",0x512,0x0,1308330,\"Gravebound\",0x20,Player-1-A,0000000000000000,841255,925220,3830,3683,4319,787,480,178831,0,131681,260000,0,{x:.2},-17.03,2610,2.7327,330,61699,202459,-1,32,0,0,89228,nil,nil,nil,ST");
+        feed(&mut b, hit(1150.0), 2_500);
+        feed(&mut b, hit(1155.0), 3_200);
+        // Spirit Shield no add: entra com 2 stacks (dois APPLIED), a bomba tira 1, depois sai
+        let shield = |ev: &str, extra: &str| format!("{ev},{add},\"Spiteful Soulcoiler\",0xa48,0x0,{add},\"Spiteful Soulcoiler\",0xa48,0x0,1309105,\"Spirit Shield\",0x1,BUFF{extra}");
+        feed(&mut b, shield("SPELL_AURA_APPLIED", ""), 4_000);
+        feed(&mut b, shield("SPELL_AURA_APPLIED", ""), 4_000);
+        feed(&mut b, shield("SPELL_AURA_REMOVED_DOSE", ",1"), 9_000);
+        feed(&mut b, shield("SPELL_AURA_REMOVED", ""), 9_001);
+        // Veil of Twilight no boss: o que ele absorve soma
+        feed(&mut b, format!("SPELL_AURA_APPLIED,{boss},\"Hex Lord Malacrass\",0xa48,0x0,{boss},\"Hex Lord Malacrass\",0xa48,0x0,1286912,\"Veil of Twilight\",0x20,BUFF"), 10_000);
+        let absorb = |amount: i64| format!("SPELL_ABSORBED,Player-1-B,\"Bob\",0x512,0x0,{boss},\"Hex Lord Malacrass\",0xa48,0x0,5374,\"Mutilate\",0x1,{boss},\"Hex Lord Malacrass\",0xa48,0x0,1286912,\"Veil of Twilight\",0x20,{amount},60000,nil");
+        feed(&mut b, absorb(40_000), 10_500);
+        feed(&mut b, absorb(20_000), 11_000);
+        assert_eq!(b.pickups.iter().map(|p| (p.0, p.1.as_str(), p.2, p.3, p.4)).collect::<Vec<_>>(), vec![(0, "Player-1-A", 1_000, 2_500, 11_500), (0, "Player-1-A", 1_000, 3_200, 11_550)]);
+        let shield = b.unit_auras.iter().find(|u| u.key == "spirit_shield").expect("escudo do add");
+        assert_eq!((shield.from, shield.to, shield.stacks.clone()), (4_000, 9_001, vec![(4_000, 1), (4_000, 2), (9_000, 1)]));
+        let veil = b.unit_auras.iter().find(|u| u.key == "eternal_nightfall").expect("véu do boss");
+        assert_eq!(veil.absorbed.last().map(|a| a.1), Some(60_000));
+    }
+
+    #[test]
+    fn pocas_de_tamanho_conhecido_por_cast_e_cortadas_na_troca_de_fase() {
+        let shape = |r: f32| crate::rules::PoolShape { centers: vec![(1160.0, r), (1160.0, -r)], radius: r };
+        let spec = crate::rules::PoolSpec { cast_id: 7, delay_s: 4.5, duration_s: 22.0, grow_s: 3.0, shapes: vec![shape(40.0), shape(42.5)] };
+        let cast = |t: i64| BossCast { t, end: None, guid: "Boss".into(), spell_id: 7, name: "Fangs".into(), facing: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None };
+        let phases = [PhaseMark { t: 0, key: "p1".into(), name: "P1".into() }, PhaseMark { t: 171_000, key: "p2".into(), name: "P2".into() }];
+        let pools = build_pools(&[("pool".into(), "Pool".into(), 9, spec)], &[cast(0), cast(85_000), cast(170_000), cast(200_000)], &phases);
+        // 1ª com o primeiro tamanho; as seguintes com o último; a que a troca de fase corta antes de cair some
+        assert_eq!(pools.iter().map(|p| (p.from, p.on, p.to, p.circles[0].2)).collect::<Vec<_>>(), vec![(0, 4_500, 26_500, 40.0), (85_000, 89_500, 111_500, 42.5), (200_000, 204_500, 226_500, 42.5)]);
     }
 
     #[test]

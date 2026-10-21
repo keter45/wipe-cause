@@ -7017,6 +7017,101 @@ button.kpi:hover {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* faixas por mecânica: o nome com o ícone, quantas deram errado, e as marcas (cheia = errado, vazada = ok) */
+/* as faixas por mecânica rolam dentro delas mesmas (umas 7 à vista), na mesma grade da linha do tempo */
+.fight-lanes {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  row-gap: 1px;
+  max-height: 104px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.fight-lane.mech .fight-lane-label {
+  font-size: 11px;
+}
+.fight-lane.mech .fight-track {
+  height: 13px;
+}
+.fight-lane-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  /* nomes longos não alargam a coluna dos nomes (a linha do tempo inteira encolheria) */
+  max-width: clamp(96px, 12vw, 132px);
+}
+.fight-lane-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.fight-lane-fails {
+  margin-left: auto;
+  color: var(--wipe);
+  font-weight: 700;
+}
+.fight-lanes-toggle {
+  justify-content: flex-start;
+  gap: 2px;
+  padding-inline: 0;
+  font-size: 11px;
+}
+.fight-mark {
+  position: absolute;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.fight-mark.ok {
+  border-color: var(--kill);
+}
+.fight-mark.bad {
+  border-color: var(--minor);
+  background: var(--minor);
+}
+.fight-mark.bad.major {
+  border-color: var(--major);
+  background: var(--major);
+}
+.fight-mark.bad.wipe {
+  border-color: var(--wipe);
+  background: var(--wipe);
+}
+.fight-mark.dim {
+  opacity: 0.3;
+}
+.fight-mark.mine {
+  z-index: 1;
+  box-shadow: 0 0 0 1.5px var(--text);
+}
+.fight-mark:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.fight-series {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.fight-series path {
+  fill: #4cc38a;
+  fill-opacity: 0.35;
+  stroke: #4cc38a;
+  stroke-opacity: 0.7;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
 /* player selecionado: vida, debuffs e erros de um lado, o que aconteceu com ele do outro */
 .fight-focus-empty {
   margin: 0;
@@ -7121,13 +7216,29 @@ button.kpi:hover {
 .fight .raid-frames {
   right: 8px;
   bottom: 8px;
-  grid-template-columns: repeat(5, 72px);
+  grid-template-columns: repeat(5, 62px);
   gap: 2px;
-  padding: 3px;
+  padding: 3px 3px 3px 18px;
 }
 .fight .raid-frame {
-  min-height: 22px;
-  padding: 2px 4px;
+  min-height: 17px;
+  padding: 1px 3px;
+  font-size: 10px;
+}
+/* recolher o quadro: a setinha na borda esquerda dele; recolhido, só um botão no canto */
+.fight .raid-frames .raid-frames-close {
+  position: absolute;
+  top: 3px;
+  left: 2px;
+  width: 14px;
+  min-width: 0;
+  height: 14px;
+  padding: 0;
+}
+.raid-frames-open {
+  right: 8px;
+  bottom: 8px;
+  gap: 6px;
   font-size: 11px;
 }
 .fight .raid-frame-fill {
@@ -7201,13 +7312,18 @@ button.kpi:hover {
 .fight-boss-cast > :not(.fight-boss-cast-fill) {
   position: relative;
 }
+/* o próximo cast: sem barra, mais apagado */
+.fight-boss-cast.next {
+  background: transparent;
+  color: var(--muted);
+}
 .fight-meters {
   left: 8px;
   bottom: 8px;
   display: flex;
   flex-direction: column;
-  width: 270px;
-  max-height: 46%;
+  width: 220px;
+  max-height: 40%;
   padding: 4px;
 }
 .fight-meters-head {
@@ -7413,7 +7529,7 @@ button.kpi:hover {
 }
 .replay-dock {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   column-gap: 8px;
   row-gap: 2px;
 }
@@ -7443,6 +7559,13 @@ button.kpi:hover {
 }
 .replay-dock .replay-clock {
   min-width: 5ch;
+}
+/* no replay completo os controles da direita vão para a barra de ferramentas, no fim dela */
+.replay-filters > .replay-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 /* linha do lançador até o alvo (ex.: Corrosive Spit) */
@@ -7664,6 +7787,77 @@ button.kpi:hover {
   fill-opacity: .22;
   stroke-width: 2;
   stroke-dasharray: none;
+}
+/* contagem de um aviso: o arco que fecha (por cima do contorno) e os segundos */
+.replay-timer,
+.replay-blast circle.replay-timer,
+.replay-soak circle.replay-timer,
+.replay-soak.done circle.replay-timer {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-opacity: 0.9;
+  pointer-events: none;
+}
+.replay-timer-tag {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--text);
+  stroke: var(--bg);
+  stroke-width: 3px;
+  paint-order: stroke;
+  pointer-events: none;
+}
+/* escudo ou véu num inimigo, a vida de um add e os fragmentos no chão */
+.replay-unit-aura {
+  fill: none;
+  stroke-width: 2;
+  stroke-opacity: 0.85;
+  pointer-events: none;
+}
+.replay-add-hp {
+  fill: var(--wipe);
+}
+.replay-pickup {
+  fill-opacity: 0.35;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+/* o próximo frontal, antes do cast: só o contorno, bem leve, com o nome e os segundos dentro */
+.replay-cone.next {
+  fill-opacity: 0.03;
+  stroke-opacity: 0.55;
+  stroke-dasharray: 5 4;
+}
+.replay-cone-tag {
+  fill: var(--wipe);
+  font-size: 10px;
+}
+/* no cast, o preenchimento avança do boss até a borda */
+.replay-cone.filling {
+  fill-opacity: 0.18;
+  stroke: none;
+}
+/* anel de impacto: soak que cai, explosão, orb que estoura, fragmento pego */
+.replay-impact {
+  fill: none;
+  pointer-events: none;
+}
+/* poças de tamanho conhecido: anunciadas (só o contorno) e no chão */
+.replay-pool-shape circle {
+  fill: currentColor;
+  fill-opacity: 0.2;
+  stroke: currentColor;
+  stroke-opacity: 0.85;
+  stroke-width: 1.5;
+}
+.replay-pool-shape.coming circle {
+  fill-opacity: 0.04;
+  stroke-dasharray: 6 5;
+}
+.replay-fragments-left {
+  fill: #67e8f9;
 }
 
 /* ---------------------------------------------------------------- barra lateral: noites em árvore */

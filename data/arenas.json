@@ -52,15 +52,16 @@
    "name": "The Coiled Altar",
    "image": "https://cdn.raidplan.io/raid/wow.venomabyss/map/07.bargained-ort-v108.jpg",
    "size": [2448, 1371],
-   "pxPerYd": 15.528,
-   "anchorPx": [1248, 678],
-   "anchorAt": [1156.03, -2.05],
+   "pxPerYd": 12.7976,
+   "anchorPx": [1227, 683],
+   "anchorAt": [1157.4, 0],
    "fit": 0.964,
+   "spanYd": 100.8,
    "floor": [
-    [1197.4, 40.7],
-    [1197.4, -42.1],
-    [1114, -42.1],
-    [1114, 40.7]
+    [1208.0, 50.2],
+    [1208.0, -50.2],
+    [1106.8, -50.2],
+    [1106.8, 50.2]
    ],
    "holes": []
   },

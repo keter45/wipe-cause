@@ -277,8 +277,9 @@ impl FightCapture {
         }
     }
 
-    /// Fecha o que ficou aberto no fim do pull. `rule_spells`: spells das regras do boss (spell -> mecânica).
-    pub fn finish(mut self, end: i64, rule_spells: BTreeMap<u32, String>) -> FightData {
+    /// Fecha o que ficou aberto no fim do pull. `rule_spells`: spells das regras do boss (spell -> mecânica);
+    /// `add_npcs`: adds que importam (`units` com `replay: true`), com a vida guardada mesmo sem vida de boss.
+    pub fn finish(mut self, end: i64, rule_spells: BTreeMap<u32, String>, add_npcs: &HashSet<u32>) -> FightData {
         for (_, (i, _, pts)) in self.zone_buffs.drain() {
             place(&mut self.zones[i], &pts);
         }
@@ -294,14 +295,15 @@ impl FightCapture {
         self.events.sort_by_key(|e| e.0);
         self.stacks.sort_by_key(|s| s.2);
         let top = self.enemies.values().map(|e| e.1).max().unwrap_or(0);
-        let mut bosses: Vec<FightBoss> = self
+        let (mut bosses, mut adds): (Vec<FightBoss>, Vec<FightBoss>) = self
             .enemies
             .into_iter()
-            .filter(|(_, e)| top > 0 && e.1 as f64 >= top as f64 * BOSS_MIN_HP_SHARE)
+            .filter(|(guid, e)| top > 0 && e.1 as f64 >= top as f64 * BOSS_MIN_HP_SHARE || crate::analysis::npc_id(guid).is_some_and(|n| add_npcs.contains(&n)))
             .map(|(guid, (name, max_hp, hp))| FightBoss { guid, name, max_hp, hp })
-            .collect();
+            .partition(|b| top > 0 && b.max_hp as f64 >= top as f64 * BOSS_MIN_HP_SHARE);
         bosses.sort_by(|a, b| b.max_hp.cmp(&a.max_hp).then(a.name.cmp(&b.name)));
         bosses.truncate(MAX_BOSSES);
+        adds.sort_by_key(|a| a.hp.first().map_or(0, |h| h.0));
         let mut done: Vec<(u32, u16, u16, i64)> = self.done.into_iter().map(|((s, p, t), v)| (s, p, t, v)).collect();
         done.sort_unstable();
         let sums = |m: HashMap<(u32, u16), i64>| {
@@ -323,6 +325,7 @@ impl FightCapture {
             healed: sums(self.healed),
             heal_in: sums(self.heal_in),
             zones: self.zones,
+            adds,
         }
     }
 }
@@ -346,7 +349,7 @@ mod tests {
         c.aura(300, "P1", 8, "Own Debuff", true, false, 1); // debuff de player: fora
         c.aura(300, "P1", 100, "Shield Wall", false, false, 1);
         c.died("P1", 1000);
-        let f = c.finish(2000, BTreeMap::new());
+        let f = c.finish(2000, BTreeMap::new(), &HashSet::new());
         assert_eq!(f.players, vec!["P1"]);
         assert_eq!(f.hp[0], vec![(0, 100), (200, 80), (1000, 0)]);
         assert_eq!(f.sources, vec!["Boss"]);
@@ -371,7 +374,7 @@ mod tests {
         c.zone_buff(3200, 30, Some((20.0, 0.0)));
         c.zone_buff(9000, 30, Some((90.0, 0.0))); // tarde demais: não conta
         c.zone_cast(4000, "DH", 4, "Nada", Some((0.0, 0.0))); // não é área
-        let f = c.finish(5000, BTreeMap::new());
+        let f = c.finish(5000, BTreeMap::new(), &HashSet::new());
         let at: Vec<(u32, f32, f32, i64)> = f.zones.iter().map(|z| (z.spell_id, z.x, z.y, z.end)).collect();
         assert_eq!(at, vec![(1, 5.0, 5.0, 5000), (2, 3.0, 4.0, 5000), (3, 15.0, 0.0, 5000)]);
     }

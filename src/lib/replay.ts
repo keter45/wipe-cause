@@ -1,7 +1,7 @@
 // Replays: posições guardadas no pull (`Pull.tracks`, só nos trechos usados) e as contas do
 // player de replay (posição num instante, stacks num instante).
 
-import type { WorldMarker, SoakView, AreaView, BossCast, Death, LegacyPairReplay, MechanicResult, OrbTracks, Pull, PullGround, PullTracks, ReplayRef } from '../types';
+import type { WorldMarker, SoakView, AreaView, BossCast, Death, LegacyPairReplay, MechanicResult, OrbTracks, Pickups, PoolView, Pull, PullGround, PullTracks, ReplayRef, UnitAuraView } from '../types';
 import { arenaFor, facingToMap, toMap, type ArenaMap } from './arenas';
 
 export interface ReplayUnit {
@@ -58,6 +58,12 @@ export interface ReplayData {
   /** replay completo: áreas das habilidades e orbs */
   areas: AreaView[];
   orbs?: OrbTracks;
+  /** replay completo: fragmentos para pegar, já no mapa (jardas) */
+  pickups?: { kinds: Pickups['kinds']; items: { kind: number; owner: string; from: number; at: number; x: number; y: number }[] };
+  /** replay completo: escudos e véus nos inimigos */
+  unitAuras?: UnitAuraView[];
+  /** poças de tamanho conhecido, já no mapa */
+  pools?: PoolView[];
 }
 
 /** npc id de um guid de criatura (Creature-0-...-<npc>-<spawn>). */
@@ -71,8 +77,11 @@ export const npcOf = (guid: string): number | null => {
  * Posições e marcas no chão de um pull (vazio em relatórios antigos), já no mapa com o norte para cima
  * (ver `arenas.ts`): tudo o que o replay desenha passa por aqui.
  */
-export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs' | 'soaks' | 'blasts' | 'markers' | 'castMs'> & { encounterId?: number }): ReplayData {
+export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs' | 'soaks' | 'blasts' | 'markers' | 'castMs' | 'pickups' | 'unitAuras' | 'pools'> & { encounterId?: number }): ReplayData {
   return {
+    pools: (pull.pools ?? []).map((p) => ({ ...p, circles: p.circles.map(([x, y, r]) => [...toMap(x, y), r] as [number, number, number]) })),
+    pickups: pull.pickups && { kinds: pull.pickups.kinds, items: pull.pickups.items.map(([kind, owner, from, at, x, y]) => ({ kind, owner, from, at, x: -y / 10, y: x / 10 })) },
+    unitAuras: pull.unitAuras ?? [],
     castMs: pull.castMs ?? {},
     markers: (pull.markers ?? []).map((m) => {
       const [x, y] = toMap(m.x, m.y);

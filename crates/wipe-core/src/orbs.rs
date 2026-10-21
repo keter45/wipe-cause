@@ -125,8 +125,10 @@ pub struct OrbLog {
     breaks: Vec<(i64, f32, f32, f32, Option<String>)>,
     /// stacks do `count_aura` nos players: (t, guid, stacks antes, stacks depois)
     counts: Vec<(i64, String, u32, u32)>,
-    /// casts que explodem os orbs do chão
+    /// casts que explodem os orbs do chão (e o boss chegando a 0)
     clears: Vec<i64>,
+    /// só os casts (`cleared_by`): o que tem hora marcada, para a contagem no replay
+    cast_clears: Vec<i64>,
     count_now: HashMap<String, u32>,
     /// quando o pull começou (epoch ms, UTC): escolhe o raio de antes ou depois de um hotfix
     pub start_ms: Option<i64>,
@@ -157,6 +159,7 @@ impl OrbLog {
     pub fn on_cast(&mut self, cfg: &OrbDetect, spell_id: u32, t: i64) {
         if cfg.cleared_by.contains(&spell_id) {
             self.clears.push(t);
+            self.cast_clears.push(t);
         }
     }
 
@@ -402,6 +405,12 @@ pub fn tracks(cfg: &OrbDetect, log: &OrbLog, end: i64) -> crate::report::OrbTrac
         contact_yd: cfg.contact_at(log.start_ms),
         ground,
         carries,
+        clears: {
+            let mut c = log.cast_clears.clone();
+            c.sort_unstable();
+            c.dedup();
+            c
+        },
     }
 }
 
