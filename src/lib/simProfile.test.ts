@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as fx from './test-fixtures';
-import { buildSimProfile, pickSimPull, simcSpec, targetWindows } from './simProfile';
+import { buildSimProfile, fightMovement, movementEvents, pickSimPull, simcSpec, targetWindows } from './simProfile';
 import type { TalentTree } from './talents';
 import type { PlayerStats, Setup } from '../types';
 
@@ -95,7 +95,28 @@ describe('buildSimProfile', () => {
     expect(lines).toContain('bloodlust_time=1.5');
     expect(lines).toContain('external_buffs.power_infusion=30');
     expect(input).not.toContain('fight_style'); // apagaria os raid_events
-    expect(input).toMatch(/^raid_events=\/movement,/m);
+    // sem o movimento medido (análise antiga): o padrão do SimC
+    expect(input).toMatch(/^raid_events=\/movement,players_only=1,cooldown=40,/m);
+  });
+
+  it('o movimento da luta: o quartil dos DPS que menos andaram, a cada 30s', () => {
+    // 4 DPS; nos primeiros 30s andam 10%, 20%, 30%, 40% (o quartil de baixo: 20%); depois, 50% todos
+    const mv = (first: number) => [...Array(6).fill(first * 5_000), ...Array(6).fill(2_500)];
+    const ps = [0.1, 0.2, 0.3, 0.4].map((m, i) => mage({ guid: `P${i}`, name: `P${i}-A`, moveTimeline: mv(m) }));
+    const pull = fx.pull(0, 0, 60_000, { players: [mage(), ...ps] });
+    expect(fightMovement(pull, 60_000)).toEqual([
+      { from: 0, to: 30_000, share: 0.2 },
+      { from: 30_000, to: 60_000, share: 0.5 },
+    ]);
+    // quem morreu no trecho não conta nele
+    const dead = fx.pull(0, 0, 60_000, { players: [mage(), ...ps], deaths: [fx.death('P1', 10_000, { name: 'P1-A', guid: 'P1' })] });
+    expect(fightMovement(dead, 60_000)![0].share).toBe(0.1);
+    expect(movementEvents([{ from: 0, to: 30_000, share: 0.25 }])).toEqual(['movement,players_only=1,first=3,last=30,cooldown=6,cooldown_stddev=1.5,duration=1.5']);
+    const { input } = buildSimProfile({ pull, player: pull.players[0], windowMs: 60_000, kill: false, alive: true }, tree)!;
+    expect(input).toMatch(/^raid_events=\/movement,players_only=1,first=3,last=30,cooldown=7\.5,/m);
+    expect(input).toMatch(/^raid_events\+=\/movement,players_only=1,first=31\.5,last=60,cooldown=3,/m);
+    // menos de 3 DPS medidos: o padrão
+    expect(fightMovement(fx.pull(0, 0, 60_000, { players: ps.slice(0, 2) }), 60_000)).toBeNull();
   });
 
   it('consumíveis: o que faltou no pull vira disabled; sem nomes (log local) fica o padrão', () => {

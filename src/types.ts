@@ -339,6 +339,8 @@ export interface PlayerStats {
   /** healer: overheal por habilidade e mana % por janela de 5s (análises antigas não têm) */
   overhealBySpell?: SpellAmount[];
   manaTimeline?: number[];
+  /** ms andando por janela de 5s (pela distância entre as posições), até o corte; análises antigas não têm */
+  moveTimeline?: number[];
 }
 
 export interface SpellCasts {

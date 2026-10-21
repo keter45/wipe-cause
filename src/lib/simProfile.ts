@@ -1,8 +1,9 @@
 // Perfil do SimulationCraft a partir do log ("comparar com o robô", docs/simulation.md).
 //
 // Tudo sai do pull: equipamento, talentos, buffs e consumíveis daquele pull, a duração em que o
-// player esteve vivo, os alvos e o tempo sem alvo da raid. O movimento é o padrão (LightMovement),
-// não o do player.
+// player esteve vivo, os alvos e o tempo sem alvo da raid. O movimento é o que a luta pediu (o
+// quartil dos DPS que menos andaram, trecho a trecho), não o do player; análises antigas, sem as
+// posições medidas, ficam com o padrão (LightMovement).
 
 import type { Pull, PlayerStats, StartAura } from '../types';
 import { SPEC_NAMES } from './specs';
@@ -25,6 +26,16 @@ const MIN_EVENT_MS = 6_000;
  * os packs de adds (metade da raid fica no boss); o máximo pega quem espalha DoT em tudo.
  */
 const TARGET_QUANTILE = 0.75;
+/** Trechos em que o movimento da luta é medido. */
+const MOVE_CHUNK_MS = 30_000;
+/** O movimento da luta: o quanto andaram os DPS que menos andaram (o quartil de baixo). */
+const MOVE_QUANTILE = 0.25;
+/** Com menos DPS vivos no trecho que isso, não dá para dizer o que a luta pediu. */
+const MOVE_MIN_PLAYERS = 3;
+/** Cada deslocamento do robô, em segundos (o log tem pulos curtos: desviar, sair de área). */
+const MOVE_BOUT_S = 1.5;
+/** Movimento padrão (LightMovement), quando a análise não tem o movimento medido. */
+const LIGHT_MOVEMENT = 'movement,players_only=1,cooldown=40,cooldown_stddev=10,distance=15,move_distance_min=10,move_distance_max=20,first=15';
 
 // ---------------------------------------------------------------- escolha do pull
 
@@ -189,6 +200,50 @@ export function targetWindows(buckets: number[], windowMs: number): [number, num
   return out;
 }
 
+/** Trecho da luta em que o robô anda `share` do tempo (0–1). */
+export interface MoveWindow {
+  from: number;
+  to: number;
+  share: number;
+}
+
+/**
+ * O movimento que a luta pediu, a cada 30s da janela: entre os DPS vivos o trecho inteiro, o tempo
+ * andando do quartil que menos andou (arredondado a 5%; trechos colados com o mesmo valor viram um).
+ * O último bucket de 5s pode estar cortado (corte no meio dele): conta inteiro, um pouco a mais.
+ * `null` sem o movimento medido (análise antiga) ou com poucos DPS.
+ */
+export function fightMovement(pull: Pull, windowMs: number): MoveWindow[] | null {
+  const dps = pull.players.filter((p) => p.role === 'dps' && p.moveTimeline?.length);
+  if (dps.length < MOVE_MIN_PLAYERS) return null;
+  const out: MoveWindow[] = [];
+  for (let from = 0, to = 0; from < windowMs; from = to) {
+    // a sobra do fim menor que meio trecho vai junto com o último (pouco tempo dá número instável)
+    to = windowMs - from < MOVE_CHUNK_MS * 1.5 ? windowMs : from + MOVE_CHUNK_MS;
+    const [i, j] = [from / 5_000, Math.ceil(to / 5_000)];
+    const shares = dps
+      .filter((p) => playedMs(pull, p) >= to)
+      .map((p) => p.moveTimeline!.slice(i, j).reduce((s, v) => s + v, 0) / (to - from));
+    if (shares.length < MOVE_MIN_PLAYERS) continue;
+    const share = Math.min(0.6, Math.round(quantile(shares, MOVE_QUANTILE) * 20) / 20);
+    const last = out[out.length - 1];
+    if (last && last.to === from && last.share === share) last.to = to;
+    else out.push({ from, to, share });
+  }
+  return out.length ? out : null;
+}
+
+/** Os eventos de movimento do SimC para os trechos: deslocamentos de 1,5s, tantos quanto o trecho pede. */
+export function movementEvents(windows: MoveWindow[]): string[] {
+  return windows
+    .filter((w) => w.share > 0)
+    .map((w) => {
+      const cd = Math.round((MOVE_BOUT_S / w.share) * 10) / 10;
+      const first = sec(w.from + Math.min(cd / 2, 3) * 1000);
+      return `movement,players_only=1,first=${first},last=${sec(w.to)},cooldown=${cd},cooldown_stddev=${Math.round(cd * 2.5) / 10},duration=${MOVE_BOUT_S}`;
+    });
+}
+
 /** HP do boss principal no fim da janela, interpolando entre o começo (100%) e o corte. */
 function bossEndPct(pull: Pull, windowMs: number): number {
   const end = pull.cutoffT ?? pull.analyzedMs;
@@ -274,19 +329,21 @@ export function buildSimProfile(pick: SimPick, tree: TalentTree): SimProfile | n
   const pi = received.filter((u) => u.spellId === POWER_INFUSION).map((u) => sec(u.t));
   if (pi.length) out(`external_buffs.power_infusion=${pi.join('/')}`);
 
-  // movimento padrão (LightMovement), não o do player
-  out('raid_events=/movement,players_only=1,cooldown=40,cooldown_stddev=10,distance=15,move_distance_min=10,move_distance_max=20,first=15');
+  // o movimento que a luta pediu (sem ele medido, o padrão), não o do player
+  const moves = fightMovement(pull, windowMs);
+  const events = moves ? movementEvents(moves) : [LIGHT_MOVEMENT];
 
   // alvos a mais e tempo sem alvo, pelo que a raid acertou
   for (const [from, to, n] of targetWindows(raidTargets(pull), windowMs)) {
     const dur = sec(to - from);
     if (to - from < MIN_EVENT_MS) continue;
     if (n === 0) {
-      out(`raid_events+=/invulnerable,first=${sec(from)},duration=${dur},cooldown=9999,retarget=1`);
+      events.push(`invulnerable,first=${sec(from)},duration=${dur},cooldown=9999,retarget=1`);
     } else if (n >= 2) {
-      out(`raid_events+=/adds,count=${n - 1},first=${sec(from)},duration=${dur},cooldown=9999`);
+      events.push(`adds,count=${n - 1},first=${sec(from)},duration=${dur},cooldown=9999`);
     }
   }
+  events.forEach((e, i) => out(`raid_events${i ? '+' : ''}=/${e}`));
 
   return { input: lines.join('\n') + '\n', assumed, bossEndPct: endPct };
 }

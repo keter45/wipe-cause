@@ -4343,6 +4343,13 @@ td.warn {
   background: color-mix(in oklch, var(--wipe) 30%, transparent);
   color: var(--text);
 }
+.bot-bar.move {
+  justify-content: center;
+  /* mais forte quanto mais o robô anda no trecho (--move: 0–1) */
+  background: color-mix(in oklch, var(--info) calc(10% + var(--move, 0) * 40%), transparent);
+  color: var(--text);
+  font-size: 11px;
+}
 .bot-bar.idle {
   justify-content: center;
   background: repeating-linear-gradient(135deg, var(--panel-2) 0 6px, var(--border) 6px 8px);

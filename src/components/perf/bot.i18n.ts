@@ -4,7 +4,7 @@ import { defineMessages } from '../../i18n';
 export const botMsg = defineMessages(
   {
     mode: 'Robô (SimulationCraft)',
-    modeTitle: 'O mesmo personagem jogado pelo SimulationCraft: seu equipamento, talentos e buffs do pull, com movimento padrão e sem mecânicas',
+    modeTitle: 'O mesmo personagem jogado pelo SimulationCraft: seu equipamento, talentos e buffs do pull, andando o que a luta pediu e sem mecânicas',
     ctaTitle: (name: string) => `Simular ${name}`,
     ctaText:
       'O SimulationCraft joga a kill da noite (sem kill, o pull mais longo em que você não morreu), com o seu equipamento, talentos, consumíveis e buffs (Bloodlust, Power Infusion) nos mesmos momentos. A diferença que sobra é rotação.',
@@ -56,7 +56,7 @@ export const botMsg = defineMessages(
     },
     sheet: {
       title: 'O que o robô jogou',
-      hint: 'O mesmo pull, com o seu equipamento, talentos e buffs. O movimento é o padrão do SimulationCraft, não o seu, e o robô não faz mecânicas.',
+      hint: 'O mesmo pull, com o seu equipamento, talentos e buffs. O robô anda o que a luta pediu (não o quanto você andou) e não faz mecânicas.',
       pull: (n: number, dur: string) => `Pull ${n} · ${dur}`,
       kill: 'kill',
       alive: 'sem morte',
@@ -67,7 +67,9 @@ export const botMsg = defineMessages(
       movement: 'Movimento',
       boss: 'Vida do boss',
       noTarget: 'sem alvo',
-      movementHint: 'Movimento padrão do SimulationCraft: a cada ~40s, para todo mundo.',
+      movementHint: 'Movimento da luta, medido no pull a cada 30s: o quanto andaram os DPS que menos andaram (o quarto de baixo). É o mesmo para todo mundo, não o seu.',
+      movementDefaultHint: 'Movimento padrão do SimulationCraft (a cada ~40s): esta análise não tem o movimento da luta medido. Use "Reanalisar o log" e simule de novo.',
+      moving: (pct: number) => `andando ${pct}% do tempo`,
       consumables: 'Consumíveis',
       raidBuffs: 'Buffs da raide',
       character: 'Personagem',
@@ -108,7 +110,7 @@ export const botMsg = defineMessages(
   },
   {
     mode: 'Bot (SimulationCraft)',
-    modeTitle: 'The same character played by SimulationCraft: your gear, talents and buffs from the pull, with standard movement and no mechanics',
+    modeTitle: 'The same character played by SimulationCraft: your gear, talents and buffs from the pull, moving as much as the fight required and with no mechanics',
     ctaTitle: (name: string) => `Simulate ${name}`,
     ctaText:
       'SimulationCraft plays the kill of the night (no kill: your longest pull where you did not die), with your gear, talents, consumables and buffs (Bloodlust, Power Infusion) at the same moments. What is left of the gap is rotation.',
@@ -160,7 +162,7 @@ export const botMsg = defineMessages(
     },
     sheet: {
       title: 'What the bot played',
-      hint: "The same pull, with your gear, talents and buffs. Movement is SimulationCraft's standard, not yours, and the bot does no mechanics.",
+      hint: 'The same pull, with your gear, talents and buffs. The bot moves as much as the fight required (not as much as you moved) and does no mechanics.',
       pull: (n: number, dur: string) => `Pull ${n} · ${dur}`,
       kill: 'kill',
       alive: 'no death',
@@ -171,7 +173,9 @@ export const botMsg = defineMessages(
       movement: 'Movement',
       boss: 'Boss health',
       noTarget: 'no target',
-      movementHint: "SimulationCraft's standard movement: every ~40s, for everyone.",
+      movementHint: 'Fight movement, measured in the pull every 30s: how much the DPS who moved least had to move (the bottom quarter). The same for everyone, not yours.',
+      movementDefaultHint: "SimulationCraft's standard movement (every ~40s): this analysis has no measured fight movement. Use \"Re-analyze the log\" and simulate again.",
+      moving: (pct: number) => `moving ${pct}% of the time`,
       consumables: 'Consumables',
       raidBuffs: 'Raid buffs',
       character: 'Character',

@@ -139,12 +139,19 @@ function Timeline({ f }: { f: SimFacts }) {
           </span>
         ))}
       </div>
-      <span className="bot-tl-label muted small" title={t.movementHint}>
+      <span className="bot-tl-label muted small" title={f.movementMeasured ? t.movementHint : t.movementDefaultHint}>
         {t.movement}
       </span>
-      <div className="bot-track line" title={t.movementHint}>
-        {f.movement.map((at) => (
-          <span key={at} className="bot-dot" style={{ left: pctOf(at, total) }} />
+      <div className="bot-track" title={f.movementMeasured ? t.movementHint : t.movementDefaultHint}>
+        {f.movement.map((m) => (
+          <span
+            key={m.from}
+            className="bot-bar move"
+            style={{ ...bar(m.from, m.to - m.from), ['--move' as string]: Math.min(1, m.share / 0.4) }}
+            title={`${mmss(m.from)}–${mmss(m.to)}: ${t.moving(Math.round(m.share * 100))}`}
+          >
+            {(m.to - m.from) / total >= 0.08 && `${Math.round(m.share * 100)}%`}
+          </span>
         ))}
       </div>
       <span className="bot-tl-label muted small">{t.boss}</span>

@@ -18,8 +18,10 @@ export interface SimFacts {
   pi: number[];
   adds: { from: number; to: number; count: number }[];
   noTarget: { from: number; to: number }[];
-  /** momentos de movimento do padrão (LightMovement: aos 15s e a cada ~40s) */
-  movement: number[];
+  /** trechos em que o robô anda, com a parte do tempo andando (0–1) */
+  movement: { from: number; to: number; share: number }[];
+  /** o movimento foi medido na luta (senão é o padrão do SimC) */
+  movementMeasured: boolean;
   consumables: { kind: 'flask' | 'food' | 'rune'; have: Have }[];
   raidBuffs: { key: string; spellId: number; name: string; on: boolean }[];
   race: string;
@@ -39,8 +41,8 @@ export const RAID_BUFF_INFO: Record<string, { spellId: number; name: string }> =
   hunters_mark: { spellId: 257284, name: "Hunter's Mark" },
 };
 
-const MOVE_FIRST_MS = 15_000;
-const MOVE_EVERY_MS = 40_000;
+/** Padrão (LightMovement): ~15 jardas a 7 jd/s a cada 40s. */
+const LIGHT_SHARE = 15 / 7 / 40;
 const ms = (s: string | undefined) => Math.round(Number(s ?? 0) * 1000);
 
 /** A ficha da simulação, lida do perfil que foi para o SimC. */
@@ -56,15 +58,21 @@ export function simFacts(run: BotRun): SimFacts {
   const durationMs = ms(opt.get('max_time')) || run.windowMs;
   const adds: SimFacts['adds'] = [];
   const noTarget: SimFacts['noTarget'] = [];
+  const movement: SimFacts['movement'] = [];
+  let movementMeasured = false;
   for (const e of events) {
     const kv = Object.fromEntries(e.replace(/^\//, '').split(',').slice(1).map((x) => x.split('=') as [string, string]));
     const from = ms(kv.first);
     const to = from + ms(kv.duration);
     if (e.startsWith('/adds')) adds.push({ from, to, count: Number(kv.count) || 1 });
     else if (e.startsWith('/invulnerable')) noTarget.push({ from, to });
+    else if (e.startsWith('/movement') && kv.last) {
+      // medido: o primeiro deslocamento sai um pouco depois do começo do trecho (simProfile)
+      const cd = Number(kv.cooldown) || 1;
+      movementMeasured = true;
+      movement.push({ from: Math.max(0, from - Math.min(cd / 2, 3) * 1000), to: ms(kv.last), share: Number(kv.duration) / cd });
+    } else if (e.startsWith('/movement')) movement.push({ from: 0, to: durationMs, share: LIGHT_SHARE });
   }
-  const movement: number[] = [];
-  for (let t = MOVE_FIRST_MS; t < durationMs; t += MOVE_EVERY_MS) movement.push(t);
   const have = (kind: 'flask' | 'food' | 'rune', option: string): Have =>
     opt.get(option) === 'disabled' ? 'missing' : run.assumed.includes(kind) ? 'default' : 'had';
   return {
@@ -75,6 +83,7 @@ export function simFacts(run: BotRun): SimFacts {
     adds,
     noTarget,
     movement,
+    movementMeasured,
     consumables: [
       { kind: 'flask', have: have('flask', 'flask') },
       { kind: 'food', have: have('food', 'food') },

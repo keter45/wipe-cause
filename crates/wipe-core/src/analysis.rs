@@ -50,6 +50,12 @@ const AFFILIATION_GROUP: u32 = 0x1 | 0x2 | 0x4;
 const AFFILIATION_MINE: u32 = 0x1;
 /// Tamanho de cada janela da linha do tempo de dano/cura por player.
 pub const TIMELINE_MS: i64 = 5_000;
+/// Velocidade de corrida sem bônus (jardas/s): o tempo andando entre duas posições é a distância ÷ ela.
+const RUN_YD_PER_S: f32 = 7.0;
+/// Menos que isso entre duas posições é o player parado (o log arredonda e o boneco balança).
+const MOVE_MIN_YD: f32 = 0.3;
+/// Posições mais afastadas no tempo que isso não dizem quando ele andou: ficam de fora.
+const MOVE_MAX_GAP_MS: i64 = 3_000;
 const REACTION_HOSTILE_OR_NEUTRAL: u32 = 0x40 | 0x20;
 /// Flags de unidade: de fora do grupo, controlada pelo jogo, tipo NPC.
 const AFFILIATION_OUTSIDER: u32 = 0x0000_0008;
@@ -181,6 +187,8 @@ struct PlayerAcc {
     overheal_by_spell: HashMap<u32, (String, i64)>,
     /// mana % no último cast de cada janela de TIMELINE_MS (-1 = sem cast na janela)
     mana_timeline: Vec<i16>,
+    /// ms andando por janela de TIMELINE_MS (distância entre posições ÷ velocidade de corrida)
+    move_timeline: Vec<i64>,
 }
 
 fn add_at(v: &mut Vec<i64>, rel: i64, amount: i64) {
@@ -480,6 +488,13 @@ impl PullBuilder {
         }
         let rel = self.last_ms - self.start_ms;
         if let Some(p) = self.players.get_mut(adv.info_guid) {
+            if let Some((x, y, t)) = p.pos {
+                let (dt, d) = (rel - t, (adv.x - x).hypot(adv.y - y));
+                if dt > 0 && dt <= MOVE_MAX_GAP_MS && d >= MOVE_MIN_YD {
+                    // blink e afins: no máximo o tempo entre as duas posições
+                    add_at(&mut p.move_timeline, rel, ((d / RUN_YD_PER_S * 1000.0) as i64).min(dt));
+                }
+            }
             p.pos = Some((adv.x, adv.y, rel));
             self.trails.on_pos(adv.info_guid, &p.name, false, adv.max_hp, adv.x, adv.y, rel);
             if self.cutoff_t.is_none() {
@@ -1660,6 +1675,7 @@ impl PullBuilder {
                 healing_timeline: timeline(&p.healing_timeline, analyzed_ms),
                 overheal_by_spell: if healer { overheal_list(&p.overheal_by_spell) } else { Vec::new() },
                 mana_timeline: if healer { mana_list(&p.mana_timeline, analyzed_ms) } else { Vec::new() },
+                move_timeline: timeline(&p.move_timeline, analyzed_ms),
             });
         }
         players.sort_by_key(|a| std::cmp::Reverse(a.damage_done));
@@ -2311,6 +2327,23 @@ mod tests {
     // Linhas reais do build 12.1.0 (nomes trocados): cast com mana no bloco advanced e escudo segurando dano.
     const PWS_CAST_12_1: &str = "SPELL_CAST_SUCCESS,Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000,Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000,17,\"Power Word: Shield\",0x2,Player-3209-0B7FC171,0000000000000000,945960,945960,321,3510,678,187,624,33154,0,187500,250000,25000,534.62,-0.53,2607,0.1669,327";
     const ABSORBED_12_1: &str = "SPELL_ABSORBED,Creature-0-3783-3004-41340-261490-0002C82864,\"Venomfang Seer\",0xa48,0x80000000,Player-3209-0B58762E,\"Beltrano-Azralon-US\",0x514,0x80000000,1290147,\"Poison Bolt\",0x8,Player-3209-0B7FC171,\"Fulano-Azralon-US\",0x514,0x80000000,17,\"Power Word: Shield\",0x2,25970,39669,nil";
+
+    #[test]
+    fn measures_time_moving_from_positions() {
+        let data = GameData::embedded();
+        let start = ["ENCOUNTER_START", "1", "Boss", "16", "20", "1"];
+        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::default(), 0);
+        // parado, 7 jardas em 1s (1s andando), um blink de 70 jardas em 0,5s (no máximo 0,5s) e uma
+        // posição 4s depois (sem posição no meio: não conta)
+        for (t, x) in [(1_000, "534.62"), (1_500, "534.62"), (2_500, "541.62"), (3_000, "611.62"), (7_000, "620.00")] {
+            let line = PWS_CAST_12_1.replace("534.62", x);
+            let mut f = Vec::new();
+            split_fields(&line, &mut f);
+            b.feed(&f, t, &data);
+        }
+        let p = b.players.get("Player-3209-0B7FC171").unwrap();
+        assert_eq!(p.move_timeline, vec![1_500]);
+    }
 
     #[test]
     fn reads_mana_and_credits_absorbs_as_healing() {

@@ -771,6 +771,10 @@ pub struct PlayerStats {
     /// healer: overheal por habilidade, maiores primeiro
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub overheal_by_spell: Vec<SpellAmount>,
+    /// ms andando por janela de 5s (pela distância entre as posições do log), até o corte: o
+    /// movimento que a luta pediu, para a simulação
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub move_timeline: Vec<i64>,
     /// healer: mana % por janela de 5s, até o corte
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub mana_timeline: Vec<u8>,

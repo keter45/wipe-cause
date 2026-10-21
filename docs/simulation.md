@@ -74,9 +74,22 @@ guarda o que falta em `PlayerStats` (`setup.items[].bonusIds`, `setup.faction`, 
 - **Alvos:** quantos inimigos havia para acertar a cada 2s = quantil 75% dos DPS do pull (a mediana
   some com os packs de adds, porque metade da raid fica no boss), suavizado em 6s. Trechos de 6s ou
   mais com 2+ alvos viram `adds`; sem alvo, `invulnerable`.
-- **Movimento:** **padrão**, não o do player (o player da guilda costuma se mover mais do que
-  precisa): o mesmo evento do estilo *LightMovement* do SimC, para todos os papéis; depois dá para
-  trocar por um padrão por boss.
+- **Movimento:** o que **a luta pediu**, não o do player (o player da guilda costuma se mover mais
+  do que precisa). *(decidido em 2026-10-21)* O núcleo mede o tempo andando de cada player a cada 5s
+  (`moveTimeline`: distância entre as posições do log ÷ 7 jardas/s, sem contar trechos de mais de 3s
+  sem posição). A cada 30s da janela, entre os DPS vivos o trecho inteiro (3 ou mais), vale o
+  **quartil de baixo** (o quanto andaram os que menos andaram), arredondado a 5% e no máximo 60%;
+  a sobra do fim com menos de 15s vai junto com o último trecho. Cada trecho vira um evento
+  `movement` com `first`/`last`, deslocamentos de 1,5s e `cooldown` = 1,5s ÷ a parte do tempo
+  andando. Análises antigas (sem `moveTimeline`) ficam com o *LightMovement* do SimC, e a ficha
+  avisa.
+  Medido em 2026-10-21 no Coiled Altar Mythic (pull 15, 5:14): trechos de 15% a 35%; o padrão do
+  SimC dá ~5%. O robô caiu 2–18% conforme a spec, e a mediana dos DPS foi de 86% para 94% do
+  potencial (de 83% a 108%). Nos bosses heroicos da mesma noite, o quartil de baixo ficou entre 15%
+  e 34% da luta.
+- **Vida do boss por fase:** conferido no mesmo pull. O Zul'jan vai a 0% no fim da P1 e o Hex Lord
+  chegou a 3,9% no corte da P2: somadas as duas barras, o tempo abaixo de 20% e de 35% é o mesmo da
+  reta 100% → 0% do robô. Fica a reta; vale rever num boss que troca de fase sem a vida acabar.
 
 **Conferido em 2026-10-20** com uma noite de Mythic (19 players, SimC 1210-01): todos os perfis rodam.
 DPS real ÷ robô: mediana 98%, a maioria entre 76% e 110%. Fora disso:
@@ -126,7 +139,7 @@ usa Ruination 81%; Antithesis (MM) perdeu 39% dos Precise Shots (robô 0%).
 
 **Tela (2026-10-20, v0.36):** a ficha "O que o robô jogou" (`BotParts.tsx`) é lida do perfil salvo
 (`simFacts` em `src/lib/botView.ts`): chips do pull e do SimC, linha do tempo (Bloodlust, PI, adds,
-tempo sem alvo, movimento padrão, vida do boss) e consumíveis/buffs da raide/personagem em verde
+tempo sem alvo, movimento da luta, vida do boss) e consumíveis/buffs da raide/personagem em verde
 (tinha), vermelho (não tinha) e cinza (padrão do SimC). O DPS vira "% do potencial" com a faixa das
 1000 lutas. As decisões viram cartões você × robô, e as 3 de maior custo estimado ficam em "O que
 mudar primeiro" (`fixes`: casts trocados × diferença de dano por cast; procs perdidos × dano de quem
@@ -163,6 +176,6 @@ binário sem como conferir:
 
 ## 7. Limites que o player precisa saber
 
-- O robô não erra mecânica e anda o padrão; a diferença de DPS nunca é só rotação.
+- O robô não erra mecânica e anda só o que a luta pediu; a diferença de DPS nunca é só rotação.
 - O SimC às vezes está atrasado em relação a um patch novo, e a spec pode estar sem rotação boa
   nele. Nesse caso mostramos o aviso do próprio SimC sobre a spec.

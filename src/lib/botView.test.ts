@@ -32,7 +32,9 @@ describe('simFacts', () => {
     expect(f.pi).toEqual([30_000, 150_000]);
     expect(f.adds).toEqual([{ from: 60_000, to: 70_000, count: 3 }]);
     expect(f.noTarget).toEqual([{ from: 100_000, to: 108_000 }]);
-    expect(f.movement).toEqual([15_000, 55_000, 95_000, 135_000, 175_000]);
+    // padrão do SimC: a luta toda, ~5% do tempo
+    expect(f.movementMeasured).toBe(false);
+    expect(f.movement).toEqual([{ from: 0, to: 200_000, share: expect.closeTo(0.054, 2) }]);
     expect(f.consumables).toEqual([
       { kind: 'flask', have: 'had' },
       { kind: 'food', have: 'missing' },
@@ -42,6 +44,19 @@ describe('simFacts', () => {
     expect(f.raidBuffs.find((b) => b.key === 'battle_shout')?.on).toBe(false);
     expect(raceName(f.race)).toBe('Dark Iron Dwarf');
     expect(raceName('dracthyr_horde')).toBe('Dracthyr');
+  });
+
+  it('o movimento medido na luta: trechos com a parte do tempo andando', () => {
+    const measured = input.replace(
+      'raid_events=/movement,players_only=1,cooldown=40,first=15',
+      'raid_events=/movement,players_only=1,first=3,last=60,cooldown=6,cooldown_stddev=1.5,duration=1.5\nraid_events+=/movement,players_only=1,first=63,last=90,cooldown=3,cooldown_stddev=0.8,duration=1.5',
+    );
+    const f = simFacts({ ...run, input: measured });
+    expect(f.movementMeasured).toBe(true);
+    expect(f.movement).toEqual([
+      { from: 0, to: 60_000, share: 0.25 },
+      { from: 61_500, to: 90_000, share: 0.5 },
+    ]);
   });
 });
 
