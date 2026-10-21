@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { TrendingDown, TrendingUp, Trophy } from 'lucide-react';
+import { Bot, ShieldOff, TrendingDown, TrendingUp, TriangleAlert, Trophy } from 'lucide-react';
 import { historyTrends } from '../lib/api';
 import { classColor, pct, shortName } from '../lib/format';
 import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
@@ -99,6 +99,7 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
   const names = useMemo(() => t.players.map((p) => p.name), [t]);
   const potentials = useNightPotentials(nightPulls, names);
   const hasPotential = [...potentials.values()].some((xs) => xs.some((v) => v != null));
+  const hasParse = t.nights.some((n, i) => n.summary.kills > 0 && t.players.some((p) => p.perfPerNight[i] != null));
   // nomes de habilidades citados nas frases ganham ícone
   const spells = useMemo(() => {
     const m = new Map<string, number>();
@@ -199,73 +200,127 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
       <section className="panel">
         <h3>{m.players}</h3>
         <div className="table-scroll">
-          <table className="players">
+          <table className="players trend-players">
             <thead>
               <tr>
                 <th>{m.player}</th>
-                <th title={m.deathsPerPullTitle}>{m.deathsPerPull}</th>
-                <th title={m.scorePerNightTitle}>{m.scorePerNight}</th>
-                <th title={m.perfPerNightTitle}>{m.perfPerNight}</th>
-                {hasPotential && <th title={m.potentialPerNightTitle}>{m.potentialPerNight}</th>}
-                <th className="num">{m.total}</th>
-                <th>{m.diesTo}</th>
-                <th className="num" title={m.noDefTitle}>
-                  {m.noDef}
+                <th title={m.perNightTitle}>
+                  <span className="night-grid" style={{ gridTemplateColumns: `repeat(${t.nights.length}, var(--night-w))` }}>
+                    {t.nights.map((n) => (
+                      <span key={n.id} className="night-date">
+                        {n.label}
+                      </span>
+                    ))}
+                  </span>
                 </th>
-                <th className="num">{m.mechErrors}</th>
+                <th title={m.deathsTitle}>{m.deaths}</th>
+                <th>{m.diesTo}</th>
+                <th title={m.mistakesTitle}>{m.mistakes}</th>
               </tr>
             </thead>
             <tbody>
-              {t.players.map((p) => (
-                <tr key={p.guid}>
-                  <td style={{ color: classColor(p.class) }}>{shortName(p.name)}</td>
-                  <td>
-                    <Spark values={p.deathsPerPull} labels={t.nights.map((n) => n.label)} />
-                  </td>
-                  <td className="score-trail">
-                    {p.scorePerNight.map((s, i) => (
-                      <span key={i} className={s == null ? 'muted' : `score-pill ${scoreTier(s)}`} title={t.nights[i].label}>
-                        {s ?? '—'}
+              {t.players.map((p) => {
+                const pot = potentials.get(p.name);
+                return (
+                  <tr key={p.guid}>
+                    <td style={{ color: classColor(p.class) }}>{shortName(p.name)}</td>
+                    <td>
+                      <span className="night-grid" style={{ gridTemplateColumns: `repeat(${t.nights.length}, var(--night-w))` }}>
+                        {t.nights.map((n, i) => (
+                          <NightCell key={n.id} label={n.label} score={p.scorePerNight[i]} parse={n.summary.kills > 0 ? p.perfPerNight[i] : null} potential={pot?.[i] ?? null} />
+                        ))}
                       </span>
-                    ))}
-                  </td>
-                  <td className="score-trail">
-                    {p.perfPerNight.map((v, i) => (
-                      <span key={i} className={v == null ? 'muted' : `score-pill ${perfTone(v)}`} title={t.nights[i].label}>
-                        {v == null ? '—' : Math.round(v)}
-                      </span>
-                    ))}
-                  </td>
-                  {hasPotential && (
-                    <td className="score-trail">
-                      {(potentials.get(p.name) ?? t.nights.map(() => null)).map((v, i) => (
-                        <span key={i} className={v == null ? 'muted' : `score-pill ${potentialTone(v)}`} title={t.nights[i].label}>
-                          {v == null ? '—' : `${Math.round(v * 100)}%`}
-                        </span>
-                      ))}
                     </td>
-                  )}
-                  <td className="num">
-                    {p.deaths}/{p.pulls}
-                  </td>
-                  <td>
-                    {p.topKiller ? (
-                      <>
-                        <SpellName spellId={p.topKillerSpellId} name={p.topKiller[0]} size={16} /> <span className="muted">{p.topKiller[1]}×</span>
-                      </>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                  <td className="num">{p.deathsNoDefensive || ''}</td>
-                  <td className="num">{p.mechanicErrors || ''}</td>
-                </tr>
-              ))}
+                    <td>
+                      <span className="deaths-cell">
+                        <Spark values={p.deathsPerPull} labels={t.nights.map((n) => n.label)} />
+                        <span className="muted small">
+                          {p.deaths}/{p.pulls}
+                        </span>
+                      </span>
+                    </td>
+                    <td>
+                      {p.topKiller ? (
+                        <>
+                          <SpellName spellId={p.topKillerSpellId} name={p.topKiller[0]} size={16} /> <span className="muted">{p.topKiller[1]}×</span>
+                        </>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      <span className="mistakes-cell">
+                        {p.deathsNoDefensive > 0 && (
+                          <span title={m.noDefTitle}>
+                            <ShieldOff size={13} strokeWidth={1.75} aria-hidden /> {p.deathsNoDefensive}
+                          </span>
+                        )}
+                        {p.mechanicErrors > 0 && (
+                          <span title={m.mechErrors}>
+                            <TriangleAlert size={13} strokeWidth={1.75} aria-hidden /> {p.mechanicErrors}
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+          <p className="muted small trend-legend">
+            <span className={`score-pill ${scoreTier(85)}`}>85</span> {m.legendScore}
+            {hasPotential && (
+              <>
+                {' '}
+                · <Bot size={12} aria-hidden /> {m.legendPotential}
+              </>
+            )}
+            {hasParse && (
+              <>
+                {' '}
+                · <Trophy size={12} aria-hidden /> {m.legendParse}
+              </>
+            )}
+          </p>
         </div>
       </section>
     </>
+  );
+}
+
+/**
+ * Uma noite do player: a nota em cima; embaixo, só quando há, o % do potencial do robô e o parse
+ * (o Warcraft Logs só tem parse de kill).
+ */
+function NightCell({ label, score, parse, potential }: { label: string; score: number | null; parse: number | null; potential: number | null }) {
+  const m = useMessages(trendsViewMsg);
+  if (score == null && parse == null && potential == null)
+    return (
+      <span className="night-cell night-none" title={`${label}: ${m.didNotPlay}`}>
+        —
+      </span>
+    );
+  const title = [label, score != null && m.cellScore(score), potential != null && m.cellPotential(Math.round(potential * 100)), parse != null && m.cellParse(Math.round(parse))].filter(Boolean).join(' · ');
+  return (
+    <span className="night-cell" title={title}>
+      {score != null ? <span className={`score-pill ${scoreTier(score)}`}>{score}</span> : <span className="muted">—</span>}
+      {(potential != null || parse != null) && (
+        <span className="night-sub">
+          {potential != null && (
+            <span className={`tone-${potentialTone(potential)}`}>
+              <Bot size={10} aria-hidden />
+              {Math.round(potential * 100)}%
+            </span>
+          )}
+          {parse != null && (
+            <span className={`tone-${perfTone(parse)}`}>
+              <Trophy size={10} aria-hidden />
+              {Math.round(parse)}
+            </span>
+          )}
+        </span>
+      )}
+    </span>
   );
 }
 

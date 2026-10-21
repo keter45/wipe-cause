@@ -3123,6 +3123,70 @@ td.warn {
 .score-trail {
   white-space: nowrap;
 }
+/* Evolução: uma caixa por noite (nota em cima; potencial e parse embaixo, quando há) */
+.trend-players {
+  --night-w: 52px;
+}
+.night-grid {
+  display: grid;
+  gap: 4px;
+  align-items: start;
+  justify-items: center;
+}
+.night-date {
+  font-size: 11px;
+  font-weight: 400;
+}
+.night-cell {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 1px;
+}
+.night-cell.night-none {
+  color: var(--muted);
+}
+.night-sub {
+  display: grid;
+  justify-items: center;
+  font-size: 10.5px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+.night-sub > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.night-sub .tone-good {
+  color: var(--kill);
+}
+.night-sub .tone-mid {
+  color: var(--minor);
+}
+.night-sub .tone-bad {
+  color: var(--wipe);
+}
+.deaths-cell,
+.mistakes-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.mistakes-cell > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+}
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+}
 .score-trail > span + span {
   margin-left: 4px;
 }
