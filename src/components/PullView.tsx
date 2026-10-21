@@ -12,6 +12,7 @@ import { DeathList } from './DeathList';
 import { Hint } from './ui/Hint';
 import { Clamp } from './ui/Clamp';
 import { decodeReplay } from '../lib/replay';
+import { usePotentials } from '../lib/botRaid';
 import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
 import { MechanicsView } from './MechanicsView';
@@ -333,7 +334,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
         />
       )}
       {tab === 'interrupts' && <InterruptsView pull={pull} />}
-      {tab === 'players' && <PlayersTab pull={pull} wclCode={wclCode} />}
+      {tab === 'players' && <PlayersTab pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
       {tab === 'me' && <SoloPullView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} defaultGuid={solo ? meIn(pull, chosen)?.guid : undefined} solo={solo && !!meIn(pull, chosen)} />}
       {tab === 'spells' && <EnemySpellsTable pull={pull} onRulesChanged={onRulesChanged} />}
@@ -347,9 +348,10 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
 }
 
 /** Aba Jogadores: nota do app + parse do Warcraft Logs (DPS para dps, HPS para healers). */
-function PlayersTab({ pull, wclCode }: { pull: Pull; wclCode?: string }) {
+function PlayersTab({ pull, nightPulls, wclCode }: { pull: Pull; nightPulls: Pull[]; wclCode?: string }) {
   const parseState = useWclParses(pull, wclCode);
-  return <PlayersTable players={pull.players} scores={scorePull(pull)} parseState={parseState} pull={pull} />;
+  const potentials = usePotentials(nightPulls, pull);
+  return <PlayersTable players={pull.players} scores={scorePull(pull)} parseState={parseState} pull={pull} potentials={potentials} />;
 }
 
 /** Anotação livre do pull (a mesma do aviso do modo ao vivo). */

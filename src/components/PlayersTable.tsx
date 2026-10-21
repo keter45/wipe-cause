@@ -8,12 +8,13 @@ import type { ParseState } from '../lib/useWclParses';
 import { useMessages } from '../i18n';
 import { playersMsg } from './PlayersTable.i18n';
 
-type SortKey = 'name' | 'score' | 'parse' | 'dps' | 'hps' | 'damageTaken' | 'deaths' | 'defensives';
+type SortKey = 'name' | 'score' | 'parse' | 'potential' | 'dps' | 'hps' | 'damageTaken' | 'deaths' | 'defensives';
 
 const COLUMNS: { key: SortKey; num?: boolean }[] = [
   { key: 'name' },
   { key: 'score', num: true },
   { key: 'parse', num: true },
+  { key: 'potential', num: true },
   { key: 'dps', num: true },
   { key: 'hps', num: true },
   { key: 'damageTaken', num: true },
@@ -21,23 +22,28 @@ const COLUMNS: { key: SortKey; num?: boolean }[] = [
   { key: 'defensives', num: true },
 ];
 
-function value(p: PlayerStats, k: SortKey, scores: Map<string, PlayerScore>, parses?: Map<string, PlayerParse>): number | string {
+function value(p: PlayerStats, k: SortKey, scores: Map<string, PlayerScore>, parses?: Map<string, PlayerParse>, potentials?: Map<string, number>): number | string {
   if (k === 'name') return p.name;
+  if (k === 'potential') return potentials?.get(p.name) ?? -1;
   if (k === 'parse') return parses?.get(p.guid)?.percent ?? -1;
   if (k === 'score') return scores.get(p.guid)?.score ?? 100;
   if (k === 'defensives') return p.defensivesUsed.length;
   return p[k];
 }
 
-/** `pull`: no kill, compara o parse de cada um com os kills anteriores dele no mesmo boss e dificuldade. */
-export function PlayersTable({ players, scores, parseState, pull }: { players: PlayerStats[]; scores: Map<string, PlayerScore>; parseState?: ParseState; pull?: Pull }) {
+/**
+ * `pull`: no kill, compara o parse de cada um com os kills anteriores dele no mesmo boss e dificuldade.
+ * `potentials`: % do potencial do robô (SimulationCraft) por nome; a coluna só aparece com algum.
+ */
+export function PlayersTable({ players, scores, parseState, pull, potentials }: { players: PlayerStats[]; scores: Map<string, PlayerScore>; parseState?: ParseState; pull?: Pull; potentials?: Map<string, number> }) {
   const t = useMessages(playersMsg);
+  const columns = COLUMNS.filter((c) => c.key !== 'potential' || (potentials?.size ?? 0) > 0);
   const parses = parseState?.kind === 'ready' ? parseState.parses : undefined;
   const [sort, setSort] = useState<SortKey>('score');
   const [open, setOpen] = useState<string | null>(null);
   const sorted = [...players].sort((a, b) => {
-    const va = value(a, sort, scores, parses);
-    const vb = value(b, sort, scores, parses);
+    const va = value(a, sort, scores, parses, potentials);
+    const vb = value(b, sort, scores, parses, potentials);
     // nota: pior primeiro (quem precisa de atenção)
     if (sort === 'score') return (va as number) - (vb as number);
     return typeof va === 'string' ? va.localeCompare(vb as string) : (vb as number) - va;
@@ -49,12 +55,12 @@ export function PlayersTable({ players, scores, parseState, pull }: { players: P
     <table className="players">
       <thead>
         <tr>
-          {COLUMNS.map((c) => (
+          {columns.map((c) => (
             <th key={c.key} className={c.num ? 'num' : ''}>
               <button
                 className={`sort ${sort === c.key ? 'active' : ''}`}
                 onClick={() => setSort(c.key)}
-                title={c.key === 'parse' ? t.parseTitle : undefined}
+                title={c.key === 'parse' ? t.parseTitle : c.key === 'potential' ? t.potentialTitle : undefined}
               >
                 {t.columns[c.key]}
               </button>
@@ -72,6 +78,7 @@ export function PlayersTable({ players, scores, parseState, pull }: { players: P
             parse={parses?.get(p.guid)}
             parseLoading={parseState?.kind === 'loading'}
             own={pull?.success ? ownPreviousParses(pull, p.name) : undefined}
+            potential={potentials && potentials.size > 0 ? (potentials.get(p.name) ?? null) : undefined}
             open={open === p.guid}
             onToggle={() => setOpen(open === p.guid ? null : p.guid)}
           />
@@ -130,10 +137,13 @@ function PlayerRow({
   parse,
   parseLoading,
   own,
+  potential,
   open,
   onToggle,
 }: {
   p: PlayerStats;
+  /** undefined = coluna escondida; null = sem simulação */
+  potential?: number | null;
   score?: PlayerScore;
   parse?: PlayerParse;
   parseLoading: boolean;
@@ -159,6 +169,11 @@ function PlayerRow({
         <td className="num">
           <ParseCell parse={parse} loading={parseLoading} own={own} />
         </td>
+        {potential !== undefined && (
+          <td className="num">
+            {potential == null ? <span className="muted">—</span> : <span className={`potential ${potential >= 0.97 ? 'good' : potential >= 0.85 ? 'warn' : 'bad'}`}>{Math.round(potential * 100)}%</span>}
+          </td>
+        )}
         <td className="num">{num(p.dps)}</td>
         <td className="num">{num(p.hps)}</td>
         <td className="num">{num(p.damageTaken)}</td>
@@ -170,7 +185,7 @@ function PlayerRow({
       </tr>
       {open && (
         <tr className="player-detail">
-          <td colSpan={9}>
+          <td colSpan={potential !== undefined ? 10 : 9}>
             <div className="detail-grid">
               <div>
                 <h4>{t.takenByAbility}</h4>

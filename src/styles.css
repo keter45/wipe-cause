@@ -4412,6 +4412,91 @@ td.warn {
     grid-template-columns: 72px minmax(0, 1fr);
   }
 }
+.raid-bot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.raid-bot-head h3 {
+  margin: 0;
+}
+.raid-bot-actions {
+  margin-left: auto;
+}
+.raid-bot-progress {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+.raid-bot-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+.raid-bot-bars {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+.raid-bot-bars li {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+}
+.raid-bot-name {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.raid-bot-track {
+  position: relative;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--panel-2);
+}
+.raid-bot-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--radius-pill);
+}
+.raid-bot-bar.good {
+  background: var(--kill);
+}
+.raid-bot-bar.warn {
+  background: var(--major);
+}
+.raid-bot-bar.bad {
+  background: var(--wipe);
+}
+.raid-bot-mean {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 16px;
+  background: var(--text);
+}
+.raid-bot-pct,
+.potential {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.raid-bot-pct.good,
+.potential.good {
+  color: var(--kill);
+}
+.raid-bot-pct.warn,
+.potential.warn {
+  color: var(--major);
+}
+.raid-bot-pct.bad,
+.potential.bad {
+  color: var(--wipe);
+}
 .bot-sub {
   margin: 14px 0 6px;
   font-size: 13px;

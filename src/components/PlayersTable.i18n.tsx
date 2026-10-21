@@ -2,8 +2,9 @@ import { defineMessages } from '../i18n';
 
 export const playersMsg = defineMessages(
   {
-    columns: { name: 'Jogador', score: 'Nota', parse: 'Parse WCL', dps: 'DPS', hps: 'HPS', damageTaken: 'Dano tomado', deaths: 'Mortes', defensives: 'Defensivos' },
+    columns: { name: 'Jogador', score: 'Nota', parse: 'Parse WCL', potential: 'Potencial', dps: 'DPS', hps: 'HPS', damageTaken: 'Dano tomado', deaths: 'Mortes', defensives: 'Defensivos' },
     parseTitle: 'Parse do Warcraft Logs no ranking do papel: DPS para dps e tanks, HPS para healers',
+    potentialTitle: 'Dano por segundo vivo ÷ a média do robô do SimulationCraft, no pull simulado (Desempenho → Robô ou Robô para a raide no resumo do boss)',
     wclError: (msg: string) => `Warcraft Logs: ${msg}`,
     historyNote: (empty: boolean) => (
       <>
@@ -25,8 +26,9 @@ export const playersMsg = defineMessages(
     none: 'Nenhum.',
   },
   {
-    columns: { name: 'Player', score: 'Score', parse: 'WCL parse', dps: 'DPS', hps: 'HPS', damageTaken: 'Damage taken', deaths: 'Deaths', defensives: 'Defensives' },
+    columns: { name: 'Player', score: 'Score', parse: 'WCL parse', potential: 'Potential', dps: 'DPS', hps: 'HPS', damageTaken: 'Damage taken', deaths: 'Deaths', defensives: 'Defensives' },
     parseTitle: "Warcraft Logs parse in the role's ranking: DPS for dps and tanks, HPS for healers",
+    potentialTitle: "Damage per second alive ÷ the SimulationCraft bot's average, on the simulated pull (Performance → Bot, or Bot for the raid in the boss summary)",
     wclError: (msg: string) => `Warcraft Logs: ${msg}`,
     historyNote: (empty: boolean) => (
       <>

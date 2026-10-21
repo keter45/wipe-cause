@@ -14,6 +14,7 @@ import { Stat, StatGrid } from './ui/Stat';
 import { ShareMenu } from './share/ShareMenu';
 import { NightPhaseTimes } from './PhaseTimes';
 import { NightStackOrigins } from './StackOrigins';
+import { RaidBot } from './perf/RaidBot';
 import { BossMetrics } from './BossMetrics';
 import { BossShareCard } from './share/BossCard';
 import { NightShareCard } from './share/NightCard';
@@ -191,6 +192,8 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
         <Awards title={t.villains} tone="bad" players={s.players} awards={villainAwards()} overall={(p) => p.villainScore} overallLabel={t.villainOverall} reasons={villainReasons} />
         <Awards title={t.heroes} tone="good" players={s.players} awards={heroAwards()} overall={(p) => p.heroScore} overallLabel={t.heroOverall} reasons={heroReasons} />
       </div>
+
+      <RaidBot pulls={s.pulls} />
 
       <section className="panel">
         <h3>{t.scoreboard}</h3>
