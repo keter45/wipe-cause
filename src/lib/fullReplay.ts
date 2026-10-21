@@ -4,7 +4,9 @@
 
 import type { Pull } from '../types';
 import type { AuraHolder, ZoneView } from '../components/ReplayView';
+import type { CcView, GatewayView } from '../components/replayLayers';
 import { hasBackend, loadFight } from './api';
+import { shortName } from './format';
 import { auraSpans, aurasAt, bossHpAt, crucialAt, deadAt, idleAxegrinders, vacatedAreas, vacatedSince, vanishedAreas, type FightView } from './fight';
 import type { ReplayData } from './replay';
 
@@ -56,8 +58,11 @@ export interface FightOverlays {
   zones: ZoneView[];
   /** vida (%) dos adds que importam, para a barra embaixo deles no mapa */
   unitHp: (guid: string, t: number) => number | null;
-  /** stacks de uma aura num player (quantos fragmentos faltam pegar) */
+  /** stacks de uma aura num player (quantas coisas ele ainda tem que pegar, regra `pickup`) */
   auraStacks: (aura: number, guid: string, t: number) => number | null;
+  /** controle de grupo dos players e os portais do warlock, já no mapa */
+  cc: CcView[];
+  gateways: GatewayView[];
 }
 
 export function fightOverlays(pull: Pull, view: FightView, data: ReplayData): FightOverlays {
@@ -85,6 +90,27 @@ export function fightOverlays(pull: Pull, view: FightView, data: ReplayData): Fi
     zones: (view.data.zones ?? []).map((z) => {
       const caster = view.data.players[z.caster];
       return { ...z, x: -z.y, y: z.x, caster, casterName: names.get(caster) ?? caster, name: view.data.spells[z.spellId] ?? String(z.spellId) };
+    }),
+    // no mapa com o norte para cima, como as áreas acima: (x, y) do log vira (-y, x)
+    cc: (view.data.cc ?? []).map((c) => {
+      const caster = view.data.players[c.caster];
+      const at = c.x != null && c.y != null ? { x: -c.y, y: c.x } : {};
+      return { t: c.t, end: c.end, spellId: c.spellId, name: view.data.spells[c.spellId] ?? String(c.spellId), caster, casterName: shortName(names.get(caster) ?? caster), radius: c.radius, target: c.target, ...at };
+    }),
+    gateways: (view.data.gateways ?? []).map((g) => {
+      const caster = g.caster != null ? view.data.players[g.caster] : undefined;
+      const toMap = (p?: [number, number]): [number, number] | undefined => (p ? [-p[1], p[0]] : undefined);
+      return {
+        caster,
+        casterName: caster ? shortName(names.get(caster) ?? caster) : undefined,
+        castFrom: g.castFrom,
+        castAt: g.castAt,
+        from: g.from,
+        to: g.to,
+        a: toMap(g.a),
+        b: toMap(g.b),
+        uses: g.uses.map(([t, p]) => ({ t, guid: view.data.players[p] })),
+      };
     }),
   };
 }

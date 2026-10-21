@@ -258,6 +258,35 @@ export interface FightData {
   zones?: FightZone[];
   /** vida dos adds que importam (`units` com `replay: true`): [t, por mil] */
   adds?: { guid: string; name: string; maxHp: number; hp: [number, number][] }[];
+  /** controle de grupo dos players (data/utility.json) */
+  cc?: FightCc[];
+  /** portais do warlock: as duas pontas e quem passou */
+  gateways?: FightGateway[];
+}
+
+/** CC de um player: em volta de onde ele estava (x, y, raio; coordenadas do log) ou no inimigo alvo. */
+export interface FightCc {
+  t: number;
+  end: number;
+  spellId: number;
+  /** índice em `FightData.players` */
+  caster: number;
+  x?: number;
+  y?: number;
+  radius?: number;
+  target?: string;
+}
+
+/** Portal do warlock: o cast, de quando até quando aparece, as pontas (log) e cada passagem [t, player]. */
+export interface FightGateway {
+  caster?: number;
+  castFrom?: number;
+  castAt?: number;
+  from: number;
+  to: number;
+  a?: [number, number];
+  b?: [number, number];
+  uses: [number, number][];
 }
 
 /** Cast de um boss: começo, fim (cast com tempo) e para onde ele olhava ao terminar. */

@@ -1,9 +1,37 @@
 # Replay: como medir e desenhar as habilidades do boss
 
-O que aprendemos montando o replay do Coiled Altar (21/10/2026), para usar em qualquer boss. Os
-números do Altar estão em [coiled-altar-replay-audit.md](coiled-altar-replay-audit.md); aqui fica o
-método. A regra geral continua: toda habilidade com forma no chão aparece no mapa, e o que o log não
-mostra é inferido e marcado como inferido.
+O replay é um motor para todos os bosses, os de hoje e os que vierem. O Coiled Altar (21/10/2026) foi
+o primeiro boss a passar por ele inteiro; os números dele estão em
+[coiled-altar-replay-audit.md](coiled-altar-replay-audit.md). Aqui ficam as regras e o método, que
+valem para qualquer boss.
+
+## Princípios do motor
+
+1. **Boss é dado, não código.** Tudo que um boss mostra no mapa sai da regra dele
+   (`encounters/<raid>/<boss>.yaml`: `cone`, `ground`, `area`, `soak`, `blast`, `line`, `pool`,
+   `pickup`, `unit_aura`, `orbs`, `gaze`, `units.replay`) ou de um arquivo de dados
+   (`data/arenas.json`, `data/defensives.json`, `data/utility.json`). Quando um boss pede algo que não
+   existe, crie um campo genérico novo, pensando em como outro boss usaria, nunca um `if` para aquele
+   boss. Suposições de mecânica (a poça some quando a fase troca) viram opção da regra.
+2. **O log manda; o resto é hipótese.** Tooltip, guia, outro site: servem para saber o que procurar.
+   O número vem do log (o Widow's Kiss diz 40 jd e o log mostra 45). Anote de onde veio cada número
+   (data, logs, quantos casos) no comentário da regra.
+3. **Medir com o que aconteceu e com o que não aconteceu.** Onde alguém tomou dano mostra onde a raide
+   estava, não onde a habilidade estava. Compare quem tomou com quem estava perto e não tomou; separe
+   por vez que o cast sai e por fase.
+4. **O que não pode sair da arena calibra a arena.** Orbs, adds, fantasmas, machados: 100% dentro do
+   chão. Só player aparece fora, e aí está caindo.
+5. **Sem posição no log, inferir com o que o log dá, e dizer que é inferido.** A posição de quem pegou
+   é a do fragmento; a viagem pelo portal dá as duas pontas; o caminho do fantasma é simulado.
+6. **É replay: o futuro está no log.** Contagem até o soak, o próximo frontal, o próximo cast. Só não
+   conte até o que depende da raide (o boss zerar não tem hora marcada).
+7. **Animação pela hora do replay, nunca por CSS.** O slider, a pausa e os clipes desenham igual.
+8. **Tudo liga e desliga, e a escolha fica salva.** Cada camada nova entra num menu do mapa (Camadas,
+   Áreas, No chão).
+9. **Texto genérico, nome do boss só no dado.** O motor fala de "orbs", "o que pegar", "poça"; o nome
+   da habilidade vem da regra (e sempre com ícone, nas duas línguas).
+10. **Cada coisa nova vem com teste** (no Rust, a captura; no front, a conta) e com a auditoria do boss
+    dizendo o que foi medido e o que ficou de fora e por quê.
 
 ## Medir
 
@@ -33,6 +61,9 @@ primeira análise concluiu que nenhum círculo servia).
 4. O tempo (atraso e duração) vem dos ticks contados a partir do cast.
 5. Vira regra `pool` na mecânica: `cast_id`, `delay_s`, `duration_s`, `grow_s` e um `shapes` por vez,
    com os centros nas coordenadas do log. A poça some na troca de fase.
+6. Procure o mesmo formato em outras fases: no Altar, o Defiled Ground da P3 é a mesma poça lateral,
+   aberta por cada Defilement (18 de 21 contatos dentro do modelo). Pouco dado de uma fase? Confira o
+   modelo de outra fase contra os contatos dela em vez de medir do zero.
 
 ### Raio de explosão: o par de danos dentro e fora
 
@@ -58,7 +89,22 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
   campo do spell que absorveu. Guarde um ponto a cada 250 ms: são centenas de acertos por segundo.
 - **Vida de add**: `units` com `replay: true` guarda a vida (barra embaixo dele no mapa).
 
+### Utilidades dos players (CC, portal do warlock)
+
+- **CC** fica em `data/utility.json` (como os defensivos em área em `data/defensives.json`): `at:
+  caster` com `radius` (Leg Sweep, Capacitor Totem...) ou `at: target` (Storm Bolt, Hammer of Justice;
+  com `radius`, uma área em volta do alvo, como o Gorefiend's Grasp). Só entra CC com lugar confiável:
+  os de mira no chão (Ring of Frost, Ursol's Vortex, Ring of Peace) não dizem onde caíram.
+- **Portal do warlock**: o log não tem as pontas. Uma é onde o warlock estava no cast (`111771`, com
+  início e fim, a barra em cima dele); a outra vem de quem passou (aura `113942`). A viagem não é
+  instantânea (~0,9 s, o log mostra o meio do caminho): a ponta de chegada é o ponto mais longe nos
+  1,5 s depois de entrar. Portal aberto antes do pull sai só das passagens, sem lançador.
+
 ## Desenhar
+
+- **Tudo liga e desliga.** Cada camada nova entra num menu do mapa (Camadas: contagens, próximo cast,
+  animações, CC, portais, quem cortou; Áreas e No chão: as habilidades do boss), salvo entre sessões.
+  O usuário decide o que vê.
 
 - **É replay: o futuro está no log.** Soak, explosão, debuff de quem carrega algo e orb que o boss vai
   limpar mostram sozinhos o arco que fecha e os segundos; o próximo frontal aparece tracejado 10 s

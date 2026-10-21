@@ -1,10 +1,11 @@
 // Peças do mapa do replay: a contagem de um aviso (arco que fecha e os segundos), o escudo e a vida
-// de um inimigo, e os fragmentos no chão.
+// de um inimigo, os fragmentos no chão, as poças, o CC dos players e os portais do warlock.
 
 import { useMessages } from '../i18n';
 import { num } from '../lib/format';
 import type { ReplayData } from '../lib/replay';
-import { unitAuraAt, type Countdown } from '../lib/replayTimers';
+import { countdown, unitAuraAt, type Countdown } from '../lib/replayTimers';
+import { SvgSpellIcon } from './SpellIcon';
 import type { UnitAuraView } from '../types';
 import { replayMsg } from './ReplayView.i18n';
 
@@ -84,15 +85,16 @@ export function UnitStatus({ x, y, auras, now, hp }: { x: number; y: number; aur
   );
 }
 
-/** Fragmentos: a cor de alma, e quanto dura o estouro quando alguém pega (ms). */
-const FRAGMENT_COLOR = '#67e8f9';
+/** O que se pega no chão (regra `pickup`): a cor, e quanto dura o estouro quando alguém pega (ms). */
+const PICKUP_COLOR = '#67e8f9';
 const PICKUP_POP_MS = 450;
 
 /**
- * Fragmentos no chão até alguém pegar, brilhando (o dono no título; quantos faltam vai em cima dele). O
- * log não diz onde eles caem: cada um fica onde foi pego, desde que o dono ganhou o debuff.
+ * O que alguém tem que pegar no chão (regra `pickup`, ex.: fragmentos), brilhando até ser pego (o dono
+ * no título; quantos faltam vai ao lado dele). O log não diz onde essas coisas caem: cada uma fica onde
+ * foi pega, desde que o dono ganhou o debuff.
  */
-export function Pickups({ data, now, sx, sy, name, hidden }: { data: NonNullable<ReplayData['pickups']>; now: number; sx: (x: number) => number; sy: (y: number) => number; name: (guid: string) => string; hidden: Set<string> }) {
+export function Pickups({ data, now, sx, sy, name, hidden, fx }: { data: NonNullable<ReplayData['pickups']>; now: number; sx: (x: number) => number; sy: (y: number) => number; name: (guid: string) => string; hidden: Set<string>; fx: boolean }) {
   const t = useMessages(replayMsg);
   return (
     <g className="replay-pickups">
@@ -100,13 +102,13 @@ export function Pickups({ data, now, sx, sy, name, hidden }: { data: NonNullable
         const kind = data.kinds[p.kind];
         if (now < p.from || now >= p.at + PICKUP_POP_MS || !kind || hidden.has('pickup:' + kind.key)) return null;
         const [x, y] = [sx(p.x), sy(p.y)];
-        if (now >= p.at) return <ImpactRing key={i} cx={x} cy={y} r={4} age={now - p.at} dur={PICKUP_POP_MS} color={FRAGMENT_COLOR} grow={3} />;
+        if (now >= p.at) return fx ? <ImpactRing key={i} cx={x} cy={y} r={4} age={now - p.at} dur={PICKUP_POP_MS} color={PICKUP_COLOR} grow={3} /> : null;
         // brilho que pulsa (pela hora do replay: o clipe e o slider desenham igual)
-        const pulse = 0.5 + 0.5 * Math.sin((now - p.from) / 180);
+        const pulse = fx ? 0.5 + 0.5 * Math.sin((now - p.from) / 180) : 0.5;
         return (
           <g key={i} className="replay-pickup">
-            <circle cx={x} cy={y} r={8 + 2.5 * pulse} fill={FRAGMENT_COLOR} fillOpacity={0.16 + 0.16 * pulse} />
-            <circle cx={x} cy={y} r={4.2} fill={FRAGMENT_COLOR} stroke="#ecfeff" strokeWidth={1.2}>
+            <circle cx={x} cy={y} r={8 + 2.5 * pulse} fill={PICKUP_COLOR} fillOpacity={0.16 + 0.16 * pulse} />
+            <circle cx={x} cy={y} r={4.2} fill={PICKUP_COLOR} stroke="#ecfeff" strokeWidth={1.2}>
               <title>{t.pickup(kind.name, name(p.owner))}</title>
             </circle>
           </g>
@@ -138,7 +140,7 @@ const POOL_COLOR = '#2dd4bf';
  * Poças de tamanho conhecido: anunciadas no cast (só o contorno tracejado), depois no chão (cheias),
  * crescendo no começo e recuando no fim.
  */
-export function Pools({ pools, now, sx, sy, scale, clip, hidden }: { pools: NonNullable<ReplayData['pools']>; now: number; sx: (x: number) => number; sy: (y: number) => number; scale: number; clip?: string; hidden: Set<string> }) {
+export function Pools({ pools, now, sx, sy, scale, clip, hidden, labels }: { pools: NonNullable<ReplayData['pools']>; now: number; sx: (x: number) => number; sy: (y: number) => number; scale: number; clip?: string; hidden: Set<string>; labels: boolean }) {
   const t = useMessages(replayMsg);
   return (
     <g className="replay-pools" clipPath={clip}>
@@ -156,9 +158,151 @@ export function Pools({ pools, now, sx, sy, scale, clip, hidden }: { pools: NonN
                 <title>{label}</title>
               </circle>
             ))}
+            {/* vindo: "Defiled Ground em 3,2s" entre as poças, em cima */}
+            {coming && labels && (
+              <text
+                x={p.circles.reduce((a, c) => a + sx(c[0]), 0) / p.circles.length}
+                y={Math.min(...p.circles.map((c) => sy(c[1]) - c[2] * scale)) + 16}
+                textAnchor="middle"
+                className="replay-timer-tag replay-pool-tag"
+              >
+                {label}
+              </text>
+            )}
           </g>
         );
       })}
     </g>
   );
 }
+
+/** CC de um player no mapa (coordenadas do mapa): em volta de onde ele estava, ou no inimigo alvo. */
+export interface CcView {
+  t: number;
+  end: number;
+  spellId: number;
+  name: string;
+  caster: string;
+  casterName: string;
+  x?: number;
+  y?: number;
+  radius?: number;
+  target?: string;
+}
+
+/** Portal do warlock no mapa: as duas pontas, o cast e cada passagem. */
+export interface GatewayView {
+  caster?: string;
+  casterName?: string;
+  castFrom?: number;
+  castAt?: number;
+  from: number;
+  to: number;
+  a?: [number, number];
+  b?: [number, number];
+  uses: { t: number; guid: string }[];
+}
+
+/** O CC aparece por inteiro até isto (ms) e depois só o contorno, até acabar. */
+const CC_FLASH_MS = 600;
+/** Anel em volta do inimigo preso por um CC de alvo (px). */
+const CC_RING_PX = 14;
+
+/**
+ * Controle de grupo: a área em volta de quem usou (ou do alvo, no Gorefiend's Grasp), que pisca no
+ * instante e fica até acabar, com "quem: o quê" em cima; num CC de alvo, um anel no inimigo com o
+ * tempo que falta.
+ */
+export function CcLayer({ cc, now, sx, sy, scale, color, enemyAt, fx }: { cc: CcView[]; now: number; sx: (x: number) => number; sy: (y: number) => number; scale: number; color: (guid: string) => string; enemyAt: (guid: string, t: number) => [number, number] | null; fx: boolean }) {
+  return (
+    <g className="replay-cc">
+      {cc.map((c, i) => {
+        if (now < c.t || now >= c.end) return null;
+        const col = color(c.caster);
+        // onde: a área fixa (onde ele estava, ou o alvo no instante do cast) ou o inimigo agora
+        const fixed = c.x != null && c.y != null ? ([c.x, c.y] as [number, number]) : c.radius && c.target ? enemyAt(c.target, c.t) : null;
+        const at = fixed ?? (c.target ? enemyAt(c.target, now) : null);
+        if (!at) return null;
+        const [x, y] = [sx(at[0]), sy(at[1])];
+        const flash = Math.max(0, 1 - (now - c.t) / CC_FLASH_MS);
+        const r = c.radius ? c.radius * scale : CC_RING_PX;
+        const cd = countdown(c.t, c.end, now);
+        return (
+          <g key={i}>
+            <circle cx={x} cy={y} r={r} className={`replay-cc-area ${c.radius ? '' : 'ring'}`} style={{ stroke: col, fill: col, fillOpacity: c.radius ? 0.06 + 0.24 * flash : 0 }}>
+              <title>{`${c.casterName}: ${c.name}`}</title>
+            </circle>
+            {!c.radius && cd && <TimerArc cx={x} cy={y} r={r + 3} cd={cd} color={col} />}
+            {fx && <ImpactRing cx={x} cy={y} r={r} age={now - c.t} dur={CC_FLASH_MS} color={col} grow={1.4} />}
+            <text x={x} y={y - r - 4} textAnchor="middle" className="replay-timer-tag replay-cc-tag">
+              <tspan style={{ fill: col }}>{c.casterName}</tspan>
+              {`: ${c.name}`}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/** Pontas do portal: verde (onde o warlock estava) e roxa (a outra). */
+const GATE_COLORS = ['#4ade80', '#c084fc'];
+/** Raio de cada ponta (jd) e o mínimo na tela (px). */
+const GATE_YD = 1.8;
+const GATE_MIN_PX = 5;
+/** Quem passou: o anel que sai das duas pontas (ms). */
+const GATE_USE_MS = 700;
+
+/**
+ * Portais do warlock: as duas pontas ligadas por um tracejado, com "portal de X" embaixo; o warlock
+ * castando (ícone e barra em cima dele) e um anel nas pontas quando alguém passa.
+ */
+export function Gateways({ gates, now, sx, sy, scale, posOf, fx }: { gates: GatewayView[]; now: number; sx: (x: number) => number; sy: (y: number) => number; scale: number; posOf: (guid: string, t: number) => [number, number] | null; fx: boolean }) {
+  const t = useMessages(replayMsg);
+  return (
+    <g className="replay-gates">
+      {gates.map((g, i) => {
+        // o warlock castando: o ícone e a barra em cima dele
+        if (g.caster && g.castFrom != null && g.castAt != null && now >= g.castFrom && now < g.castAt) {
+          const p = posOf(g.caster, now);
+          if (!p) return null;
+          const [x, y] = [sx(p[0]), sy(p[1])];
+          const k = (now - g.castFrom) / Math.max(1, g.castAt - g.castFrom);
+          return (
+            <g key={i}>
+              <SvgSpellIcon spellId={GATEWAY_SPELL} x={x - 7} y={y - 30} size={14} title={t.gateCasting(g.casterName ?? '')} />
+              <rect x={x - 14} y={y - 13} width={28} height={3} rx={1.5} className="replay-castbar-bg" />
+              <rect x={x - 14} y={y - 13} width={28 * k} height={3} rx={1.5} className="replay-castbar" />
+            </g>
+          );
+        }
+        if (now < g.from || now >= g.to) return null;
+        const ends = [g.a, g.b].map((e) => (e ? ([sx(e[0]), sy(e[1])] as [number, number]) : null));
+        const label = g.casterName ? t.gateOf(g.casterName) : t.gate;
+        const r = Math.max(GATE_MIN_PX, GATE_YD * scale);
+        const used = g.uses.filter((u) => now >= u.t && now - u.t <= GATE_USE_MS);
+        return (
+          <g key={i}>
+            {ends[0] && ends[1] && <line x1={ends[0][0]} y1={ends[0][1]} x2={ends[1][0]} y2={ends[1][1]} className="replay-gate-link" />}
+            {ends.map((e, j) =>
+              e ? (
+                <g key={j}>
+                  <circle cx={e[0]} cy={e[1]} r={r} className="replay-gate" style={{ stroke: GATE_COLORS[j], fill: GATE_COLORS[j] }}>
+                    <title>{label}</title>
+                  </circle>
+                  <text x={e[0]} y={e[1] + r + 10} textAnchor="middle" className="replay-timer-tag replay-gate-tag">
+                    {label}
+                  </text>
+                  {fx && used.map((u) => <ImpactRing key={u.t} cx={e[0]} cy={e[1]} r={r} age={now - u.t} dur={GATE_USE_MS} color={GATE_COLORS[j]} grow={2.4} />)}
+                </g>
+              ) : null,
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/** Demonic Gateway (o ícone do cast). */
+const GATEWAY_SPELL = 111771;

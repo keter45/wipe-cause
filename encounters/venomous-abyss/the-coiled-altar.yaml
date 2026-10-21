@@ -143,6 +143,7 @@ mechanics:
       delay_s: 4.5
       duration_s: 22
       grow_s: 3
+      ends_on_phase_change: true   # o Zul'jan sai na P2: a poça do último Fangs não chega a ficar
       shapes:
         - { centers: [[1160, 50], [1160, -50]], radius: 40 }
         - { centers: [[1160, 42.5], [1160, -42.5]], radius: 42.5 }
@@ -481,6 +482,17 @@ mechanics:
     severity: none
     detect: { damage_ids: [1298591], aura_id: 1298591 }
     ground: { lingers_s: 3, contour_cell_yd: 2 }
+    # 21/10: as mesmas poças laterais do Noxious Ground, abertas por cada Defilement da P3 (o 1º abre a fase;
+    # os seguintes a cada ~106s). 15 e 20/10 Mythic: 18 de 21 contatos dentro do modelo, de 7 a 22s depois do
+    # cast; o Hexweaver usa o mesmo (1ª pequena, as seguintes grandes)
+    pool:
+      cast_id: 1298381
+      delay_s: 4.5
+      duration_s: 22
+      grow_s: 3
+      shapes:
+        - { centers: [[1160, 50], [1160, -50]], radius: 40 }
+        - { centers: [[1160, 42.5], [1160, -42.5]], radius: 42.5 }
     tip: { pt: "Sair do chão corrompido; o contorno no replay é estimado a partir dos contatos registrados.", en: "Leave the corrupted ground; the replay outline is estimated from recorded contacts." }
     message: { pt: "Defiled Ground", en: "Defiled Ground" }
 

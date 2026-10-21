@@ -22,6 +22,8 @@ interface Prefs {
   mechanicLanes: boolean;
   /** quadro da raide por cima do mapa recolhido */
   framesCollapsed: boolean;
+  /** camadas do mapa desligadas (contagens, próximo cast, animações, CC, portais, interrupts) */
+  hiddenLayers: string[];
 }
 
 let cache: Prefs | null = null;
@@ -35,7 +37,7 @@ function load(): Prefs {
     /* sem storage */
   }
   const introduced = GROUND_DEFAULTS.filter((key) => !saved.groundDefaults?.includes(key));
-  cache = { groundDefaults: GROUND_DEFAULTS, hiddenGround: [...new Set([...(saved.hiddenGround ?? []), ...introduced])], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true, mechanicLanes: saved.mechanicLanes ?? true, framesCollapsed: saved.framesCollapsed ?? false };
+  cache = { groundDefaults: GROUND_DEFAULTS, hiddenGround: [...new Set([...(saved.hiddenGround ?? []), ...introduced])], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true, mechanicLanes: saved.mechanicLanes ?? true, framesCollapsed: saved.framesCollapsed ?? false, hiddenLayers: saved.hiddenLayers ?? [] };
   return cache;
 }
 
@@ -71,3 +73,6 @@ export const setMechanicLanes = (v: boolean) => save({ ...load(), mechanicLanes:
 
 export const framesCollapsed = () => load().framesCollapsed;
 export const setFramesCollapsed = (v: boolean) => save({ ...load(), framesCollapsed: v });
+
+export const hiddenLayers = () => new Set(load().hiddenLayers);
+export const setHiddenLayers = (keys: Set<string>) => save({ ...load(), hiddenLayers: [...keys] });

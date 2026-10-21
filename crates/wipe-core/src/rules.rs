@@ -240,6 +240,7 @@ pub struct PickupSpec {
 /// Poça que um cast do boss abre em lugares fixos da sala (o log só mostra quem pisou nela): `delay_s`
 /// depois do cast ela está no chão por `duration_s`, crescendo e recuando em `grow_s`. `shapes`: o
 /// tamanho de cada vez que o cast sai (o último vale para as seguintes); centros nas coordenadas do log.
+/// `ends_on_phase_change`: some quando a fase troca.
 #[derive(Debug, Clone, Deserialize)]
 pub struct PoolSpec {
     pub cast_id: u32,
@@ -247,6 +248,9 @@ pub struct PoolSpec {
     pub duration_s: f64,
     #[serde(default)]
     pub grow_s: f64,
+    /// a poça some quando a fase troca (o boss que a abriu sai da luta)
+    #[serde(default)]
+    pub ends_on_phase_change: bool,
     pub shapes: Vec<PoolShape>,
 }
 
@@ -2640,9 +2644,9 @@ mechanics:
         }
         assert!(tracker.is_blast_spell(1283631));
         assert_eq!(tracker.ground_contour_cell(1283290), Some(2.0));
-        // Noxious Ground: poça de tamanho conhecido depois de cada Fangs of the Coiled Altar
+        // poças de tamanho conhecido: Noxious Ground depois de cada Fangs, Defiled Ground depois de cada Defilement
         let pools = tracker.pool_specs();
-        assert_eq!(pools.iter().map(|p| (p.0.as_str(), p.3.cast_id, p.3.shapes.len())).collect::<Vec<_>>(), vec![("noxious_ground", 1282487, 2)]);
+        assert_eq!(pools.iter().map(|p| (p.0.as_str(), p.3.cast_id, p.3.shapes.len())).collect::<Vec<_>>(), vec![("noxious_ground", 1282487, 2), ("defiled_ground", 1298381, 2)]);
         let heroic = RuleTracker::new(&sets, 15).unwrap();
         assert_eq!(heroic.ground_contour_cell(1298591), Some(2.0));
     }

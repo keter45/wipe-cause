@@ -1,0 +1,32 @@
+{
+  "_comment": "Utilidades dos players que o replay completo mostra. cc: controle de grupo; at = caster (área em volta de quem usou, com `radius`) ou target (no inimigo alvo; com `radius`, uma área em volta dele, como o Gorefiend's Grasp). duration: quanto o mapa mostra (s), aproximada, sem talentos e sem diminishing returns; incapacitantes que quebram com dano (Paralysis, Polymorph...) ficam só alguns segundos. gateway: o cast do Demonic Gateway e a aura que o player ganha ao passar (as pontas vêm de onde ele estava antes e depois). Embutido no build do wipe-core; edite e recompile.",
+  "cc": [
+    { "id": 119381, "name": "Leg Sweep", "radius": 6, "duration": 3, "at": "caster" },
+    { "id": 8122, "name": "Psychic Scream", "radius": 8, "duration": 8, "at": "caster" },
+    { "id": 179057, "name": "Chaos Nova", "radius": 8, "duration": 2, "at": "caster" },
+    { "id": 5246, "name": "Intimidating Shout", "radius": 8, "duration": 8, "at": "caster" },
+    { "id": 99, "name": "Incapacitating Roar", "radius": 10, "duration": 3, "at": "caster" },
+    { "id": 115750, "name": "Blinding Light", "radius": 10, "duration": 6, "at": "caster" },
+    { "id": 51490, "name": "Thunderstorm", "radius": 10, "duration": 1, "at": "caster" },
+    { "id": 368970, "name": "Tail Swipe", "radius": 8, "duration": 4, "at": "caster" },
+    { "id": 122, "name": "Frost Nova", "radius": 12, "duration": 6, "at": "caster" },
+    { "id": 5484, "name": "Howl of Terror", "radius": 10, "duration": 6, "at": "caster" },
+    { "id": 157981, "name": "Blast Wave", "radius": 8, "duration": 1, "at": "caster" },
+    { "id": 192058, "name": "Capacitor Totem", "radius": 8, "duration": 2, "at": "caster" },
+    { "id": 51485, "name": "Earthgrab Totem", "radius": 8, "duration": 20, "at": "caster" },
+    { "id": 108199, "name": "Gorefiend's Grasp", "radius": 15, "duration": 1, "at": "target" },
+    { "id": 107570, "name": "Storm Bolt", "duration": 4, "at": "target" },
+    { "id": 853, "name": "Hammer of Justice", "duration": 6, "at": "target" },
+    { "id": 6789, "name": "Mortal Coil", "duration": 3, "at": "target" },
+    { "id": 408, "name": "Kidney Shot", "duration": 6, "at": "target" },
+    { "id": 5211, "name": "Mighty Bash", "duration": 4, "at": "target" },
+    { "id": 221562, "name": "Asphyxiate", "duration": 5, "at": "target" },
+    { "id": 49576, "name": "Death Grip", "duration": 1, "at": "target" },
+    { "id": 115078, "name": "Paralysis", "duration": 4, "at": "target" },
+    { "id": 118, "name": "Polymorph", "duration": 4, "at": "target" },
+    { "id": 217832, "name": "Imprison", "duration": 4, "at": "target" },
+    { "id": 5782, "name": "Fear", "duration": 4, "at": "target" },
+    { "id": 710, "name": "Banish", "duration": 30, "at": "target" }
+  ],
+  "gateway": { "cast": 111771, "used_aura": 113942 }
+}
