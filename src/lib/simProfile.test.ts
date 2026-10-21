@@ -27,7 +27,7 @@ const mage = (over: Partial<PlayerStats> = {}) => fx.player('Fulano', { name: 'F
 
 describe('pickSimPull', () => {
   const at = (h: number) => h * 3600_000;
-  it('o pull mais longo sem morte nem erro de mecânica, do mesmo dia', () => {
+  it('sem kill: o pull mais longo sem morte, do mesmo dia (erro de mecânica não tira)', () => {
     const pulls = [
       fx.pull(0, at(0), 200_000, { players: [mage()] }),
       fx.pull(1, at(1), 300_000, { players: [mage()], deaths: [fx.death('Fulano', 250_000, { name: 'Fulano-Azralon' })] }),
@@ -35,19 +35,30 @@ describe('pickSimPull', () => {
       fx.pull(3, at(30), 400_000, { players: [mage()] }), // outro dia
     ];
     const pick = pickSimPull(pulls, pulls[0], 'Fulano-Azralon')!;
-    expect(pick.pull.id).toBe(2);
-    expect(pick.clean).toBe(true);
-    expect(pick.windowMs).toBe(250_000);
+    expect([pick.pull.id, pick.windowMs, pick.kill, pick.alive]).toEqual([2, 250_000, false, true]);
   });
 
-  it('sem pull limpo: o de mais tempo vivo, cortado na morte', () => {
+  it('a kill vem antes do pull mais longo, mesmo com morte nela', () => {
+    const d = (t: number) => [fx.death('Fulano', t, { name: 'Fulano-Azralon' })];
+    const pulls = [
+      fx.pull(0, 0, 400_000, { players: [mage()] }),
+      fx.pull(1, 1000, 200_000, { players: [mage()], success: true, deaths: d(150_000) }),
+    ];
+    const pick = pickSimPull(pulls, pulls[0], 'Fulano-Azralon')!;
+    expect([pick.pull.id, pick.windowMs, pick.kill, pick.alive]).toEqual([1, 150_000, true, false]);
+    // entre kills, a que ele terminou vivo
+    pulls.push(fx.pull(2, 2000, 180_000, { players: [mage()], success: true }));
+    expect(pickSimPull(pulls, pulls[0], 'Fulano-Azralon')!.pull.id).toBe(2);
+  });
+
+  it('morreu em todos: o de mais tempo vivo, cortado na morte', () => {
     const d = (t: number) => [fx.death('Fulano', t, { name: 'Fulano-Azralon' })];
     const pulls = [
       fx.pull(0, 0, 300_000, { players: [mage()], deaths: d(100_000) }),
       fx.pull(1, 1000, 300_000, { players: [mage()], deaths: d(180_000) }),
     ];
     const pick = pickSimPull(pulls, pulls[0], 'Fulano-Azralon')!;
-    expect([pick.pull.id, pick.windowMs, pick.clean]).toEqual([1, 180_000, false]);
+    expect([pick.pull.id, pick.windowMs, pick.alive]).toEqual([1, 180_000, false]);
   });
 
   it('outro boss ou sem setup não conta', () => {
@@ -62,7 +73,7 @@ describe('buildSimProfile', () => {
       bosses: [{ guid: 'b', name: 'Boss', npcId: 1, maxHp: 1, hpPct: 40, hpPctAtCutoff: 40 }],
       players: [mage({ buffsReceived: [{ spellId: 2825, name: 'Bloodlust', t: 1500, source: null }, { spellId: 10060, name: 'Power Infusion', t: 30_000, source: null }] }), fx.player('Pri', { class: 'Priest' })],
     });
-    const { input, bossEndPct } = buildSimProfile({ pull, player: pull.players[0], windowMs: 100_000, clean: true }, tree)!;
+    const { input, bossEndPct } = buildSimProfile({ pull, player: pull.players[0], windowMs: 100_000, kill: false, alive: true }, tree)!;
     const lines = input.split('\n');
     expect(lines).toContain('mage="Fulano"');
     expect(lines).toContain('spec=fire');
@@ -90,7 +101,7 @@ describe('buildSimProfile', () => {
   it('consumíveis: o que faltou no pull vira disabled; sem nomes (log local) fica o padrão', () => {
     const withNames = mage({ setup: setup({ auras: [{ spellId: 1235111, name: 'Flask of the Shattered Sun' }, { spellId: 6673, name: 'Battle Shout' }] }) });
     const p1 = fx.pull(0, 0, 100_000, { players: [withNames] });
-    const a = buildSimProfile({ pull: p1, player: withNames, windowMs: 60_000, clean: true }, tree)!;
+    const a = buildSimProfile({ pull: p1, player: withNames, windowMs: 60_000, kill: false, alive: true }, tree)!;
     expect(a.input).not.toMatch(/^flask=/m);
     expect(a.input).toMatch(/^food=disabled$/m);
     expect(a.input).toMatch(/^augmentation=disabled$/m);
@@ -98,7 +109,7 @@ describe('buildSimProfile', () => {
 
     const local = mage({ setup: setup({ auras: [{ spellId: 1235111 }, { spellId: 12345 }] }) });
     const p2 = fx.pull(0, 0, 100_000, { players: [local] });
-    const b = buildSimProfile({ pull: p2, player: local, windowMs: 60_000, clean: true }, tree)!;
+    const b = buildSimProfile({ pull: p2, player: local, windowMs: 60_000, kill: false, alive: true }, tree)!;
     expect(b.input).not.toMatch(/^(flask|food|augmentation)=/m);
     expect(b.assumed.filter((x) => x !== 'race')).toEqual(['food', 'rune']);
   });
@@ -106,9 +117,9 @@ describe('buildSimProfile', () => {
   it('raça pela racial usada; sem racial, pela facção (e avisa)', () => {
     const troll = mage({ casts: [{ spellId: 26297, name: 'Berserking', times: [1000] }] });
     const p = fx.pull(0, 0, 100_000, { players: [troll] });
-    expect(buildSimProfile({ pull: p, player: troll, windowMs: 60_000, clean: true }, tree)!.input).toMatch(/^race=troll$/m);
+    expect(buildSimProfile({ pull: p, player: troll, windowMs: 60_000, kill: false, alive: true }, tree)!.input).toMatch(/^race=troll$/m);
     const horde = mage({ setup: setup({ faction: 0 }) });
-    const r = buildSimProfile({ pull: p, player: horde, windowMs: 60_000, clean: true }, tree)!;
+    const r = buildSimProfile({ pull: p, player: horde, windowMs: 60_000, kill: false, alive: true }, tree)!;
     expect(r.input).toMatch(/^race=orc$/m);
     expect(r.assumed).toContain('race');
   });

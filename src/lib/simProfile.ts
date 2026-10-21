@@ -7,7 +7,7 @@
 import type { Pull, PlayerStats, StartAura } from '../types';
 import { SPEC_NAMES } from './specs';
 import { bossKey } from './night';
-import { myDeaths, myMechanicFailures } from './solo';
+import { myDeaths } from './solo';
 import type { TalentTree } from './talents';
 
 /** Pulls do "mesmo dia": até tantas horas do pull de referência. */
@@ -33,8 +33,10 @@ export interface SimPick {
   player: PlayerStats;
   /** janela simulada: do pull até a morte do player, o corte ou o fim */
   windowMs: number;
-  /** ficou vivo até o fim e sem erro de mecânica */
-  clean: boolean;
+  /** pull em que o boss morreu */
+  kill: boolean;
+  /** ficou vivo até o fim */
+  alive: boolean;
 }
 
 /** Até onde o player jogou: a primeira morte que conta ou o fim do tempo analisado. */
@@ -45,8 +47,8 @@ export function playedMs(pull: Pull, player: PlayerStats): number {
 }
 
 /**
- * O pull para simular: do mesmo boss e dificuldade, no mesmo dia do pull de referência. O mais
- * longo em que o player ficou vivo e sem erro de mecânica; sem nenhum assim, o de mais tempo vivo.
+ * O pull para simular: do mesmo boss e dificuldade, no mesmo dia do pull de referência. A kill;
+ * sem kill, o mais longo em que o player não morreu; sem nenhum assim, o de mais tempo vivo.
  */
 export function pickSimPull(pulls: Pull[], ref: Pull, playerName: string): SimPick | null {
   const key = bossKey(ref);
@@ -57,11 +59,11 @@ export function pickSimPull(pulls: Pull[], ref: Pull, playerName: string): SimPi
     if (!player?.setup) continue;
     const windowMs = playedMs(pull, player);
     if (windowMs < MIN_SIM_MS) continue;
-    const clean = myDeaths({ pull, player }).length === 0 && myMechanicFailures({ pull, player }).length === 0;
-    cands.push({ pull, player, windowMs, clean });
+    cands.push({ pull, player, windowMs, kill: pull.success, alive: myDeaths({ pull, player }).length === 0 });
   }
-  const best = (xs: SimPick[]) => xs.sort((a, b) => b.windowMs - a.windowMs || a.pull.startMs - b.pull.startMs)[0] ?? null;
-  return best(cands.filter((c) => c.clean)) ?? best(cands);
+  // entre kills, a que ele terminou vivo; depois a mais longa
+  const rank = (c: SimPick) => (c.kill ? 2 : 0) + (c.alive ? 1 : 0);
+  return cands.sort((a, b) => rank(b) - rank(a) || b.windowMs - a.windowMs || a.pull.startMs - b.pull.startMs)[0] ?? null;
 }
 
 // ---------------------------------------------------------------- tradução para o SimC

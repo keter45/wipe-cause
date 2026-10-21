@@ -33,8 +33,10 @@ export function SimSheet({ run, me, extra }: { run: BotRun; me: Sample; extra?: 
         <h4>
           {t.title} <Hint>{t.hint}</Hint>
         </h4>
-        <span className={`bot-chip ${run.clean ? 'have-had' : 'have-default'}`} title={run.clean ? undefined : t.dirtyHint}>
-          {run.clean ? <Check size={12} aria-hidden /> : <CircleAlert size={12} aria-hidden />} {t.pull(run.pullNumber, mmss(run.windowMs))} · {run.clean ? t.clean : t.dirty}
+        <span className={`bot-chip ${run.kill || run.clean ? 'have-had' : 'have-default'}`} title={run.clean ? undefined : t.diedHint}>
+          {run.kill || run.clean ? <Check size={12} aria-hidden /> : <CircleAlert size={12} aria-hidden />} {t.pull(run.pullNumber, mmss(run.windowMs))}
+          {run.kill && ` · ${t.kill}`}
+          {run.clean ? !run.kill && ` · ${t.alive}` : ` · ${t.died}`}
         </span>
         {extra}
       </div>

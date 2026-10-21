@@ -34,11 +34,14 @@ export interface BotRun {
   created: string;
   commit: string;
   banner: string;
-  /** o pull simulado (o mais longo limpo do dia) */
+  /** o pull simulado (a kill do dia; sem kill, o mais longo sem morrer) */
   pullStartMs: number;
   pullNumber: number;
   windowMs: number;
+  /** ficou vivo até o fim (nas simulações antigas: vivo e sem erro de mecânica) */
   clean: boolean;
+  /** o pull simulado foi a kill (ausente nas simulações antigas) */
+  kill?: boolean;
   assumed: SimAssumption[];
   bossEndPct: number;
   iterations: number;
@@ -171,7 +174,8 @@ export async function runBot(nightPulls: Pull[], ref: Pull, playerName: string, 
     pullStartMs: pick.pull.startMs,
     pullNumber: pick.pull.pullNumber,
     windowMs: pick.windowMs,
-    clean: pick.clean,
+    clean: pick.alive,
+    kill: pick.kill,
     assumed: profile.assumed,
     bossEndPct: profile.bossEndPct,
     iterations: BOT_ITERATIONS,

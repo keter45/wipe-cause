@@ -32,10 +32,10 @@ dentro do app, sem o usuário abrir outro programa.
 
 Sempre um pull **do mesmo dia** (mesma noite, mesmo boss, mesma dificuldade). Entre eles:
 
-1. Os pulls em que o player **ficou vivo do começo ao fim** e **não tem erro de mecânica** na nossa
-   análise. Desses, o **mais longo**.
-2. *(decidido por nós)* Se nenhum pull é limpo, usa o de maior tempo vivo e mostra o aviso
-   "nenhum pull sem morte ou erro de mecânica; usamos o de X:XX".
+1. A **kill**. Se o player morreu nela, a janela vai até a morte (e a ficha avisa "com morte").
+2. Sem kill, o pull **mais longo** em que o player **não morreu**. Erro de mecânica não tira o pull
+   da lista: o robô não faz mecânica de qualquer jeito.
+3. Sem nenhum assim, o de **maior tempo vivo**, com o aviso de que a simulação vai até a morte.
 
 A janela simulada vai do pull até a morte do player, a call de wipe ou o fim da luta (o que vier
 primeiro), igual ao corte que a análise já faz.
