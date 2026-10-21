@@ -417,7 +417,7 @@ impl PullBuilder {
     /// pull inteiro (não só das janelas das mortes e falhas).
     pub fn capture_fight(mut self, data: &GameData) -> Self {
         let zones = data.defensives.values().filter_map(|d| Some((d.id, d.zone.clone()?))).collect();
-        self.fight = Some(FightCapture::new(data.defensives.keys().copied().collect()).with_zones(zones));
+        self.fight = Some(FightCapture::new(data.defensives.keys().copied().collect()).with_zones(zones).with_utility(data.cc.clone(), data.gateway));
         self
     }
 
@@ -691,6 +691,13 @@ impl PullBuilder {
                     let target = (cone.is_some() || line.is_some_and(|l| l.1.is_none())).then(|| self.boss_target.get(&guid).cloned()).flatten();
                     self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false, interrupted_by: None, slow_pct, cone, target, line: line.map(|l| l.0) });
                 }
+                // portal do warlock: a barra do cast em cima dele no replay completo
+                if Self::is_group_player(f[1], hex(f[3])) {
+                    let (rel, id) = (self.rel(t), f[9].parse().unwrap_or(0));
+                    if let Some(fc) = self.fight.as_mut() {
+                        fc.cast_start(rel, f[1], id);
+                    }
+                }
                 // começo de um cast com tempo de cast ou de um empower (a leitura da rotação mede o tempo parado)
                 if self.counting() && Self::is_group_player(f[1], hex(f[3])) {
                     let (rel, id) = (self.rel(t), f[9].parse().unwrap_or(0));
@@ -806,6 +813,7 @@ impl PullBuilder {
                 let pos = self.players.get(dst_guid).and_then(|p| p.pos).map(|p| (p.0, p.1));
                 if let Some(fc) = self.fight.as_mut() {
                     fc.zone_buff(rel, spell_id, pos);
+                    fc.utility_aura(rel, dst_guid, spell_id);
                 }
             }
             if let Some(fc) = self.fight.as_mut() {
@@ -1359,6 +1367,8 @@ impl PullBuilder {
             if Self::is_group_player(src_guid, src_flags) {
                 let pos = here.or_else(|| self.players.get(src_guid).and_then(|p| p.pos).map(|p| (p.0, p.1)));
                 fc.zone_cast(rel, src_guid, spell_id, &spell_name, pos);
+                // CC e o portal do warlock (o alvo do cast: o inimigo que levou o stun)
+                fc.utility_cast(rel, src_guid, spell_id, &spell_name, pos, f[5]);
             } else if let Some((x, y)) = here {
                 fc.zone_unit_pos(src_guid, x, y);
             }
@@ -1989,7 +1999,7 @@ impl PullBuilder {
                 log_file: None,
                 log_offset: None,
                 phase_marks,
-                fight: self.fight.take().map(|fc| fc.finish(duration_ms, rule_spells, &replay_npcs)),
+                fight: self.fight.take().map(|fc| fc.finish(duration_ms, rule_spells, &replay_npcs, &self.trails)),
                 orbs,
                 areas,
                 soaks,
@@ -2016,8 +2026,8 @@ impl PullBuilder {
     }
 }
 
-/// Poças de tamanho conhecido (regra com `pool`): uma por cast, do tamanho daquela vez; a poça some na
-/// troca de fase (o boss que a abriu sai).
+/// Poças de tamanho conhecido (regra com `pool`): uma por cast, do tamanho daquela vez; com
+/// `ends_on_phase_change`, some na troca de fase.
 fn build_pools(specs: &[(String, String, u32, crate::rules::PoolSpec)], casts: &[BossCast], phases: &[PhaseMark]) -> Vec<PoolView> {
     let mut out = Vec::new();
     for (key, name, spell_id, spec) in specs {
@@ -2025,7 +2035,7 @@ fn build_pools(specs: &[(String, String, u32, crate::rules::PoolSpec)], casts: &
             let Some(shape) = spec.shapes.get(i).or(spec.shapes.last()) else { continue };
             let from = c.end.unwrap_or(c.t);
             let on = from + (spec.delay_s * 1000.0) as i64;
-            let next_phase = phases.iter().map(|p| p.t).find(|&t| t > from).unwrap_or(i64::MAX);
+            let next_phase = phases.iter().map(|p| p.t).find(|&t| t > from).filter(|_| spec.ends_on_phase_change).unwrap_or(i64::MAX);
             let to = (on + (spec.duration_s * 1000.0) as i64).min(next_phase);
             // a fase trocou antes de a poça cair: ela não chega a aparecer
             if to <= on {
@@ -2435,7 +2445,7 @@ mod tests {
     #[test]
     fn pocas_de_tamanho_conhecido_por_cast_e_cortadas_na_troca_de_fase() {
         let shape = |r: f32| crate::rules::PoolShape { centers: vec![(1160.0, r), (1160.0, -r)], radius: r };
-        let spec = crate::rules::PoolSpec { cast_id: 7, delay_s: 4.5, duration_s: 22.0, grow_s: 3.0, shapes: vec![shape(40.0), shape(42.5)] };
+        let spec = crate::rules::PoolSpec { cast_id: 7, delay_s: 4.5, duration_s: 22.0, grow_s: 3.0, ends_on_phase_change: true, shapes: vec![shape(40.0), shape(42.5)] };
         let cast = |t: i64| BossCast { t, end: None, guid: "Boss".into(), spell_id: 7, name: "Fangs".into(), facing: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None };
         let phases = [PhaseMark { t: 0, key: "p1".into(), name: "P1".into() }, PhaseMark { t: 171_000, key: "p2".into(), name: "P2".into() }];
         let pools = build_pools(&[("pool".into(), "Pool".into(), 9, spec)], &[cast(0), cast(85_000), cast(170_000), cast(200_000)], &phases);

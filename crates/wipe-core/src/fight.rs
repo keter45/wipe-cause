@@ -7,8 +7,9 @@
 //!
 //! Tudo vai em tabelas (players, fontes, spells) e listas de tuplas, para o JSON não pesar.
 
-use crate::report::{FightAura, FightBoss, FightData, FightEvent, FightZone};
-use crate::data::{ZoneAt, ZoneDef};
+use crate::report::{FightAura, FightBoss, FightCc, FightData, FightEvent, FightGateway, FightZone};
+use crate::data::{CcAt, CcDef, GatewayDef, ZoneAt, ZoneDef};
+use crate::replay::Trails;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Vida nova só entra se mudou ao menos isto (pontos de %) ou depois deste tempo.
@@ -65,6 +66,38 @@ pub struct FightCapture {
     zone_units: HashMap<String, usize>,
     /// buff -> (área, até quando conta, posições de quem ganhou)
     zone_buffs: HashMap<u32, ZoneBuff>,
+    /// controle de grupo dos players e os que entraram
+    cc_defs: HashMap<u32, CcDef>,
+    cc: Vec<FightCc>,
+    /// portal do warlock: casts (player, começo, fim, onde ele estava) e quem passou (t, player)
+    gateway: GatewayDef,
+    gate_starts: HashMap<u16, i64>,
+    gate_casts: Vec<GateCast>,
+    gate_uses: Vec<(i64, u16)>,
+}
+
+/// Portal: passagem com o player andando menos que isto (jd) entre antes e depois não é salto.
+const GATE_JUMP_YD: f32 = 5.0;
+/// Uma ponta do portal: os saltos que caem até isto (jd) dela são dele.
+const GATE_END_YD: f32 = 8.0;
+/// Portal sem cast no pull: aparece este tanto (ms) antes da primeira passagem; e some este tanto depois
+/// da última (ou do cast, se ninguém passou).
+const GATE_BEFORE_MS: i64 = 20_000;
+const GATE_AFTER_MS: i64 = 5_000;
+const GATE_UNUSED_MS: i64 = 20_000;
+/// A viagem pelo portal leva ~0,9 s (15/10): a outra ponta é o ponto mais longe nesse tempo.
+const GATE_TRAVEL_MS: i64 = 1_500;
+/// Um portal dura no máximo isto (ms) depois do cast.
+const GATE_MAX_MS: i64 = 180_000;
+
+/// Cast do portal: (player, começo, fim, onde ele estava).
+type GateCast = (u16, Option<i64>, i64, Option<(f32, f32)>);
+
+/// Somas das pontas de um portal para a média: (soma da ponta a, soma da ponta b, quantos saltos).
+type GateSums = ((f32, f32), (f32, f32), f32);
+
+fn gate_mean(sum: (f32, f32), n: f32) -> Option<(f32, f32)> {
+    (n > 0.0).then(|| (sum.0 / n, sum.1 / n))
 }
 
 /// Buff que marca o centro de uma área: (área, até quando conta, posições de quem ganhou).
@@ -91,6 +124,108 @@ impl FightCapture {
     pub fn with_zones(mut self, defs: HashMap<u32, ZoneDef>) -> Self {
         self.zone_defs = defs;
         self
+    }
+
+    /// Controle de grupo e o portal do warlock (data/utility.json).
+    pub fn with_utility(mut self, cc: HashMap<u32, CcDef>, gateway: GatewayDef) -> Self {
+        self.cc_defs = cc;
+        self.gateway = gateway;
+        self
+    }
+
+    /// Começo de um cast de player (o portal tem tempo de cast: a barra em cima do warlock).
+    pub fn cast_start(&mut self, t: i64, guid: &str, spell: u32) {
+        if spell != 0 && spell == self.gateway.cast {
+            let p = self.player(guid);
+            self.gate_starts.insert(p, t);
+        }
+    }
+
+    /// Cast de player que é CC ou o portal. `pos`: onde ele estava; `target`: o alvo do cast.
+    pub fn utility_cast(&mut self, t: i64, guid: &str, spell: u32, name: &str, pos: Option<(f32, f32)>, target: &str) {
+        if spell != 0 && spell == self.gateway.cast {
+            let p = self.player(guid);
+            self.spell(spell, name);
+            let start = self.gate_starts.remove(&p);
+            self.gate_casts.push((p, start, t, pos));
+            return;
+        }
+        let Some(def) = self.cc_defs.get(&spell).cloned() else { return };
+        let end = t + (def.duration * 1000.0) as i64;
+        let (x, y, target) = match def.at {
+            CcAt::Caster => {
+                let Some((x, y)) = pos else { return };
+                (Some(x), Some(y), None)
+            }
+            // no inimigo alvo (sem alvo, ou num player, fica de fora)
+            CcAt::Target => {
+                if !(target.starts_with("Creature-") || target.starts_with("Vehicle-")) {
+                    return;
+                }
+                (None, None, Some(target.to_string()))
+            }
+        };
+        let caster = self.player(guid);
+        self.spell(spell, name);
+        self.cc.push(FightCc { t, end, spell_id: spell, caster, x, y, radius: def.radius, target });
+    }
+
+    /// Aura num player: a de quem passou pelo portal.
+    pub fn utility_aura(&mut self, t: i64, guid: &str, spell: u32) {
+        if spell != 0 && spell == self.gateway.used_aura {
+            let p = self.player(guid);
+            self.gate_uses.push((t, p));
+        }
+    }
+
+    /// Os portais do pull: cada cast é uma ponta (onde o warlock estava) e os saltos de quem passou dão a
+    /// outra; portal criado antes do pull vem só dos saltos, sem lançador.
+    fn gateways(&self, end: i64, trails: &Trails) -> Vec<FightGateway> {
+        let dist = |a: (f32, f32), b: (f32, f32)| (a.0 - b.0).hypot(a.1 - b.1);
+        let mut out: Vec<FightGateway> = self
+            .gate_casts
+            .iter()
+            .map(|&(caster, start, at, pos)| FightGateway { caster: Some(caster), cast_from: start, cast_at: Some(at), from: start.unwrap_or(at), to: (at + GATE_UNUSED_MS).min(end), a: pos, b: None, uses: Vec::new() })
+            .collect();
+        let mut sums: Vec<GateSums> = vec![((0.0, 0.0), (0.0, 0.0), 0.0); out.len()];
+        for &(t, p) in &self.gate_uses {
+            let (Some(p0), Some(p1)) = trails.travel(&self.players[p as usize], t, GATE_TRAVEL_MS, 3_000) else { continue };
+            if dist(p0, p1) < GATE_JUMP_YD {
+                continue;
+            }
+            // o portal aberto com uma ponta perto de onde o salto começou ou acabou
+            let ends = |g: &FightGateway, s: &GateSums| [g.a.or(gate_mean(s.0, s.2)), g.b.or(gate_mean(s.1, s.2))];
+            let near = |i: usize| ends(&out[i], &sums[i]).into_iter().flatten().map(|e| dist(e, p0).min(dist(e, p1))).fold(f32::MAX, f32::min);
+            let open = |g: &FightGateway| g.cast_at.is_none_or(|at| at <= t && t - at <= GATE_MAX_MS);
+            let best = (0..out.len()).filter(|&i| open(&out[i])).map(|i| (i, near(i))).filter(|x| x.1 <= GATE_END_YD).min_by(|a, b| a.1.total_cmp(&b.1)).map(|x| x.0);
+            let i = best.unwrap_or_else(|| {
+                out.push(FightGateway { caster: None, cast_from: None, cast_at: None, from: (t - GATE_BEFORE_MS).max(0), to: t, a: None, b: None, uses: Vec::new() });
+                sums.push(((0.0, 0.0), (0.0, 0.0), 0.0));
+                out.len() - 1
+            });
+            // a ponta "a" é a do cast (ou a média dos saltos até aqui): o lado do salto mais perto dela soma em "a"
+            let a_ref = out[i].a.or(gate_mean(sums[i].0, sums[i].2));
+            let (near_a, far) = match a_ref {
+                Some(a) if dist(a, p1) < dist(a, p0) => (p1, p0),
+                _ => (p0, p1),
+            };
+            let s = &mut sums[i];
+            s.0 = (s.0 .0 + near_a.0, s.0 .1 + near_a.1);
+            s.1 = (s.1 .0 + far.0, s.1 .1 + far.1);
+            s.2 += 1.0;
+            let g = &mut out[i];
+            g.uses.push((t, p));
+            g.to = g.to.max(t + GATE_AFTER_MS).min(end);
+        }
+        for (g, s) in out.iter_mut().zip(&sums) {
+            if s.2 > 0.0 {
+                g.a = g.a.or(gate_mean(s.0, s.2));
+                g.b = gate_mean(s.1, s.2);
+            }
+        }
+        out.retain(|g| g.a.is_some() || g.b.is_some());
+        out.sort_by_key(|g| g.from);
+        out
     }
 
     /// Cast de um player: se é defensivo em área, abre a área. `pos`: onde ele estava.
@@ -279,7 +414,13 @@ impl FightCapture {
 
     /// Fecha o que ficou aberto no fim do pull. `rule_spells`: spells das regras do boss (spell -> mecânica);
     /// `add_npcs`: adds que importam (`units` com `replay: true`), com a vida guardada mesmo sem vida de boss.
-    pub fn finish(mut self, end: i64, rule_spells: BTreeMap<u32, String>, add_npcs: &HashSet<u32>) -> FightData {
+    /// `trails`: as posições do pull (os dois lados de cada passagem pelo portal).
+    pub fn finish(mut self, end: i64, rule_spells: BTreeMap<u32, String>, add_npcs: &HashSet<u32>, trails: &Trails) -> FightData {
+        let gateways = self.gateways(end, trails);
+        let mut cc = std::mem::take(&mut self.cc);
+        for c in &mut cc {
+            c.end = c.end.min(end);
+        }
         for (_, (i, _, pts)) in self.zone_buffs.drain() {
             place(&mut self.zones[i], &pts);
         }
@@ -326,6 +467,8 @@ impl FightCapture {
             heal_in: sums(self.heal_in),
             zones: self.zones,
             adds,
+            cc,
+            gateways,
         }
     }
 }
@@ -349,7 +492,7 @@ mod tests {
         c.aura(300, "P1", 8, "Own Debuff", true, false, 1); // debuff de player: fora
         c.aura(300, "P1", 100, "Shield Wall", false, false, 1);
         c.died("P1", 1000);
-        let f = c.finish(2000, BTreeMap::new(), &HashSet::new());
+        let f = c.finish(2000, BTreeMap::new(), &HashSet::new(), &Trails::default());
         assert_eq!(f.players, vec!["P1"]);
         assert_eq!(f.hp[0], vec![(0, 100), (200, 80), (1000, 0)]);
         assert_eq!(f.sources, vec!["Boss"]);
@@ -358,6 +501,35 @@ mod tests {
         assert_eq!(f.auras, vec![FightAura(0, 7, 300, 900, 3, 1), FightAura(0, 100, 300, 2000, 1, 0)]);
         assert_eq!(f.stacks, vec![(0, 7, 350, 3)]);
         assert_eq!(f.spells.get(&7).map(String::as_str), Some("Venom"));
+    }
+
+    #[test]
+    fn portal_pelas_passagens_e_cc_no_caster_e_no_alvo() {
+        let data = crate::data::GameData::embedded();
+        let mut c = FightCapture::new(HashSet::new()).with_utility(data.cc.clone(), data.gateway);
+        // o warlock abre o portal parado em (0, 0); dois players atravessam até ~(40, 0) (a viagem leva ~1s)
+        c.cast_start(1_000, "WL", 111771);
+        c.utility_cast(2_000, "WL", 111771, "Demonic Gateway", Some((0.0, 0.0)), "");
+        let mut trails = Trails::default();
+        for (who, t0) in [("P1", 5_000), ("P2", 9_000)] {
+            trails.on_pos(who, who, false, 100, 0.5, 0.0, t0 - 300);
+            trails.on_pos(who, who, false, 100, 20.0, 0.0, t0 + 400);
+            trails.on_pos(who, who, false, 100, 40.0, 1.0, t0 + 900);
+            trails.on_pos(who, who, false, 100, 38.0, 1.0, t0 + 2_000);
+            c.utility_aura(t0, who, 113942);
+        }
+        // Leg Sweep em volta de quem usou; Storm Bolt no inimigo; num player não conta
+        c.utility_cast(3_000, "MK", 119381, "Leg Sweep", Some((5.0, 5.0)), "");
+        c.utility_cast(4_000, "WR", 107570, "Storm Bolt", Some((1.0, 1.0)), "Creature-0-1-2-3-4-5");
+        c.utility_cast(4_500, "WR", 107570, "Storm Bolt", Some((1.0, 1.0)), "Player-1-A");
+        let f = c.finish(60_000, BTreeMap::new(), &HashSet::new(), &trails);
+        assert_eq!(f.gateways.len(), 1);
+        let g = &f.gateways[0];
+        assert_eq!((g.cast_from, g.cast_at, g.a, g.uses.len()), (Some(1_000), Some(2_000), Some((0.0, 0.0)), 2));
+        assert_eq!(g.b, Some((40.0, 1.0)));
+        // fica até 20 s depois do cast (a última passagem foi antes)
+        assert_eq!(g.to, 22_000);
+        assert_eq!(f.cc.iter().map(|c| (c.spell_id, c.x, c.radius, c.target.as_deref())).collect::<Vec<_>>(), vec![(119381, Some(5.0), Some(6.0), None), (107570, None, None, Some("Creature-0-1-2-3-4-5"))]);
     }
 
     #[test]
@@ -374,7 +546,7 @@ mod tests {
         c.zone_buff(3200, 30, Some((20.0, 0.0)));
         c.zone_buff(9000, 30, Some((90.0, 0.0))); // tarde demais: não conta
         c.zone_cast(4000, "DH", 4, "Nada", Some((0.0, 0.0))); // não é área
-        let f = c.finish(5000, BTreeMap::new(), &HashSet::new());
+        let f = c.finish(5000, BTreeMap::new(), &HashSet::new(), &Trails::default());
         let at: Vec<(u32, f32, f32, i64)> = f.zones.iter().map(|z| (z.spell_id, z.x, z.y, z.end)).collect();
         assert_eq!(at, vec![(1, 5.0, 5.0, 5000), (2, 3.0, 4.0, 5000), (3, 15.0, 0.0, 5000)]);
     }

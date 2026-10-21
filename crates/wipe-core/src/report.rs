@@ -325,6 +325,53 @@ pub struct FightData {
     /// vida dos adds que importam (`units` com `replay: true`), para a barra embaixo deles no mapa
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub adds: Vec<FightBoss>,
+    /// controle de grupo dos players (data/utility.json)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub cc: Vec<FightCc>,
+    /// portais do warlock: as duas pontas e quem passou
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub gateways: Vec<FightGateway>,
+}
+
+/// CC de um player no replay: em volta de onde ele estava (x, y, raio) ou no inimigo alvo (com raio:
+/// uma área em volta dele). Coordenadas do log.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FightCc {
+    pub t: i64,
+    pub end: i64,
+    pub spell_id: u32,
+    /// índice em `players`
+    pub caster: u16,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub x: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub y: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub radius: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+}
+
+/// Portal do warlock: o cast (início e fim), de quando até quando aparece, as duas pontas (a: onde ele
+/// estava no cast; b: pelos saltos de quem passou) e cada passagem (t, player). Sem cast no pull (criado
+/// antes), as duas pontas vêm dos saltos e não há lançador.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FightGateway {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub caster: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cast_from: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cast_at: Option<i64>,
+    pub from: i64,
+    pub to: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub a: Option<(f32, f32)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub b: Option<(f32, f32)>,
+    pub uses: Vec<(i64, u16)>,
 }
 
 /// Defensivo em área no replay completo: onde ficou (coordenadas do log), raio e quando.

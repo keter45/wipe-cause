@@ -6,6 +6,7 @@ use std::collections::HashMap;
 const DEFENSIVES_JSON: &str = include_str!("../../../data/defensives.json");
 const CONSUMABLES_JSON: &str = include_str!("../../../data/consumables.json");
 const INTERRUPTS_JSON: &str = include_str!("../../../data/interrupts.json");
+const UTILITY_JSON: &str = include_str!("../../../data/utility.json");
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SpecInfo {
@@ -34,6 +35,38 @@ pub struct ZoneDef {
     /// at = buffed: o buff que os players ganham dentro
     #[serde(default)]
     pub buff: Option<u32>,
+}
+
+/// Controle de grupo de um player no replay: área em volta de quem usou, ou no inimigo alvo.
+#[derive(Debug, Clone, Deserialize)]
+pub struct CcDef {
+    pub id: u32,
+    pub name: String,
+    #[serde(default)]
+    pub radius: Option<f32>,
+    /// quanto o mapa mostra (s)
+    pub duration: f32,
+    pub at: CcAt,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CcAt {
+    Caster,
+    Target,
+}
+
+/// Demonic Gateway: o cast que cria e a aura de quem passou por ele.
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
+pub struct GatewayDef {
+    pub cast: u32,
+    pub used_aura: u32,
+}
+
+#[derive(Debug, Deserialize)]
+struct UtilityFile {
+    cc: Vec<CcDef>,
+    gateway: GatewayDef,
 }
 
 /// Onde fica a área: onde quem usou estava, onde caiu o totem, ou no meio dos primeiros buffados.
@@ -87,6 +120,9 @@ pub struct GameData {
     pub specs: HashMap<u32, SpecInfo>,
     pub defensives: HashMap<u32, Defensive>,
     pub interrupts: HashMap<u32, Interrupt>,
+    /// controle de grupo dos players (replay completo)
+    pub cc: HashMap<u32, CcDef>,
+    pub gateway: GatewayDef,
     healthstone: ConsumableDef,
     health_potion: ConsumableDef,
 }
@@ -96,6 +132,7 @@ impl GameData {
         let d: DefensivesFile = serde_json::from_str(DEFENSIVES_JSON).expect("data/defensives.json inválido");
         let c: ConsumablesFile = serde_json::from_str(CONSUMABLES_JSON).expect("data/consumables.json inválido");
         let i: InterruptsFile = serde_json::from_str(INTERRUPTS_JSON).expect("data/interrupts.json inválido");
+        let u: UtilityFile = serde_json::from_str(UTILITY_JSON).expect("data/utility.json inválido");
         GameData {
             specs: d
                 .specs
@@ -104,6 +141,8 @@ impl GameData {
                 .collect(),
             defensives: d.defensives.into_iter().map(|x| (x.id, x)).collect(),
             interrupts: i.interrupts.into_iter().map(|x| (x.id, x)).collect(),
+            cc: u.cc.into_iter().map(|x| (x.id, x)).collect(),
+            gateway: u.gateway,
             healthstone: lowercase_patterns(c.healthstone),
             health_potion: lowercase_patterns(c.health_potion),
         }

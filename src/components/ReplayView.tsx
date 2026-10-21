@@ -1,5 +1,5 @@
 import { useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, CircleDot, Crosshair, Maximize2, Minimize2, Pause, Play, Radius, RotateCcw, Tag, MapPin } from 'lucide-react';
+import { ChevronDown, CircleDot, Crosshair, Layers, Maximize2, Minimize2, Pause, Play, Radius, RotateCcw, Tag, MapPin } from 'lucide-react';
 import type { ReplayRef } from '../types';
 import { classColor, mmss, num, shortName } from '../lib/format';
 import { coneDirection, movedUntil, npcOf, posAt, valueAt, type ReplayBounds, type ReplayData, type ReplayHit, type ReplayUnit } from '../lib/replay';
@@ -15,7 +15,7 @@ import { ClipButton, ClipPullContext } from './ClipButton';
 import { clipSpan } from '../lib/clipSpan';
 import { blastPhase, groundContours } from '../lib/replayHazards';
 import { countdown, NEXT_ADD_MS, NEXT_CONE_MS, nextCast, orbClearCountdown, type Countdown } from '../lib/replayTimers';
-import { ImpactRing, Pickups, Pools, sector, TimerArc, TimerTag, UnitStatus } from './replayLayers';
+import { CcLayer, Gateways, ImpactRing, Pickups, Pools, sector, TimerArc, TimerTag, UnitStatus, type CcView, type GatewayView } from './replayLayers';
 
 export type { ReplayHit } from '../lib/replay';
 
@@ -51,6 +51,9 @@ interface Props {
   vanished?: (guid: string, t: number) => boolean;
   /** defensivos de raid em área (replay completo): o círculo onde valem, na cor de quem usou */
   zones?: ZoneView[];
+  /** replay completo: controle de grupo dos players e os portais do warlock */
+  cc?: CcView[];
+  gateways?: GatewayView[];
   /** janela do slider (a mesma da linha do tempo com zoom); sem ela, o replay inteiro */
   range?: [number, number];
   /** painéis por cima do mapa (replay completo: bosses, medidores, quadro do raid) */
@@ -63,7 +66,7 @@ interface Props {
   holders?: (auraId: number, t: number) => AuraHolder[];
   /** replay completo: vida (%) dos adds que importam (a barra embaixo deles); null para os outros */
   unitHp?: (guid: string, t: number) => number | null;
-  /** replay completo: stacks de uma aura num player (quantos fragmentos faltam pegar) */
+  /** replay completo: stacks de uma aura num player (quantas coisas ele ainda tem que pegar, regra `pickup`) */
   auraStacks?: (auraId: number, guid: string, t: number) => number | null;
   /** como o mapa abre (o clipe desenha o que o usuário deixou na tela): enquadramento, câmera, os outros */
   initial?: Partial<MapView>;
@@ -263,6 +266,11 @@ export interface AuraHolder {
   to: number;
 }
 
+/** Camadas do mapa que o usuário liga e desliga (as de habilidade do boss ficam em Áreas e No chão). */
+type Layer = 'timers' | 'next' | 'fx' | 'cc' | 'gates' | 'kicks';
+const LAYERS: Layer[] = ['timers', 'next', 'fx', 'cc', 'gates', 'kicks'];
+/** Só no replay completo (precisam da luta inteira relida). */
+const FULL_ONLY_LAYERS: Layer[] = ['cc', 'gates'];
 /** O orb sai do chão até isto (ms) do golpe do frontal e conta como quebrado por ele. */
 const ORB_POP_SLACK_MS = 150;
 /** Clarão do frontal no golpe (ms). */
@@ -431,7 +439,7 @@ function WorldMarkerIcon({ marker, x, y, title }: { marker: number; x: number; y
 }
 
 /** Replay das posições em volta de um momento (morte, acerto, falha, encontro). */
-export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, unitHp, auraStacks, vacated, vanished, zones = [], range, initial, frame, bounds }: Props) {
+export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, unitHp, auraStacks, vacated, vanished, zones = [], cc = [], gateways = [], range, initial, frame, bounds }: Props) {
   const clipCtx = useContext(ClipPullContext);
   const t = useMessages(replayMsg);
   // tempo: o de fora (replay completo) ou o próprio
@@ -443,6 +451,9 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
   const [hiddenAreas, setHiddenAreas] = useState<Set<string>>(prefs.hiddenAreas);
   const [names, setNames] = useState(prefs.showNames);
   const [markersOn, setMarkersOn] = useState(prefs.showMarkers);
+  // camadas do mapa que o usuário desligou (contagens, próximo cast, animações, CC, portais, interrupts)
+  const [hiddenLayers, setHiddenLayers] = useState<Set<string>>(prefs.hiddenLayers);
+  const layer = (k: Layer) => !hiddenLayers.has(k);
   const [wowheadCast, setWowheadCast] = useState<Record<number, number>>({});
   // spells cortados sem tempo de cast medido no log: busca no Wowhead
   useEffect(() => {
@@ -948,7 +959,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             <line key={`y${y}`} x1={0} y1={y} x2={W} y2={y} />
           ))}
         </g>
-        {data.pools && <Pools pools={data.pools} now={now} sx={sx} sy={sy} scale={scale} clip={map ? 'url(#' + floorId + '-pools)' : undefined} hidden={hiddenAreas} />}
+        {data.pools && <Pools pools={data.pools} now={now} sx={sx} sy={sy} scale={scale} clip={map ? 'url(#' + floorId + '-pools)' : undefined} hidden={hiddenAreas} labels={layer('timers')} />}
         {contours.map((contour) => {
           const kind = data.groundKinds[contour.kind];
           if (hiddenGround.has(kind.key)) return null;
@@ -969,10 +980,10 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           return <g key={blast.key + ':' + index} className={'replay-blast ' + phase} data-phase={phase}>
             <title>{t.blast(blast.name, blast.radius, Math.max(0, blast.at - now), phase === 'impact', blast.timingEstimated)}</title>
             <circle cx={bx} cy={by} r={blast.radius * scale} />
-            {cd && <TimerArc cx={bx} cy={by} r={blast.radius * scale} cd={cd} color="var(--wipe)" />}
-            <ImpactRing cx={bx} cy={by} r={blast.radius * scale * 0.3} age={now - blast.at} dur={POP_MS} color="var(--wipe)" grow={1 / 0.3} />
+            {cd && layer('timers') && <TimerArc cx={bx} cy={by} r={blast.radius * scale} cd={cd} color="var(--wipe)" />}
+            {layer('fx') && <ImpactRing cx={bx} cy={by} r={blast.radius * scale * 0.3} age={now - blast.at} dur={POP_MS} color="var(--wipe)" grow={1 / 0.3} />}
             <SvgSpellIcon spellId={blast.spellId} x={bx - 7} y={by - 7} size={14} title={t.blast(blast.name, blast.radius, Math.max(0, blast.at - now), phase === 'impact', blast.timingEstimated)} />
-            {cd && <TimerTag x={bx + 10} y={by + 4} cd={cd} />}
+            {cd && layer('timers') && <TimerTag x={bx + 10} y={by + 4} cd={cd} />}
           </g>;
         })}
         {ground.map((g, i) => {
@@ -1011,7 +1022,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                   <title>{since != null ? t.vacated(a.name) : a.name}</title>
                 </circle>
                 {a.npc != null && !a.keepUnit && a.spellId != null && <SvgSpellIcon spellId={a.spellId} x={sx(q[0]) - 6} y={sy(q[1]) - 6} size={12} title={since != null ? t.vacated(a.name) : a.name} />}
-                {cd && (
+                {cd && layer('timers') && (
                   <>
                     {/* por fora do anel de quem carrega um orb */}
                     <TimerArc cx={sx(q[0])} cy={sy(q[1])} r={Math.max(9, CARRY_YD * scale) + 3.5} cd={cd} color={c} />
@@ -1046,16 +1057,18 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
               <circle cx={sx(k.x)} cy={sy(k.y)} r={k.radius * scale}>
                 <title>{label}</title>
               </circle>
-              {cd && <TimerArc cx={sx(k.x)} cy={sy(k.y)} r={k.radius * scale} cd={cd} color={short ? 'var(--wipe)' : 'var(--kill)'} />}
-              <ImpactRing cx={sx(k.x)} cy={sy(k.y)} r={k.radius * scale} age={now - k.at} dur={POP_MS} color={short ? 'var(--wipe)' : 'var(--kill)'} grow={1.35} />
+              {cd && layer('timers') && <TimerArc cx={sx(k.x)} cy={sy(k.y)} r={k.radius * scale} cd={cd} color={short ? 'var(--wipe)' : 'var(--kill)'} />}
+              {layer('fx') && <ImpactRing cx={sx(k.x)} cy={sy(k.y)} r={k.radius * scale} age={now - k.at} dur={POP_MS} color={short ? 'var(--wipe)' : 'var(--kill)'} grow={1.35} />}
               <SvgSpellIcon spellId={k.spellId} x={sx(k.x) - 7} y={sy(k.y) - k.radius * scale - 16} size={14} title={label} />
-              {cd && <TimerTag x={sx(k.x) + 10} y={sy(k.y) - k.radius * scale - 5} cd={cd} />}
+              {cd && layer('timers') && <TimerTag x={sx(k.x) + 10} y={sy(k.y) - k.radius * scale - 5} cd={cd} />}
               <text x={sx(k.x)} y={sy(k.y) + 4} textAnchor="middle" className="replay-soak-count">
                 {k.needs != null ? `${inside}/${k.needs}` : inside}
               </text>
             </g>
           );
         })}
+        {layer('gates') && gateways.length > 0 && <Gateways gates={gateways} now={now} sx={sx} sy={sy} scale={scale} posOf={(g, tt) => { const u = data.units.get(g); return u ? posAt(u, tt) : null; }} fx={layer('fx')} />}
+        {layer('cc') && cc.length > 0 && <CcLayer cc={cc} now={now} sx={sx} sy={sy} scale={scale} color={color} enemyAt={(g, tt) => { const u = data.units.get(g); return u ? enemyPos(u, tt) : null; }} fx={layer('fx')} />}
         {/* defensivos de raid em área (AMZ, Darkness, Spirit Link...): na cor de quem usou */}
         {zones.map((z, i) => {
           if (now < z.t || now >= z.end || hiddenAreas.has(`def:${z.spellId}`)) return null;
@@ -1085,7 +1098,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
               return (
                 <g key={`orb-${i}`} className="replay-orb">
                   <circle cx={x} cy={y} r={r0 * (1 - (now - to) / POP_MS)} fill={c} opacity={1 - (now - to) / POP_MS} />
-                  <ImpactRing cx={x} cy={y} r={r0} age={now - to} dur={POP_MS} color={c} grow={3.5} />
+                  {layer('fx') && <ImpactRing cx={x} cy={y} r={r0} age={now - to} dur={POP_MS} color={c} grow={3.5} />}
                 </g>
               );
             }
@@ -1096,15 +1109,15 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             return (
               <g key={`orb-${i}`} className="replay-orb">
                 {kind?.volatile && <circle cx={x} cy={y} r={contact} fill={c} fillOpacity={0.07} stroke={c} strokeOpacity={0.55} strokeDasharray="3 3" />}
-                {cd && <TimerArc cx={x} cy={y} r={contact} cd={cd} color={c} />}
+                {cd && layer('timers') && <TimerArc cx={x} cy={y} r={contact} cd={cd} color={c} />}
                 <circle cx={x} cy={y} r={Math.max(3.5, ORB_YD * scale)} fill={c} stroke="var(--bg)" strokeWidth={1}>
                   <title>{cd ? t.orbClears(tr(kind?.name ?? { pt: '', en: '' }), cd.leftMs) : t.orb(tr(kind?.name ?? { pt: '', en: '' }))}</title>
                 </circle>
-                {cd && <TimerTag x={x} y={y - contact - 3} cd={cd} color={c} anchor="middle" />}
+                {cd && layer('timers') && <TimerTag x={x} y={y - contact - 3} cd={cd} color={c} anchor="middle" />}
               </g>
             );
           })}
-        {data.pickups && <Pickups data={data.pickups} now={now} sx={sx} sy={sy} name={(g) => shortName(data.units.get(g)?.name ?? '')} hidden={hiddenAreas} />}
+        {data.pickups && <Pickups data={data.pickups} now={now} sx={sx} sy={sy} fx={layer('fx')} name={(g) => shortName(data.units.get(g)?.name ?? '')} hidden={hiddenAreas} />}
         {data.pickups &&
           holders &&
           auraStacks &&
@@ -1121,8 +1134,8 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                   const n = Math.max(pending, auraStacks(kind.aura, h.guid, now) ?? 0);
                   if (!q || !n) return null;
                   return (
-                    <text key={`left-${kind.key}-${h.guid}`} x={sx(q[0]) - 9} y={sy(q[1]) + 3} textAnchor="end" className="replay-timer-tag replay-fragments-left">
-                      {t.fragmentsLeft(n)}
+                    <text key={`left-${kind.key}-${h.guid}`} x={sx(q[0]) - 9} y={sy(q[1]) + 3} textAnchor="end" className="replay-timer-tag replay-pickups-left">
+                      {t.pickupsLeft(n)}
                     </text>
                   );
                 }),
@@ -1134,7 +1147,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           const kick = [...casts].reverse().find((c) => c.guid === e.guid && c.interrupted && c.interruptedBy && c.end != null && now >= c.end && now - c.end <= KICK_SHOW_MS);
           return (
             <g key={e.guid}>
-              {kick && (
+              {kick && layer('kicks') && (
                 <text x={sx(p[0]) + 11} y={sy(p[1]) + 9} className="posmap-label replay-kick" style={{ fill: color(kick.interruptedBy!) }}>
                   {t.kickedBy(shortName(data.units.get(kick.interruptedBy!)?.name ?? '?'))}
                 </text>
@@ -1172,7 +1185,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                       // no cast: o contorno do tamanho certo e o preenchimento que avança do boss até a borda,
                       // no ritmo do cast; no golpe, um clarão que apaga
                       return done ? (
-                        <path d={sector(cx, cy, dir, h, r)} data-phase="impact" className="replay-cone impact" style={{ fillOpacity: 0.22 + 0.3 * Math.max(0, 1 - (now - end) / CONE_FLASH_MS) }}>
+                        <path d={sector(cx, cy, dir, h, r)} data-phase="impact" className="replay-cone impact" style={{ fillOpacity: 0.22 + (layer('fx') ? 0.3 * Math.max(0, 1 - (now - end) / CONE_FLASH_MS) : 0) }}>
                           <title>{c.name}</title>
                         </path>
                       ) : (
@@ -1219,7 +1232,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                 // num add, o próximo cast dele (ex.: o Wail of Terror para cortar)
                 const add = unitHp?.(e.guid, now) != null;
                 const nc = nextCast(casts, e.guid, now, NEXT_CONE_MS, true) ?? (add && !castNow(e.guid) ? nextCast(casts, e.guid, now, NEXT_ADD_MS) : null);
-                if (!nc || castNow(e.guid)?.cone) return null;
+                if (!nc || castNow(e.guid)?.cone || !layer('next')) return null;
                 const [bx, by] = [sx(p[0]), sy(p[1])];
                 const cd = countdown(nc.t - (nc.cone ? NEXT_CONE_MS : NEXT_ADD_MS), nc.t, now)!;
                 const label = t.nextCast(nc.name, cd.leftMs);
@@ -1508,6 +1521,16 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                 }}
               />
             )}
+            <MapFilter
+              icon={<Layers size={14} strokeWidth={1.75} aria-hidden />}
+              label={t.layers}
+              items={LAYERS.filter((k) => full || !FULL_ONLY_LAYERS.includes(k)).map((k) => ({ key: k, name: t.layer[k] }))}
+              hidden={hiddenLayers}
+              onChange={(next) => {
+                prefs.setHiddenLayers(next);
+                setHiddenLayers(next);
+              }}
+            />
             {full && (
               <button
                 className={`btn sm ghost ${names ? 'pressed' : ''}`}

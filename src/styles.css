@@ -7856,8 +7856,39 @@ button.kpi:hover {
   fill-opacity: 0.04;
   stroke-dasharray: 6 5;
 }
-.replay-fragments-left {
+.replay-pickups-left {
   fill: #67e8f9;
+}
+.replay-pool-tag {
+  fill: #5eead4;
+}
+/* CC dos players: a área na cor de quem usou (ou o anel no inimigo preso) e "quem: o quê" */
+.replay-cc-area {
+  stroke-width: 1.5;
+  stroke-opacity: 0.9;
+  pointer-events: none;
+}
+.replay-cc-area.ring {
+  stroke-width: 2;
+}
+.replay-cc-tag {
+  font-size: 9.5px;
+}
+/* portais do warlock: as duas pontas, o tracejado entre elas e o nome */
+.replay-gate {
+  fill-opacity: 0.25;
+  stroke-width: 2;
+}
+.replay-gate-link {
+  stroke: #c4b5fd;
+  stroke-opacity: 0.55;
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+  pointer-events: none;
+}
+.replay-gate-tag {
+  font-size: 9px;
+  fill: #ddd6fe;
 }
 
 /* ---------------------------------------------------------------- barra lateral: noites em árvore */

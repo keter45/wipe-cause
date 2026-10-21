@@ -76,7 +76,7 @@ function FightReplayInner({ pull }: { pull: Pull }) {
   const [selected, setSelected] = useState<string | null>(null);
   const replay = useMemo<ReplayRef>(() => ({ t: 0, from: 0, to: duration, focus: selected ? [selected] : [] }), [duration, selected]);
   // mortes, áreas, machados e defensivos em área (os mesmos do clipe)
-  const { isDead, holders, unitHp, auraStacks, vacated, vanished, zones } = useMemo(() => fightOverlays(pull, view, data), [pull, view, data]);
+  const { isDead, holders, unitHp, auraStacks, vacated, vanished, zones, cc, gateways } = useMemo(() => fightOverlays(pull, view, data), [pull, view, data]);
   // debuffs na cabeça: o usuário escolhe quais (os cruciais do pull, todos ligados no começo)
   const heads = useMemo(() => crucialSpells(view), [view]);
   const [hidden, setHidden] = useState<Set<number>>(() => prefs.hiddenHead(pull.encounterId));
@@ -145,6 +145,8 @@ function FightReplayInner({ pull }: { pull: Pull }) {
         vacated={vacated}
         vanished={vanished}
         zones={zones}
+        cc={cc}
+        gateways={gateways}
         legendExtra={heads.length > 0 && <HeadLegend heads={heads} hidden={hidden} onChange={setHeads} />}
         range={win}
         belowMap={<FightTimeline pull={pull} view={view} now={pb.now} duration={duration} win={win} onWin={setWin} selected={selected} classes={classes} onSeek={seek} />}

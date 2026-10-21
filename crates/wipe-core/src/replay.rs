@@ -64,6 +64,9 @@ struct Unit {
     died: Option<i64>,
 }
 
+/// Um ponto do mapa (jardas, coordenadas do log).
+pub type Point = (f32, f32);
+
 /// Posições de cada unidade ao longo do pull (ms desde o início).
 #[derive(Default)]
 pub struct Trails {
@@ -107,6 +110,17 @@ impl Trails {
             (Some(previous), _) if t - previous.0 <= max_age_ms => Some((previous.1, previous.2)),
             _ => None,
         }
+    }
+
+    /// Os dois lados de uma viagem rápida que começa em `t` (portal): onde a unidade estava logo antes
+    /// (até `max_age_ms`) e o ponto mais longe dali nos `travel_ms` seguintes (a viagem não é instantânea:
+    /// o log mostra o meio do caminho).
+    pub fn travel(&self, guid: &str, t: i64, travel_ms: i64, max_age_ms: i64) -> (Option<Point>, Option<Point>) {
+        let Some(u) = self.units.get(guid) else { return (None, None) };
+        let i = u.pts.partition_point(|p| p.0 <= t);
+        let Some(before) = i.checked_sub(1).map(|j| u.pts[j]).filter(|p| t - p.0 <= max_age_ms).map(|p| (p.1, p.2)) else { return (None, None) };
+        let far = u.pts[i..].iter().take_while(|p| p.0 <= t + travel_ms).map(|p| (p.1, p.2)).max_by(|a, b| (a.0 - before.0).hypot(a.1 - before.1).total_cmp(&(b.0 - before.0).hypot(b.1 - before.1)));
+        (Some(before), far)
     }
 
     /// Inimigo morto: some do replay a partir daqui.
