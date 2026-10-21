@@ -36,7 +36,8 @@ const CAST_PER_PULL = 1;
 const ARENA_FIT = 0.9;
 /** Fora da conferência: ataque corpo a corpo (o tank está sempre no boss) e dano sem origem (o próprio player). */
 const SKIP_SPELLS = new Set([1]);
-const SKIP_SOURCES = new Set(['@none', '@environment']);
+// `nil`: o mesmo "sem origem" no log local (o Warcraft Logs chama de @none), ex.: o orb que o próprio player pisa
+const SKIP_SOURCES = new Set(['@none', 'nil', '@environment']);
 /** Tipos que não ganham forma por padrão: dano que pega o raid, estado, interrupt. */
 const SHAPELESS_OK = new Set(['unavoidable', 'info', 'dispel', 'hp_balance', 'stack_limit', 'enrage']);
 
@@ -148,7 +149,7 @@ const drawn = new Set([
   ...(rule?.units ?? []).filter((u) => u.replay || u.boss || areaNpcs.has(u.npc_id)).map((u) => u.name),
 ]);
 const bySource = new Map();
-for (const s of spells.values()) for (const src of s.sources) bySource.set(src, (bySource.get(src) ?? 0) + s.damage / s.sources.size);
+for (const s of spells.values()) for (const src of s.sources) if (!SKIP_SOURCES.has(src)) bySource.set(src, (bySource.get(src) ?? 0) + s.damage / s.sources.size);
 const hiddenUnits = [...bySource.entries()].filter(([name, dmg]) => dmg / total >= UNIT_SHARE && !drawn.has(name)).map(([name, dmg]) => ({ name, share: dmg / total }));
 for (const u of hiddenUnits) add('ATENÇÃO', `${u.name} faz ${(u.share * 100).toFixed(1)}% do dano nos players e não aparece no mapa: \`units\` com \`replay: true\` (ou \`area: { npc }\` se o perigo é em volta dela).`);
 const ghosts = (rule?.mechanics ?? []).filter((m) => m.detect?.gaze);

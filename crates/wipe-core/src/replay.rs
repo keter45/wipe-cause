@@ -123,6 +123,20 @@ impl Trails {
         (Some(before), far)
     }
 
+    /// Primeira posição da unidade no pull (t, x, y).
+    pub fn first(&self, guid: &str) -> Option<(i64, f32, f32)> {
+        self.units.get(guid)?.pts.first().copied()
+    }
+
+    /// A unidade já existia em `t` (uma aura dela) mas o log só deu a posição depois: fica parada no
+    /// primeiro lugar conhecido desde `t`, se ele vem até `max_ms` depois.
+    pub fn backfill(&mut self, guid: &str, t: i64, max_ms: i64) {
+        let Some(u) = self.units.get_mut(guid) else { return };
+        if let Some(&(_, x, y)) = u.pts.first().filter(|p| p.0 > t && p.0 - t <= max_ms) {
+            u.pts.insert(0, (t, x, y));
+        }
+    }
+
     /// Inimigo morto: some do replay a partir daqui.
     pub fn on_enemy_died(&mut self, guid: &str, t: i64) {
         if let Some(u) = self.units.get_mut(guid) {

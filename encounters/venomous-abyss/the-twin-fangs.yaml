@@ -7,7 +7,7 @@ source:
   - https://www.mythictrap.com/en/venomous-abyss/the-twin-fangs/mythic
   - https://warcraft.wiki.gg/wiki/The_Twin_Fangs   # IDs do Encounter Journal
   - "log: Split-2026-09-25T000428.939Z-TheTwinFangs Mythic (28 pulls) — IDs de dano/aura calibrados"
-updated: 2026-09-28
+updated: 2026-10-21
 difficulties: [normal, heroic, mythic]
 
 units:
@@ -15,7 +15,10 @@ units:
   - { key: ithraz, name: "Ithraz", npc_id: 257368, boss: true }
   - { key: broodling, name: "Broodling of Ithraz", npc_id: 270898 }   # interrupt: entra no replay e some depois do último cast
   - { key: spawn_of_vexhul, name: "Spawn of Vexhul", npc_id: 264023, replay: true }   # os adds do meio que têm que morrer (soltam o Corrosive Spit)
-  - { key: barbed_bulwark, name: "Barbed Bulwark", npc_id: null }
+  # Mítico: cada Caustic Globule nasce como esta unidade, com o escudo (aura 1303378) até o CC quebrar. O log
+  # nunca a mata: sai do mapa no soak que a limpou (21/10: quem pegou estava a 4,5 jd na mediana, 99% até 8 jd;
+  # 2,9s depois de nascer na mediana, até 14,2s) ou 15s depois de aparecer
+  - { key: barbed_bulwark, name: "Barbed Bulwark", npc_id: 269194, replay: true, cleared_by: caustic_globule, lifetime_s: 15 }
 
 mechanics:
   # ---------- Debuff central da luta ----------
@@ -154,7 +157,7 @@ mechanics:
     type: unavoidable
     source_unit: vexhul
     severity: none
-    detect: { damage_ids: [1292806] }
+    detect: { damage_ids: [1292806], cast_id: 1290956 }   # o cast (instantâneo) abre as ondas
     tip: { pt: "Pulso de dano no raid; healers seguram.", en: "Raid damage pulse; healers hold it." }
     message: { pt: "Stir the Depths", en: "Stir the Depths" }
 
@@ -163,7 +166,7 @@ mechanics:
     type: avoidable_damage
     source_unit: vexhul
     severity: wipe
-    detect: { damage_ids: [1294605] }
+    detect: { damage_ids: [1294605], cast_id: 1294293 }
     tip: { pt: "Fugir do feixe giratório na transição: cada hit dá 1 stack de Eternal Venom.", en: "Run from the rotating beam during the transition: every hit gives 1 Eternal Venom stack." }
     message: { pt: "{player} foi atingido pelo feixe do Vile Flood ({count}x)", en: "{player} was hit by the Vile Flood beam ({count}x)" }
 
@@ -174,6 +177,7 @@ mechanics:
     roles: [tank]
     severity: minor
     detect: { damage_ids: [1295107] }
+    ground: false   # bolt no tank que saiu de alcance: nada no chão
     tip: { pt: "Tank do Vexhul dentro do alcance.", en: "Vexhul's tank stays within range." }
     message: { pt: "{player} tomou Concentrated Spittle {count}x (fora de alcance)", en: "{player} took Concentrated Spittle {count}x (out of range)" }
     notes: "Mesmo padrão do Clotted Bolt (casts ≈ hits); confirmar que é o bolt de alcance do Vexhul."
@@ -186,9 +190,22 @@ mechanics:
     difficulty: [mythic]
     severity: minor
     detect: { cast_id: 1303378, damage_ids: [1307363] }
+    unit_aura: { aura: 1303378, absorb: true, stacks: false }   # o escudo no orb: anel no mapa e quanto já absorveu (o log repete o APPLIED)
     tip: { pt: "Escudo nos orbs: CC para quebrar antes do soak.", en: "Shield on the orbs: CC to break it before the soak." }
     message: { pt: "Barbed Bulwark", en: "Barbed Bulwark" }
-    notes: "Blood Torrent (1303230) no tank. Regra de CC ainda não avaliada."
+    notes: "Blood Torrent (1303230) no tank. Regra de CC ainda não avaliada. 21/10: cada orb do Caustic Deluge nasce como a unidade Barbed Bulwark (269194) e casta o próprio escudo (1303378) ~2s depois do Blood Torrent; as posições não mudam (é o orb)."
+
+  - key: blood_torrent
+    name: "Blood Torrent"
+    type: info
+    source_unit: ithraz
+    roles: [tank]
+    difficulty: [mythic]
+    severity: none
+    detect: { cast_id: 1303230, aura_id: 1303235 }
+    tip: { pt: "Canal de absorção de cura no tank: enquanto dura, os orbs nascem com o escudo do Barbed Bulwark.", en: "Heal-absorb channel on the tank: while it lasts, the orbs spawn with the Barbed Bulwark shield." }
+    message: { pt: "Blood Torrent", en: "Blood Torrent" }
+    notes: "21/10: cast 1303230 (1s) no tank, aura 1303235 com absorção de cura; os Barbed Bulwark castam o escudo ~2s depois."
 
   - key: visceral_burst
     name: "Visceral Burst"
@@ -247,9 +264,11 @@ mechanics:
     type: unavoidable
     source_unit: ithraz
     severity: none
-    detect: { damage_ids: [1290878], aura_id: 1290809 }
+    detect: { damage_ids: [1290878], aura_id: 1290814, cast_id: 1290809 }
+    area: { aura: 1290814, radius: 12 }   # 21/10: o DoT pega quem está perto do marcado (Youden 12 jd, 90% dos acertos e 14% dos de fora), raio igual nos 12s
     tip: { pt: "DoT em quem é marcado; ir para a borda antes da poça cair.", en: "DoT on whoever is marked; go to the edge before the pool drops." }
     message: { pt: "Coiling Ichor", en: "Coiling Ichor" }
+    notes: "1290809 é o cast (3s); a aura nos players é 1290814 (3 por cast, 12s). O dano 1290878 cai em quem tem a aura e em quem está a até ~12 jd. Ao sair, o marcado solta uma poça (Congealed Gore 1292552 em ~0,5s, a ~1 jd de onde ele estava)."
 
   - key: congealed_gore
     name: "Congealed Gore"
@@ -270,6 +289,10 @@ mechanics:
     detect:
       damage_ids: [1310371]     # hit no tank que soaka
       fail_ids: [1289153]       # raid inteiro toma quando um smash não é soakado
+      cast_id: 1288538          # cada smash: 1,5s de cast, 3 seguidos (1289092 é o mesmo smash: o debuff de 90s no tank)
+    # 21/10: o smash cai a 25 jd na frente do Ithraz (a direção dele no fim do cast): o tank estava a 0,9 jd
+    # desse ponto na mediana (p90 1,9) em 365 smashes; nas 22 falhas o player mais perto estava a 2-24 jd
+    soak: { radius: 3, players: 1, ahead: 25 }
     tip: { pt: "Um tank soaka os 3 smashes, na ordem.", en: "One tank soaks the 3 smashes, in order." }
     message: { pt: "{count} smash(es) de Stone Breaker sem soak", en: "{count} Stone Breaker smash(es) without a soak" }
 
@@ -278,7 +301,7 @@ mechanics:
     type: avoidable_damage
     source_unit: ithraz
     severity: minor
-    detect: { damage_ids: [1306876] }
+    detect: { damage_ids: [1306876], cast_id: 1306872 }
     tip: { pt: "Desviar dos swirlies enquanto foge do feixe.", en: "Dodge the swirlies while running from the beam." }
     message: { pt: "{player} tomou {count}x Sanguine Storm", en: "{player} took Sanguine Storm {count}x" }
 
@@ -289,6 +312,7 @@ mechanics:
     roles: [tank]
     severity: major
     detect: { damage_ids: [1295115] }
+    ground: false   # bolt no tank que saiu de alcance: nada no chão
     tip: { pt: "Tank do Ithraz dentro do alcance.", en: "Ithraz's tank stays within range." }
     message: { pt: "{player} tomou Clotted Bolt {count}x (fora de alcance)", en: "{player} took Clotted Bolt {count}x (out of range)" }
 

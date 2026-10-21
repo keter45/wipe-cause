@@ -200,6 +200,10 @@ pub struct SoakSpec {
     pub radius: f32,
     #[serde(default)]
     pub players: Option<u32>,
+    /// o círculo fica a tantas jardas na frente de quem lançou (a direção dele no fim do cast `cast_id`):
+    /// um por cast, mesmo sem ninguém dentro (o smash que ninguém pegou aparece)
+    #[serde(default)]
+    pub ahead: Option<f32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -227,6 +231,8 @@ pub struct SoakInfo {
     pub cast_id: Option<u32>,
     pub radius: f32,
     pub players: Option<u32>,
+    /// jardas na frente de quem lançou (`SoakSpec::ahead`)
+    pub ahead: Option<f32>,
 }
 
 /// Fragmentos para pegar: quem tem a `aura` pega um a cada acerto de `hit_ids` (onde ele estava ao
@@ -267,6 +273,14 @@ pub struct UnitAuraSpec {
     pub aura: u32,
     #[serde(default)]
     pub absorb: bool,
+    /// a aura tem stacks (o log põe as iniciais como vários APPLIED seguidos); `false` quando o log só
+    /// repete a mesma linha (o escudo do orb sai duas vezes no mesmo ms)
+    #[serde(default = "yes")]
+    pub stacks: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 /// Frontal em cone: o cast que o solta e o tamanho.
@@ -408,6 +422,26 @@ pub struct RuleSet {
     phases: Vec<PhaseDef>,
     /// npcs das unidades com `replay: true` (adds que importam: entram no replay mesmo sem HP de boss)
     replay_npcs: Vec<u32>,
+    /// unidades que somem sem UNIT_DIED (o orb que alguém pegou): `cleared_by` e `lifetime_s`
+    unit_clears: Vec<UnitClearDef>,
+}
+
+/// Unidade que o log nunca mata (o orb no chão): sai do mapa quando a mecânica `cleared_by` acerta
+/// alguém perto dela (o soak que a limpou) ou `lifetime_s` depois de aparecer, o que vier antes.
+#[derive(Debug, Clone)]
+struct UnitClearDef {
+    npc: u32,
+    cleared_by: Option<String>,
+    lifetime_s: Option<f64>,
+}
+
+/// `UnitClearDef` do pull: a mecânica já como índice e o raio do soak/área dela.
+#[derive(Debug, Clone)]
+pub struct UnitClear {
+    pub npc: u32,
+    /// (índice da mecânica, raio em jardas)
+    pub cleared_by: Option<(usize, f32)>,
+    pub lifetime_ms: Option<i64>,
 }
 
 /// Fase da regra: (key, nome, cast que abre, npcs cuja vida é o progresso da fase, npc que abre a
@@ -459,7 +493,21 @@ impl RuleSet {
                     .collect()
             })
             .unwrap_or_default();
-        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics, phases, replay_npcs };
+        let unit_clears = doc
+            .get("units")
+            .and_then(Value::as_sequence)
+            .map(|us| {
+                us.iter()
+                    .filter_map(|u| {
+                        let npc = u.get("npc_id").and_then(Value::as_u64)? as u32;
+                        let cleared_by = u.get("cleared_by").and_then(Value::as_str).map(str::to_string);
+                        let lifetime_s = u.get("lifetime_s").and_then(Value::as_f64);
+                        (cleared_by.is_some() || lifetime_s.is_some()).then_some(UnitClearDef { npc, cleared_by, lifetime_s })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics, phases, replay_npcs, unit_clears };
         // valida já na carga, para erro de YAML aparecer cedo
         for diff in [14, 15, 16] {
             set.mechanics_for(diff)?;
@@ -645,6 +693,7 @@ impl RuleBook {
             mechanics: Vec::new(),
             phases: Vec::new(),
             replay_npcs: Vec::new(),
+            unit_clears: Vec::new(),
         });
         match base.tuned(t) {
             Ok(set) => {
@@ -793,6 +842,7 @@ pub struct RuleTracker {
     /// fases do boss (keys), o cast que abre cada uma e a fase atual
     phase_keys: Vec<String>,
     replay_npcs: Vec<u32>,
+    unit_clears: Vec<UnitClear>,
     phase_names: Vec<String>,
     phase_starts: HashMap<u32, usize>,
     phase: usize,
@@ -863,8 +913,27 @@ impl RuleTracker {
             }
         }
         let replay_npcs = sets.first().map(|s| s.replay_npcs.clone()).unwrap_or_default();
+        let unit_clears = sets
+            .first()
+            .map(|s| {
+                s.unit_clears
+                    .iter()
+                    .map(|c| UnitClear {
+                        npc: c.npc,
+                        // o raio de quem limpa: o do soak (ou da área) da mecânica
+                        cleared_by: c.cleared_by.as_ref().and_then(|k| {
+                            let i = mechs.iter().position(|m| &m.key == k)?;
+                            let r = mechs[i].soak.as_ref().map(|s| s.radius).or(mechs[i].area.as_ref().map(|a| a.radius))?;
+                            Some((i, r))
+                        }),
+                        lifetime_ms: c.lifetime_s.map(|s| (s * 1000.0) as i64),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         Ok(RuleTracker {
             replay_npcs,
+            unit_clears,
             phase_keys,
             phase_names,
             phase_hp,
@@ -1300,12 +1369,22 @@ impl RuleTracker {
         let m = self.mechs.get(i)?;
         let s = m.soak.as_ref()?;
         let spell_id = m.detect.damage_ids.iter().flatten().next().copied().unwrap_or(0);
-        Some(SoakInfo { key: m.key.clone(), name: m.name.clone(), spell_id, cast_id: m.detect.cast_id, radius: s.radius, players: s.players })
+        Some(SoakInfo { key: m.key.clone(), name: m.name.clone(), spell_id, cast_id: m.detect.cast_id, radius: s.radius, players: s.players, ahead: s.ahead })
+    }
+
+    /// Soaks que saem do cast e não dos acertos (`soak.ahead` com `cast_id`): índice e dados.
+    pub fn cast_soaks(&self) -> Vec<(usize, SoakInfo)> {
+        (0..self.mechs.len()).filter_map(|i| self.soak_info(i).filter(|s| s.ahead.is_some() && s.cast_id.is_some()).map(|s| (i, s))).collect()
     }
 
     /// npcs que entram no replay por regra (`units` com `replay: true`).
     pub fn replay_npcs(&self) -> &[u32] {
         &self.replay_npcs
+    }
+
+    /// Unidades que somem sem UNIT_DIED (`units` com `cleared_by` / `lifetime_s`).
+    pub fn unit_clears(&self) -> &[UnitClear] {
+        &self.unit_clears
     }
 
     /// Fragmentos para pegar: (key, nome, spell do acerto, aura) de cada mecânica com `pickup`, na ordem.
@@ -1338,8 +1417,8 @@ impl RuleTracker {
     }
 
     /// Aura de inimigo que o mapa mostra: (key, nome, conta o absorvido).
-    pub fn unit_aura_for(&self, aura: u32) -> Option<(&str, &str, bool)> {
-        self.mechs.iter().find_map(|m| m.unit_aura.as_ref().filter(|u| u.aura == aura).map(|u| (m.key.as_str(), m.name.as_str(), u.absorb)))
+    pub fn unit_aura_for(&self, aura: u32) -> Option<(&str, &str, bool, bool)> {
+        self.mechs.iter().find_map(|m| m.unit_aura.as_ref().filter(|u| u.aura == aura).map(|u| (m.key.as_str(), m.name.as_str(), u.absorb, u.stacks)))
     }
 
     /// Frontal em cone que este cast solta.
@@ -2649,6 +2728,22 @@ mechanics:
         assert_eq!(pools.iter().map(|p| (p.0.as_str(), p.3.cast_id, p.3.shapes.len())).collect::<Vec<_>>(), vec![("noxious_ground", 1282487, 2), ("defiled_ground", 1298381, 2)]);
         let heroic = RuleTracker::new(&sets, 15).unwrap();
         assert_eq!(heroic.ground_contour_cell(1298591), Some(2.0));
+    }
+
+    #[test]
+    fn twin_fangs_replay_places_the_smash_and_clears_the_orbs() {
+        let book = RuleBook::embedded();
+        let sets = book.for_encounter(3421, "The Twin Fangs");
+        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        // o smash do Stone Breaker: um círculo por cast, 25 jd na frente do Ithraz
+        let smash = tracker.cast_soaks();
+        assert_eq!(smash.iter().map(|(_, s)| (s.key.as_str(), s.cast_id, s.ahead, s.radius)).collect::<Vec<_>>(), vec![("stone_breaker", Some(1288538), Some(25.0), 3.0)]);
+        // o orb (Barbed Bulwark) sai do mapa no soak do Caustic Globule (raio 5) ou em 15s
+        let clears = tracker.unit_clears();
+        assert_eq!(clears.len(), 1);
+        let globule = tracker.soak_for(1289201).unwrap();
+        assert_eq!((clears[0].npc, clears[0].cleared_by, clears[0].lifetime_ms), (269194, Some((globule, 5.0)), Some(15_000)));
+        assert_eq!(tracker.unit_aura_for(1303378).map(|a| (a.2, a.3)), Some((true, false)));
     }
 
     #[test]

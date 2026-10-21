@@ -23,6 +23,7 @@
   },
   "3421": {
    "name": "The Twin Fangs",
+   "offFloor": [257361, 257368, 270898, 264023],
    "image": "https://cdn.raidplan.io/raid/wow.venomabyss/map/06.twinfangs-ort-v140.jpg",
    "size": [2448, 1371],
    "pxPerYd": 9.8022,
