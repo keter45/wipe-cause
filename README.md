@@ -1,4 +1,9 @@
 <p align="center">
+  <a href="https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?style=for-the-badge&label=Download%20for%20Windows&logo=windows&logoColor=white&color=d4a54a" alt="Download for Windows" height="40"></a>
+  <a href="https://keter45.github.io/wipe-cause/"><img src="https://img.shields.io/badge/Use%20online-no%20install-4cc38a?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Use online, no install" height="40"></a>
+</p>
+
+<p align="center">
   <img src="app-icon.svg" width="96" alt="Wipe Cause">
 </p>
 
@@ -17,10 +22,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?style=for-the-badge&label=Download%20for%20Windows&logo=windows&logoColor=white&color=d4a54a" alt="Download for Windows" height="40"></a>
-  <a href="https://keter45.github.io/wipe-cause/"><img src="https://img.shields.io/badge/Use%20online-no%20install-4cc38a?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Use online, no install" height="40"></a>
-</p>
-<p align="center">
   <a href="https://github.com/keter45/wipe-cause/releases/latest">What's new</a>
   &nbsp;·&nbsp;
   <a href="README.pt-BR.md">Português</a>
@@ -33,23 +34,38 @@
   <a href="docs/CONTRIBUTING.md">Contribute</a>
 </p>
 
-![Pull analysis showing the wipe trigger, mechanic mistakes and the players involved](docs/screenshots/en/pull.webp)
+![Current replay of The Coiled Altar with the arena, ghosts, damage meter, raid frames and timeline](docs/screenshots/en/replay-overview.webp)
 
-<p align="center"><i>From “what happened?” to a clear plan for the next pull.</i></p>
+<p align="center"><i>Replay the fight, find the mistake and bring the fix to the next pull.</i></p>
 
 ## See it in action
 
-### Replay the mistake that ended the pull
+### The whole fight, on the map and timeline
 
-Follow movement, boss frontals, debuffs and deaths on an interactive map. Jump to the decisive moment and export an animated WebP clip to show the raid.
+Follow players in the arena alongside frontals, areas, orbs and ghosts from boss mechanics. Raid frames show health and debuffs; meters track damage and healing. Select a player on the map or in the frames to investigate what happened to them.
+
+Navigate phases, deaths and failures, or expand the individual mechanic lanes. Click a mark to jump to the event, zoom the timeline and replay the moment at the speed you need.
+
+![Replay timeline with phases, deaths and individual mechanic lanes](docs/screenshots/en/replay-timeline.webp)
+
+### From the mistake to a clip for your raid
+
+Choose the start and end of the moment, adjust the camera and export an **animated WebP** with the whole arena or a player in focus. In Live mode, the app can also send the wipe clip to Discord.
 
 <p align="center">
-  <img src="docs/screenshots/en/replay.webp" alt="Animated replay of The Coiled Altar showing player positions and the mechanic that caused the wipe" width="640">
+  <img src="docs/screenshots/en/replay.webp" alt="Ten-second replay clip focused on Kaelis during the ghost mechanic" width="640">
 </p>
 
 ### Understand deaths. Fix mechanics.
 
 See the killing blow, active debuffs, healing received and defensives left unused. Each mechanic shows who missed it, how often and what to do differently.
+
+<details>
+<summary>See the pull diagnosis</summary>
+
+![Pull analysis showing the wipe trigger, mechanic mistakes and the players involved](docs/screenshots/en/pull.webp)
+
+</details>
 
 ![Death breakdown with damage, healing, debuffs and player position](docs/screenshots/en/death.webp)
 

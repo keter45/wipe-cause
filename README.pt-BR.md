@@ -1,4 +1,9 @@
 <p align="center">
+  <a href="https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?style=for-the-badge&label=Baixar%20para%20Windows&logo=windows&logoColor=white&color=d4a54a" alt="Baixar para Windows" height="40"></a>
+  <a href="https://keter45.github.io/wipe-cause/"><img src="https://img.shields.io/badge/Usar%20online-sem%20instalar-4cc38a?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Usar online, sem instalar" height="40"></a>
+</p>
+
+<p align="center">
   <img src="app-icon.svg" width="96" alt="Wipe Cause">
 </p>
 
@@ -17,10 +22,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe"><img src="https://img.shields.io/github/v/release/keter45/wipe-cause?style=for-the-badge&label=Baixar%20para%20Windows&logo=windows&logoColor=white&color=d4a54a" alt="Baixar para Windows" height="40"></a>
-  <a href="https://keter45.github.io/wipe-cause/"><img src="https://img.shields.io/badge/Usar%20online-sem%20instalar-4cc38a?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Usar online, sem instalar" height="40"></a>
-</p>
-<p align="center">
   <a href="https://github.com/keter45/wipe-cause/releases/latest">Novidades da versão</a>
   &nbsp;·&nbsp;
   <a href="README.md">English</a>
@@ -33,23 +34,38 @@
   <a href="docs/CONTRIBUTING.pt-BR.md">Contribuir</a>
 </p>
 
-![Análise de um pull com o gatilho do wipe, os erros de mecânica e os players envolvidos](docs/screenshots/pt/pull.webp)
+![Replay atual do The Coiled Altar com arena, fantasmas, medidor de dano, frames da raid e linha do tempo](docs/screenshots/pt/replay-overview.webp)
 
-<p align="center"><i>Do “o que aconteceu?” ao que fazer diferente na próxima try.</i></p>
+<p align="center"><i>Reveja a luta, encontre o erro e leve o ajuste para a próxima try.</i></p>
 
 ## Veja em ação
 
-### Reveja o erro que acabou com a try
+### A luta inteira, no mapa e na linha do tempo
 
-Acompanhe movimentação, frontais do boss, debuffs e mortes em um mapa interativo. Vá direto ao momento decisivo e exporte um clipe WebP animado para mostrar à raid.
+Acompanhe os players na arena junto de frontais, áreas, orbs e fantasmas das mecânicas. Os frames da raid mostram vida e debuffs; os medidores acompanham dano e cura. Selecione um player no mapa ou nos frames para investigar o que aconteceu com ele.
+
+Navegue pelas fases, mortes e falhas ou abra as faixas de cada mecânica. Clique em uma marca para ir direto ao evento, ajuste o zoom da linha do tempo e reveja o trecho na velocidade que precisar.
+
+![Linha do tempo do replay com fases, mortes e faixas de mecânicas](docs/screenshots/pt/replay-timeline.webp)
+
+### Do erro ao clipe para a raid
+
+Escolha o início e o fim do trecho, ajuste a câmera e exporte um **WebP animado** com a arena inteira ou foco no player. No modo ao vivo, o app também pode enviar o clipe do wipe ao Discord.
 
 <p align="center">
-  <img src="docs/screenshots/pt/replay.webp" alt="Replay animado do The Coiled Altar com as posições dos players e a mecânica que causou o wipe" width="640">
+  <img src="docs/screenshots/pt/replay.webp" alt="Clipe de dez segundos do replay, focado em Kaelis durante a mecânica dos fantasmas" width="640">
 </p>
 
 ### Entenda as mortes. Acerte as mecânicas.
 
 Veja o golpe final, os debuffs ativos, a cura recebida e os defensivos que sobraram. Cada mecânica mostra quem errou, quantas vezes e o que fazer diferente.
+
+<details>
+<summary>Veja o diagnóstico do pull</summary>
+
+![Análise de um pull com o gatilho do wipe, os erros de mecânica e os players envolvidos](docs/screenshots/pt/pull.webp)
+
+</details>
 
 ![Detalhes de uma morte com dano, cura, debuffs e posição do player](docs/screenshots/pt/death.webp)
 
