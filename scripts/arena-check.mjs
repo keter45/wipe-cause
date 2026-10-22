@@ -133,9 +133,13 @@ for (const [key, k] of rows) {
 }
 
 if (drawTo) {
-  // log -> pixel da imagem, como src/lib/arenas.ts: norte (x do log) para cima, oeste (+y) para a esquerda
+  // log -> pixel da imagem, como src/lib/arenas.ts: no mapa (x = -Y, y = X), girado por `rotation`
   const s = arena.pxPerYd;
-  const px = ([x, y]) => [arena.anchorPx[0] + (arena.anchorAt[1] - y) * s, arena.anchorPx[1] - (x - arena.anchorAt[0]) * s];
+  const r = ((arena.rotation ?? 0) * Math.PI) / 180;
+  const px = ([x, y]) => {
+    const [mx, my] = [-(y - arena.anchorAt[1]), x - arena.anchorAt[0]];
+    return [arena.anchorPx[0] + s * (Math.cos(r) * mx - Math.sin(r) * my), arena.anchorPx[1] + s * (-Math.sin(r) * mx - Math.cos(r) * my)];
+  };
   const poly = (p, cls) => `<polygon points="${p.map((q) => px(q).map((v) => v.toFixed(1)).join(',')).join(' ')}" class="${cls}"/>`;
   const colors = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#00c7be', '#0a84ff', '#bf5af2', '#ff2d55', '#ffffff'];
   // players por baixo, depois as unidades com mais posições

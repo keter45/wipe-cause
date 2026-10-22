@@ -266,6 +266,27 @@ pub struct PoolShape {
     pub radius: f32,
 }
 
+/// Ondas que saem de quem tinha a `aura` quando ela sai: `directions` ondas igualmente espaçadas a partir
+/// de `angle` (graus, no sistema do log: 0 = +x, 90 = +y), a frente começando a `start` jardas e andando
+/// a `speed` jardas/s por `duration_s`; cada onda tem `width` jardas de largura.
+#[derive(Debug, Clone, Deserialize)]
+pub struct WaveSpec {
+    pub aura: u32,
+    #[serde(default = "four")]
+    pub directions: u32,
+    #[serde(default)]
+    pub angle: f32,
+    #[serde(default)]
+    pub start: f32,
+    pub speed: f32,
+    pub width: f32,
+    pub duration_s: f32,
+}
+
+fn four() -> u32 {
+    4
+}
+
 /// Aura num inimigo que o mapa mostra (o escudo do add, o véu do boss): anel com as stacks e, com
 /// `absorb`, quanto ela já absorveu.
 #[derive(Debug, Clone, Deserialize)]
@@ -360,6 +381,8 @@ pub struct Mechanic {
     pub unit_aura: Option<UnitAuraSpec>,
     /// replay: poça que o cast abre em lugares fixos da sala, com o tamanho medido
     pub pool: Option<PoolSpec>,
+    /// replay: ondas que saem de quem tinha uma aura quando ela sai
+    pub waves: Option<WaveSpec>,
     /// ajustes do usuário (preenchidos pela camada de ajustes, não pelo YAML)
     #[serde(default)]
     pub focus: bool,
@@ -424,6 +447,21 @@ pub struct RuleSet {
     replay_npcs: Vec<u32>,
     /// unidades que somem sem UNIT_DIED (o orb que alguém pegou): `cleared_by` e `lifetime_s`
     unit_clears: Vec<UnitClearDef>,
+    /// unidades vistas desde a primeira linha (`from_first_line`) e contadas vivas (`count`)
+    seen_units: Vec<SeenUnit>,
+    /// cara de cada tipo de unidade no mapa (`color`, `icon`)
+    unit_looks: Vec<crate::report::UnitLook>,
+}
+
+/// Unidade que o replay acompanha pelas linhas do log, mesmo sem posição: `from_first_line` desenha desde a
+/// primeira linha que a cita, no primeiro lugar que o log der (o tumor do Vashnik só tem posição no fim do
+/// cast); `count` conta quantas estão vivas (da primeira linha ao UNIT_DIED).
+#[derive(Debug, Clone)]
+pub struct SeenUnit {
+    pub npc: u32,
+    pub name: String,
+    pub from_first_line: bool,
+    pub count: bool,
 }
 
 /// Unidade que o log nunca mata (o orb no chão): sai do mapa quando a mecânica `cleared_by` acerta
@@ -507,7 +545,36 @@ impl RuleSet {
                     .collect()
             })
             .unwrap_or_default();
-        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics, phases, replay_npcs, unit_clears };
+        let seen_units = doc
+            .get("units")
+            .and_then(Value::as_sequence)
+            .map(|us| {
+                us.iter()
+                    .filter_map(|u| {
+                        let npc = u.get("npc_id").and_then(Value::as_u64)? as u32;
+                        let from_first_line = u.get("from_first_line").and_then(Value::as_bool) == Some(true);
+                        let count = u.get("count").and_then(Value::as_bool) == Some(true);
+                        let name = u.get("name").and_then(Value::as_str).unwrap_or_default().to_string();
+                        (from_first_line || count).then_some(SeenUnit { npc, name, from_first_line, count })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let unit_looks = doc
+            .get("units")
+            .and_then(Value::as_sequence)
+            .map(|us| {
+                us.iter()
+                    .filter_map(|u| {
+                        let npc = u.get("npc_id").and_then(Value::as_u64)? as u32;
+                        let color = u.get("color").and_then(Value::as_str).map(str::to_string);
+                        let icon = u.get("icon").and_then(Value::as_u64).map(|n| n as u32);
+                        (color.is_some() || icon.is_some()).then_some(crate::report::UnitLook { npc, color, icon })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics, phases, replay_npcs, unit_clears, seen_units, unit_looks };
         // valida já na carga, para erro de YAML aparecer cedo
         for diff in [14, 15, 16] {
             set.mechanics_for(diff)?;
@@ -694,6 +761,8 @@ impl RuleBook {
             phases: Vec::new(),
             replay_npcs: Vec::new(),
             unit_clears: Vec::new(),
+            seen_units: Vec::new(),
+            unit_looks: Vec::new(),
         });
         match base.tuned(t) {
             Ok(set) => {
@@ -843,6 +912,8 @@ pub struct RuleTracker {
     phase_keys: Vec<String>,
     replay_npcs: Vec<u32>,
     unit_clears: Vec<UnitClear>,
+    seen_units: Vec<SeenUnit>,
+    unit_looks: Vec<crate::report::UnitLook>,
     phase_names: Vec<String>,
     phase_starts: HashMap<u32, usize>,
     phase: usize,
@@ -931,9 +1002,13 @@ impl RuleTracker {
                     .collect()
             })
             .unwrap_or_default();
+        let seen_units = sets.first().map(|s| s.seen_units.clone()).unwrap_or_default();
+        let unit_looks = sets.first().map(|s| s.unit_looks.clone()).unwrap_or_default();
         Ok(RuleTracker {
+            unit_looks,
             replay_npcs,
             unit_clears,
+            seen_units,
             phase_keys,
             phase_names,
             phase_hp,
@@ -1380,6 +1455,24 @@ impl RuleTracker {
     /// npcs que entram no replay por regra (`units` com `replay: true`).
     pub fn replay_npcs(&self) -> &[u32] {
         &self.replay_npcs
+    }
+
+    /// Ondas da aura (regra com `waves`): chave, nome, spell do acerto e a forma.
+    pub fn waves_for_aura(&self, aura: u32) -> Option<(&str, &str, u32, &WaveSpec)> {
+        self.mechs.iter().find_map(|m| {
+            let w = m.waves.as_ref().filter(|w| w.aura == aura)?;
+            Some((m.key.as_str(), m.name.as_str(), m.detect.damage_ids.iter().flatten().next().copied().unwrap_or(0), w))
+        })
+    }
+
+    /// Cor e ícone de cada tipo de unidade no mapa (`units` com `color` / `icon`).
+    pub fn unit_looks(&self) -> &[crate::report::UnitLook] {
+        &self.unit_looks
+    }
+
+    /// Unidades acompanhadas pelas linhas do log (`units` com `from_first_line` / `count`).
+    pub fn seen_units(&self) -> &[SeenUnit] {
+        &self.seen_units
     }
 
     /// Unidades que somem sem UNIT_DIED (`units` com `cleared_by` / `lifetime_s`).
@@ -2744,6 +2837,25 @@ mechanics:
         let globule = tracker.soak_for(1289201).unwrap();
         assert_eq!((clears[0].npc, clears[0].cleared_by, clears[0].lifetime_ms), (269194, Some((globule, 5.0)), Some(15_000)));
         assert_eq!(tracker.unit_aura_for(1303378).map(|a| (a.2, a.3)), Some((true, false)));
+    }
+
+    #[test]
+    fn vashnik_plague_froth_sends_four_axis_waves() {
+        let book = RuleBook::embedded();
+        let sets = book.for_encounter(3455, "Vashnik the Malignant");
+        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        let (key, _, spell, w) = tracker.waves_for_aura(1281913).unwrap();
+        assert_eq!((key, spell, w.directions, w.angle), ("plague_wave", 1295798, 4, 0.0));
+        assert_eq!((w.start, w.speed, w.width, w.duration_s), (4.0, 12.3, 6.0, 5.0));
+        assert!(tracker.waves_for_aura(1281910).is_none());
+        // os tumores: desenhados desde a primeira linha (só quem tem posição no fim do cast) e contados vivos
+        let tumor = tracker.seen_units().iter().find(|u| u.npc == 269430).unwrap();
+        assert!(tumor.from_first_line && tumor.count);
+        assert!(tracker.replay_npcs().contains(&269430));
+        // cada add na cor da fonte de onde sai, com um ícone
+        let looks: Vec<(u32, Option<&str>, Option<u32>)> = tracker.unit_looks().iter().map(|l| (l.npc, l.color.as_deref(), l.icon)).collect();
+        assert!(looks.contains(&(260905, Some("#f97316"), Some(1305901))));
+        assert!(looks.contains(&(260895, Some("#a78bfa"), Some(1312366))));
     }
 
     #[test]

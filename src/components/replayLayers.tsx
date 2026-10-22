@@ -176,6 +176,72 @@ export function Pools({ pools, now, sx, sy, scale, clip, hidden, labels }: { poo
   );
 }
 
+/** Cor das ondas (regra `waves`). */
+const WAVE_COLOR = '#a3e635';
+/** Marca do player antes das ondas: as setas vão de 2 a 7 jd dele. */
+const WAVE_MARK_YD = [2, 7] as const;
+/** As ondas somem nos últimos 500 ms. */
+const WAVE_FADE_MS = 500;
+
+/**
+ * Ondas que saem de um player marcado (coordenadas do mapa): antes, setas tracejadas nas direções
+ * em volta dele, com o arco que fecha até a saída; depois, uma barra por direção andando para fora.
+ */
+export function Waves({ waves, now, sx, sy, scale, clip, hidden, labels, posOf }: { waves: NonNullable<ReplayData['waves']>; now: number; sx: (x: number) => number; sy: (y: number) => number; scale: number; clip?: string; hidden: Set<string>; labels: boolean; posOf: (guid: string) => [number, number] | null }) {
+  const t = useMessages(replayMsg);
+  return (
+    <g className="replay-waves" style={{ color: WAVE_COLOR }}>
+      {waves.map((w, i) => {
+        if (now < w.from || now >= w.at + w.durationMs || hidden.has('wave:' + w.key)) return null;
+        if (now < w.at) {
+          const p = posOf(w.guid);
+          if (!p) return null;
+          const cd = countdown(w.from, w.at, now);
+          return (
+            <g key={`${w.key}-${i}`} className="replay-wave-mark">
+              <title>{t.poolComing(w.name, w.at - now)}</title>
+              {w.angles.map((a, j) => {
+                const [r0, r1] = WAVE_MARK_YD;
+                const [cx, cy] = [Math.cos(a), Math.sin(a)];
+                const tip = [sx(p[0] + cx * r1), sy(p[1] + cy * r1)];
+                // ponta da seta: dois traços de 1,5 jd a 35° para trás
+                const back = (s: number) => [sx(p[0] + cx * (r1 - 1.5) - s * cy * 1), sy(p[1] + cy * (r1 - 1.5) + s * cx * 1)];
+                const [l, r] = [back(1), back(-1)];
+                return (
+                  <g key={j}>
+                    <line x1={sx(p[0] + cx * r0)} y1={sy(p[1] + cy * r0)} x2={tip[0]} y2={tip[1]} />
+                    <polyline points={`${l[0]},${l[1]} ${tip[0]},${tip[1]} ${r[0]},${r[1]}`} />
+                  </g>
+                );
+              })}
+              {labels && cd && <TimerArc cx={sx(p[0])} cy={sy(p[1])} r={2.5 * scale} cd={cd} color={WAVE_COLOR} />}
+            </g>
+          );
+        }
+        const age = now - w.at;
+        const d = w.start + (w.speed * age) / 1000;
+        const fade = Math.min(1, (w.at + w.durationMs - now) / WAVE_FADE_MS);
+        return (
+          <g key={`${w.key}-${i}`} className="replay-wave" opacity={fade} clipPath={clip}>
+            <title>{w.name}</title>
+            {w.angles.map((a, j) => {
+              const [cx, cy] = [Math.cos(a), Math.sin(a)];
+              const [fx, fy] = [w.x + cx * d, w.y + cy * d];
+              const h = w.width / 2;
+              return (
+                <g key={j}>
+                  <line className="replay-wave-trail" x1={sx(w.x)} y1={sy(w.y)} x2={sx(fx)} y2={sy(fy)} />
+                  <line className="replay-wave-front" x1={sx(fx - cy * h)} y1={sy(fy + cx * h)} x2={sx(fx + cy * h)} y2={sy(fy - cx * h)} />
+                </g>
+              );
+            })}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 /** CC de um player no mapa (coordenadas do mapa): em volta de onde ele estava, ou no inimigo alvo. */
 export interface CcView {
   t: number;

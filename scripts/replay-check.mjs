@@ -88,7 +88,8 @@ const add = (level, text) => items.push({ level, text });
 if (!rule) add('REVISAR', `Sem regra para o encounter ${ref.encounterId}: o replay só mostra posições e mortes. Cadastre o boss (skill boss-rules).`);
 if (userRule) add('ATENÇÃO', `Há uma regra do usuário (${path.join(APP_DATA, 'encounters', userRule)}) que substitui a embutida no app: o que você vê lá pode não ser o desta conferência.`);
 if (!arena) add('REVISAR', 'Sem arena em data/arenas.json: o replay fica sem o mapa e sem o chão andável (seção "Arena" da skill replay-build).');
-else if (arena.fit != null && arena.fit < ARENA_FIT) add('ATENÇÃO', `Arena com encaixe ${arena.fit} (abaixo de ${ARENA_FIT}): os pisões não caem bem no chão; reencaixe com scripts/arena-fit.mjs.`);
+// `anchored`: posta pelos lugares que o log fixa (onde os adds nascem), com a nota da região da luta: a nota baixa não é erro
+else if (arena.fit != null && arena.fit < ARENA_FIT && !arena.anchored) add('ATENÇÃO', `Arena com encaixe ${arena.fit} (abaixo de ${ARENA_FIT}): os pisões não caem bem no chão; reencaixe com scripts/arena-fit.mjs.`);
 
 const byId = new Map();
 for (const m of rule?.mechanics ?? []) for (const id of idsOf(m)) byId.set(id, [...(byId.get(id) ?? []), m]);

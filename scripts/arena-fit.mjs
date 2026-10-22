@@ -44,7 +44,12 @@ const ARENAS = [
     url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/02.sentinels-ort-v108.jpg',
     poly: [[285, 0], [935, 0], [935, 230], [1020, 290], [1020, 400], [935, 465], [935, 685], [285, 685], [285, 465], [200, 400], [200, 290], [285, 230]],
   },
-  { id: 3455, img: '03.vashnik-ort-enter-v180', url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/03.vashnik-ort-enter-v180.jpg', hazard: [[100, 300], [1100, 300], [100, 650], [1100, 650]] },
+  // Vashnik: a sala é girada no mundo (-58,4°) e a luta fica toda na metade das fontes (laranja e roxa, embaixo).
+  // O encaixe pelos pisões espalhava a raide pela sala inteira; aqui a transformação é fixa (`fixed`: giro, escala e
+  // posição, em pixels da imagem com 1224 de largura, como os polígonos), pelas três fontes: os Shrouded Venom nascem
+  // onde o boss fica, na de sombra; os Burning Venom vistos mais cedo saem da de fogo; o Clotting Venom, da de sangue.
+  // Refinada para os pisões ficarem dentro da sala: 98,9% dentro, cada fonte a até 6 jd (21/10)
+  { id: 3455, img: '03.vashnik-ort-enter-v180', url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/03.vashnik-ort-enter-v180.jpg', poly: [[450, 6], [774, 6], [845, 58], [955, 58], [994, 98], [994, 257], [955, 294], [900, 343], [900, 514], [918, 551], [875, 600], [796, 618], [771, 649], [771, 796], [453, 796], [453, 649], [428, 618], [349, 600], [306, 551], [324, 514], [324, 343], [269, 294], [230, 257], [230, 98], [269, 58], [379, 58]], fixed: { rotation: -58.37, s: 4.6921, u: 804.79, v: 547.47, cx: 466, cy: -329 } },
   { id: 3513, img: '01.kithix-ort-v176', url: 'https://cdn.raidplan.io/raid/wow.kithix/map/01.kithix-ort-v176.jpg', hazard: [[100, 400], [1100, 500], [150, 640], [1050, 250]] },
   { id: 3470, img: '01.nakzali-ort-v105', url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/01.nakzali-ort-v105.jpg', disk: [612, 342, 330], holeDisk: [612, 342, 48] },
 ];
@@ -169,6 +174,15 @@ const ORIENT = [
 
 /** Direita = leste (-Y), baixo = sul (-X). */
 const NORTH_UP = 7;
+/** Giro da imagem (graus) de cada orientação sem espelho (as outras não existem no app). */
+const ROTATION = { 7: 0, 2: -90, 4: 180, 1: 90 };
+
+/** Matriz (X, Y) do log -> (direita, baixo) da imagem: a da orientação, ou a de um giro qualquer (`t.rot`). */
+function mat(t) {
+  if (t.rot == null) return ORIENT[t.o];
+  const r = (t.rot * Math.PI) / 180;
+  return [-Math.sin(r), -Math.cos(r), -Math.cos(r), Math.sin(r)];
+}
 
 /** Pisões com bastante gente (tira quem caiu, voou ou passou correndo). */
 function densePoints(o, core) {
@@ -189,7 +203,7 @@ function densePoints(o, core) {
  * tem que ser onde os players andam, senão a escala cresce até caber tudo). F1 dos dois.
  */
 function score(pts, mask, im, t) {
-  const [a, b, c, d] = ORIENT[t.o];
+  const [a, b, c, d] = mat(t);
   const cover = new Uint8Array(im.w * im.h);
   let inside = 0;
   const r = Math.max(1, Math.round(t.s * 1.5));
@@ -211,6 +225,12 @@ function score(pts, mask, im, t) {
 }
 
 function fit(pts, mask, im, a) {
+  // transformação conhecida (medida fora daqui): só passa para a escala de trabalho e dá a nota
+  if (a.fixed) {
+    const k = WORK / MARK;
+    const t = { o: -1, rot: a.fixed.rotation, s: a.fixed.s * k, u: a.fixed.u * k, v: a.fixed.v * k, cx: a.fixed.cx, cy: a.fixed.cy };
+    return { ...t, score: score(pts, mask, im, t) };
+  }
   let floor = 0;
   let fu = 0;
   let fv = 0;
@@ -225,7 +245,8 @@ function fit(pts, mask, im, a) {
   let best = null;
   // mapa do raidplan com o norte para cima e o X do log para o norte, Y para o oeste: a mesma
   // orientação em todo boss (o Twin Fangs, sem simetria, confirma; ORIENT_ALL=1 testa as 8)
-  for (const o of process.env.ORIENT_ALL ? ORIENT.map((_, i) => i) : [NORTH_UP]) {
+  // `orient` na arena: a imagem vem em outra orientação (confira com o que tem lugar certo: fontes, portas)
+  for (const o of process.env.ORIENT_ALL ? ORIENT.map((_, i) => i) : [a.orient ?? NORTH_UP]) {
     let t = { o, s: s0, u: fu, v: fv, cx, cy };
     let sc = score(pts, mask, im, t);
     // busca local: escala e posição, passos cada vez menores
@@ -251,7 +272,7 @@ function fit(pts, mask, im, a) {
 function check(a, im, mask, pts, t, file) {
   const out = Buffer.from(im.rgb);
   for (let p = 0; p < mask.length; p++) if (!mask[p]) for (let ch = 0; ch < 3; ch++) out[p * 3 + ch] = out[p * 3 + ch] >> 1;
-  const [A, B, C, D] = ORIENT[t.o];
+  const [A, B, C, D] = mat(t);
   for (const [X, Y] of pts) {
     const u = Math.round(t.u + t.s * (A * (X - t.cx) + B * (Y - t.cy)));
     const v = Math.round(t.v + t.s * (C * (X - t.cx) + D * (Y - t.cy)));
@@ -266,7 +287,7 @@ function check(a, im, mask, pts, t, file) {
 
 /** Contorno do chão em coordenadas do log (para o app desenhar e saber o que é fora). */
 function outline(a, im, t, mask) {
-  const [A, B, C, D] = ORIENT[t.o];
+  const [A, B, C, D] = mat(t);
   // inversa: (u, v) -> (X, Y)
   const det = A * D - B * C;
   const toWorld = (u, v) => {
@@ -316,7 +337,9 @@ for (const a of ARENAS) {
     name: o.name,
     url: a.url,
     size: [im.origW, im.origH],
-    orient: ORIENT[t.o],
+    orient: mat(t),
+    // giro da imagem (o app gira a imagem para desenhar com o norte para cima)
+    rotation: t.rot ?? ROTATION[t.o],
     // pixel (imagem original) = u0 + sPx * (orient · (X - cx, Y - cy))
     sPx: +(t.s * k).toFixed(4),
     u0: +(t.u * k).toFixed(1),

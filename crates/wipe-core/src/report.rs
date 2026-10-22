@@ -140,6 +140,56 @@ pub struct Pull {
     /// poças de tamanho conhecido (regra com `pool`): cada vez que o cast saiu
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub pools: Vec<PoolView>,
+    /// ondas que saem de quem tinha uma aura (regra com `waves`)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub waves: Vec<WaveView>,
+    /// quantas unidades de um tipo estão vivas ao longo do pull (`units` com `count`)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unit_counts: Vec<UnitCount>,
+    /// cara de cada tipo de unidade no mapa (`units` com `color` / `icon`)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub unit_looks: Vec<UnitLook>,
+}
+
+/// Como um tipo de unidade aparece no mapa: a cor dela e um ícone (spell) para saber quem é quem.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnitLook {
+    pub npc: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon: Option<u32>,
+}
+
+/// Unidades vivas de um tipo: (ms, quantas) a cada mudança, da primeira linha que cita cada uma ao UNIT_DIED.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnitCount {
+    pub npc: u32,
+    pub name: String,
+    pub series: Vec<(i64, u32)>,
+}
+
+/// Ondas de um player marcado: a marca de `from` a `at` (no player), e em `at` as ondas saem de (x, y)
+/// nas direções `angles` (radianos, no sistema do log), a frente a `start` + `speed`·t jardas, por
+/// `duration_ms`, com `width` jardas de largura.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WaveView {
+    pub key: String,
+    pub name: String,
+    pub spell_id: u32,
+    pub guid: String,
+    pub from: i64,
+    pub at: i64,
+    pub x: f32,
+    pub y: f32,
+    pub angles: Vec<f32>,
+    pub start: f32,
+    pub speed: f32,
+    pub width: f32,
+    pub duration_ms: i64,
 }
 
 /// Poça no replay: anunciada no cast (`from`), no chão de `on` a `to` (cresce e recua em `grow_ms`),
