@@ -11,10 +11,14 @@ difficulties: [normal, heroic, mythic]
 
 units:
   - { key: vashnik, name: "Vashnik the Malignant", npc_id: 259181, boss: true }
-  - { key: burning_venom, name: "Burning Venom", npc_id: 260905, replay: true }
-  - { key: shrouded_venom, name: "Shrouded Venom", npc_id: 260895, replay: true }
-  - { key: clotting_venom, name: "Clotting Venom", npc_id: 259408 }
-  - { key: malignant_totem, name: "Malignant Totem", npc_id: 269430 }   # Mítico: os tumores; o log não dá a posição deles (SUMMON, CAST_START e UNIT_DIED sem o bloco advanced), então não entram no mapa
+  # cor e ícone no mapa (`color`, `icon`): cada add na cor da fonte de onde sai
+  - { key: burning_venom, name: "Burning Venom", npc_id: 260905, replay: true, color: "#f97316", icon: 1305901 }
+  - { key: shrouded_venom, name: "Shrouded Venom", npc_id: 260895, replay: true, color: "#a78bfa", icon: 1312366 }
+  - { key: clotting_venom, name: "Clotting Venom", npc_id: 259408, color: "#f43f5e", icon: 1291530 }
+  # Mítico: os tumores. O log só dá a posição de quem termina o Malignance (cast de ~85s): esses aparecem no mapa
+  # desde que nasceram, com a barra do cast (`from_first_line`). Os que a onda destrói antes não têm posição em
+  # linha nenhuma (SUMMON, CAST_START e UNIT_DIED sem o bloco advanced): entram só na contagem de vivos (`count`)
+  - { key: malignant_totem, name: "Malignant Totem", npc_id: 269430, replay: true, from_first_line: true, count: true, color: "#84cc16", icon: 1304459 }
 
 mechanics:
   # ---------- Fontes ----------
@@ -75,6 +79,10 @@ mechanics:
     source_unit: vashnik
     severity: minor
     detect: { damage_ids: [1295798] }
+    # 21/10: as 4 ondas saem de cada marcado da Plague Froth quando a aura sai, nos eixos do mapa (N, S, L, O):
+    # 264 de 273 acertos a até 2,5 jd de um desses raios (ângulos ao acaso: 176 na média). A frente começa
+    # a ~4 jd e anda ~12,3 jd/s (o acerto mais longe: 57,6 jd em 4,4s); de lado, até 2,9 jd
+    waves: { aura: 1281913, directions: 4, angle: 0, start: 4, speed: 12.3, width: 6, duration_s: 5 }
     tip: { pt: "Espalhar e sair da direção das ondas (no Mítico, mirar as ondas nos tumores).", en: "Spread and get out of the waves' path (on Mythic, aim the waves at the tumors)." }
     message: { pt: "{player} foi atingido por Plague Wave ({count}x)", en: "{player} was hit by Plague Wave ({count}x)" }
 

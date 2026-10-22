@@ -1,7 +1,7 @@
 // Replays: posições guardadas no pull (`Pull.tracks`, só nos trechos usados) e as contas do
 // player de replay (posição num instante, stacks num instante).
 
-import type { WorldMarker, SoakView, AreaView, BossCast, Death, LegacyPairReplay, MechanicResult, OrbTracks, Pickups, PoolView, Pull, PullGround, PullTracks, ReplayRef, UnitAuraView } from '../types';
+import type { WorldMarker, SoakView, AreaView, BossCast, Death, LegacyPairReplay, MechanicResult, OrbTracks, Pickups, PoolView, Pull, PullGround, PullTracks, ReplayRef, UnitAuraView, WaveView } from '../types';
 import { arenaFor, facingToMap, toMap, type ArenaMap } from './arenas';
 
 export interface ReplayUnit {
@@ -64,7 +64,13 @@ export interface ReplayData {
   unitAuras?: UnitAuraView[];
   /** poças de tamanho conhecido, já no mapa */
   pools?: PoolView[];
+  /** ondas, já no mapa (as direções também: no mapa o ângulo é o do log + 90°) */
+  waves?: WaveView[];
+  /** cor e ícone de cada tipo de unidade (npc) */
+  unitLooks?: Map<number, { color?: string; icon?: number }>;
 }
+
+const xyOf = ([x, y]: [number, number]) => ({ x, y });
 
 /** npc id de um guid de criatura (Creature-0-...-<npc>-<spawn>). */
 export const npcOf = (guid: string): number | null => {
@@ -77,8 +83,11 @@ export const npcOf = (guid: string): number | null => {
  * Posições e marcas no chão de um pull (vazio em relatórios antigos), já no mapa com o norte para cima
  * (ver `arenas.ts`): tudo o que o replay desenha passa por aqui.
  */
-export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs' | 'soaks' | 'blasts' | 'markers' | 'castMs' | 'pickups' | 'unitAuras' | 'pools'> & { encounterId?: number }): ReplayData {
+export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'casts' | 'areas' | 'orbs' | 'soaks' | 'blasts' | 'markers' | 'castMs' | 'pickups' | 'unitAuras' | 'pools' | 'waves' | 'unitLooks'> & { encounterId?: number }): ReplayData {
   return {
+    unitLooks: new Map((pull.unitLooks ?? []).map((l) => [l.npc, { color: l.color, icon: l.icon }])),
+    // toMap gira 90°: a direção (cos a, sin a) do log vira (cos, sin)(a + 90°) no mapa
+    waves: (pull.waves ?? []).map((w) => ({ ...w, ...xyOf(toMap(w.x, w.y)), angles: w.angles.map((a) => a + Math.PI / 2) })),
     pools: (pull.pools ?? []).map((p) => ({ ...p, circles: p.circles.map(([x, y, r]) => [...toMap(x, y), r] as [number, number, number]) })),
     pickups: pull.pickups && { kinds: pull.pickups.kinds, items: pull.pickups.items.map(([kind, owner, from, at, x, y]) => ({ kind, owner, from, at, x: -y / 10, y: x / 10 })) },
     unitAuras: pull.unitAuras ?? [],

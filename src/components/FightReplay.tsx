@@ -268,6 +268,17 @@ function BossBars({ pull, view, now, onPick }: { pull: Pull; view: FightView; no
           </div>
         );
       })}
+      {/* unidades contadas (regra `units` com `count`): quantas estão vivas agora */}
+      {(pull.unitCounts ?? []).map((c) => {
+        const n = [...c.series].reverse().find((p) => p[0] <= now)?.[1] ?? 0;
+        if (n === 0) return null;
+        return (
+          <div key={c.npc} className="fight-boss-count" title={t.aliveTitle(c.name)}>
+            <span>{c.name}</span>
+            <span className="num">{t.alive(n)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

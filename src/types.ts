@@ -93,6 +93,32 @@ export interface Pull {
   unitAuras?: UnitAuraView[];
   /** poças de tamanho conhecido (regra com `pool`), cada vez que o cast saiu */
   pools?: PoolView[];
+  /** ondas que saem de quem tinha uma aura (regra `waves`) */
+  waves?: WaveView[];
+  /** quantas unidades de um tipo estão vivas ao longo do pull (regra `units` com `count`): [ms, quantas] */
+  unitCounts?: { npc: number; name: string; series: [number, number][] }[];
+  /** cara de cada tipo de unidade no mapa (regra `units` com `color` / `icon`) */
+  unitLooks?: { npc: number; color?: string; icon?: number }[];
+}
+
+/**
+ * Ondas de um player marcado: a marca de `from` a `at` (no player); em `at` saem de (x, y) nas direções
+ * `angles` (radianos), a frente a `start` + `speed`·t jardas, por `durationMs`, com `width` jardas de largura.
+ */
+export interface WaveView {
+  key: string;
+  name: string;
+  spellId: number;
+  guid: string;
+  from: number;
+  at: number;
+  x: number;
+  y: number;
+  angles: number[];
+  start: number;
+  speed: number;
+  width: number;
+  durationMs: number;
 }
 
 /** Poça: anunciada no cast (`from`), no chão de `on` a `to`, crescendo e recuando em `growMs`; círculos [x, y, raio] no log. */

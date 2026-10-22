@@ -352,6 +352,12 @@ pub(crate) struct PullBuilder {
     /// (inimigo, aura)
     unit_auras: Vec<UnitAuraView>,
     unit_aura_open: HashMap<(String, u32), usize>,
+    /// ondas (regra com `waves`): quem está marcado e desde quando, e as que já saíram
+    wave_marks: HashMap<(String, u32), i64>,
+    waves: Vec<WaveView>,
+    /// unidades acompanhadas pelas linhas (`units` com `from_first_line` / `count`): npc, primeira linha, morte
+    seen: HashMap<String, (u32, i64, Option<i64>)>,
+    seen_npcs: HashSet<u32>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -371,6 +377,7 @@ impl PullBuilder {
         // erros de regra já foram reportados na carga do RuleBook
         let sets = book.for_encounter(encounter_id, &encounter_name);
         let rules = if sets.is_empty() { None } else { RuleTracker::new(&sets, difficulty_id).ok().map(|r| r.started_at(t)) };
+        let seen_npcs = rules.as_ref().map(|r| r.seen_units().iter().map(|u| u.npc).collect()).unwrap_or_default();
         PullBuilder {
             owner: None,
             encounter_id,
@@ -413,6 +420,10 @@ impl PullBuilder {
             pickups: Vec::new(),
             unit_auras: Vec::new(),
             unit_aura_open: HashMap::new(),
+            wave_marks: HashMap::new(),
+            waves: Vec::new(),
+            seen: HashMap::new(),
+            seen_npcs,
             cast_slows: HashMap::new(),
             fight: None,
         }
@@ -643,6 +654,18 @@ impl PullBuilder {
         }
         self.last_ms = t;
         let event = f[0];
+        // unidades acompanhadas pelas linhas do log: a primeira que cita cada uma e o UNIT_DIED
+        if self.fight.is_some() && !self.seen_npcs.is_empty() {
+            let rel = self.rel(t);
+            for g in [f[1], f[5]] {
+                if let Some(n) = npc_id(g).filter(|n| self.seen_npcs.contains(n)) {
+                    let e = self.seen.entry(g.to_string()).or_insert((n, rel, None));
+                    if event == "UNIT_DIED" && g == f[5] {
+                        e.2.get_or_insert(rel);
+                    }
+                }
+            }
+        }
         if self.owner.is_none() && f[1].starts_with("Player-") && f[3].starts_with("0x") && hex(f[3]) & AFFILIATION_MINE != 0 {
             self.owner = Some(f[1].to_string());
         }
@@ -848,6 +871,9 @@ impl PullBuilder {
         }
         if self.fight.is_some() {
             self.pickup_aura(f[0], dst_guid, spell_id, is_player, rel);
+            if is_player {
+                self.wave_aura(f[0], dst_guid, spell_id, rel);
+            }
             if !is_player {
                 self.unit_aura(f, spell_id, stacks, rel);
             }
@@ -955,6 +981,39 @@ impl PullBuilder {
             }
             "SPELL_AURA_REMOVED" => {
                 self.pickup_since.remove(&(guid.to_string(), kind));
+            }
+            _ => {}
+        }
+    }
+
+    /// Marca das ondas (regra com `waves`): na saída da aura, as ondas saem de onde o player estava.
+    fn wave_aura(&mut self, event: &str, guid: &str, spell_id: u32, rel: i64) {
+        let Some((key, name, damage, spec)) = self.rules.as_ref().and_then(|r| r.waves_for_aura(spell_id)) else { return };
+        let k = (guid.to_string(), spell_id);
+        match event {
+            "SPELL_AURA_APPLIED" => {
+                self.wave_marks.insert(k, rel);
+            }
+            "SPELL_AURA_REMOVED" => {
+                let Some(from) = self.wave_marks.remove(&k) else { return };
+                let Some((x, y, _)) = self.players.get(guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= GROUND_POS_MAX_AGE_MS) else { return };
+                let n = spec.directions.max(1);
+                let angles = (0..n).map(|i| (spec.angle + 360.0 * i as f32 / n as f32).to_radians()).collect();
+                self.waves.push(WaveView {
+                    key: key.to_string(),
+                    name: name.to_string(),
+                    spell_id: damage,
+                    guid: guid.to_string(),
+                    from,
+                    at: rel,
+                    x,
+                    y,
+                    angles,
+                    start: spec.start,
+                    speed: spec.speed,
+                    width: spec.width,
+                    duration_ms: (spec.duration_s * 1000.0) as i64,
+                });
             }
             _ => {}
         }
@@ -1870,6 +1929,8 @@ impl PullBuilder {
             .unwrap_or_default();
         let replay_npcs: HashSet<u32> = self.rules.as_ref().map(|r| r.replay_npcs().iter().copied().collect()).unwrap_or_default();
         let unit_clears = self.rules.as_ref().map(|r| r.unit_clears().to_vec()).unwrap_or_default();
+        let seen_units = self.rules.as_ref().map(|r| r.seen_units().to_vec()).unwrap_or_default();
+        let unit_looks = self.rules.as_ref().map(|r| r.unit_looks().to_vec()).unwrap_or_default();
         let pickup_kinds = self.rules.as_ref().map(|r| r.pickup_kinds()).unwrap_or_default();
         let pool_specs = self.rules.as_ref().map(|r| r.pool_specs()).unwrap_or_default();
         let interrupt_casters: Vec<String> = self.rules.as_ref().map(|r| self.boss_casts.iter().filter(|c| r.is_interrupt_cast(c.spell_id)).map(|c| c.guid.clone()).collect()).unwrap_or_default();
@@ -1940,6 +2001,34 @@ impl PullBuilder {
         for a in &self.unit_auras {
             self.trails.backfill(&a.guid, a.from, UNIT_BACKFILL_MAX_MS);
         }
+        // unidade que o log só posiciona depois (o tumor, no fim do cast): desde a primeira linha que a cita
+        for (g, &(n, first, _)) in &self.seen {
+            if seen_units.iter().any(|u| u.npc == n && u.from_first_line) {
+                self.trails.backfill(g, first, i64::MAX);
+            }
+        }
+        // quantas estão vivas de cada tipo contado
+        let unit_counts: Vec<UnitCount> = seen_units
+            .iter()
+            .filter(|u| u.count)
+            .filter_map(|u| {
+                let mut ev: Vec<(i64, i32)> = self.seen.values().filter(|s| s.0 == u.npc).flat_map(|s| std::iter::once((s.1, 1)).chain(s.2.map(|d| (d, -1)))).collect();
+                if ev.is_empty() {
+                    return None;
+                }
+                ev.sort();
+                let mut n = 0i32;
+                let mut series: Vec<(i64, u32)> = Vec::new();
+                for (t, d) in ev {
+                    n += d;
+                    match series.last_mut() {
+                        Some(last) if last.0 == t => last.1 = n.max(0) as u32,
+                        _ => series.push((t, n.max(0) as u32)),
+                    }
+                }
+                Some(UnitCount { npc: u.npc, name: u.name.clone(), series })
+            })
+            .collect();
         // unidades que o log nunca mata (o orb no chão): somem quando o soak as limpa ou no fim da vida
         for c in &unit_clears {
             let guids: Vec<String> = self.trails.guids().filter(|g| npc_id(g) == Some(c.npc)).cloned().collect();
@@ -2071,6 +2160,9 @@ impl PullBuilder {
                     items: std::mem::take(&mut self.pickups),
                 }),
                 pools,
+                waves: std::mem::take(&mut self.waves),
+                unit_counts,
+                unit_looks,
                 unit_auras: {
                     // o que ficou aberto vai até o fim do pull
                     for &i in self.unit_aura_open.values() {

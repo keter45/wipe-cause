@@ -10,7 +10,7 @@ e só casts conhecidos sem forma no Twin Fangs.
 | Boss | Resultado | O que mudou |
 |---|---|---|
 | Twin Fangs | o chão está certo: players 0,9% fora, Barbed Bulwark dentro | Vexhul, Ithraz e os Broodlings vivem no ácido em volta da plataforma; os Spawns de Vexhul, no poço do meio. Eles vão em `offFloor` |
-| Vashnik | o chão está certo: adds e boss dentro (até 7 jd na borda, poucos pontos) | nada |
+| Vashnik | estava errada: o encaixe pelos pisões espalhou a raide pela sala inteira (17,7 px/jd, norte para cima), e a luta fica só na metade das fontes. A sala é girada no mundo (-58,4°): encaixada pelas três fontes, cada uma com um add que nasce nela (Shrouded Venom na de sombra, onde o boss é tankado; Burning Venom na de fogo; Clotting Venom na de sangue), e refinada pelas paredes (9,38 px/jd). Players fora do chão: 1,66% → 0,24%; boss e adds: 0% | `rotation: -58.37`, transformação fixa, contorno da sala desenhado (com o corredor da entrada), e as três fontes como `marks` |
 
 ## Twin Fangs
 
@@ -36,14 +36,18 @@ Fora, e por quê:
 | Miasmic Coating | escudo de absorção no Shrouded Venom (aura 1312366, APPLIED repetido). Enquanto ele segura, o add não tem posição no log (~4 s): o motor o põe no primeiro lugar conhecido desde o começo da aura | `unit_aura` com `absorb` e `stacks: false` |
 | Malignant Catalyst | cast 1282516 de 5 s; os círculos caem ~7 s depois do fim (12 s do começo) | `cast_id` no soak; o motor aceita o cast até 15 s antes |
 | Malignance | pulso no raid do tumor que sobrou | `ground: false` |
+| Plague Wave | as 4 ondas saem de cada marcado da Plague Froth quando a aura sai, nos eixos do mapa (norte, sul, leste, oeste): 264 de 273 acertos a até 2,5 jd de um desses raios (ângulos ao acaso: 176). A frente começa a ~4 jd e anda ~12,3 jd/s (o acerto mais longe: 57,6 jd em 4,4 s); de lado, até 2,9 jd | `waves: { aura: 1281913, directions: 4, angle: 0, start: 4, speed: 12.3, width: 6, duration_s: 5 }` |
 
 Fora, e por quê:
 - **Caustic Explosion**: o dano não cai com a distância de quem explode (~222k sem mitigação de 0 a
   55 jd, 4664 acertos). Um círculo diria "afaste-se" sem motivo.
 - **Tumores (Malignant Totem, 269430)**: nenhuma linha deles tem posição (`SPELL_SUMMON`,
   `SPELL_CAST_START` e `UNIT_DIED` não trazem o bloco advanced); só os 5 que terminaram o cast de 85 s.
-- **Direção das ondas da Plague Froth**: não segue eixo nenhum (nem do mundo, nem da direção do
-  marcado). As ondas que pegam alguém continuam como marca no chão.
+  Eles nascem em lotes de 24, em pares no mesmo lugar (o índice no fim do guid: 2k e 2k+1 a 1 jd), em
+  lugares ao acaso numa grade de 1 jd. A hora da morte (a onda chegando) deixa ~12 lugares possíveis por
+  tumor: não dá para desenhar sem chutar. O que entra: os que sobrevivem (os perigosos) aparecem no lugar
+  certo desde que nasceram, com a barra do Malignance (`from_first_line`), e o quadro dos bosses mostra
+  quantos estão vivos (`count`: pico de 24 a 37 por pull).
 - **Swirlies da Stygian Infection**: o Stygian Burst não aparece nesses logs.
 
 ## Motor (vale para os próximos bosses)

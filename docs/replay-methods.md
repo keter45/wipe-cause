@@ -57,6 +57,30 @@ lado e tem 100,8.
   nadam no ácido em volta da plataforma, e os Spawns saem do poço do meio). Esses vão em `offFloor`
   (ids de npc) na arena, e a conferência passa a dizer FORA OK.
 
+### Arena com a raide numa parte da sala: lugares que o log fixa
+
+O encaixe pelos pisões assume que a raide anda pela sala toda e que a imagem tem o norte para cima. No
+Vashnik as duas coisas falham: a luta fica só na metade das fontes (laranja e roxa), e a sala é girada
+no mundo (-58,4°; a imagem do raidplan segue a sala, não o norte). O encaixe espalhou a raide pela sala
+inteira (17,7 px/jd, norte para cima). Um segundo encaixe, pela região da luta com giro de 90°, também
+errou (13,4 px/jd): os Burning Venom não nasciam na fonte de fogo. O que acertou:
+
+1. **Lugares que o log fixa**, cada um com um add que nasce ali: a primeira posição de cada add, voltando
+   o caminho até a primeira linha dele (velocidade dos primeiros 1,5 s). Os Shrouded Venom nascem onde o
+   boss é tankado, na fonte de sombra (465; -329); os Burning Venom vistos mais cedo, na de fogo (395;
+   -287; eles andam 1,6 jd/s); o Clotting Venom, na de sangue (489,6; -206,8).
+2. **Semelhança pelos três pares** (lugar no log × fonte na imagem), com giro livre: deu -59° e 9,4 px/jd,
+   cada fonte a até 5 jd. Giro que não é múltiplo de 90° é o sinal de sala girada no mundo; as ondas da
+   Plague Froth (nos eixos do mundo) aparecem na diagonal da sala, como no Hexweaver.
+3. **Refino pelas paredes:** escala, giro e posição para os pisões ficarem dentro do contorno da sala,
+   com as fontes perto: 98,9% dentro, cada fonte a até 6 jd (os adds nascem na frente dela).
+4. **Confira:** `arena-check` (players fora: 1,66% → 0,24%; boss e adds: 0%) e o desenho dele.
+
+A transformação vai fixa no `arena-fit.mjs` (`fixed: { rotation, s, u, v, cx, cy }`, com o contorno da
+sala em `poly`), e a arena ganha `rotation` (graus; o app gira a imagem), `anchored: true` (o `fit` é a
+parte dos pisões dentro da sala, e o `replay:check` não cobra os 0,9 do encaixe pelos pisões) e `marks`
+(lugares com nome, como as fontes; camada "Lugares da sala") em `data/arenas.json`.
+
 ### Poça em lugar fixo da sala: quem tomou e quem não tomou
 
 Os ticks mostram onde a raide estava, não onde a poça estava: olhar só para eles engana (no Altar, a
@@ -97,6 +121,26 @@ ficou a 0,9 jd desse ponto na mediana com R = 25, em 365 smashes. Vira `soak: { 
 ahead: R }` com o `cast_id`: um círculo por cast, mesmo sem ninguém dentro, e o que ninguém pegou
 aparece vazio. Nas falhas, o player mais perto do ponto dá o teto do raio.
 
+### Ondas que saem do marcado (`waves`)
+
+Onda não tem unidade nem posição no log: só os acertos (com a posição de quem tomou) e a aura de quem
+a solta. Para achar a direção, teste hipóteses em vez de olhar histogramas: para cada base (eixos do
+mundo, direção do marcado na saída, na aplicação, do boss até ele) e cada ângulo φ, conte quantos
+acertos a mais de 4 jd da fonte ficam a até 2,5 jd de algum raio `φ + k·90°` de alguma fonte ativa.
+Na Plague Froth do Vashnik, os eixos do mundo com φ = 0 explicam 264 de 273 acertos; um ângulo ao acaso,
+176. O histograma de ângulos pelo marcado mais perto não mostrava nada: com 5 marcados ao mesmo tempo,
+a fonte mais perto quase nunca é a certa.
+
+Com a direção, a velocidade sai do envelope de baixo de "distância ao longo × tempo desde a saída" por
+faixa de 250 ms (o acerto mais cedo em cada distância é a frente da onda): começa a ~4 jd e anda
+~12,3 jd/s. A largura é o maior desvio de lado dos acertos (2,9 jd: 6 jd de largura). Vira `waves: {
+aura, directions, angle, start, speed, width, duration_s }` na mecânica do dano da onda; o mapa mostra
+as setas em volta do marcado até a saída e as barras andando, cortadas na borda da arena.
+
+Unidade que só a onda mata e que não tem posição no log (os tumores do Vashnik) não dá para achar pela
+hora da morte: cada morte cabe em ~12 pontos (5 marcados × 4 direções, dentro do chão), e as ondas
+anteriores quase não descartam nenhum (eles morrem na primeira Plague Froth depois de nascer).
+
 ### Raio de explosão: o par de danos dentro e fora
 
 Quando a habilidade tem um dano perto e outro longe (Widow's Kiss até X jd, Widow's Touch além),
@@ -129,10 +173,16 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
   até o fim. `units` com `cleared_by: <mecânica>` tira a unidade no primeiro acerto daquela mecânica
   a até o raio dela + 3 jd (o soak que limpou o orb: quem pegou estava a 4,5 jd na mediana, 99% até
   8 jd de um orb de 5 jd), e `lifetime_s` põe um teto.
-- **Unidade sem posição nenhuma**: os tumores do Vashnik nascem por `SPELL_SUMMON`, começam o cast e
-  morrem sem uma linha com o bloco advanced. Não há o que desenhar; antes de `replay: true`, confira
-  com `arena-check` que a unidade tem posições.
+- **Unidade que só tem posição no fim** (os tumores do Vashnik: nascem por `SPELL_SUMMON`, começam um
+  cast de 85 s e só o fim do cast traz o bloco advanced): `units` com `from_first_line: true` desenha a
+  unidade desde a primeira linha que a cita, no lugar que o log der depois. Os que morrem antes (a onda os
+  destrói) não têm posição em linha nenhuma: `count: true` conta quantos estão vivos (da primeira linha ao
+  `UNIT_DIED`) e o quadro dos bosses mostra ("Malignant Totem · 24 vivos"). Antes de `replay: true`,
+  confira com `arena-check` que a unidade tem posições.
 - **Vida de add**: `units` com `replay: true` guarda a vida (barra embaixo dele no mapa).
+- **Quem é quem**: com vários tipos de add, cada um ganha `color` e `icon` em `units` (o ícone de uma
+  habilidade dele num anel da cor; a cor pela origem: fonte de fogo laranja, de sombra roxa). Os bosses
+  ficam no losango vermelho.
 
 ### Utilidades dos players (CC, portal do warlock)
 

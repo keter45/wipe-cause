@@ -15,7 +15,7 @@ import { ClipButton, ClipPullContext } from './ClipButton';
 import { clipSpan } from '../lib/clipSpan';
 import { blastPhase, groundContours } from '../lib/replayHazards';
 import { countdown, NEXT_ADD_MS, NEXT_CONE_MS, nextCast, orbClearCountdown, type Countdown } from '../lib/replayTimers';
-import { CcLayer, Gateways, ImpactRing, Pickups, Pools, sector, TimerArc, TimerTag, UnitStatus, type CcView, type GatewayView } from './replayLayers';
+import { CcLayer, Gateways, ImpactRing, Pickups, Pools, sector, TimerArc, TimerTag, UnitStatus, Waves, type CcView, type GatewayView } from './replayLayers';
 
 export type { ReplayHit } from '../lib/replay';
 
@@ -267,8 +267,8 @@ export interface AuraHolder {
 }
 
 /** Camadas do mapa que o usuário liga e desliga (as de habilidade do boss ficam em Áreas e No chão). */
-type Layer = 'timers' | 'next' | 'fx' | 'cc' | 'gates' | 'kicks';
-const LAYERS: Layer[] = ['timers', 'next', 'fx', 'cc', 'gates', 'kicks'];
+type Layer = 'timers' | 'next' | 'fx' | 'cc' | 'gates' | 'kicks' | 'marks';
+const LAYERS: Layer[] = ['timers', 'next', 'fx', 'cc', 'gates', 'kicks', 'marks'];
 /** Só no replay completo (precisam da luta inteira relida). */
 const FULL_ONLY_LAYERS: Layer[] = ['cc', 'gates'];
 /** O orb sai do chão até isto (ms) do golpe do frontal e conta como quebrado por ele. */
@@ -930,7 +930,21 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
         {map && (
           <g className="replay-map">
             {/* fundo da arena (raidplan.io) alinhado com o log; fora do chão andável, escurecido */}
-            {map.image && <image href={map.image} x={sx(map.x0)} y={sy(map.y0)} width={map.w * scale} height={map.h * scale} preserveAspectRatio="none" className="replay-map-image" clipPath={`url(#${floorId}-image)`} />}
+            {map.image && (
+              // o recorte fica no grupo: no <image> ele giraria junto com a imagem
+              <g clipPath={`url(#${floorId}-image)`}>
+                <image
+                  href={map.image}
+                  x={sx(map.x0)}
+                  y={sy(map.y0)}
+                  width={map.w * scale}
+                  height={map.h * scale}
+                  preserveAspectRatio="none"
+                  className="replay-map-image"
+                  transform={map.rotate ? `rotate(${map.rotate} ${sx(map.x0)} ${sy(map.y0)})` : undefined}
+                />
+              </g>
+            )}
             <path d={`M-9999,-9999H9999V9999H-9999Z ${[map.floor, ...map.holes].map((poly) => `M${poly.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join("L")}Z`).join(" ")}`} fillRule="evenodd" className="replay-map-out" />
             <path d={[map.floor, ...map.holes].map((poly) => `M${poly.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join("L")}Z`).join(" ")} className="replay-map-edge" />
           </g>
@@ -960,6 +974,32 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
           ))}
         </g>
         {data.pools && <Pools pools={data.pools} now={now} sx={sx} sy={sy} scale={scale} clip={map ? 'url(#' + floorId + '-pools)' : undefined} hidden={hiddenAreas} labels={layer('timers')} />}
+        {/* lugares fixos da sala com nome (as fontes do Vashnik) */}
+        {map && layer('marks') &&
+          map.marks.map((m) => (
+            <g key={tr(m.name)} className="replay-arena-mark" style={{ color: m.color }}>
+              <circle cx={sx(m.x)} cy={sy(m.y)} r={m.radius * scale} />
+              <text x={sx(m.x)} y={sy(m.y) - m.radius * scale - 6} textAnchor="middle" className="replay-arena-mark-name">
+                {tr(m.name)}
+              </text>
+            </g>
+          ))}
+        {data.waves && data.waves.length > 0 && (
+          <Waves
+            waves={data.waves}
+            now={now}
+            sx={sx}
+            sy={sy}
+            scale={scale}
+            clip={map ? 'url(#' + floorId + '-pools)' : undefined}
+            hidden={hiddenAreas}
+            labels={layer('timers')}
+            posOf={(guid) => {
+              const u = data.units.get(guid);
+              return u ? posAt(u, now) : null;
+            }}
+          />
+        )}
         {contours.map((contour) => {
           const kind = data.groundKinds[contour.kind];
           if (hiddenGround.has(kind.key)) return null;
@@ -1152,9 +1192,24 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                   {t.kickedBy(shortName(data.units.get(kick.interruptedBy!)?.name ?? '?'))}
                 </text>
               )}
-              <rect x={sx(p[0]) - 7} y={sy(p[1]) - 7} width={14} height={14} rx={2} transform={`rotate(45 ${sx(p[0])} ${sy(p[1])})`} className="posmap-enemy replay-boss">
-                <title>{e.name}</title>
-              </rect>
+              {(() => {
+                // tipo de unidade com cara própria na regra (`units`: color, icon): o ícone num anel da cor dela;
+                // sem ícone, o losango na cor; o resto (os bosses), o losango vermelho
+                const look = data.unitLooks?.get(npcOf(e.guid) ?? -1);
+                if (look?.icon)
+                  return (
+                    <g className="replay-unit-look" style={look.color ? { color: look.color } : undefined}>
+                      <circle cx={sx(p[0])} cy={sy(p[1])} r={10} className="replay-unit-look-ring" />
+                      <SvgSpellIcon spellId={look.icon} x={sx(p[0]) - 7} y={sy(p[1]) - 7} size={14} title={e.name} />
+                      <title>{e.name}</title>
+                    </g>
+                  );
+                return (
+                  <rect x={sx(p[0]) - 7} y={sy(p[1]) - 7} width={14} height={14} rx={2} transform={`rotate(45 ${sx(p[0])} ${sy(p[1])})`} className="posmap-enemy replay-boss" style={look?.color ? { fill: look.color } : undefined}>
+                    <title>{e.name}</title>
+                  </rect>
+                );
+              })()}
               {enemyLabel.get(e.guid) && (
                 <text x={sx(p[0])} y={sy(p[1]) + BOSS_LABEL_DY} className="posmap-label replay-boss-label" textAnchor="middle">
                   {e.name}
@@ -1497,7 +1552,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
               />
             )}
             {legendExtra}
-            {(data.areas.length > 0 || data.orbs || zones.length > 0 || data.soaks.length > 0 || (data.blasts?.length ?? 0) > 0 || data.pickups || (data.unitAuras?.length ?? 0) > 0 || (data.pools?.length ?? 0) > 0) && (
+            {(data.areas.length > 0 || data.orbs || zones.length > 0 || data.soaks.length > 0 || (data.blasts?.length ?? 0) > 0 || data.pickups || (data.unitAuras?.length ?? 0) > 0 || (data.pools?.length ?? 0) > 0 || (data.waves?.length ?? 0) > 0) && (
               <MapFilter
                 icon={<Radius size={14} strokeWidth={1.75} aria-hidden />}
                 label={t.areas}
@@ -1509,6 +1564,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
                   ...[...new Map(data.soaks.map((k) => [k.key, k] as const)).values()].map((k) => ({ key: `soak:${k.key}`, spellId: k.spellId, name: k.name })),
                   // poças de tamanho conhecido, fragmentos no chão e escudos dos inimigos, um por mecânica
                   ...[...new Map((data.pools ?? []).map((p) => [p.key, p] as const)).values()].map((p) => ({ key: `pool:${p.key}`, spellId: p.spellId, name: p.name })),
+                  ...[...new Map((data.waves ?? []).map((w) => [w.key, w] as const)).values()].map((w) => ({ key: `wave:${w.key}`, spellId: w.spellId, name: w.name })),
                   ...(data.pickups?.kinds ?? []).map((k) => ({ key: `pickup:${k.key}`, spellId: k.spellId, name: k.name })),
                   ...[...new Map((data.unitAuras ?? []).map((a) => [a.key, a] as const)).values()].map((a) => ({ key: `unit:${a.key}`, spellId: a.spellId, name: a.name })),
                   // defensivos de raid em área, um por spell
@@ -1524,7 +1580,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
             <MapFilter
               icon={<Layers size={14} strokeWidth={1.75} aria-hidden />}
               label={t.layers}
-              items={LAYERS.filter((k) => full || !FULL_ONLY_LAYERS.includes(k)).map((k) => ({ key: k, name: t.layer[k] }))}
+              items={LAYERS.filter((k) => (full || !FULL_ONLY_LAYERS.includes(k)) && (k !== 'marks' || (map?.marks.length ?? 0) > 0)).map((k) => ({ key: k, name: t.layer[k] }))}
               hidden={hiddenLayers}
               onChange={(next) => {
                 prefs.setHiddenLayers(next);

@@ -7856,6 +7856,63 @@ button.kpi:hover {
   fill-opacity: 0.04;
   stroke-dasharray: 6 5;
 }
+/* tipo de unidade com cara própria (regra `units` com icon/color): o ícone num anel da cor */
+.replay-unit-look-ring {
+  fill: var(--bg);
+  stroke: currentColor;
+  stroke-width: 2.5;
+}
+.replay-unit-look {
+  color: var(--wipe);
+}
+/* unidades contadas no quadro dos bosses: "Malignant Totem · 24 vivos" */
+.fight-boss-count {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+/* lugares fixos da sala (arena `marks`): anel na cor do lugar e o nome em cima */
+.replay-arena-mark circle {
+  fill: currentColor;
+  fill-opacity: 0.08;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-opacity: 0.9;
+}
+.replay-arena-mark-name {
+  fill: currentColor;
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 3px;
+}
+/* ondas (regra `waves`): setas em volta de quem vai soltar, depois a frente andando e o rastro */
+.replay-wave-mark line,
+.replay-wave-mark polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.replay-wave-mark line {
+  stroke-dasharray: 3 3;
+}
+.replay-wave-front {
+  stroke: currentColor;
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.replay-wave-trail {
+  stroke: currentColor;
+  stroke-opacity: 0.3;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
 .replay-pickups-left {
   fill: #67e8f9;
 }

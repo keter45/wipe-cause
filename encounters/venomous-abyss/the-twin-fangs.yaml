@@ -13,12 +13,12 @@ difficulties: [normal, heroic, mythic]
 units:
   - { key: vexhul, name: "Vexhul", npc_id: 257361, boss: true }
   - { key: ithraz, name: "Ithraz", npc_id: 257368, boss: true }
-  - { key: broodling, name: "Broodling of Ithraz", npc_id: 270898 }   # interrupt: entra no replay e some depois do último cast
-  - { key: spawn_of_vexhul, name: "Spawn of Vexhul", npc_id: 264023, replay: true }   # os adds do meio que têm que morrer (soltam o Corrosive Spit)
+  - { key: broodling, name: "Broodling of Ithraz", npc_id: 270898, color: "#f43f5e", icon: 1308385 }   # interrupt: entra no replay e some depois do último cast
+  - { key: spawn_of_vexhul, name: "Spawn of Vexhul", npc_id: 264023, replay: true, color: "#84cc16", icon: 1293295 }   # os adds do meio que têm que morrer (soltam o Corrosive Spit)
   # Mítico: cada Caustic Globule nasce como esta unidade, com o escudo (aura 1303378) até o CC quebrar. O log
   # nunca a mata: sai do mapa no soak que a limpou (21/10: quem pegou estava a 4,5 jd na mediana, 99% até 8 jd;
   # 2,9s depois de nascer na mediana, até 14,2s) ou 15s depois de aparecer
-  - { key: barbed_bulwark, name: "Barbed Bulwark", npc_id: 269194, replay: true, cleared_by: caustic_globule, lifetime_s: 15 }
+  - { key: barbed_bulwark, name: "Barbed Bulwark", npc_id: 269194, replay: true, cleared_by: caustic_globule, lifetime_s: 15, color: "#a3e635", icon: 1303378 }
 
 mechanics:
   # ---------- Debuff central da luta ----------
