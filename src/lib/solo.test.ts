@@ -103,6 +103,17 @@ describe('modo solo', () => {
     ]);
   });
 
+  it('evolução com o histórico compacto: mecânica sem `events` conta o erro e usa o firstT', () => {
+    const failed = mechanic({ players: [{ guid: 'A', name: 'A-Realm', count: 2, amount: 0, firstT: 30_000, credit: false, message: '2 ondas' }] });
+    // como history.rs e web/history.ts gravam: `events` e `snapshots` saem das mecânicas
+    const { events: _events, ...compact } = failed;
+    const p = pull(0, 0, 120_000, { ownerGuid: 'A', players: [player('A', { damageDone: 12e6, aliveMs: 120_000 })], mechanics: [compact as MechanicResult] });
+    const mech = losses({ pull: p, player: p.players[0] }).find((l) => l.kind === 'avoidable');
+    expect(mech?.times).toEqual([30_000]);
+    const evo = soloEvolution([{ id: '1', title: 'n1', raidStartMs: 1, pulls: [p] }], 'Boss · Mythic', null);
+    expect(evo.map((e) => e.mechPerPull)).toEqual([2]);
+  });
+
   it('gráfico do Warcraft Logs vira dano por janela de 5s (série Total, por segundo)', () => {
     const json = { data: { series: [{ name: 'Player', data: [9, 9] }, { name: 'Total', pointStart: 1000, pointInterval: 2500, data: [100, 100, 200, 400] }] } };
     expect(graphTimeline(json, 1000, 10_000)).toEqual([500, 1500]);
