@@ -595,7 +595,7 @@ Não foram concluídos login externo, envio ao Discord, chamadas a provedor real
 3. **Discord no site:** o formulário compartilhado exibe opções de envio automático, mas o backend web não implementa ao vivo. O envio manual e a configuração existem; os checkboxes não habilitam monitoramento automático no navegador.
 4. **Indicadores no desenvolvimento:** sem backend, pasta detectada e IA “demo” são sempre os dados de exemplo de `setup.ts`; não comprovam configuração real do usuário.
 
-Esses pontos são registros da inspeção, sem alterações de comportamento incluídas nesta documentação.
+Esses pontos são registros da inspeção; o item 1 foi corrigido depois, no #73.
 
 ### Conferência contra o código (v0.42.0)
 
