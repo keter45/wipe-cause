@@ -18,6 +18,8 @@ Thumbs.db
 
 # Claude Code local
 .claude/settings.local.json
+# rascunhos, briefs e relatórios do EGM; o design final vai para docs/designs
+.egm/
 *.tsbuildinfo
 
 # saídas de plugins e skills de terceiros instaladas no projeto (as skills do projeto em .claude/skills entram)

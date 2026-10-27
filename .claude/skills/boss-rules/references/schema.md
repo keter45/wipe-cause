@@ -6,12 +6,14 @@ Um arquivo por boss: `encounters/<raid-slug>/<boss-slug>.yaml`.
 
 ## Cabeçalho
 
+Exemplo ilustrativo (os valores reais estão em `encounters/venomous-abyss/the-twin-fangs.yaml`):
+
 ```yaml
 schema_version: 1
 raid: venomous-abyss            # slug da raid
 boss: the-twin-fangs            # slug do boss
 name: "The Twin Fangs"
-encounter_id: null              # ID do ENCOUNTER_START no log (null se desconhecido)
+encounter_id: 3421              # ID do ENCOUNTER_START no log (null se desconhecido)
 source:                         # de onde as regras vieram
   - https://www.mythictrap.com/en/venomous-abyss/the-twin-fangs/mythic
 updated: 2026-09-28
@@ -22,8 +24,10 @@ units:                          # bosses e adds relevantes (nome em inglês → 
   - { key: broodling, name: "Broodling of Ithraz", npc_id: null }
 
 phases:                         # opcional; luta de fase única pode omitir
-  - { key: p1, name: "Phase 1", start: pull }
+  - { key: p1, name: "Phase 1", start: pull, hp: [vexhul] }
   - { key: transition, name: "Vile Flood", start: { cast: vile_flood } }
+  - { key: p2, name: "Phase 2", start: { zero: vexhul } }   # abre quando essa unit zera
+# hp: keys de `units` cuja vida conta naquela fase (vida por fase do robô e das fases no relatório)
 
 mechanics: [ ... ]              # lista de regras (abaixo)
 ```
@@ -39,11 +43,11 @@ mechanics: [ ... ]              # lista de regras (abaixo)
 | `severity` | sim | `wipe` \| `major` \| `minor` \| `none` |
 | `roles` | não | `[tank, healer, dps]` — quem pode ser culpado; default todos |
 | `tank_full_weight` | não | `true` = dano evitável pesa inteiro para tank na nota (o padrão é metade, porque tank costuma tomar de propósito) |
-| `difficulty` | não | lista; default = todas do cabeçalho |
+| `difficulty` | não | lista; vazia = todas as dificuldades (o `difficulties` do cabeçalho é só informativo) |
 | `overrides` | não | mapa dificuldade → campos que mudam (`mythic: { severity: wipe }`) |
 | `tip` | sim | o que fazer, 1 frase, palavras próprias, nas duas línguas: `{ pt: "...", en: "..." }` |
-| `message` | sim | texto do relatório quando dispara (placeholders `{player}` `{count}` `{spell}` `{time}` `{stacks}`), nas duas línguas: `{ pt: "...", en: "..." }` |
-| `needs_id` | não | `true` enquanto algum ID estiver `null` |
+| `message` | sim | texto do relatório quando dispara (placeholders `{player}` `{count}` `{stacks}` `{lethal_stacks}`), nas duas línguas: `{ pt: "...", en: "..." }` |
+| `needs_id` | não | `true` enquanto algum ID estiver `null`; só anotação, o app não lê |
 | `notes` | não | observações de calibração |
 
 IDs: `cast_id` (SPELL_CAST_SUCCESS), `damage_ids` (lista; SPELL_DAMAGE/PERIODIC), `aura_id` (SPELL_AURA_*), `fail_ids` (spell que só acontece quando a mecânica falha, ex.: explosão), `soak_aura_id`, `enrage_aura_id`, `requires_aura` (o dano só conta se o player estiver com essa aura — ex.: soak duplo com vulnerabilidade).
@@ -60,7 +64,7 @@ Opções extras:
 | `detect.min_amount` | hits abaixo do valor não contam (nem para culpa no recap). Ex.: separar a explosão do tick normal do mesmo spell. |
 | `detect.culprit_auras` | falha coletiva: culpa quem perdeu uma destas auras entre 0,5s antes e 50ms depois do 1º hit da falha (quem carregava o orb que explodiu). |
 | `detect.orbs` | `failure_event` de orbs que os players carregam e largam (ex.: `the-coiled-altar.yaml`): culpa quem levou um orb até outro **parado no chão** (ou largou um em cima) nos instantes antes da falha. Campos: `kinds` (`npc_id` da unidade no chão, `carry_aura` de quem carrega, `volatile: true` no que explode, `name` pt/en), `contact_yd` (9), `window_ms` (500), `breaker` (`cast_id`, `half_angle`, `range`: frontal que quebra orbs parados; `cast_ids`: outros frontais que também quebram; `count_aura`: debuff que o raid ganha por orb quebrado, e o salto de stacks no frontal diz quantos quebraram, escolhendo os mais alinhados com o cone pela direção do log ou do alvo do boss), `cleared_by` (casts do boss que explodem os orbs que sobraram no chão, ex.: orbs novos; `cleared_on_zero`: npc ids de bosses que explodem o que sobrou ao chegar a 0 de vida, ex.: o fim de uma fase; a explosão ali vira "sobrou orb no chão" em vez de "sem culpado"). Substitui `culprit_auras`. Precisa de advanced logging. |
-| `detect.pairing` | `failure_event` de debuff que os players somam encostando um no outro (ex.: Helical Toxins em `entombed-sentinels.yaml`): cada um recebe 1 a `max_initial` stacks e a soma `target` limpa os dois; outra soma fica nos dois. Campos: `aura_id` (a aura com os stacks), `tick_id` (tick de dano do debuff: o dano base, sem mitigação, dá os stacks de cada um, já que a aplicação não mostra o número), `target` (4), `max_initial` (3). Falha = soma acima de `target` ou abaixo dele deixando a rodada sem solução; culpado = quem fez 65%+ da aproximação nos 5s antes. Guarda replay das posições (15s antes). Precisa de advanced logging. |
+| `detect.pairing` | `failure_event` de debuff que os players somam encostando um no outro (ex.: Helical Toxins em `entombed-sentinels.yaml`): cada um recebe 1 a `max_initial` stacks e a soma `target` limpa os dois; outra soma fica nos dois. Campos: `aura_id` (a aura com os stacks), `tick_id` (tick de dano do debuff: o dano base, sem mitigação, dá os stacks de cada um, já que a aplicação não mostra o número), `target` (4), `max_initial` (3). Falha = soma acima de `target` ou abaixo dele deixando a rodada sem solução; culpado = quem fez 65%+ da aproximação nos 5s antes. Guarda replay das posições (15s antes do encontro, mas nunca antes de 2s antes do começo da rodada). Precisa de advanced logging. |
 | `detect.hit_aura_id` | `avoidable_damage`/`tank_range`/`positioning`: o acerto é a aplicação desta aura no player (para mecânica que quase não loga dano, só a aura de "dentro da onda"). |
 | `detect.confirm_aura` | com `hit_aura_id`: o acerto só conta se esta aura mudou de stack no player em até 250ms (subiu, ou desceu na aplicação letal; a limpeza total não conta). Ex.: `the-twin-fangs.yaml` → `stir_the_depths_wave` (onda = aura 1292807 + stack de Eternal Venom; o pulso de mesmo nome, 1292806, não dá stack). Com `fail_ids`: o hit só vira falha se a aura mudou de stack naquele player em até 250ms (a explosão aplica o DoT; os ticks seguintes, do mesmo tamanho, não). |
 | `blame_message` | texto por jogador numa regra coletiva (`{player}`); `message` fica para o resumo. |
@@ -69,7 +73,7 @@ Opções extras:
 
 ### O que o motor avalia hoje
 
-`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event`, `dispel`, `phase_duration`, `exclusive_auras` são avaliados automaticamente. `cc_required`, `spread`, `add_kill`, `hp_balance` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
+`avoidable_damage`, `tank_range`, `positioning`, `stack_limit`, `soak`, `tank_soak`, `interrupt`, `enrage`, `failure_event`, `dispel`, `phase_duration`, `exclusive_auras` são avaliados automaticamente. `hp_balance` só avalia a aura de enrage (`enrage_aura_id`); a diferença de vida não é medida. `cc_required`, `spread`, `add_kill` e `info` aparecem só como dica ("não avaliadas"). `unavoidable` não aparece no relatório, mas liga o golpe final de uma morte à mecânica.
 
 ## Tipos
 
@@ -98,17 +102,16 @@ Algo precisa ser absorvido por players; se não, acontece um evento de falha.
 detect:
   soak_aura_id: ..      # aura/dano recebido por quem soakou (opcional)
   fail_ids: [..]        # explosão/dano no raid quando ninguém soakou
-min_soakers: 1
+soak: { radius: 9, players: 5 }   # opcional: o círculo no replay e quantos players precisa
 ```
-Log: evento em `fail_ids` = falha (culpa coletiva; lista quem estava vivo e sem soak). `soak_aura_id` mostra quem ajudou.
+Log: evento em `fail_ids` = falha (culpa coletiva; lista quem levou o evento de falha; rajadas a <1,5s contam uma vez). `soak_aura_id` mostra quem ajudou.
 
 ### `interrupt`
 Cast inimigo que tem que ser interrompido (ou CCado).
 ```yaml
 detect: { cast_id: .. }
-accept: [interrupt, cc, kill]   # o que conta como sucesso
 ```
-Log: `SPELL_CAST_SUCCESS` do inimigo = falha; `SPELL_INTERRUPT` credita quem cortou. Relatório: cada cast em ordem (add, quem cortou ou se passou) — a UI compara com a escala de interrupts colada pelo líder (nota do MRT/NSRT).
+Log: `SPELL_CAST_SUCCESS` do inimigo = falha; só `SPELL_INTERRUPT` credita quem cortou (CC ou matar o add não contam como sucesso). Relatório: cada cast em ordem (add, quem cortou ou se passou) — a UI compara com a escala de interrupts colada pelo líder (nota do MRT/NSRT).
 
 ### `failure_event`
 Evento que só acontece quando o raid erra, sem "soak" envolvido (explosão por contato, timer estourado).
@@ -120,9 +123,9 @@ detect:
   orbs: { .. }                # opcional: orbs carregados/largados (culpa quem levou um até outro no chão)
   pairing: { .. }             # opcional: debuff de somar encostando (sem fail_ids: a falha é o encontro com soma errada)
   gaze: { fixate_aura, fixate_cast, hit_aura, half_angle: 45, window_ms: 5000, sim: { name, speed, half_angle, delay_ms, stun_ms, catch_aura } }   # opcional: fantasma que só para com o alvo olhando; culpa quem ficou de costas para o próprio; `sim` desenha o caminho dele no replay
-blame_message: "{player} carregava o orb"
+blame_message: { pt: "{player} carregava o orb", en: "{player} carried the orb" }
 ```
-Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `orbs` ou `culprit_auras`); sem eles, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.
+Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `orbs`, `culprit_auras`, `pairing` ou `gaze`); sem nenhum deles, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.
 
 Frontal em cone (qualquer tipo): `cone: { cast_id, half_angle, range, target_spells }` no nível da mecânica desenha um triângulo no replay, apontado para o alvo do boss durante o cast. O alvo é quem o boss acerta corpo a corpo; boss que não bate corpo a corpo precisa de `target_spells` (spells que só vão no alvo dele, ex.: Dread Bolt).
 
@@ -134,7 +137,7 @@ Soak no replay: `soak: { radius, players }` (quem entrou vem do dano em `damage_
 
 Unidade com `replay: true` em `units` (ex.: `{ key: spawn_of_vexhul, npc_id: 264023, replay: true }`) entra no replay mesmo sem HP de boss: adds que importam (matar, desviar das linhas). Add de `interrupt` entra sozinho e some 1 s depois do último cast (cortado ou não), mesmo sem morrer no log.
 
-Chão por fase e DoT: `ground: { phases: [p1] }` marca só nas fases listadas (keys de `phases`; o motor acompanha a fase pelo cast que abre cada uma). `ground: { dot: true }` diz que o dano é um DoT que segue o player: os ticks não marcam, só a aplicação do debuff de mesmo ID. Poça em que o player fica parado (aura só enquanto está nela) continua com os ticks.
+Chão por fase e DoT: `ground: { phases: [p1] }` marca só nas fases listadas (keys de `phases`; o motor acompanha a fase pelo `start` de cada uma: o cast que a abre ou a unit que zera). `ground: { dot: true }` diz que o dano é um DoT que segue o player: os ticks não marcam, só a aplicação do debuff de mesmo ID. Poça em que o player fica parado (aura só enquanto está nela) continua com os ticks.
 
 Hotfix que muda o raio dos orbs: `contact_yd` fica com o valor novo e o antigo vai em `before: [{ until: "AAAA-MM-DDTHH:MM", contact_yd: .. }]` (UTC). Pulls que começaram antes de `until` usam o raio antigo, então os logs velhos continuam certos.
 
@@ -170,9 +173,8 @@ Log: cada stack nova (`SPELL_AURA_APPLIED`/`APPLIED_DOSE`) é um pulso. Erro = p
 Precisa de CC/stop para quebrar algo (escudo, cast).
 ```yaml
 detect: { aura_id: .. }         # o escudo/buff que deve ser removido
-fail_ids: [..]                  # opcional
-window: 8s                      # tempo máximo que a aura pode ficar
 ```
+Não avaliado: aparece só como dica. Campos de tempo (`window`) não existem no motor.
 
 ### `spread`
 Player marcado deve se afastar; erro é atingir outros ou deixar poça no lugar errado.
@@ -181,23 +183,19 @@ detect:
   aura_id: ..           # debuff de marcação
   damage_ids: [..]      # dano que não deveria atingir outros
 ```
-Log: dano em player **sem** o `aura_id` atribuído ao portador mais próximo no tempo. Posição não existe no log (só em alguns eventos com Advanced Logging) — trate como heurística e diga isso em `notes`.
+Não avaliado: aparece só como dica, e o dano não é atribuído a ninguém.
 
 ### `tank_soak`
 Tank precisa receber o hit; falha gera dano no raid.
 ```yaml
 roles: [tank]
 detect: { damage_ids: [..], fail_ids: [..] }
-expected_hits: 3
 ```
+Log: `damage_ids` credita o tank; cada `fail_ids` conta como falha (rajadas a <1,5s contam uma vez).
 
 ### `add_kill`
 Adds precisam morrer dentro de um tempo.
-```yaml
-detect: { unit: spawn_of_vexhul }
-kill_within: 20s
-```
-Log: `SPELL_SUMMON`/primeiro evento do NPC → `UNIT_DIED`.
+Não avaliado: aparece só como dica. Campos como `unit` ou `kill_within` não existem no motor.
 
 ### `enrage`
 Buff de enrage aplicado em inimigo = falha coletiva.
@@ -209,11 +207,9 @@ detect: { enrage_aura_id: .. }
 Bosses precisam morrer juntos.
 ```yaml
 detect:
-  units: [vexhul, ithraz]
   enrage_aura_id: ..
-max_hp_diff_pct: 10
 ```
-Log: HP dos bosses via Advanced Logging; aura de enrage = falha.
+Log: aura de enrage = falha coletiva. A diferença de vida entre os bosses não é medida.
 
 ### `tank_range` / `positioning`
 Spell que só dispara quando alguém está no lugar errado (ex.: bolt quando o tank sai do alcance).
@@ -227,13 +223,6 @@ Dano de raid inevitável. Nunca gera culpa; usado para contexto no death recap e
 ```yaml
 detect: { damage_ids: [..] }
 severity: none
-```
-
-### `enrage`
-Soft/hard enrage por tempo ou condição.
-```yaml
-detect: { aura_id: .. }
-at: 540s        # se hard enrage por tempo
 ```
 
 ### `info`

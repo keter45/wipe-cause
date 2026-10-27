@@ -46,7 +46,7 @@ Um guia quase nunca traz spell IDs, e o log pode estar com nomes em pt-BR, entã
 
 O ID do Journal nem sempre é o ID que aparece no `SPELL_DAMAGE` (ex.: cast ≠ dano ≠ explosão). Use o ID do Journal como ponto de partida e, quando não souber se ele vale para o evento que a regra detecta, deixe um `notes` pedindo confirmação no log.
 
-Uma habilidade pode ter vários IDs (cast, dano, debuff, explosão). Coloque cada um no campo certo (`cast_id`, `damage_ids`, `aura_id`, `fail_ids`). Se não conseguir resolver, deixe `id: null` e `needs_id: true` — o app mostra essas regras como "não calibradas" e o usuário completa depois com um log.
+Uma habilidade pode ter vários IDs (cast, dano, debuff, explosão). Coloque cada um no campo certo (`cast_id`, `damage_ids`, `aura_id`, `fail_ids`). Se não conseguir resolver, deixe o ID `null` no próprio campo (`cast_id: null`, `damage_ids: [null]`…) e `needs_id: true` como anotação para quem for completar com um log. O app não lê o `needs_id` nem marca a regra de jeito diferente: a regra só não dispara enquanto o ID faltar.
 
 ## Lições do Coiled Altar (valem para todo boss)
 
@@ -74,7 +74,9 @@ Regras novas vão em `encounters/<raid>/<boss>.yaml` (embutidas no build). Para 
 
 - **Sempre nas duas línguas.** O app é pt-BR e inglês: `tip`, `message` e `blame_message` são `{ pt: "...", en: "..." }` (o teste `embedded_texts_are_bilingual` falha se faltar uma). Nomes de habilidades, bosses e mecânicas ficam em inglês nas duas, inclusive o qualificador entre parênteses (`"Guillotine (double soak)"`, não `"(soak duplo)"`); o teste `english_side_and_names_have_no_portuguese` confere. Para converter um arquivo escrito numa língua só: `node scripts/i18n-yaml.mjs extract <saida.json>`, traduzir e `apply`.
 - **Não copie a prosa do guia.** Escreva `tip` e `message` com suas próprias palavras, curtas. Guarde a URL em `source`.
-- `message` é o que aparece no relatório quando a regra dispara; use placeholders `{player}`, `{count}`, `{spell}`, `{time}`.
+- `message` é o que aparece no relatório quando a regra dispara; use placeholders `{player}`, `{count}`, `{stacks}`, `{lethal_stacks}` (o motor só troca esses).
 - Diferenças por dificuldade vão em `difficulty` (lista) e `overrides` — não crie arquivos separados por dificuldade.
 - Mecânicas só de tank → `roles: [tank]`; o motor não culpa DPS/healer por elas.
 - Seja conservador em `tolerance`: na dúvida, `0` para `wipe`/`major`, e deixe um `notes` dizendo que precisa calibrar com pulls reais.
+- Se o boss pedir um tipo de campo que `encounters/` ou `data/*.json` não têm, pare o
+  cadastro e proponha o EGM: é o critério (b) do Fluxo de feature (CONTRIBUTING).

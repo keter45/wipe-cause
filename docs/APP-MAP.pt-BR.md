@@ -8,7 +8,7 @@ Documentação funcional e técnica das telas, componentes e conexões entre fun
 
 Este documento explica onde cada recurso aparece, de quais dados depende e que outras partes do app ele afeta. O [guia de uso](USAGE.pt-BR.md) explica a operação cotidiana; o [guia de contribuição](CONTRIBUTING.pt-BR.md) cobre desenvolvimento e manutenção.
 
-Foram percorridas as telas no navegador local, usando relatórios do projeto, a interface de desenvolvimento e o build de desenvolvimento web com backend WASM. O código React, as funções de domínio, os comandos Tauri e o adaptador web foram consultados para conferir as conexões. A [cobertura da inspeção](#cobertura-da-inspeção) distingue navegação observada de operações confirmadas somente no código.
+Foram percorridas as telas no navegador local, usando relatórios do projeto, a interface de desenvolvimento e o build de desenvolvimento web com backend WASM. O código React, as funções de domínio, os comandos Tauri e o adaptador web foram consultados para conferir as conexões. A [cobertura da inspeção](#8-cobertura-da-inspeção) distingue navegação observada de operações confirmadas somente no código.
 
 ## 1. Visão do produto
 

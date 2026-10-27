@@ -34,7 +34,7 @@
   <a href="docs/CONTRIBUTING.pt-BR.md">Contribuir</a>
 </p>
 
-![Replay atual do The Coiled Altar com arena, fantasmas, medidor de dano, frames da raid e linha do tempo](docs/screenshots/pt/replay-overview.webp)
+![Replay atual do The Coiled Altar com arena, fantasmas, medidor de dano, quadro da raide e linha do tempo](docs/screenshots/pt/replay-overview.webp)
 
 <p align="center"><i>Reveja a luta, encontre o erro e leve o ajuste para a próxima try.</i></p>
 
@@ -42,7 +42,7 @@
 
 ### A luta inteira, no mapa e na linha do tempo
 
-Acompanhe os players na arena junto de frontais, áreas, orbs e fantasmas das mecânicas. Os frames da raid mostram vida e debuffs; os medidores acompanham dano e cura. Selecione um player no mapa ou nos frames para investigar o que aconteceu com ele.
+Acompanhe os players na arena junto de frontais, áreas, orbs e fantasmas das mecânicas. O quadro da raide mostra vida e debuffs; os medidores acompanham dano e cura. Selecione um player no mapa ou nos frames para investigar o que aconteceu com ele.
 
 Navegue pelas fases, mortes e falhas ou abra as faixas de cada mecânica. Clique em uma marca para ir direto ao evento, ajuste o zoom da linha do tempo e reveja o trecho na velocidade que precisar.
 
