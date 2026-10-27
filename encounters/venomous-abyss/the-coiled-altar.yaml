@@ -348,6 +348,20 @@ mechanics:
     tip: { pt: "Quem recebe Gravebound pega os próprios fragmentos antes do debuff acabar, senão morre.", en: "Whoever gets Gravebound picks up their own fragments before the debuff ends, or dies." }
     message: { pt: "Gravebound", en: "Gravebound" }
 
+  # O fim do Gravebound com fragmento sem pegar: um golpe de ~38-40 mi (1297906) em quem tinha o debuff,
+  # no mesmo ms em que a aura sai. 14, 15, 19, 20, 21, 22 e 26/10 Mythic: 150 acertos, todos em quem tinha o
+  # Gravebound na hora (11 a 16s depois de receber), com 1 a 5 fragmentos faltando; ninguém mais toma. O
+  # SPELL_MISSED (imune) não conta.
+  - key: gravebound_expired
+    name: "Gravebound (fragments left)"
+    type: avoidable_damage
+    source_unit: malacrass
+    severity: major
+    detect: { damage_ids: [1297906] }
+    ground: false
+    tip: { pt: "Pegar todos os próprios fragmentos antes do Gravebound acabar: o fim dele com fragmento sobrando mata.", en: "Pick up all your own fragments before Gravebound ends: it ending with fragments left kills you." }
+    message: { pt: "{player} deixou o Gravebound acabar com fragmentos sem pegar ({count}x)", en: "{player} let Gravebound end with fragments left ({count}x)" }
+
   - key: eternal_nightfall
     name: "Eternal Nightfall"
     type: interrupt
