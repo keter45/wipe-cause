@@ -1,7 +1,7 @@
 # Atribuição por posição: quem da Gloombomb não chegou ao add
 
 *   **Author:** Vinicius Andrade (@keter45)
-*   **Status:** Approved
+*   **Status:** Implemented
 *   **Date:** 2026-10-27 (aprovado pelo desenvolvedor em 2026-10-27, sem `/egm:egm-review`)
 
 Convenção: títulos e rótulos do template EGM ficam em inglês; o resto, em

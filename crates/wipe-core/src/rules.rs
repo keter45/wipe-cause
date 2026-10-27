@@ -2325,7 +2325,7 @@ fn assign_culprits(m: &Mechanic, st: &mut MechState, log: &AssignLog, ranges: &H
                 let picks = |en: bool| {
                     groups
                         .iter()
-                        .map(|g| if en { format!("{} to {}", group(g.group).en, spot(g.spot).en) } else { format!("{} em {}", group(g.group).pt, spot(g.spot).pt) })
+                        .map(|g| if en { format!("{} to {}", group(g.group).en, spot(g.spot).en) } else { format!("{} em {}", group(g.group).pt, spot(g.spot).pt) }) // i18n-ignore: par pt/en
                         .collect::<Vec<_>>()
                         .join(", ")
                 };
