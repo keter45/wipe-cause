@@ -9,7 +9,7 @@ Quando usar o fluxo: seção "Fluxo de feature" do
 
 | Link | Status | Data | Autor | Componentes | Descrição |
 | :--- | :----- | :--- | :---- | :---------- | :-------- |
-| [egm-adoption.md](egm-adoption.md) | Approved | 2026-10-26 | @keter45 | `docs/`, `CLAUDE.md`, `.claude/skills/`, `scripts/` | Regras do projeto, fluxo EGM e auditoria dos docs |
+| [egm-adoption.md](egm-adoption.md) | Implemented | 2026-10-26 | @keter45 | `docs/`, `CLAUDE.md`, `.claude/skills/`, `scripts/` | Regras do projeto, fluxo EGM e auditoria dos docs |
 
 Status: Proposed → Approved → Implemented → Superseded by `<design>`.
 

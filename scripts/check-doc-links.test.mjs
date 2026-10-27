@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { checkFiles, extractLinks, headingSlugs, slugify } from './check-doc-links.mjs';
+import { checkFiles, extractLinks, formatFailure, headingSlugs, slugify } from './check-doc-links.mjs';
 
 let dir;
 function repo(files) {
@@ -71,6 +71,10 @@ describe('checkFiles', () => {
       'a.md': '[r](#-rotation) [e](#veja-em-a%C3%A7%C3%A3o) [d](#uso-1)\n### 📜 Rotation\n## Veja em ação\n## Uso\n## Uso\n',
     });
     expect(checkFiles(['a.md'], root)).toEqual([]);
+  });
+  it('imprime cada falha como arquivo:linha → alvo', () => {
+    const root = repo({ 'docs/a.md': '# A\n\n[x](nao-existe.md#sec)\n' });
+    expect(checkFiles(['docs/a.md'], root).map(formatFailure)).toEqual(['docs/a.md:3 → nao-existe.md#sec']);
   });
   it('aceita pasta como alvo', () => {
     const root = repo({ 'docs/a.md': '[src](../src)\n', 'src/x.ts': '' });

@@ -1,8 +1,9 @@
 # Adoção do fluxo EGM e auditoria da documentação
 
 *   **Author:** Vinicius Andrade (@keter45)
-*   **Status:** Approved
-*   **Date:** 2026-10-26 (revisado e aprovado em 2026-10-27, depois do `/egm:egm-review`)
+*   **Status:** Implemented
+*   **Date:** 2026-10-26 (revisado e aprovado em 2026-10-27, depois do `/egm:egm-review`;
+    implementado no PR keter45/wipe-cause#68)
 
 Convenção: títulos e rótulos do template EGM ficam em inglês; o resto, em
 português.
@@ -807,7 +808,8 @@ e restantes, com o motivo; ATENÇÃO pendentes; link para este design.
         cabeçalho em comentário, em português, com o uso (como em
         `scripts/replay-check.mjs`); só roda o `main` quando chamado direto;
         exporta `slugify(titulo)` e `extractLinks(texto)`.
-    *   **Arquivos lidos:** só os versionados (`git ls-files`) que casam com
+    *   **Arquivos lidos:** os que o git não ignora, versionados ou novos
+        (`git ls-files --cached --others --exclude-standard`), que casam com
         `README.md`, `README.pt-BR.md`, `CLAUDE.md`, `docs/**/*.md` (menos
         `docs/releases/`) e `.claude/skills/*/SKILL.md`. Assim a skill de
         terceiro fora do git não entra.
@@ -817,17 +819,19 @@ e restantes, com o motivo; ATENÇÃO pendentes; link para este design.
         `mailto:`, e links de referência `[x][ref]`.
     *   **Alvo:** resolvido a partir da pasta do arquivo; precisa existir
         (arquivo ou diretório). Alvo vazio antes de `#` = o próprio arquivo.
-    *   **Âncora:** precisa bater com o slug de algum título do destino. Slug:
+    *   **Âncora:** quando o destino é um arquivo `.md`, precisa bater com o slug
+        de algum título dele. Slug:
         minúsculas; remove todo caractere que não seja letra, número, marca
         (acento), espaço, `-` ou `_`; cada espaço vira `-`, sem juntar hífens
         repetidos nem cortar hífen do começo; o segundo título igual ganha
         `-1`, o terceiro `-2`; títulos dentro de blocos cercados não contam. O
         slug de `scripts/lib/checks.mjs` não serve (é só ASCII).
-    *   **Saída:** uma linha `arquivo:linha → alvo` por falha; código 1 se
-        houver alguma, 0 se não.
+    *   **Saída:** uma linha `arquivo:linha → alvo` por falha (montada por
+        `formatFailure`, exportada) e uma linha final com o total de docs e de
+        links quebrados; código 1 se houver alguma falha, 0 se não.
     *   **Listagem:** `fs.readdirSync(dir, { recursive: true })` ou a saída do
-        `git ls-files` (Node 20, como pede o CONTRIBUTING; `fs.globSync` exige
-        Node 22).
+        `git ls-files` (o CONTRIBUTING pede Node 22.12+; o script não depende de
+        `fs.globSync`).
     *   **Testes** (`check-doc-links.test.mjs`, rodado pelo `npm test` do
         vitest, que o CI já roda): arquivo inexistente → falha; âncora
         inexistente → falha; âncora com acento (`#cobertura-da-inspeção`) →
@@ -872,14 +876,15 @@ e restantes, com o motivo; ATENÇÃO pendentes; link para este design.
         ```
 
     *   Seção nova `### Project rules`, depois de "Texts in both languages": o
-        texto final em inglês das seis regras da Parte 1, com os nomes de doc
-        como links.
+        texto final em inglês das seis regras da Parte 1, depois de uma frase de
+        abertura ("Rules that decide how a feature is designed in this
+        project."), com os nomes de doc e de seção como links.
     *   Seção nova `### Feature workflow`, depois de "Project rules": o texto
         final em inglês do critério, e depois:
 
         ```text
-        A big feature has a design in `docs/designs/` (index in [SITEMAP.md](designs/SITEMAP.md)),
-        with Status Approved, inside the feature's PR and cited in the PR description. It can be
+        A big feature has a design in `docs/designs/` (index in [SITEMAP.md](designs/SITEMAP.md),
+        in Portuguese), with Status Approved, inside the feature's PR and cited in the PR description. It can be
         written by hand, following the template in the SITEMAP, or with the EGM plugin (`egm@egm`).
 
         Before a minor release: `npm run docs:links` exits with 0, and the doc check from
@@ -920,8 +925,9 @@ e restantes, com o motivo; ATENÇÃO pendentes; link para este design.
         ```
 
     *   Seção nova `### Regras do projeto`, depois de "Textos nas duas
-        línguas": o texto final em português das seis regras da Parte 1, com os
-        nomes de doc como links.
+        línguas": o texto final em português das seis regras da Parte 1, depois de uma
+        frase de abertura ("Regras que decidem como uma feature é desenhada
+        neste projeto."), com os nomes de doc e de seção como links.
     *   Seção nova `### Fluxo de feature`, depois de "Regras do projeto": o
         texto final em português do critério, e depois:
 

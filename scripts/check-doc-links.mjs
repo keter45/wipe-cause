@@ -129,10 +129,15 @@ export function docFiles(root = ROOT) {
     .sort();
 }
 
+/** A linha que o relatório imprime para um link quebrado. */
+export function formatFailure({ file, line, target }) {
+  return `${file}:${line} → ${target}`;
+}
+
 function main() {
   const files = docFiles();
   const failures = checkFiles(files);
-  for (const f of failures) console.log(`${f.file}:${f.line} → ${f.target}`);
+  for (const f of failures) console.log(formatFailure(f));
   console.log(`${files.length} docs, ${failures.length} link(s) quebrado(s)`);
   process.exitCode = failures.length ? 1 : 0;
 }
