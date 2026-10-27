@@ -20,6 +20,6 @@ Atualizadas em 21/10/2026 a partir do app local. Os exemplos usam nomes fictíci
 1. Use um report e um fight da mesma tentativa: confira o `startMs`. Prepare uma cópia com nomes fictícios e sem caminhos pessoais antes de capturar.
 2. Abra os dados no app atual e capture cada cenário em português e inglês. Use os controles reais para selecionar o player, navegar no tempo, abrir as faixas e ajustar a câmera.
 3. Capture a interface sem alterar seu layout para a imagem. Exporte o cartão pelo renderizador do app e o clipe pelo exportador de replay, em vez de recriá-los manualmente.
-4. Na versão web, o clipe pode omitir a imagem remota de fundo da arena; esse é o comportamento atual do exportador. As capturas estáticas mostram o fundo carregado na interface.
+4. Na versão web, o clipe sai sempre sem a imagem remota de fundo da arena; no app, ela só falta quando a imagem não baixa. As capturas estáticas mostram o fundo carregado na interface.
 5. Grave as capturas estáticas em WebP e preserve a animação de `replay.webp`. Atualize texto e alt text quando mudar o cenário.
 6. Confira os dois READMEs renderizados, os caminhos locais, o enquadramento das imagens e a reprodução dos clipes. Mantenha dados e páginas temporárias de captura fora do Git.

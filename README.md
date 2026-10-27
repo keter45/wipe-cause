@@ -89,7 +89,7 @@ Switch to **Solo** for a personal review: rotation, cooldowns, survival and your
 
 In **Live** mode, see the analysis between pulls and automatically send the wipe card and replay clip to your raid channel. Share pull, boss and night summaries as images, HTML or PDF.
 
-![Shareable pull summary with the wipe cause, decisive deaths and key findings](docs/screenshots/en/share.webp)
+![Shareable pull summary with the wipe cause, decisive deaths and key mistakes](docs/screenshots/en/share.webp)
 
 | Also included | What it helps you do |
 | --- | --- |

@@ -4,7 +4,7 @@
 
 ## Instalar
 
-1. **[Baixe o instalador](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`, ~4 MB).
+1. **[Baixe o instalador](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`). Windows 10 ou 11 (o app usa o WebView2, que vem com o Windows).
 2. Abra o arquivo. Na primeira vez, o Windows pode mostrar *"O Windows protegeu o computador"*: clique em **Mais informações → Executar assim mesmo** (o app ainda não tem certificado de assinatura pago).
 3. Pronto. O app **se atualiza sozinho** quando sai versão nova; não precisa baixar de novo.
 
@@ -31,13 +31,17 @@ Na primeira vez, o app abre em **Configurações** com o passo a passo (depois e
 ![Tela Escolha a noite: barra de filtro por boss com o The Twin Fangs escolhido e duas noites com o boss](screenshots/pt/logs.png)
 <p align="center"><i>Uma linha por noite, com os bosses de cada uma. O filtro mostra só as noites de um boss.</i></p>
 
-**Nova análise** junta os logs do seu PC e os reports da guilda no Warcraft Logs, uma linha por noite. **Analisar** usa o log do seu PC (rápido, sem baixar nada); **Analisar todos** lê um por um os logs da lista que ainda não foram analisados e guarda no histórico, para a Evolução. A pasta de logs inclui a `warcraftlogsarchive` do uploader do Warcraft Logs. Logs só de masmorra (M+) não aparecem. **Guilda / Pug** separa a raid da guilda das raids com outros personagens e gente aleatória: pelo núcleo de players que se repete nas suas noites (um mesmo log pode ter os dois, separados boss a boss). Para achar as noites de um boss, filtre por ele (e pela dificuldade) na barra acima da lista; a escolha fica lembrada.
+**Nova análise** junta os logs do seu PC e os reports da guilda no Warcraft Logs, uma linha por noite. **Analisar** usa o log do seu PC (rápido, sem baixar nada); **Analisar todos** lê um por um os logs da lista que ainda não foram analisados e guarda no histórico, para a Evolução. A pasta de logs inclui a `warcraftlogsarchive` do uploader do Warcraft Logs. Logs só de masmorra (M+) não aparecem. **Guilda / Pug / Todos** separa a raid da guilda das raids com outros personagens e gente aleatória: pelo núcleo de players que se repete nas suas noites (um mesmo log pode ter os dois, separados boss a boss). Para achar as noites de um boss, filtre por ele (e pela dificuldade) na barra acima da lista; a escolha fica lembrada. **Abrir arquivo…** analisa um log de outro lugar; **Detectar** volta para a pasta detectada sozinha e **Trocar pasta** escolhe outra.
 
-Bosses e pulls que **não estão no seu log** mas estão no Warcraft Logs (você saiu antes, entrou depois, estava longe) aparecem com o ícone de download. **Completar** baixa só o que falta — demora alguns minutos, então é você quem decide; depois do primeiro download, reabrir é rápido. Masmorras (M+) ficam de fora, e wipes com menos de 30s são ignorados.
+Bosses e pulls que **não estão no seu log** mas estão no Warcraft Logs (você saiu antes, entrou depois, estava longe) aparecem com o ícone de download, e as noites que só existem no Warcraft Logs (os últimos 30 dias) aparecem com **Baixar**. **Completar** baixa só o que falta — demora alguns minutos, então é você quem decide; depois do primeiro download, reabrir é rápido. Masmorras (M+) ficam de fora, e wipes com menos de 30s são ignorados.
+
+Cada análise fica salva na barra lateral, em **Noites**, com a data: **Fixar** guarda, **Apagar do histórico** tira uma e **Apagar todas as análises não fixadas** limpa o resto. No topo de uma noite aberta, **Reanalisar o log** lê de novo (depois de uma atualização do app ou de mudar uma regra), **Noites salvas** abre o histórico e **Escolher outra noite…** volta para a lista.
 
 ### 2. Veja por que deu wipe
 
-O topo do pull é o **veredito**: o boss em quanto ficou, o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e cada erro de mecânica com quem errou, do mais grave para o mais leve (veja o [print do pull](screenshots/pt/pull.webp)). Abaixo, as abas:
+O topo do pull é o **veredito**: o boss em quanto ficou, o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e os erros de mecânica que causaram o wipe, com quem errou (os outros erros e avisos abrem em **Mostrar N outros erros e avisos**) (veja o [print do pull](screenshots/pt/pull.webp)). Abaixo, as abas.
+
+Quando a raid desiste (depois de um desastre, vários players param de castar ao mesmo tempo e morrem), o pull mostra **Call de wipe** (ou **Possível call**, quando o sinal é mais fraco). Com a call certa, o que vem depois conta como o corte de mortes: ninguém leva culpa por morrer de propósito.
 
 | Mortes | Mecânicas |
 |---|---|
@@ -55,7 +59,7 @@ O topo do pull é o **veredito**: o boss em quanto ficou, o **gatilho** do wipe 
 ![Resumo da noite: tempo de raid, downtime, um cartão por boss com o resultado e a linha do tempo da noite](screenshots/pt/night.webp)
 <p align="center"><i>O resumo da noite: tempo de raid, downtime entre as trys, um cartão por boss e a linha do tempo com as pausas.</i></p>
 
-No **resumo do boss**: o melhor pull, a maior causa dos wipes, o progresso pull a pull, o placar de vilões e mocinhos e o downtime.
+No **resumo do boss**: o melhor pull, a maior causa dos wipes, o progresso pull a pull, a tabela **Causas dos wipes** (mecânica, gatilho, mortes e falhas), a linha do tempo do boss com os intervalos, o placar de vilões e mocinhos e o downtime.
 
 ![Resumo do boss: melhor pull 5.8%, maior causa Stone Breaker, gráfico de progresso por pull e o começo das métricas do grupo](screenshots/pt/boss.webp)
 
@@ -87,11 +91,11 @@ Fechar a janela deixa o app na bandeja (perto do relógio), com o ao vivo rodand
 
 O aviso do pull tem um campo para anotar o motivo do wipe na hora, do jeito que a raid percebeu (ele não some enquanto você escreve). A anotação fica salva no PC, aparece no topo do pull (onde dá para editar depois), marca o pull na lista, vai no cartão de compartilhar e entra no contexto do "Perguntar à IA".
 
-Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar*. O botão **Discord** no topo pausa e religa o envio automático sem mexer nas opções (o *Compartilhar* continua funcionando).
+Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar*. Cada envio automático (wipe, kill, resumo da noite e o clipe do wipe) liga e desliga separado, e **Enviar teste** confere o webhook. O botão **Discord** no topo pausa e religa o envio automático sem mexer nas opções (o *Compartilhar* continua funcionando).
 
 ### 📤 Compartilhar
 
-O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compartilhar**: gera um cartão para **copiar como imagem** e colar no Discord/WhatsApp, **salvar como PNG, HTML ou PDF** ou **enviar a imagem ao Discord** pelo webhook configurado. Cada cartão tem duas versões:
+O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compartilhar**: gera um cartão para **copiar como imagem** e colar no Discord/WhatsApp, **salvar como PNG ou HTML** (e **PDF** com links clicáveis, na versão Completo) ou **enviar a imagem ao Discord** pelo webhook configurado. Quando o pull tem erros que levaram ao wipe, ele também tem **Salvar clipe com o resumo da try (WebP)** e **Mensagem no Discord**, um texto sobre o pull ou o boss. Cada cartão tem duas versões:
 
 - **Resumo** (padrão, e o que vai sozinho no ao vivo): o principal para uma olhada. No pull, o veredito, os 3 achados principais, as mortes decisivas, quem ficou abaixo de 80 e o mapa da falha; no boss, o HP de cada pull, as maiores causas, quem ficou abaixo de 80 e os destaques; no solo, os seus números contra a referência e os 3 erros que mais custaram.
 - **Completo**: tudo aberto, mais largo. Cada morte em ordem, as mecânicas com quem errou, os interrupts que passaram e a tabela dos jogadores (pull); o pull a pull e o placar (boss e noite); os trechos em que a referência abriu vantagem, os cooldowns e o dano tomado a mais (solo); rotação, poções e setup (desempenho).
@@ -108,7 +112,7 @@ No fim pesam o tempo vivo até a primeira morte e, no kill, o **parse do Warcraf
 
 ### 🤖 Perguntar à IA
 
-Cada pull tem a aba **Perguntar à IA**: a IA recebe um dossiê do pull (mecânicas do boss com as dicas das regras, veredito, mortes, defensivos, posições, escala de interrupts, dispels, notas e um resumo dos outros pulls da noite — ~3–5 mil tokens) e responde só com base nele. Dá para ver o dossiê em **Ver dossiê**.
+Cada pull tem a aba **Perguntar à IA**: a IA recebe um dossiê do pull (mecânicas do boss com as dicas das regras, veredito, mortes, defensivos, posições, escala de interrupts, dispels, notas e um resumo dos outros pulls da noite) e responde só com base nele. Dá para ver o dossiê, com o tamanho dele, em **Ver dossiê**.
 
 Funciona com qualquer provedor no formato de chat da OpenAI, com presets para opções gratuitas: **Google Gemini** e **Groq** (planos gratuitos sem cartão), **OpenRouter** (modelos `:free`) e **Ollama** (roda no seu PC, grátis e offline), escolhidos em **Configurações → Perguntar à IA**. A chave de API fica no Gerenciador de Credenciais do Windows. Nos planos gratuitos, o provedor pode usar as perguntas para treinar modelos — o dossiê inclui os nomes dos players.
 
@@ -116,15 +120,16 @@ Funciona com qualquer provedor no formato de chat da OpenAI, com presets para op
 
 A aba **Desempenho** de cada pull compara um player com os **top players da mesma spec no Warcraft Logs**, com item level parecido (e tempo de kill parecido, se o pull foi kill). Na progressão não há tempo de kill: o fight do top é recortado no mesmo tempo que o player ficou vivo, então um wipe de 2:30 é comparado com os 2:30 iniciais do kill.
 
+- **No topo**: dano (ou cura) por segundo vivo, tempo vivo, casts por minuto e item level, e depois as **Diferenças principais**. No modo guilda você escolhe o jogador, e o app lembra a escolha.
 - **Janelas de burst**: marque os cooldowns que quer comparar; cada uso mostra os casts de 3s antes a 20s depois numa linha do tempo, lado a lado com o mesmo uso do top.
 - **Cooldowns**: quando cada um foi usado, quantas vezes (e quantas cabiam no tempo) e se o 1º uso veio atrasado ou adiantado.
 - **Onde a referência abriu vantagem**: o seu dano a cada 5s contra o da referência, com os 3 trechos de maior diferença e os casts de cada um lado a lado.
 - **Casts por habilidade**: casts por minuto e % do dano de cada habilidade, e a leitura da [rotação base da spec](#-rotação).
 - **Dano tomado a mais**: as habilidades do boss que pegaram bem mais em você que na referência, por minuto vivo.
 - **Setup**: poção de combate, distribuição de status, talentos diferentes e itens lado a lado, com encantamentos e gemas que faltam.
-- **Exportar**: o relatório do jogador vira um cartão para copiar, salvar (PNG/HTML) ou mandar ao Discord — para quem não tem o app.
+- **Compartilhar**: o relatório do jogador vira um cartão (veja [Compartilhar](#-compartilhar)) — para quem não tem o app.
 
-Para usar os tops, crie um client grátis em [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) e cole o client ID e o secret na aba (ficam no Gerenciador de Credenciais do Windows). As consultas enviam só boss, spec e códigos de report; as respostas ficam em cache. A comparação com a própria raid fica na aba **Na própria raid**. Se o link do report da noite estiver cadastrado, o pull também ganha links para o seu fight no Warcraft Logs e no WoWAnalyzer.
+Para usar os tops, entre com o Warcraft Logs em **Configurações → Warcraft Logs** (a aba mostra um botão **Conectar** que abre lá). O client próprio da API ([warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/)) é uma opção avançada da mesma tela e fica no Gerenciador de Credenciais do Windows. As consultas enviam só boss, spec e códigos de report; as respostas ficam em cache. Para comparar com alguém da própria raid, escolha **Na própria raid** em **Comparar com**, na mesma aba. Se o link do report da noite estiver cadastrado, o pull também ganha links para o seu fight no Warcraft Logs e no WoWAnalyzer; com um top como referência, a aba também leva aos perfis dele no Raider.IO e no Warcraft Logs e aos dois logs lado a lado.
 
 ### 👤 Modo solo
 
@@ -153,16 +158,22 @@ Na comparação da aba **Desempenho**, as mesmas decisões também são comparad
 
 Specs com rotação: todas as de dano — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) e **Warrior** (Arms, Fury).
 
+### 🤖 Robô (SimulationCraft)
+
+Na aba **Desempenho**, **Comparar com → Robô (SimulationCraft)** põe o SimulationCraft para jogar o mesmo personagem: seu equipamento, talentos, consumíveis e buffs (Bloodlust e Power Infusion nos mesmos momentos), na kill da noite (sem kill, o pull mais longo em que você não morreu), andando o que a luta pediu e sem mecânicas. A diferença que sobra é rotação: o % do potencial do robô (com a faixa do robô em 1000 lutas), **O que mudar primeiro** com uma estimativa do dano, e as decisões em que você saiu da faixa de 20 lutas do robô. Não aparece para healer.
+
+No resumo do boss, **Robô para a raide** simula a raide toda; a tabela de Jogadores e a Evolução mostram o % do potencial do robô de cada um. Na primeira vez o app baixa o SimulationCraft (~15 MB); a simulação roda só no app instalado (Windows).
+
 ### 💚 Healers
 
-Cura não se compara com os tops: o HPS engana (raid tomando dano a mais, raid montada com poucos healers) e os logs do topo distorcem cada vez mais com o tempo. A referência de healer são **kills no mítico de outras guildas** (8 por boss em cada spec, tirados de várias páginas do ranking, sem o topo e sem usar a nota na escolha), com a **composição de healers mais parecida com a nossa** e sem os logs distorcidos (raid tomando dano demais ou cura concentrada num healer). Os healers da própria raid nunca são a referência: são quem a análise quer ajudar. Regras completas em [docs/healer-analysis.md](healer-analysis.md).
+Cura não se compara com os tops: o HPS engana (raid tomando dano a mais, raid montada com poucos healers) e os logs do topo distorcem cada vez mais com o tempo. A referência de healer são **kills no mítico de outras guildas** (8 por boss em cada spec, tirados de várias páginas do ranking, sem o topo e sem usar o parse na escolha), com a **composição de healers mais parecida com a nossa** e sem os logs distorcidos (raid tomando dano demais ou cura concentrada num healer). Os healers da própria raid nunca são a referência: são quem a análise quer ajudar. Regras completas em [docs/healer-analysis.md](healer-analysis.md).
 
 - **Contexto, não nota:** HPS, fatia da cura dos healers e dano tomado pela raid, cada um com a faixa da referência desenhada.
 - **O que ajustar:** só onde a referência cumpre o que se cobra e você está fora da faixa dela: cooldown parado, proc perdido (Infusion of Light, Surge of Light, Strength of the Black Ox…), combinações da spec (Divine Toll dentro do Beacon of Virtue, Wild Growth antes do Convoke), Atonement/Renewing Mist/Rejuvenation na raid, tempo parado com gente ferida, mana sobrando no kill e overheal acima da referência.
 - **De onde vem a cura:** a fatia de cada habilidade na cura, o overheal e os casts, seus e da referência.
 - **Momentos dos cooldowns:** em qual mecânica do boss a maioria da referência usa cada cooldown grande ("2ª Stir the Depths · referência +3 s · você +8 s"), numa linha do tempo da luta.
 
-A cura agora conta as absorções (Power Word: Shield e outros escudos), como no Warcraft Logs.
+A cura conta as absorções (Power Word: Shield e outros escudos), como no Warcraft Logs.
 
 Specs com análise de healer: **Discipline Priest**, **Holy Priest**, **Holy Paladin**, **Restoration Druid**, **Restoration Shaman**, **Mistweaver Monk** e **Preservation Evoker**.
 
@@ -170,13 +181,13 @@ Specs com análise de healer: **Discipline Priest**, **Holy Priest**, **Holy Pal
 
 Cada raid tem sua estratégia, então as regras dos bosses podem ser ajustadas sem mexer em arquivo:
 
-- **Ajustar regras deste boss** (aba Mecânicas): ligar/desligar cada mecânica, mudar a gravidade, quantos hits por player são tolerados, com quantos stacks avisar, o tempo máximo até o dispel, quem pode ser culpado e os textos de dica e mensagem. Só o que muda em relação ao padrão é salvo, então os ajustes continuam valendo quando o app atualiza as regras.
+- **Ajustar regras deste boss** (aba Mecânicas): ligar/desligar cada mecânica, mudar a gravidade, quantos hits por player são tolerados, com quantos stacks avisar, o tempo máximo até o dispel, os stacks que matam, os tempos bom e lento de uma fase, quem pode ser culpado e os textos de dica e mensagem; **Restaurar o padrão** desfaz. Só o que muda em relação ao padrão é salvo, então os ajustes continuam valendo quando o app atualiza as regras.
 - **Foco da progressão (★)**: as mecânicas que estão segurando a progressão entram no veredito mesmo quando leves, vêm primeiro e pesam 1,5× na nota.
-- **Criar regra** (aba Habilidades do boss): para algo que as regras não pegam, escolha em linguagem simples o que aquela habilidade significa ("tomar isso é erro", "tem que ser cortado", "stack que mata"…); a prévia mostra o que ela marcaria no pull.
+- A aba **Habilidades do boss** lista cada habilidade inimiga com a origem, os hits e o dano em players, e marca as que uma regra já usa (**tem regra**). **Criar regra** (aba Habilidades do boss): para algo que as regras não pegam, escolha em linguagem simples o que aquela habilidade significa ("tomar isso é erro", "tem que ser cortado", "stack que mata"…); a prévia mostra o que ela marcaria no pull.
 - **Marcar erro**: para o que o log não prova (posição, bait, escala), marque no pull quem errou e o quê — ou "essa morte foi erro do player" no detalhe da morte. Entra no veredito, na nota e no contexto da IA.
 - **Exportar / Importar**: mande os ajustes de um boss para os officers usarem a mesma configuração.
 
-Salvar reanalisa o log aberto. Os ajustes ficam em `rule-tuning/<encounter>.json` na pasta de dados do app (`wipe-cli analyze <log> --tuning <pasta>` também aplica).
+Salvar reanalisa o log aberto. Os ajustes ficam em `rule-tuning/<encounter_id>.json` na pasta de dados do app (`wipe-cli analyze <log> --tuning <pasta>` também aplica).
 
 ### ✋ Escala de interrupts, dispels e mecânicas especiais
 
@@ -195,7 +206,7 @@ Com Advanced Combat Logging, cada morte (antes do corte) vem com um **replay** d
 
 No Coiled Altar Mythic, o app reconstrói onde estava cada orb (quem carregava, onde cada um caiu, quais o Sever quebrou) e, em cada detonação, aponta quem levou um orb até outro parado no chão: "Rainface levou o roxo a 7 jardas de um verde no chão". Quando ninguém chegou perto (ex.: sobrou roxo no tempo), não culpa ninguém.
 
-A aba **Replay** (em "A luta") toca o pull inteiro visto de cima: o app relê só aquele pull no combat log e mostra todo mundo se movendo do começo ao fim, com os frontais do boss, as marcas no chão e os fantasmas. Como no replay do Warcraft Logs, tudo fica em cima do mapa: a vida dos bosses com o cast em andamento (clique para ver o dano que cada player deu naquele boss), os medidores de dano feito, dano tomado, dano tomado por habilidade, cura feita e cura recebida até aquele momento (clique numa categoria para abrir, botão direito volta) e o quadro do raid com a vida de cada player, quem está morto e o debuff crucial que ele carrega (os que as regras do boss conhecem), com o número de stacks no canto do ícone. Logo abaixo do mapa, a linha do tempo marca fases, mortes, falhas graves de mecânica e frontais do boss, e clicar em qualquer um vai para logo antes dele; a roda do mouse dá zoom nela (Shift + roda anda para os lados), e a velocidade vai de 0,25× a 8×. Qualquer replay vira um clipe animado (WebP) com o botão Clipe, para salvar ou mandar no Discord; no Compartilhar do pull e no modo ao vivo, cada wipe vai para o Discord com o cartão e o clipe dos segundos do erro que acabou com a try (dá para desligar nas configurações do Discord). Clique num player no mapa ou no quadro do raid para seguir ele: o caminho fica em destaque, e um painel mostra a vida, os debuffs e defensivos ativos, as mortes e erros dele no pull e tudo o que aconteceu com ele nos últimos 15 segundos (dano tomado com a mecânica por trás, cura, casts, interrupts, dispels). O mapa também desenha o que o boss deixa em volta: no Coiled Altar, os orbs roxos e verdes no chão com o raio de perigo do roxo, um anel em quem carrega um, a área em volta de quem carrega e os machados girando (na P2, o machado que passa 10 s sem acertar ninguém some; o log só mostra onde o machado está de vez em quando; se alguém passa onde ele estaria sem levar dano, ele fica apagado, marcando onde estava). Também aparecem os defensivos de raid em área (Anti-Magic Zone, Darkness, Spirit Link Totem, Power Word: Barrier), na cor de quem usou e pelo tempo que duram, e os adds que precisam ser interrompidos, com a barra de cast desde que nascem (ela anda no ritmo real do cast, então um cast cortado para no ponto em que foi cortado, e curses que deixam o cast mais lento, como Curse of Tongues, esticam a barra) e o nome de quem cortou cada cast (somem quando são cortados ou morrem), os adds que precisam morrer e as linhas que eles soltam até o alvo. Os soaks aparecem como o círculo onde vão cair, com quantos players estão dentro e quantos precisam. Os orbs somem quando o frontal os quebra (o raid ganha uma stack de Venom Rupture por orb quebrado, então o app sabe quantos quebraram) e quando o boss explode os que sobraram, ao soltar orbs novos ou trocar de fase. As marcas de chão que o grupo coloca (world markers) também aparecem, como no jogo. O mapa tem o norte para cima, com a imagem da arena de cada boss do Venomous Abyss e do Kith'ix por baixo (do raidplan.io, alinhada pelo lugar onde os players pisaram nos logs) e o chão andável marcado; fora dele fica escurecido. Botões embaixo do mapa escolhem o que aparece: marcas no chão, debuffs na cabeça, áreas e os nomes dos players. Precisa do combat log no PC, então pulls que vieram do Warcraft Logs não têm. Em boss de várias fases, a lista de pulls mostra a fase a que cada try chegou (P2, Int., P3) em vez do HP do boss da primeira. No lugar do número de mortes, cada wipe mostra o ícone do que o puxou (a mecânica ligada às mortes); mortes separadas, sem uma causa comum, ficam com a caveira.
+A aba **Replay** (em "A luta") toca o pull inteiro visto de cima: o app relê só aquele pull no combat log e mostra todo mundo se movendo do começo ao fim, com os frontais do boss, as marcas no chão e os fantasmas. Como no replay do Warcraft Logs, tudo fica em cima do mapa: a vida dos bosses com o cast em andamento (clique para ver o dano que cada player deu naquele boss), os medidores de dano feito, dano tomado, dano tomado por habilidade, cura feita e cura recebida até aquele momento (clique numa categoria para abrir, botão direito volta) e o quadro do raid com a vida de cada player, quem está morto e o debuff crucial que ele carrega (os que as regras do boss conhecem), com o número de stacks no canto do ícone (o quadro da raide pode ser recolhido para liberar o mapa). Logo abaixo do mapa, a linha do tempo marca fases, mortes, falhas graves de mecânica e frontais do boss (**Uma faixa por mecânica** separa as falhas em uma faixa cada), e clicar em qualquer um vai para logo antes dele; a roda do mouse dá zoom nela (Shift + roda anda para os lados), e a velocidade vai de 0,25× a 8×. Qualquer replay vira um clipe animado (WebP) com o botão Clipe (um trecho de até 30 s, enquadramento **Raid toda** ou **Focado**, e zoom), para salvar ou mandar no Discord; no Compartilhar do pull e no modo ao vivo, cada wipe vai para o Discord com o cartão e um clipe dos erros que levaram ao wipe, em sequência (dá para desligar nas configurações do Discord). Clique num player no mapa ou no quadro do raid para seguir ele: o caminho fica em destaque, e um painel mostra a vida, os debuffs e defensivos ativos, as mortes e erros dele no pull e tudo o que aconteceu com ele nos últimos 15 segundos (dano tomado com a mecânica por trás, cura, casts, interrupts, dispels). O mapa também desenha o que o boss deixa em volta: no Coiled Altar, os orbs roxos e verdes no chão com o raio de perigo do roxo, um anel em quem carrega um, a área em volta de quem carrega e os machados girando (na P2, o machado que passa 10 s sem acertar ninguém some; o log só mostra onde o machado está de vez em quando; se alguém passa onde ele estaria sem levar dano, ele fica apagado, marcando onde estava). Também aparecem os defensivos de raid em área (Anti-Magic Zone, Darkness, Spirit Link Totem, Power Word: Barrier), na cor de quem usou e pelo tempo que duram, e os adds que precisam ser interrompidos, com a barra de cast desde que nascem (ela anda no ritmo real do cast, então um cast cortado para no ponto em que foi cortado, e curses que deixam o cast mais lento, como Curse of Tongues, esticam a barra) e o nome de quem cortou cada cast (somem quando são cortados ou morrem), os adds que precisam morrer e as linhas que eles soltam até o alvo. Os soaks aparecem como o círculo onde vão cair, com quantos players estão dentro e quantos precisam. Os orbs somem quando o frontal os quebra (o raid ganha uma stack de Venom Rupture por orb quebrado, então o app sabe quantos quebraram) e quando o boss explode os que sobraram, ao soltar orbs novos ou trocar de fase. As marcas de chão que o grupo coloca (world markers) também aparecem, como no jogo. O mapa tem o norte para cima, com a imagem da arena por baixo nos bosses que têm uma (todos do Venomous Abyss menos Nymrissa Wavecaller, e o Kith'ix) (do raidplan.io, alinhada pelo lugar onde os players pisaram nos logs) e o chão andável marcado; fora dele fica escurecido. Botões embaixo do mapa escolhem o que aparece: marcas no chão, debuffs na cabeça, áreas e os nomes dos players. **Camadas** liga e desliga as contagens, o próximo frontal e cast, as animações, o CC dos players, os portais de warlock, quem interrompeu o cast e os lugares da sala; **Marcas** mostra ou esconde as marcas de chão do grupo. Precisa do combat log no PC, então pulls que vieram do Warcraft Logs não têm. Em boss de várias fases, a lista de pulls mostra a fase a que cada try chegou (P2, Int., P3) em vez do HP do boss da primeira. No lugar do número de mortes, cada wipe mostra o ícone do que o puxou (a mecânica ligada às mortes); mortes separadas, sem uma causa comum, ficam com a caveira.
 
 Na fase 2, quando dois Manifestation of Dread se encostam (Malevolent Resonance nos dois alvos), o app vê para onde cada alvo olhava nos 5 segundos antes. O log não mostra o fantasma andando, só onde ele começou a perseguir, mas o fantasma só anda com o alvo de costas, então olhar para aquele ponto é olhar para o fantasma. Quem passou a maior parte desse tempo de costas leva a culpa: "Anaxxi ficou de costas para o próprio fantasma 5s dos 5s antes de ele encostar no de Hazuki". Quando os dois olhavam, não culpa ninguém. O replay desenha cada fantasma: o caminho é simulado (ele anda até o dono enquanto o dono não olha) e ajustado ao que o log mostra, onde os dois fantasmas se encontraram na colisão e onde um fantasma alcançou o dono. Uma lista mostra quanto cada um tinha andado até aquele momento; andar nem sempre é erro, porque às vezes o player leva o fantasma de propósito.
 
@@ -215,7 +226,7 @@ Com a conta do Warcraft Logs conectada, o app acha sozinho o report da noite: pr
 
 Se você grava as lutas com o [Warcraft Recorder](https://warcraftrecorder.com), cadastre a pasta dos vídeos (**Configurações → Vídeos do Warcraft Recorder**, ou o botão **Vídeos** no topo). Sem cadastro, o app tenta detectar a pasta pela configuração do Recorder e casa cada vídeo com o pull pelo boss e horário de início. No pull aparece o botão **▶ Vídeo**, e cada morte, gatilho e evento de mecânica ganha um **▶** que abre o vídeo 5s antes do momento.
 
-**Vídeos da guilda (nuvem do Recorder):** em *Configurações → Vídeos*, entre com a conta da nuvem do Warcraft Recorder. Os vídeos que a guilda sobe viram outros pontos de vista de cada pull: no player, troque de POV e o vídeo continua no mesmo segundo.
+**Vídeos da guilda (nuvem do Recorder):** em *Configurações → Vídeos do Warcraft Recorder*, entre com a conta da nuvem do Warcraft Recorder. Os vídeos que a guilda sobe viram outros pontos de vista de cada pull: no player, troque de POV e o vídeo continua no mesmo segundo.
 
 ### ⚙️ Configurações
 
@@ -223,12 +234,13 @@ Tudo o que o app precisa fica em **Configurações** (rodapé da barra lateral),
 
 - **Essencial:** a pasta de logs do WoW e o combat log no jogo (`/combatlog` + Advanced Combat Logging — o app avisa se o log aberto veio sem ele).
 - **Análise:** o corte de mortes padrão para logs novos.
-- **Integrações opcionais:** Warcraft Logs, pasta de vídeos do Warcraft Recorder, webhook do Discord e o provedor do "Perguntar à IA".
-- **Sobre:** versão, atualizações e a pasta das regras de boss.
+- **Abrir com o WoW:** ao vivo quando o WoW abre (o app abre na bandeja, já acompanhando a raid).
+- **Integrações** (opcionais): Warcraft Logs, pasta de vídeos do Warcraft Recorder, webhook do Discord e o provedor do "Perguntar à IA".
+- **Sobre:** versão, atualizações e a pasta das regras de boss (arquivos `.yaml` nela substituem as regras embutidas).
 
 Quando um recurso depende de uma integração que ainda não foi ligada, ele mostra um atalho que abre a seção certa.
 
-**Ignorar após N mortes** (topo da tela; o padrão, 4, fica em Configurações): depois de algumas mortes o wipe já está decidido. Erros de mecânica, falhas, interrupts e o gatilho só contam até a N-ésima morte de cada pull; o resto aparece esmaecido. Mudar o N é instantâneo (0 = conta tudo).
+**Analisar até N mortes** (topo da tela; o padrão, 4, fica em Configurações): depois de algumas mortes o wipe já está decidido. Erros de mecânica, falhas, interrupts e o gatilho só contam até a N-ésima morte de cada wipe (kill não tem corte); o resto aparece esmaecido. Mudar o N é instantâneo (0 = conta tudo).
 
 ### 🗣️ Idiomas
 

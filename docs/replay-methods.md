@@ -10,7 +10,7 @@ ficam as regras e o método, que valem para qualquer boss.
 
 1. **Boss é dado, não código.** Tudo que um boss mostra no mapa sai da regra dele
    (`encounters/<raid>/<boss>.yaml`: `cone`, `ground`, `area`, `soak`, `blast`, `line`, `pool`,
-   `pickup`, `unit_aura`, `orbs`, `gaze`, `units.replay`) ou de um arquivo de dados
+   `waves`, `pickup`, `unit_aura`, `detect.orbs`, `detect.gaze`, `units.replay`) ou de um arquivo de dados
    (`data/arenas.json`, `data/defensives.json`, `data/utility.json`). Quando um boss pede algo que não
    existe, crie, pelo [Fluxo de feature](CONTRIBUTING.pt-BR.md#fluxo-de-feature) (critério b), um campo
    genérico novo, pensando em como outro boss usaria, nunca um `if` para aquele boss. Suposições de mecânica (a poça some quando a fase troca) viram opção da regra.
@@ -73,7 +73,7 @@ errou (13,4 px/jd): os Burning Venom não nasciam na fonte de fogo. O que acerto
    cada fonte a até 5 jd. Giro que não é múltiplo de 90° é o sinal de sala girada no mundo; as ondas da
    Plague Froth (nos eixos do mundo) aparecem na diagonal da sala, como no Hexweaver.
 3. **Refino pelas paredes:** escala, giro e posição para os pisões ficarem dentro do contorno da sala,
-   com as fontes perto: 98,9% dentro, cada fonte a até 6 jd (os adds nascem na frente dela).
+   com as fontes perto: 98,9% dentro, cada fonte a até ~7 jd (os adds nascem na frente dela).
 4. **Confira:** `arena-check` (players fora: 1,66% → 0,24%; boss e adds: 0%) e o desenho dele.
 
 A transformação vai fixa no `arena-fit.mjs` (`fixed: { rotation, s, u, v, cx, cy }`, com o contorno da
@@ -95,7 +95,8 @@ primeira análise concluiu que nenhum círculo servia).
    10 jd; da 2ª em diante elas se encontram no meio).
 4. O tempo (atraso e duração) vem dos ticks contados a partir do cast.
 5. Vira regra `pool` na mecânica: `cast_id`, `delay_s`, `duration_s`, `grow_s` e um `shapes` por vez,
-   com os centros nas coordenadas do log. A poça some na troca de fase.
+   com os centros nas coordenadas do log. Com `ends_on_phase_change: true` a poça some na troca de
+   fase; sem o campo, ela fica até o fim de `duration_s`.
 6. Procure o mesmo formato em outras fases: no Altar, o Defiled Ground da P3 é a mesma poça lateral,
    aberta por cada Defilement (18 de 21 contatos dentro do modelo). Pouco dado de uma fase? Confira o
    modelo de outra fase contra os contatos dela em vez de medir do zero.
@@ -161,8 +162,8 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
   log (o `SPELL_AURA_APPLIED` não traz contagem, só as quedas trazem): conte quantos faltam pelos
   fragmentos que ainda vão ser pegos.
 - **Escudo ou véu num inimigo** (regra `unit_aura`): stacks iniciais vêm como vários
-  `SPELL_AURA_APPLIED` seguidos; o absorvido é a soma dos `SPELL_ABSORBED` com o id do escudo no
-  campo do spell que absorveu. Guarde um ponto a cada 250 ms: são centenas de acertos por segundo.
+  `SPELL_AURA_APPLIED` seguidos; com `absorb: true`, o absorvido é a soma dos `SPELL_ABSORBED` com o id
+  do escudo no campo do spell que absorveu. Guarde um ponto a cada 250 ms: são centenas de acertos por segundo.
   Quando o log só repete a mesma linha (o escudo do orb do Twin Fangs sai duas vezes no mesmo ms,
   com o mesmo valor), use `stacks: false`.
 - **Inimigo sem posição enquanto o escudo segura**: todo acerto vira `SPELL_ABSORBED`, que não traz o

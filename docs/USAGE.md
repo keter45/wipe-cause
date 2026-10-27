@@ -4,7 +4,7 @@
 
 ## Install
 
-1. **[Download the installer](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`, ~4 MB).
+1. **[Download the installer](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`). Windows 10 or 11 (the app uses WebView2, which comes with Windows).
 2. Open the file. The first time, Windows may show *"Windows protected your PC"*: click **More info → Run anyway** (the app doesn't have a paid signing certificate yet).
 3. Done. The app **updates itself** when a new version comes out; no need to download it again.
 
@@ -31,13 +31,17 @@ The first time, the app opens on **Settings** with a step-by-step guide (afterwa
 ![Pick the night screen: boss filter bar with The Twin Fangs selected and two nights with that boss](screenshots/en/logs.png)
 <p align="center"><i>One line per night, with each night's bosses. The filter shows only one boss's nights.</i></p>
 
-**New analysis** brings together the logs on your PC and the guild's Warcraft Logs reports, one line per night. **Analyze** uses your PC's log (fast, no download); **Analyze all** reads one by one the logs in the list that haven't been analyzed yet and saves them in the history, for Progress. The logs folder includes the Warcraft Logs uploader's `warcraftlogsarchive`. Dungeon-only (M+) logs don't show up. **Guild / Pug** separates the guild raid from raids with other characters and random people: by the core of players that repeats across your nights (one log can have both, split boss by boss). To find a boss's nights, filter by it (and by difficulty) in the bar above the list; the choice is remembered.
+**New analysis** brings together the logs on your PC and the guild's Warcraft Logs reports, one line per night. **Analyze** uses your PC's log (fast, no download); **Analyze all** reads one by one the logs in the list that haven't been analyzed yet and saves them in the history, for Progress. The logs folder includes the Warcraft Logs uploader's `warcraftlogsarchive`. Dungeon-only (M+) logs don't show up. **Guild / Pug / All** separates the guild raid from raids with other characters and random people: by the core of players that repeats across your nights (one log can have both, split boss by boss). To find a boss's nights, filter by it (and by difficulty) in the bar above the list; the choice is remembered. **Open file…** analyzes a log from somewhere else; **Detect** goes back to the automatically detected folder and **Change folder** picks another one.
 
-Bosses and pulls that **aren't in your log** but are on Warcraft Logs (you left early, joined late, were away) show a download icon. **Complete** downloads only what's missing — it takes a few minutes, so you decide; after the first download, reopening is fast. Dungeons (M+) are left out, and wipes shorter than 30s are ignored.
+Bosses and pulls that **aren't in your log** but are on Warcraft Logs (you left early, joined late, were away) show a download icon, and nights that only exist on Warcraft Logs (the last 30 days) show **Download**. **Complete** downloads only what's missing — it takes a few minutes, so you decide; after the first download, reopening is fast. Dungeons (M+) are left out, and wipes shorter than 30s are ignored.
+
+Every analysis is saved in the sidebar under **Nights**, with its date: **Pin** keeps it, **Delete from history** removes one and **Delete all unpinned analyses** cleans up the rest. At the top of an open night, **Re-analyze the log** reads it again (after an app update or a rule change), **Saved nights** opens the history and **Pick another night…** goes back to the list.
 
 ### 2. See why you wiped
 
-The top of the pull is the **verdict**: where the boss ended, the wipe's **trigger** (the mechanic failure that set off the deaths) and every mechanic mistake with who made it, from most to least severe (see the [pull screenshot](screenshots/en/pull.webp)). Below it, the tabs:
+The top of the pull is the **verdict**: where the boss ended, the wipe's **trigger** (the mechanic failure that set off the deaths) and the mechanic mistakes that caused the wipe, with who made them (the other mistakes and warnings open under **Show N other mistakes and warnings**) (see the [pull screenshot](screenshots/en/pull.webp)). Below it, the tabs.
+
+When the raid gives up (after a disaster, several players stop casting at the same time and die), the pull shows **Wipe call** (or **Possible call**, when the signal is weaker). With a sure call, what happens after it counts like the death cutoff: nobody is blamed for dying on purpose.
 
 | Deaths | Mechanics |
 |---|---|
@@ -55,7 +59,7 @@ The top of the pull is the **verdict**: where the boss ended, the wipe's **trigg
 ![Night summary: raid time, downtime, one card per boss with the result and the night's timeline](screenshots/en/night.webp)
 <p align="center"><i>The night summary: raid time, downtime between tries, one card per boss and the timeline with the breaks.</i></p>
 
-In the **boss summary**: the best pull, the top cause of the wipes, progress pull by pull, the villains and heroes scoreboard and the downtime.
+In the **boss summary**: the best pull, the top cause of the wipes, progress pull by pull, the **Wipe causes** table (mechanic, trigger, deaths and failures), the boss's timeline with the breaks, the villains and heroes scoreboard and the downtime.
 
 ![Boss summary: best pull 5.8%, top cause Stone Breaker, progress chart per pull and the start of the group metrics](screenshots/en/boss.webp)
 
@@ -87,11 +91,11 @@ Closing the window leaves the app in the tray (near the clock) with live mode ru
 
 The pull notification has a field to note the reason for the wipe right away, the way the raid saw it (it doesn't disappear while you type). The note is saved on the PC, shows at the top of the pull (where you can edit it later), marks the pull in the list, goes on the share card and into the "Ask the AI" context.
 
-In **Settings → Discord**, paste the raid channel's webhook. In live mode, everything arrives as an image (the same card as *Share*): on every wipe, the reason for the wipe; on every kill, the boss summary; and at the end of the raid (live turned off or 30 min with no new pull), the night summary. The pull, the boss summary and the night summary can also be sent right away through *Share*. The **Discord** button at the top pauses and resumes automatic posting without touching the options (*Share* keeps working).
+In **Settings → Discord**, paste the raid channel's webhook. In live mode, everything arrives as an image (the same card as *Share*): on every wipe, the reason for the wipe; on every kill, the boss summary; and at the end of the raid (live turned off or 30 min with no new pull), the night summary. The pull, the boss summary and the night summary can also be sent right away through *Share*. Each automatic post (wipe, kill, night summary and the wipe clip) turns on and off separately, and **Send test** checks the webhook. The **Discord** button at the top pauses and resumes automatic posting without touching the options (*Share* keeps working).
 
 ### 📤 Share
 
-The pull, the boss, the night, a player's performance and solo mode have **Share**: it builds a card to **copy as an image** and paste on Discord/WhatsApp, **save as PNG, HTML or PDF** or **send the image to Discord** through the configured webhook. Each card has two versions:
+The pull, the boss, the night, a player's performance and solo mode have **Share**: it builds a card to **copy as an image** and paste on Discord/WhatsApp, **save as PNG or HTML** (and **PDF** with clickable links, in the Full version) or **send the image to Discord** through the configured webhook. When the pull has mistakes that led to the wipe, it also has **Save try recap clip (WebP)** and **Message to Discord**, a text message about the pull or the boss. Each card has two versions:
 
 - **Summary** (default, and what goes out automatically in live mode): the essentials at a glance. For a pull, the verdict, the top 3 findings, the decisive deaths, who scored below 80 and the failure map; for a boss, each pull's HP, the top causes, who scored below 80 and the highlights; for solo, your numbers against the reference and the 3 most costly mistakes.
 - **Full**: everything open, wider. Every death in order, the mechanics with who failed them, the interrupts that went through and the player table (pull); pull by pull and the scoreboard (boss and night); the stretches where the reference pulled ahead, cooldowns and extra damage taken (solo); rotation, potions and setup (performance).
@@ -108,7 +112,7 @@ At the end it weighs the time alive until the first death and, on a kill, the **
 
 ### 🤖 Ask the AI
 
-Every pull has an **Ask the AI** tab: the AI gets a dossier of the pull (the boss mechanics with the rules' tips, verdict, deaths, defensives, positions, interrupt assignments, dispels, notes and a summary of the night's other pulls — ~3–5k tokens) and answers only from it. You can read the dossier in **View dossier**.
+Every pull has an **Ask the AI** tab: the AI gets a dossier of the pull (the boss mechanics with the rules' tips, verdict, deaths, defensives, positions, interrupt assignments, dispels, notes and a summary of the night's other pulls) and answers only from it. You can read the dossier, with its size, in **View dossier**.
 
 It works with any provider using OpenAI's chat format, with presets for free options: **Google Gemini** and **Groq** (free plans with no card), **OpenRouter** (`:free` models) and **Ollama** (runs on your PC, free and offline), chosen in **Settings → Ask the AI**. The API key is kept in the Windows Credential Manager. On free plans, the provider may use the questions to train models — the dossier includes player names.
 
@@ -116,15 +120,16 @@ It works with any provider using OpenAI's chat format, with presets for free opt
 
 Each pull's **Performance** tab compares a player with the **top players of the same spec on Warcraft Logs**, with a similar item level (and a similar kill time, if the pull was a kill). In progression there's no kill time: the top's fight is cut at the same time the player stayed alive, so a 2:30 wipe is compared with the first 2:30 of the kill.
 
+- **At the top**: damage (or healing) per second alive, time alive, casts per minute and item level, then **Main differences**. In guild mode you pick the player, and the app remembers the choice.
 - **Burst windows**: pick the cooldowns to compare; each use shows the casts from 3s before to 20s after on a timeline, side by side with the same use by the top.
 - **Cooldowns**: when each one was used, how many times (and how many fit in the time) and whether the 1st use came late or early.
 - **Where the reference pulled ahead**: your damage every 5s against the reference's, with the 3 stretches with the biggest difference and each one's casts side by side.
 - **Casts by ability**: casts per minute and % of damage per ability, and the reading of the [spec's base rotation](#-rotation).
 - **Extra damage taken**: the boss abilities that hit you much more than the reference, per minute alive.
 - **Setup**: combat potion, stat distribution, different talents and items side by side, with missing enchants and gems.
-- **Export**: the player's report becomes a card to copy, save (PNG/HTML) or send to Discord — for people who don't have the app.
+- **Share**: the player's report becomes a card (see [Share](#-share)) — for people who don't have the app.
 
-To use the tops, create a free client at [warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/) and paste the client ID and secret in the tab (they're kept in the Windows Credential Manager). Queries only send the boss, spec and report codes; responses are cached. Comparing with your own raid lives in the **In your own raid** tab. If the night's report link is set, the pull also gets links to your fight on Warcraft Logs and WoWAnalyzer.
+To use the tops, sign in with Warcraft Logs in **Settings → Warcraft Logs** (the tab shows a **Connect** button that opens it). Your own API client ([warcraftlogs.com/api/clients](https://www.warcraftlogs.com/api/clients/)) is an advanced option on the same screen, kept in the Windows Credential Manager. Queries only send the boss, spec and report codes; responses are cached. To compare with someone from your own raid, pick **In your own raid** in **Compare with**, in the same tab. If the night's report link is set, the pull also gets links to your fight on Warcraft Logs and WoWAnalyzer; with a top as the reference, the tab also links to their Raider.IO and Warcraft Logs profiles and to both logs side by side.
 
 ### 👤 Solo mode
 
@@ -153,6 +158,12 @@ In the **Performance** tab's comparison, the same decisions are also compared wi
 
 Specs with a rotation: every damage spec — **Death Knight** (Frost, Unholy), **Demon Hunter** (Havoc, Devourer), **Druid** (Balance, Feral), **Evoker** (Devastation, Augmentation), **Hunter** (Beast Mastery, Marksmanship, Survival), **Mage** (Arcane, Fire, Frost), **Monk** (Windwalker), **Paladin** (Retribution), **Priest** (Shadow), **Rogue** (Assassination, Outlaw, Subtlety), **Shaman** (Elemental, Enhancement), **Warlock** (Affliction, Demonology, Destruction) and **Warrior** (Arms, Fury).
 
+### 🤖 Bot (SimulationCraft)
+
+In the **Performance** tab, **Compare with → Bot (SimulationCraft)** has SimulationCraft play the same character: your gear, talents, consumables and buffs (Bloodlust and Power Infusion at the same moments), on the night's kill (with no kill, the longest pull you didn't die in), moving as much as the fight asked and without mechanics. What's left is rotation: the % of the bot's potential (with the bot's range over 1000 fights), **What to change first** with an estimate of the damage, and the decisions where you left the range of 20 bot fights. It doesn't show for healers.
+
+In the boss summary, **Bot for the raid** simulates the whole raid; the Players table and Progress show each one's % of the bot's potential. The first time, the app downloads SimulationCraft (~15 MB); the simulation only runs in the installed app (Windows).
+
 ### 💚 Healers
 
 Healing isn't compared with the tops: HPS is misleading (a raid taking extra damage, a raid built with few healers) and top logs get more distorted over time. The healer reference is **Mythic kills from other guilds** (8 per boss for each spec, taken from several pages of the ranking, without the top and without using the parse to pick), with the **healer composition closest to ours** and without distorted logs (raid taking too much damage or healing concentrated on one healer). Healers from your own raid are never the reference: they're who the analysis wants to help. Full rules in [docs/healer-analysis.md](healer-analysis.md) (in Portuguese).
@@ -162,7 +173,7 @@ Healing isn't compared with the tops: HPS is misleading (a raid taking extra dam
 - **Where the healing comes from:** each spell's share of healing, overheal and casts, yours and the reference's.
 - **Cooldown timings:** on which boss mechanic most of the reference uses each big cooldown ("2nd Stir the Depths · reference +3 s · you +8 s"), on a timeline of the fight.
 
-Healing now counts absorbs (Power Word: Shield and other shields), as Warcraft Logs does.
+Healing counts absorbs (Power Word: Shield and other shields), as Warcraft Logs does.
 
 Specs with healer analysis: **Discipline Priest**, **Holy Priest**, **Holy Paladin**, **Restoration Druid**, **Restoration Shaman**, **Mistweaver Monk** and **Preservation Evoker**.
 
@@ -170,13 +181,13 @@ Specs with healer analysis: **Discipline Priest**, **Holy Priest**, **Holy Palad
 
 Every raid has its own strategy, so boss rules can be tuned without touching files:
 
-- **Adjust this boss's rules** (Mechanics tab): turn each mechanic on/off, change its severity, how many hits per player are tolerated, at how many stacks to warn, the maximum time until a dispel, who can be blamed and the tip and message texts. Only what differs from the default is saved, so your tuning keeps working when the app updates its rules.
+- **Adjust this boss's rules** (Mechanics tab): turn each mechanic on/off, change its severity, how many hits per player are tolerated, at how many stacks to warn, the maximum time until a dispel, the lethal stacks, a phase's good and slow times, who can be blamed and the tip and message texts; **Restore the default** undoes it. Only what differs from the default is saved, so your tuning keeps working when the app updates its rules.
 - **Progression focus (★)**: the mechanics holding progression back go into the verdict even when minor, come first and weigh 1.5× in the score.
-- **Create rule** (Boss abilities tab): for something the rules don't catch, pick in plain language what that ability means ("taking this is a mistake", "must be interrupted", "stack that kills"…); the preview shows what it would flag in the pull.
+- The **Boss abilities** tab lists each enemy ability with its source, hits and damage on players, and marks the ones a rule already uses (**has a rule**). **Create rule** (Boss abilities tab): for something the rules don't catch, pick in plain language what that ability means ("taking this is a mistake", "must be interrupted", "stack that kills"…); the preview shows what it would flag in the pull.
 - **Mark mistake**: for what the log can't prove (positioning, baits, assignments), mark in the pull who failed and what — or "this death was the player's fault" in the death details. It goes into the verdict, the score and the AI context.
 - **Export / Import**: send a boss's tuning to the officers so everyone uses the same setup.
 
-Saving re-analyzes the open log. Tuning is stored in `rule-tuning/<encounter>.json` in the app's data folder (`wipe-cli analyze <log> --tuning <folder>` applies it too).
+Saving re-analyzes the open log. Tuning is stored in `rule-tuning/<encounter_id>.json` in the app's data folder (`wipe-cli analyze <log> --tuning <folder>` applies it too).
 
 ### ✋ Interrupt assignments, dispels and special mechanics
 
@@ -195,7 +206,7 @@ With Advanced Combat Logging, each death (before the cutoff) comes with a **repl
 
 On Mythic Coiled Altar, the app rebuilds where every orb was (who carried it, where each one was dropped, which ones Sever broke) and, at each detonation, points out who took an orb to another one sitting on the ground: "Rainface took the purple within 7 yards of a green on the ground". When nobody got close (e.g. a purple was left at the timer), it blames no one.
 
-The **Replay** tab (under "The fight") plays the whole pull, top-down: the app re-reads just that pull from the combat log and shows everyone moving from start to finish, with boss frontals, ground marks and ghosts. Like the Warcraft Logs replay, everything sits on the map itself: boss health with the cast in progress (click it to see the damage each player did to that boss), meters for damage done, damage taken, damage taken by ability, healing done and healing received up to that moment (click a category to open it, right-click to go back), and raid frames with each player's health, whether they're dead and the crucial debuff they carry (the ones the boss rules know about), with the stack count in the icon corner. Right under the map, a timeline marks phases, deaths, serious mechanic failures and boss frontals, and clicking any of them jumps to just before it; the mouse wheel zooms into it (Shift + wheel moves sideways), and speed goes from 0.25× to 8×. Any replay turns into an animated clip (WebP) with the Clip button, to save or send to Discord; from the pull's Share menu and in live mode, each wipe goes to Discord with the card and a clip of the seconds of the mistake that ended the try (it can be turned off in the Discord settings). Click a player on the map or in the raid frames to follow them: their path is highlighted, and a panel shows their health, active debuffs and defensives, their deaths and mistakes in the pull, and everything that happened to them in the last 15 seconds (damage taken with the mechanic behind it, healing, casts, interrupts, dispels). The map also draws what the boss leaves around: on Coiled Altar, the purple and green orbs on the ground with the purple's danger radius, a ring around whoever carries one, the area around the carrier and the spinning axes (in P2, an axe that goes 10 s without hitting anyone disappears; the log only shows where an axe is now and then; if someone walks where it would be without taking damage, it fades out, marking where it was). Raid defensives with an area (Anti-Magic Zone, Darkness, Spirit Link Totem, Power Word: Barrier) show up too, in the color of whoever used them and for as long as they last, along with the adds that need interrupting, with their cast bar from the moment they spawn (it fills at the real cast speed, so a kicked cast stops where it was cut, and curses that slow casting such as Curse of Tongues stretch it) and the name of whoever kicked each cast (gone once interrupted or dead), the adds that must die and the lines they fire at their target. Soaks show as the circle where they'll land, with how many players are inside and how many are needed. Orbs disappear when the frontal breaks them (the raid gets one Venom Rupture stack per broken orb, so the app knows how many broke) and when the boss detonates the leftovers on dropping new orbs or changing phase. The world markers your group places show up too, like in game. The map is north-up, with each Venomous Abyss boss's and Kith'ix's arena image underneath (from raidplan.io, aligned using where players stood in the logs) and the walkable floor outlined; everything outside it is dimmed. Buttons under the map choose what shows: ground marks, debuffs over heads, areas and players' names. It needs the combat log on this PC, so pulls that came from Warcraft Logs don't have it. On multi-phase bosses the pull list shows the phase each try reached (P2, Int., P3) instead of the first boss's health. In place of the death count, each wipe shows the icon of what set it off (the mechanic tied to the deaths); scattered deaths with no common cause keep the skull.
+The **Replay** tab (under "The fight") plays the whole pull, top-down: the app re-reads just that pull from the combat log and shows everyone moving from start to finish, with boss frontals, ground marks and ghosts. Like the Warcraft Logs replay, everything sits on the map itself: boss health with the cast in progress (click it to see the damage each player did to that boss), meters for damage done, damage taken, damage taken by ability, healing done and healing received up to that moment (click a category to open it, right-click to go back), and raid frames with each player's health, whether they're dead and the crucial debuff they carry (the ones the boss rules know about), with the stack count in the icon corner (the raid frames can be collapsed to free up the map). Right under the map, a timeline marks phases, deaths, serious mechanic failures and boss frontals (**One lane per mechanic** splits the failures into one lane each), and clicking any of them jumps to just before it; the mouse wheel zooms into it (Shift + wheel moves sideways), and speed goes from 0.25× to 8×. Any replay turns into an animated clip (WebP) with the Clip button (a part of up to 30 s, framing **Whole raid** or **Focused**, and zoom), to save or send to Discord; from the pull's Share menu and in live mode, each wipe goes to Discord with the card and a clip of the mistakes that led to the wipe, in sequence (it can be turned off in the Discord settings). Click a player on the map or in the raid frames to follow them: their path is highlighted, and a panel shows their health, active debuffs and defensives, their deaths and mistakes in the pull, and everything that happened to them in the last 15 seconds (damage taken with the mechanic behind it, healing, casts, interrupts, dispels). The map also draws what the boss leaves around: on Coiled Altar, the purple and green orbs on the ground with the purple's danger radius, a ring around whoever carries one, the area around the carrier and the spinning axes (in P2, an axe that goes 10 s without hitting anyone disappears; the log only shows where an axe is now and then; if someone walks where it would be without taking damage, it fades out, marking where it was). Raid defensives with an area (Anti-Magic Zone, Darkness, Spirit Link Totem, Power Word: Barrier) show up too, in the color of whoever used them and for as long as they last, along with the adds that need interrupting, with their cast bar from the moment they spawn (it fills at the real cast speed, so a kicked cast stops where it was cut, and curses that slow casting such as Curse of Tongues stretch it) and the name of whoever kicked each cast (gone once interrupted or dead), the adds that must die and the lines they fire at their target. Soaks show as the circle where they'll land, with how many players are inside and how many are needed. Orbs disappear when the frontal breaks them (the raid gets one Venom Rupture stack per broken orb, so the app knows how many broke) and when the boss detonates the leftovers on dropping new orbs or changing phase. The world markers your group places show up too, like in game. The map is north-up, with the arena image underneath for the bosses that have one (every Venomous Abyss boss except Nymrissa Wavecaller, plus Kith'ix) (from raidplan.io, aligned using where players stood in the logs) and the walkable floor outlined; everything outside it is dimmed. Buttons under the map choose what shows: ground marks, debuffs over heads, areas and players' names. **Layers** turns countdowns, the next frontal and cast, animations, player CC, warlock gateways, who interrupted the cast and room landmarks on and off; **Markers** shows or hides the group's world markers. It needs the combat log on this PC, so pulls that came from Warcraft Logs don't have it. On multi-phase bosses the pull list shows the phase each try reached (P2, Int., P3) instead of the first boss's health. In place of the death count, each wipe shows the icon of what set it off (the mechanic tied to the deaths); scattered deaths with no common cause keep the skull.
 
 In phase 2, when two Manifestations of Dread touch (Malevolent Resonance on both targets), the app checks where each target was facing in the 5 seconds before. The log doesn't show the ghost walking, only where it started chasing, but a ghost only walks while its target has their back turned, so looking toward that spot means looking at the ghost. Whoever spent most of that time with their back turned gets the blame: "Anaxxi had their back to their own ghost for 5s of the 5s before it touched Hazuki's". When both were looking, it blames no one. The replay draws every ghost: the path is simulated (it walks toward its owner while the owner looks away) and adjusted to what the log does show, where the two ghosts met at the collision and where a ghost caught its owner. A list shows how far each one had walked up to that moment; walking isn't always a mistake, since players sometimes move their ghost on purpose.
 
@@ -215,7 +226,7 @@ With the Warcraft Logs account connected, the app finds the night's report on it
 
 If you record your fights with [Warcraft Recorder](https://warcraftrecorder.com), set the videos folder (**Settings → Warcraft Recorder videos**, or the **Videos** button at the top). Without it, the app tries to detect the folder from the Recorder's config and matches each video to its pull by boss and start time. The pull gets a **▶ Video** button, and every death, trigger and mechanic event gets a **▶** that opens the video 5s before the moment.
 
-**Guild videos (Recorder cloud):** in *Settings → Videos*, sign in with the Warcraft Recorder cloud account. The videos the guild uploads become other points of view of each pull: in the player, switch POV and the video keeps going from the same second.
+**Guild videos (Recorder cloud):** in *Settings → Warcraft Recorder videos*, sign in with the Warcraft Recorder cloud account. The videos the guild uploads become other points of view of each pull: in the player, switch POV and the video keeps going from the same second.
 
 ### ⚙️ Settings
 
@@ -223,12 +234,13 @@ Everything the app needs lives in **Settings** (bottom of the sidebar), each ite
 
 - **Essential:** the WoW logs folder and the in-game combat log (`/combatlog` + Advanced Combat Logging — the app warns you if the open log was recorded without it).
 - **Analysis:** the default death cutoff for new logs.
-- **Optional integrations:** Warcraft Logs, Warcraft Recorder videos folder, Discord webhook and the "Ask the AI" provider.
-- **About:** version, updates and the boss rules folder.
+- **Open with WoW:** live when WoW opens (the app opens in the tray, already following the raid).
+- **Integrations** (optional): Warcraft Logs, Warcraft Recorder videos folder, Discord webhook and the "Ask the AI" provider.
+- **About:** version, updates and the boss rules folder (`.yaml` files there replace the built-in rules).
 
 When a feature depends on an integration that isn't set up yet, it shows a shortcut to the right section.
 
-**Ignore after N deaths** (top of the screen; the default, 4, is in Settings): after a few deaths the wipe is already decided. Mechanic mistakes, failures, interrupts and the trigger only count up to the N-th death of each pull; the rest is dimmed. Changing N is instant (0 = count everything).
+**Analyze up to N deaths** (top of the screen; the default, 4, is in Settings): after a few deaths the wipe is already decided. Mechanic mistakes, failures, interrupts and the trigger only count up to the N-th death of each wipe (kills have no cutoff); the rest is dimmed. Changing N is instant (0 = count everything).
 
 ### 🗣️ Languages
 

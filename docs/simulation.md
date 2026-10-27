@@ -1,7 +1,7 @@
 # Comparar com o robô (SimulationCraft) — regras
 
-Rascunho de como o wipe-cause vai simular um personagem da noite com o SimulationCraft e comparar a
-rotação real com a do robô. Decisões do usuário em 2026-10-20; o que está marcado *(decidido por nós)*
+Como o wipe-cause simula um personagem da noite com o SimulationCraft e compara a rotação real com a
+do robô (no app desde a v0.36). Decisões do usuário em 2026-10-20; o que está marcado *(decidido por nós)*
 foi deixado para o projeto decidir.
 
 Os textos que aparecem no app seguem a regra de sempre: pt-BR e inglês na mesma mudança, com nomes de
@@ -25,8 +25,8 @@ dentro do app, sem o usuário abrir outro programa.
   só no app para Windows.
 - A simulação fica **salva no computador de quem clicou** (pasta de dados do app), por
   personagem + boss + dificuldade + noite. Só é refeita quando alguém pede de novo.
-  *(decidido por nós)* Se a versão do SimC ou o patch do jogo mudaram desde então, a simulação salva
-  continua aparecendo, com o aviso "feita com uma versão antiga do SimC" e o botão de refazer.
+  *(decidido por nós)* Se o SimC instalado é de um commit diferente do usado na simulação, a
+  simulação salva continua aparecendo, com o aviso "feita com uma versão antiga do SimC" e o botão de refazer.
 
 ## 3. Que pull simular
 
@@ -125,7 +125,7 @@ Falta: talentos *omnium* (12.0.7, `omnium_talents` no SimC): ainda não vimos on
 
 **Na tela (feito em 2026-10-20):** a opção *Robô (SimulationCraft)* em "Comparar com" (não aparece
 para healer). Um clique simula: 1000 iterações dão as médias (DPS, dano por habilidade, dano a cada
-5s) e 5 iterações avulsas (`seed=1…5`) dão sequências de casts, das quais fica a de DPS mais perto da
+5s) e 20 iterações avulsas (`seed=1…20`) dão sequências de casts, das quais fica a de DPS mais perto da
 média. O resultado vira um `Sample` (o mesmo pull, com um player "SimulationCraft"), e as seções da
 comparação com os tops (KPIs, diferenças principais, onde abriu vantagem, bursts, cooldowns, casts
 por habilidade, poção) comparam com ele. Fica salvo em `<dados>/simc/saved/` por player + boss +
@@ -168,7 +168,7 @@ fila (`botRaid.ts`); a aba Jogadores e a Evolução mostram o % de quem tem simu
 simulado é achado pelo começo (até 10s de diferença: o log local e o Warcraft Logs diferem em ms).
 
 **Robô × tops:** nesta seção o robô é o certo. Quando os tops (ou a nossa rotação em YAML) fazem
-diferente, mostramos um aviso ao lado: "os top logs fazem outra coisa: …", e o player decide.
+diferente, mostramos uma nota ao lado (ex.: "Os top logs também usam X aqui."), e o player decide.
 Feito assim: cada achado olha a referência dos tops da spec (`decisionRefFor`) e ganha uma nota quando
 os tops gastam o proc com o que o player usou, também deixam o proc acabar, seguram o cooldown ou
 não alinham com aquilo. E a seção "Onde os top logs fazem diferente do robô" lista, independente do
@@ -182,11 +182,10 @@ binário sem como conferir:
 - Um workflow do GitHub Actions compila o SimC (só a linha de comando) a partir do branch padrão
   do projeto, toda semana e quando chamado à mão, e publica num release próprio com o SHA-256 e o
   commit de origem.
-- O app baixa o SimC **na primeira simulação** (com aviso do tamanho: ~15 MB compactado, ~120 MB
-  instalado), confere o SHA-256 e guarda na pasta de dados (`<dados>/simc/`). A cada simulação, se o manifesto aponta versão nova, baixa antes de rodar.
+- O app baixa o SimC **na primeira simulação** (com aviso do tamanho: ~15 MB compactado), confere o SHA-256 e guarda na pasta de dados (`<dados>/simc/`). Antes de uma simulação, no máximo a cada 6 h, confere o manifesto e baixa o build novo; sem internet, ou se o download falha, segue com o SimC instalado.
   O instalador não cresce e o SimC acompanha o patch sem release nosso.
-- O SimC é GPL-3; ele roda como programa separado. Mostramos a versão, o commit e o link do código
-  na tela da simulação.
+- O SimC é GPL-3; ele roda como programa separado. Mostramos a versão e o link do código-fonte do
+  commit usado na tela da simulação.
 
 - Roda sem janela, com prioridade abaixo do normal e deixando um núcleo livre; uma simulação por vez.
   Medido em 2026-10-20: 1000 iterações de 5 min de luta em ~1 s; o log de ações de uma iteração

@@ -5,10 +5,11 @@ description: Configura e confere a simulação (o robô do SimulationCraft) de u
 
 # sim-calibrate
 
-O robô joga **o modelo da luta**, e não o player: a mesma luta para todo mundo da raide, tirada do log.
-O `npm run sim:check` faz sozinho tudo o que é número: simula a raide inteira do boss, com o mesmo
+O robô joga **o modelo da luta**, e não o player: cada um no seu pull, e dentro de um pull o mesmo
+modelo para todos, tirado do log. O `npm run sim:check` faz sozinho tudo o que é número: simula os DPS
+e tanks da raide no boss (os healers ficam de fora), com o mesmo
 código do app (`src/lib/simProfile.ts`), compara com o que cada um fez e escreve o relatório em
-`samples/sim/<data>-<boss>.md`. Esta skill cuida do que o script não decide: **por que** o modelo
+`samples/sim/<data>-<boss>-<dificuldade>.md`. Esta skill cuida do que o script não decide: **por que** o modelo
 erra num boss e **onde** corrigir. As regras completas da simulação estão em `docs/simulation.md`.
 
 ## O que já é automático (não configure à mão)
@@ -17,22 +18,22 @@ Tudo sai do log de cada pull, e cada peça tem a sua medida:
 
 | Peça | De onde vem | Onde está |
 |---|---|---|
-| Pull simulado | kill → o mais longo sem morrer → o de mais tempo vivo | `pickSimPull` |
+| Pull simulado | por player, na mesma noite: kill em que ficou vivo → kill → o mais longo sem morrer → o de mais tempo vivo | `pickSimPull` |
 | Janela | até a morte, a call de wipe ou o corte de N mortes (o app usa 4) | `playedMs` |
 | Movimento | a cada 30s, o quartil dos DPS que menos andaram (`moveTimeline` do núcleo) | `fightMovement`, `movementEvents` |
 | Alvos e adds | o quantil 75% dos alvos que os DPS acertaram a cada 2s (`rotation.targets`) | `raidTargets`, `targetWindows` |
-| Tempo sem alvo | trechos com 0 alvos → `invulnerable` | idem |
+| Tempo sem alvo | trechos com 0 alvos → `invulnerable` | `targetWindows` + `buildSimProfile` |
 | Vida e execute | a vida do alvo da vez a cada 5s (`bossHpTimeline`: a fase da regra do boss ou o boss mais baixo); a reta do robô acerta o tempo abaixo de 20% e de 35% | `bossEndPct` |
 | Bloodlust, Power Infusion | os buffs recebidos no pull, nos mesmos segundos | `buildSimProfile` |
 | Buffs de raide | as classes do pull | idem |
 
-A vida por fase depende das **fases na regra do boss** (`encounters/<raide>/<boss>.yaml`, campo `phases` com os npcs de cada fase). Boss de várias barras sem `phases` cai no "boss mais baixo", que erra quando um boss sai de cena sem morrer. Nesse caso, quem resolve é a skill `boss-rules`.
+A vida por fase depende das **fases na regra do boss** (`encounters/<raide>/<boss>.yaml`, campo `phases`: cada fase tem `start` e `hp`, que aponta para as `units` — onde ficam os `npc_id`). Boss de várias barras sem `phases` cai no "boss mais baixo", que erra quando um boss sai de cena sem morrer. Nesse caso, quem resolve é a skill `boss-rules`.
 
 ## Fluxo
 
 1. **Ferramentas**: `cargo build --release -p wipe-core --bin wipe-cli` (o script analisa o log com ele) e o SimC do app (`<dados do app>/simc/simc.exe`, baixado na primeira simulação; ou `WIPE_SIMC_EXE`).
 2. **Relatório**: `npm run sim:check -- <WoWCombatLog.txt> --boss "<nome>" --difficulty Mythic` (sem `--boss`, vale o boss com mais pulls). `--iterations 300` deixa mais rápido para iterar; o número final é com 1000, como o app. `--cutoff N` só se o usuário usa outro "ignorar após N mortes" (padrão: 4).
-3. **Ler** `samples/sim/<data>-<boss>.md`: o status, os itens **REVISAR**/**ATENÇÃO**, a tabela por player e "O que o robô jogou" (fases, vida no fim, execute, Bloodlust, movimento por trecho, alvos). Compare "O que o robô jogou" com o guia da luta (o mesmo que a `boss-rules` usou): ondas de adds, intermissions, quanto a luta faz andar.
+3. **Ler** `samples/sim/<data>-<boss>-<dificuldade>.md`: o status, os itens **REVISAR**/**ATENÇÃO**, a tabela por player e "O que o robô jogou" (fases, vida no fim, execute, Bloodlust, movimento por trecho, alvos). Compare "O que o robô jogou" com o guia da luta (o mesmo que a `boss-rules` usou): ondas de adds, intermissions, quanto a luta faz andar.
 4. **Resolver cada item** (abaixo). Prefira corrigir a **medida** (núcleo ou regra do boss) a mexer nas constantes; constante muda **todos** os bosses.
 5. **Validar**: `cargo test -p wipe-core`, `npx vitest run`, `npx tsc --noEmit -p .`; rode o `sim:check` de novo no boss **e em pelo menos um outro boss ou noite** (uma mudança no modelo não pode piorar os outros). Anote os números em `docs/simulation.md` ("Conferido em …": antes → depois, por boss).
 6. **Mostrar ao usuário** os relatórios antes/depois. Commit e release só com o "pode subir" dele.
@@ -46,7 +47,7 @@ A vida por fase depende das **fases na regra do boss** (`encounters/<raide>/<bos
 - **"<player> fez X% do robô"** acima de 110%: o robô está fraco para essa spec.
   - A mesma spec fica alta em **outros bosses** também → é a APL da spec no SimC, não o nosso modelo. Anote em `docs/simulation.md` e não mexa no modelo.
   - Só neste boss → quase sempre adds e cleave: specs de DoT e cleave (Affliction, Balance, Destruction, Havoc, Subtlety, Arcane) passam o robô quando a luta tem ondas de adds que o modelo achata em "2 alvos". Compare as janelas de **Alvos** com as ondas do guia (quantos adds, quanto tempo vivos).
-  - Execute: spec com execute forte acima do robô e a linha **Execute** sem tempo abaixo de 20% → a vida por fase não está chegando (`bossHpTimeline` vazio: análise antiga, ou boss sem `phases`).
+  - Execute: spec com execute forte acima do robô e a linha **Execute** sem tempo abaixo de 20% → a vida por fase não está chegando (`bossHpTimeline` vazio só em análise antiga; boss sem `phases` tem a linha, mas pelo boss mais baixo, que erra quando um boss sai sem morrer).
 - **"<player> fez X% do robô"** abaixo de 70% (**ATENÇÃO**): em geral é o player. Só é o modelo se a spec inteira ficar baixa em vários bosses.
 - **"O SimC não rodou o perfil"**: o perfil está em `samples/sim/.cache/run/<player>/input.simc`. Rode o `simc.exe` nele e leia o erro (item, talento ou opção que o SimC não conhece).
 - **"Perfil sem o movimento medido"**: o `wipe-cli` é anterior ao `moveTimeline`. Recompile e rode de novo.
@@ -54,8 +55,8 @@ A vida por fase depende das **fases na regra do boss** (`encounters/<raide>/<bos
 
 ## Onde mexer
 
-- **Medidas no núcleo** (`crates/wipe-core/src/analysis.rs`): `moveTimeline` (movimento), `bossHpTimeline` (vida do alvo da vez), os alvos por player (`rotation.targets`). Uma medida errada (ex.: posição que pula, boss que some sem morrer) se corrige aqui, com teste.
-- **Regra do boss** (`encounters/…`, skill `boss-rules`): `phases` com os npcs de cada fase alimenta a vida por fase e as fases do relatório.
+- **Medidas no núcleo**: em `crates/wipe-core/src/analysis.rs`, `move_timeline` (movimento) e `boss_hp_timeline` (vida do alvo da vez), que no JSON são `moveTimeline` e `bossHpTimeline`; em `crates/wipe-core/src/rotation.rs`, os alvos por player (`targets`). Uma medida errada (ex.: posição que pula, boss que some sem morrer) se corrige aqui, com teste.
+- **Regra do boss** (`encounters/…`, skill `boss-rules`): `phases` (com `hp` apontando para as `units` de cada fase) alimenta a vida por fase e as fases do relatório.
 - **Constantes do modelo** (`src/lib/simProfile.ts`): `MOVE_QUANTILE`, `MOVE_CHUNK_MS`, `MOVE_BOUT_S`, `TARGET_QUANTILE`, `TARGET_SMOOTH`, `MIN_EVENT_MS`, `EXECUTE_PCTS`. Mudam todos os bosses: só com o `sim:check` de dois ou mais bosses melhorando.
 - **Ficha "O que o robô jogou"** (`src/lib/botView.ts`, `src/components/perf/BotParts.tsx`): ela lê o perfil salvo. Se o perfil ganhar um evento novo, a ficha precisa saber ler (e as simulações antigas continuam aparecendo).
 

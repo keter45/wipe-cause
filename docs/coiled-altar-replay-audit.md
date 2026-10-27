@@ -9,8 +9,8 @@ culpa nem recalibra velocidade/ângulo dos fantasmas sem evidência nova.
 - Tooltips do Wowhead consultados por spell ID e dificuldade:
   `https://nether.wowhead.com/tooltip/spell/<id>?dd=16`. O parâmetro `dd=15`
   foi comparado para os soaks: ambos descrevem raio de 9 jardas; o mínimo é
-  5 players no Mythic e 3 no Heroic. Os mínimos por dificuldade do motor não
-  foram alterados nesta revisão, que é do replay.
+  5 players no Mythic e 3 no Heroic. O motor usa 5 em todas as dificuldades
+  (`soak.players`); o mínimo de 3 do Heroic não está modelado.
 - Log Mythic: `WoWCombatLog-101426_205104.txt`, 14/10/2026.
 - Log Heroic para confirmar o cast da P3 e a limpeza por Blighted Sever:
   `Archive-WoWCombatLog-092226_180441.txt`, 22/09/2026.
@@ -55,7 +55,8 @@ Não precisam de uma área artificial em torno de quem recebeu dano.
 
 ## Manifestation of Dread: o que o log realmente permite
 
-IDs principais: summon 1285844, Unassailable 1285847, Unnerving Fixation 1285911,
+IDs principais: summon 1285844 e Unassailable 1285847 (vistos no log; o motor não usa), Unnerving
+Fixation 1285911,
 Dreadmarch 1297445, Malevolent Resonance 1312132 / 1310744.
 
 Na varredura do arquivo de 14/10 foram encontrados 127 GUIDs de fantasmas e
@@ -227,7 +228,7 @@ Com os caminhos novos, cada pull guarda quantas jardas o fantasma de cada um and
 Conferido no pull 16 de 15/10 (Mythic, P3 82%).
 
 - **Gravebound** (`pickup`): entra com 3 stacks; cada fragmento pego é um acerto de 1308330 com
-  a posição de quem pegou, e tira 1 stack. Os fragmentos (NPC 261763) quase nunca aparecem no log
+  a posição de quem pegou, e tira 1 stack. Os fragmentos (NPC 261763, visto no log; o motor não usa) quase nunca aparecem no log
   como unidade (6 em 75 pegos), então o mapa põe cada um onde foi pego, desde a explosão da bomba.
   Fragmento que ninguém pegou não tem posição: só o número no debuff da cabeça.
 - **Spirit Shield** (`unit_aura`, 1309105): no Mythic entra no Spiteful Soulcoiler com 2 stacks

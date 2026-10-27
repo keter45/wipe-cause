@@ -320,8 +320,9 @@ relativos a `docs/`).
 3.  **Release só com feature aprovada.** Versão e release saem só depois que o
     desenvolvedor aprova a feature. Detalhe: bloco "Versões e atualização
     automática".
-4.  **Peça de boss ou de spec é processo padrão:** um script faz os números e
-    escreve um relatório OK / ATENÇÃO / REVISAR; uma skill resolve os REVISAR.
+4.  **Peça de boss ou de spec é processo padrão:** um script faz os números e,
+    fora as regras de boss, escreve um relatório OK / ATENÇÃO / REVISAR; uma
+    skill resolve os REVISAR.
     Detalhe: seção "Processos padrão".
 5.  **Interface.** Toda habilidade aparece com ícone e nome (ícone sozinho só
     onde não cabe texto, com o nome no tooltip). Todo boss aparece com o ícone
@@ -350,8 +351,8 @@ relativos a `docs/`).
     only after the developer approves the feature. Details: "Versions and
     automatic updates" block.
 4.  **A boss or spec piece is a standard process:** a script does the numbers
-    and writes an OK / ATENÇÃO / REVISAR report; a skill handles the REVISAR
-    items. Details: "Standard processes" section.
+    and, except for boss rules, writes an OK / ATENÇÃO / REVISAR report; a skill
+    handles the REVISAR items. Details: "Standard processes" section.
 5.  **Interface.** Every ability shows with its icon and name (icon alone only
     where text does not fit, with the name in the tooltip). Every boss shows
     with the boss icon. Every character shows in the class color, also inside
@@ -677,6 +678,12 @@ não são corrigidos. Depois da correção, o prompt roda de novo só nas unidad
 que tiveram REVISAR confirmado, até duas vezes (passadas 2 e 3). Aceite:
 nenhum REVISAR novo nem confirmado pendente nas unidades 3, 6, 7 e 8; nas
 outras, o REVISAR que sobrar vai para a descrição do PR com o motivo.
+
+**Omissões não abrem rodada nova** (decidido em 2026-10-27, na primeira
+auditoria): o passo 2 ("o que o código tem e o doc não cita") acha coisas novas
+a cada passada, porque nunca esgota o código. O aceite acima vale para os erros
+(passos 1 e 3). As omissões da última passada vão para a descrição do PR, para
+a próxima conferência ou para um PR de docs, sem mais uma rodada.
 
 **Descrição do PR:** status por unidade; REVISAR corrigidos; REVISAR recusados
 e restantes, com o motivo; ATENÇÃO pendentes; link para este design.
