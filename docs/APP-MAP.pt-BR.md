@@ -2,7 +2,9 @@
 
 Documentação funcional e técnica das telas, componentes e conexões entre funcionalidades.
 
-**Referência:** versão `0.37.0` do checkout local, inspecionada em **21/10/2026**. Inclui o código presente na árvore de trabalho nessa data, inclusive alterações locais preexistentes; não representa necessariamente a última release publicada.
+**Referência:** navegação na versão `0.37.0` em **21/10/2026**, com as alterações locais da
+árvore de trabalho daquela data; texto conferido contra o código da versão `0.42.0` em
+**27/10/2026**, só pelo código, sem abrir as telas.
 
 ## Como ler
 
@@ -62,10 +64,13 @@ A navegação principal é controlada por estado em [App.tsx](../src/App.tsx), s
 | `mode` | Foco Guilda ou Solo, mantido por `lib/mode.ts` |
 | `deathCutoff` | Corte usado na análise aberta |
 | `wclCode` e `videos` | Contexto adicional de Warcraft Logs e POVs associados aos pulls |
+| `settingsFocus` | Seção de Configurações que um atalho mandou abrir |
+| `sidebarOpen` | Lateral aberta ou recolhida, lembrada em localStorage |
+| `firstRun` | Primeira abertura no desktop: Configurações com os primeiros passos abertos |
 
-Sem relatório, a área de análise apresenta a entrada para escolher uma noite. Abrir um relatório começa no resumo da noite; o último wipe de raid, ou o último pull disponível, fica preparado como seleção. Bosses são agrupados por encontro e dificuldade, evitando misturar Heroic e Mythic.
+Sem relatório, a área de análise apresenta a entrada para escolher uma noite (com backend ou com `?demoLogs=1`; no `npm run dev` sem backend, um aviso de modo navegador). Abrir um relatório começa no resumo da noite; o último wipe de raid, ou o último pull disponível, fica preparado como seleção. Bosses são agrupados por encontro e dificuldade, evitando misturar Heroic e Mythic.
 
-Os parâmetros `?report=<código>&fight=<id>` são uma entrada direta para reports do Warcraft Logs quando há backend. Sem `fight`, abre-se a noite. Os parâmetros de demonstração descritos no fim deste documento são exclusivos de desenvolvimento.
+Os parâmetros `?report=<código>&fight=<id>` são uma entrada direta para reports do Warcraft Logs quando há backend. Sem `fight`, abre-se a noite. Os parâmetros de demonstração descritos no fim deste documento são exclusivos de desenvolvimento; entre eles, `?report=<json>&videos=<scan.json>` abre um relatório gerado pelo `wipe-cli` e casa os vídeos de um scan do Warcraft Recorder, só sem backend.
 
 ### Estrutura compartilhada
 
@@ -73,8 +78,8 @@ Os parâmetros `?report=<código>&fight=<id>` são uma entrada direta para repor
 | --- | --- | --- |
 | `App` | Carregar análise, coordenar seleção, histórico, páginas e eventos ao vivo | Distribui relatório e callbacks para as telas |
 | `Header` | Foco Guilda/Solo, noite aberta, reanálise, corte e integrações da noite | Troca o contexto global e associa WCL e vídeos |
-| `Sidebar` | Nova análise, evolução, noites fixadas/recentes, árvore de bosses e pulls, configurações | Selecionar um item atualiza a área principal |
-| `SidebarRail` | Versão recolhida da lateral | Oferece atalhos e até oito entradas de noites |
+| `Sidebar` | Nova análise (sem backend, “Abrir relatório JSON”), Evolução, noites fixadas/recentes, árvore de bosses e pulls, configurações e, no desktop, o indicador de versão que confere atualizações | Selecionar um item atualiza a área principal |
+| `SidebarRail` | Versão recolhida da lateral | Oferece atalhos, até oito noites salvas e, se a análise aberta não estiver no histórico, mais uma entrada para ela |
 | `PullList` | Árvore noite → boss/dificuldade → resumo e pulls | Mostra resultado, progresso, duração e gatilho/mortes antes de abrir o pull |
 | `SetupContext` | Status das integrações e atalhos até uma seção de configurações | Salvar um formulário recarrega os indicadores compartilhados |
 | `PlayerClassesContext` | Relação entre jogadores e classes | Mantém cores e apresentação dos nomes consistentes |
@@ -87,7 +92,7 @@ Fontes: [App](../src/App.tsx), [Header](../src/components/Header.tsx), [Sidebar]
 
 ### 3.1 Configuração inicial e “Como funciona”
 
-Na primeira abertura desktop, sem análises salvas e sem a marca de onboarding, o app abre Configurações com os primeiros passos. `FirstSteps` conduz a ativar o log no jogo, conferir a pasta e começar uma análise. Os cartões indicam o essencial e as integrações opcionais.
+Na primeira abertura desktop, sem análises salvas e sem a marca de onboarding, o app abre Configurações com os primeiros passos. `FirstSteps` lista quatro passos, cada um com um atalho para um cartão: pasta de logs do WoW, ligar o combat log no jogo, entrar com o Warcraft Logs (recomendado) e os opcionais (ao vivo quando o WoW abrir, vídeos, Discord e IA), cujo atalho leva só ao cartão “Ao vivo quando o WoW abrir”. O botão “Começar: escolher uma noite” fica desabilitado enquanto falta a pasta de logs. Depois da primeira vez, os mesmos passos ficam recolhidos em “Como funciona”. Os cartões indicam o essencial e as integrações opcionais.
 
 A pasta de logs é essencial ao fluxo desktop; no site, o arquivo é escolhido diretamente e esse requisito não se aplica. O indicador de Advanced Combat Logging usa o relatório aberto: sem relatório, o app pede conferência no jogo, sem afirmar que a opção está ligada.
 
@@ -97,12 +102,17 @@ Fontes: [SettingsView](../src/components/settings/SettingsView.tsx), [FirstSteps
 
 ### 3.2 Nova análise / escolha da noite
 
-`LogBrowser` reúne fontes locais e reports do Warcraft Logs em noites. No desktop, a pasta pode ser detectada ou configurada. A lista apresenta encontros, dificuldade, número de pulls, kills, fonte e situação da análise. Há filtros por boss, atualização da lista, abertura de outro arquivo e análise em lote.
+`LogBrowser` reúne fontes locais e reports do Warcraft Logs em noites. No desktop, a pasta pode ser detectada ou configurada. A lista apresenta encontros, dificuldade, número de pulls, kills, fonte e situação da análise. Há atualização da lista, abertura de outro arquivo, análise em lote e filtros, guardados em localStorage:
+
+- **Guilda / Pug / Todos**, só quando há noites de pug: separa as raids com o núcleo que se repete nos seus logs das raids com outros personagens.
+- **Boss**, e, depois de escolher um boss com mais de uma dificuldade, a **dificuldade**.
+- **Guilda do Warcraft Logs**: com login em mais de uma guilda, um seletor escolhe de qual vêm as noites remotas (últimos 30 dias).
 
 | Ação | O que faz | Resultado |
 | --- | --- | --- |
 | Analisar | Analisa o log local disponível | Abre o relatório e atualiza o histórico |
 | Completar | Busca pulls ausentes nos reports do WCL, aproveitando dados locais quando possível | Forma uma análise com as fontes da noite |
+| Baixar | Noite que só está no WCL; como Completar, pede confirmação com o número de pulls e o tempo estimado do download (“Baixar e analisar”) | Analisa a noite inteira pelo WCL; reabrir depois é rápido |
 | Analisar todos | Processa em sequência os logs elegíveis ainda não analisados; deixa a noite em gravação de fora | Alimenta o histórico e a Evolução sem abrir cada noite |
 | Abrir arquivo | Escolhe um combat log fora da lista | Inicia o mesmo fluxo de análise |
 | Colar report externo | Recebe um link/código WCL, inclusive fora da guilda | Analisa conforme a disponibilidade da conexão |
@@ -256,11 +266,11 @@ Fontes: [PerformanceView](../src/components/perf/PerformanceView.tsx), [Rotation
 
 O robô aparece no comparador individual e no resumo do boss para a raide. O fluxo individual escolhe um pull elegível, constrói o perfil a partir do setup/talentos e do modelo da luta, executa o SimulationCraft e salva o resultado. A interface apresenta progresso, cancelamento, erros e opção de simular novamente.
 
-O modelo considera aspectos como duração, movimento, alvos/adds, disponibilidade de alvo, fases/vida e buffs temporários. As suposições e o detalhamento pertencem ao resultado da simulação: a porcentagem de potencial depende desse modelo.
+O modelo considera aspectos como duração, movimento, alvos/adds, disponibilidade de alvo, fases/vida e buffs temporários. Desde a v0.40.0 ([notas](releases/v0.40.0.md)), o robô fica na fase de execute (abaixo de 20% e de 35%) pelo mesmo tempo que a luta, medido pela vida do boss em cada fase (`bossEndPct` em `simProfile.ts`); análises antigas, sem essa linha de vida, usam a vida do boss no corte. As suposições e o detalhamento pertencem ao resultado da simulação: a porcentagem de potencial depende desse modelo.
 
-`RaidBot` coloca DPS e tanks com setup/spec em fila, reaproveita os resultados salvos e permite simular os que faltam. `usePotentials` e `useNightPotentials` levam esses resultados a jogadores, resumo do boss e evolução. Consultar a Evolução não dispara uma simulação nova.
+`RaidBot` coloca DPS e tanks com setup/spec em fila, reaproveita os resultados salvos e permite simular os que faltam. `usePotentials` leva esses resultados aos jogadores do pull, `useNightPotentials` à Evolução, e o próprio `RaidBot` os lê no resumo do boss (`loadPotentials`). Consultar a Evolução não dispara uma simulação nova.
 
-**Disponibilidade:** a execução exige o desktop; há uma ponte opcional de desenvolvimento configurada em `vite.config.ts`. O backend web comum declara o recurso indisponível.
+**Disponibilidade:** a execução exige o desktop; há uma ponte opcional de desenvolvimento em `vite.config.ts` (`POST /__simc`), que roda o SimulationCraft de `WIPE_DEV_SIMC_EXE` e guarda os resultados em localStorage. O backend web comum declara o recurso indisponível.
 
 Fontes: [BotComparison](../src/components/perf/BotComparison.tsx), [botSim](../src/lib/botSim.ts), [simProfile](../src/lib/simProfile.ts), [botRaid](../src/lib/botRaid.ts), [simc.rs](../src-tauri/src/simc.rs). Ver também [simulação](simulation.md).
 
@@ -276,9 +286,27 @@ Há três usos relacionados, com necessidades diferentes:
 
 `FightReplay` usa `loadFullPull` para obter a luta completa sob demanda. O desktop pode reler o log local ou buscar o fight do WCL; o site usa o arquivo ainda aberto ou a fonte WCL. O replay completo inclui o combate inteiro, sem o corte estatístico de mortes. A sessão guarda um cache limitado de pulls completos para evitar releitura a cada troca de aba.
 
-A tela integra `ReplayView`, quadros da raid, vida dos bosses, medidores de dano/cura, linha do tempo com fases/mortes/falhas e painel de eventos da unidade selecionada. Há controles de reprodução, velocidade, zoom e visibilidade de chão, áreas, auras na cabeça, nomes e marcas.
+A tela integra `ReplayView`, quadros da raid (que podem ser recolhidos para deixar o mapa livre), vida dos bosses, medidores de dano/cura (também recolhíveis), linha do tempo com fases/mortes/falhas e painel de eventos da unidade selecionada. Há controles de reprodução, velocidade, zoom e visibilidade de chão, áreas, auras na cabeça, nomes e marcas.
 
 As sobreposições usam regras e dados de posição: frontais, áreas, soaks, explosões, orbs, adds/fantasmas, defensivos de área e marcas do grupo, conforme o boss e a captura. A arena é alinhada aos dados por `arenas.ts` e `data/arenas.json`. O próprio app informa que o replay está em construção e pode ter inconsistências.
+
+Entre a v0.38.0 e a v0.42.0 (notas da [0.38.0](releases/v0.38.0.md), [0.39.0](releases/v0.39.0.md), [0.41.0](releases/v0.41.0.md) e [0.42.0](releases/v0.42.0.md)), o motor do replay passou a desenhar, para qualquer boss cuja regra ou dado descreva a mecânica (os bosses citados são exemplos):
+
+| Capacidade | Como aparece |
+| --- | --- |
+| Frontal | Setor no tamanho medido, enchendo durante o cast, com o próximo tracejado até 10s antes (Coiled Altar) |
+| Poças | Tracejadas quando vêm, com “em Ns”, e cheias no chão (Noxious e Defiled Ground) |
+| Contagens | Arco que fecha e segundos até o soak, a explosão, o debuff de quem carrega algo ou o próximo cast (`replayTimers.ts`) |
+| Fragmentos | O que alguém tem que pegar no chão, com “faltam N” ao lado de quem pega |
+| Escudos | Anel no inimigo, uma marca por stack e quanto já absorveu |
+| Área à frente do boss | Círculo onde o golpe cai; o que ninguém pegou fica vazio (Stone Breaker do Twin Fangs) |
+| Ondas | Setas em volta de quem foi marcado e, depois, uma barra por direção andando até a borda (Plague Froth do Vashnik) |
+| Adds | Cor e ícone por tipo de add; o quadro do boss conta quantos estão vivos |
+| CC e portal | Área ou anel do CC dos players, com “quem: o quê”; as pontas do Demonic Gateway (`data/utility.json`) |
+| Lugares da sala | Nomes de pontos da arena, como as fontes do Vashnik |
+| Sala girada | `rotation` em `data/arenas.json` gira a imagem quando a sala está girada no mundo (Vashnik, -58°) |
+
+O menu **Camadas** liga e desliga contagens, próximo frontal e cast, animações, CC dos players, portais do warlock, quem cortou o cast e lugares da sala; CC e portais só existem no replay completo, e lugares da sala só quando a arena tem marcas (`marks`). A escolha fica em `replayPrefs.ts`. A linha do tempo pode mostrar **uma faixa por mecânica** (marca cheia quando deu errado, vazada quando deu certo) ou juntar as falhas numa faixa só. As peças do mapa ficam em `replayLayers.tsx`.
 
 **Dependência importante:** uma análise salva pode conter informação suficiente para um replay curto e ainda precisar do arquivo/fonte original para o replay completo. No site, recarregar a página perde o objeto `File` em memória; pode ser necessário reabrir o log.
 
@@ -290,7 +318,7 @@ O vídeo é um painel de gravação real, associado ao pull por `matchVideos`; n
 
 Quando há POV, `PullView` oferece abrir/fechar vídeo. Os botões `PlayAt`, distribuídos pelo diagnóstico, mortes, mecânicas e perdas individuais, usam `SeekContext` para abrir o vídeo no momento do evento com antecedência. Trocar de POV preserva o instante para rever a mesma cena por outro jogador.
 
-Sem vídeo associado, esses botões não aparecem. O painel tem mensagens específicas para arquivo local ausente e falha de vídeo remoto.
+Sem vídeo associado, esses botões não aparecem. O painel tem mensagens específicas para arquivo local ausente e falha de vídeo remoto. No desenvolvimento no navegador, o Vite serve os vídeos de `WIPE_DEV_VIDEO_DIR` em `/__video`.
 
 Fontes: [VideoPanel](../src/components/VideoPanel.tsx), [wcr](../src/lib/wcr.ts), [wcr.rs](../src-tauri/src/wcr.rs), [wcr_cloud.rs](../src-tauri/src/wcr_cloud.rs).
 
@@ -337,7 +365,7 @@ Fontes: [TrendsView](../src/components/TrendsView.tsx), [SoloNight](../src/compo
 
 ### 3.20 Perguntar à IA
 
-`AskView` monta um dossiê do pull e contexto dos pulls do mesmo boss na noite. O usuário pode ler o dossiê, escolher uma sugestão ou escrever uma pergunta. Sem provedor, a tela leva diretamente à seção IA das configurações.
+`AskView` monta um dossiê do pull e contexto dos pulls do mesmo boss na noite. O usuário pode ler o dossiê, escolher uma sugestão ou escrever uma pergunta. Sem provedor, a aba mostra um aviso com o botão Configurar, que abre a seção IA das configurações.
 
 Cada pergunta envia o prompt de sistema/dossiê e até dez mensagens recentes. A conversa fica em memória por encontro e instante de início, preservando-a ao trocar de aba na sessão. Isso não é o histórico persistente de análises.
 
@@ -380,7 +408,7 @@ O usuário pode continuar examinando um pull antigo ou Configurações: a atuali
 
 Há dois gatilhos automáticos adicionais: abertura do WoW, quando configurada no desktop, e detecção de report ao vivo da guilda. A descoberta automática da guilda é distinta do polling de um ao vivo já ligado.
 
-O Discord respeita webhook, pausa global e opções de wipe/kill/clipe. `useNightRecap` permite o resumo da noite quando o acompanhamento é desligado ou após 30 minutos sem pull novo. O cabeçalho oferece pausar/retomar o autoenvio sem apagar a configuração.
+O Discord respeita webhook, pausa global e as opções de cada wipe, cada kill, resumo da noite e clipe (todas ligadas por padrão). Com a opção do resumo da noite ligada, `useNightRecap` envia o resumo quando o acompanhamento é desligado ou após 30 minutos sem pull novo. O cabeçalho oferece pausar/retomar o autoenvio sem apagar a configuração.
 
 Fontes: [live](../src/lib/live.ts), [autoLive](../src/lib/autoLive.ts), [live.rs](../src-tauri/src/live.rs), [LiveControls](../src/components/LiveControls.tsx), [LiveToast](../src/components/LiveToast.tsx), [discordLive](../src/lib/discordLive.tsx).
 
@@ -388,15 +416,17 @@ Fontes: [live](../src/lib/live.ts), [autoLive](../src/lib/autoLive.ts), [live.rs
 
 | Seção | Conteúdo | Recursos que dependem dela |
 | --- | --- | --- |
-| Pasta de logs | Detectar, escolher e conferir diretório, no desktop | Lista local e acompanhamento |
+| Pasta de logs do WoW | Detectar, escolher e conferir diretório, no desktop | Lista local e acompanhamento |
 | Combat log no jogo | Orientação de `/combatlog` e Advanced Combat Logging | Qualidade de HP, recap, setup e posições |
-| Abrir com WoW | Abertura na bandeja e início do acompanhamento | Fluxo desktop automático |
+| Abrir com o WoW | Ao vivo quando o WoW abrir: abertura na bandeja e início do acompanhamento | Fluxo desktop automático |
 | Corte de mortes | Preferência para novas análises | Limites estatísticos de cada wipe |
-| Warcraft Logs | Login e, no modo avançado, cliente próprio da API | Noites remotas, complemento local/WCL, parses e tops |
-| Warcraft Recorder | Pasta de vídeos e conta/nuvem da guilda, no desktop | POVs e atalhos temporais |
-| Discord | Webhook, tipos de envio, clipes e teste | Compartilhar no canal e autoenvio ao vivo |
+| Warcraft Logs | Login; conectado, a chave para ligar o ao vivo sozinho quando a guilda começa a raid (ligada por padrão). O cliente próprio da API fica em “Avançado”, ou é a única opção num build sem o login embutido | Noites remotas, complemento local/WCL, parses, tops e ao vivo da guilda |
+| Vídeos do Warcraft Recorder | Pasta de vídeos e conta/nuvem da guilda, no desktop | POVs e atalhos temporais |
+| Discord | Webhook, envios (cada wipe, cada kill, resumo da noite), clipe e teste | Compartilhar no canal e autoenvio ao vivo |
 | IA | Provedor, URL, modelo, chave e teste | Dossiê e perguntas |
 | Sobre | Versão, atualizações e diretório de regras quando disponível | Manutenção desktop e regras do usuário |
+
+No site não aparecem os cartões Pasta de logs do WoW, Abrir com o WoW e Vídeos do Warcraft Recorder. No desenvolvimento sem backend, Abrir com o WoW, Warcraft Logs, Discord e IA mostram que só existem no app instalado.
 
 O idioma pode seguir o sistema ou ser escolhido entre português e inglês. A troca remonta as telas para atualizar textos construídos em memória, preservando o relatório aberto; o backend também recebe a escolha.
 
@@ -441,7 +471,7 @@ O contrato TypeScript de [types.ts](../src/types.ts) espelha a serialização Ru
 | `FightData` e tracks | Eventos e trajetórias para a luta completa ou trechos | Replay, clipes e detalhe temporal |
 | `WipeCall`, `cutoffT`, `analyzedMs` | Limite interpretativo/estatístico do pull | Contagens, médias, mortes consideradas e apresentação |
 
-Campos opcionais são relevantes à compatibilidade: relatórios antigos podem não ter casts, setup, dados completos de replay ou origem para releitura. O frontend contém mensagens para vários desses casos, mas a inspeção também encontrou um caso de falha com histórico de amostra, descrito adiante.
+Campos opcionais são relevantes à compatibilidade: relatórios antigos podem não ter casts, setup, dados completos de replay ou origem para releitura. O frontend contém mensagens para vários desses casos, mas a versão compacta do histórico, sem `events` nas mecânicas, quebra a Evolução Solo, como descrito adiante.
 
 ### Responsabilidades por camada
 
@@ -489,11 +519,15 @@ O corte por N mortes é aplicado a wipes; kills preservam a luta completa. O rep
 | Notas e marcas | localStorage por encontro e início do pull | Mesmo mecanismo |
 | Escala e métricas escolhidas | Preferências locais | Preferências locais |
 | Modo, personagem e lateral | localStorage | localStorage |
-| Simulações | Diretório `simc/saved/` | Execução e persistência SimC indisponíveis no backend web comum |
+| Corte de mortes e filtro da Nova análise | localStorage | localStorage |
+| Parses do WCL e link do report por log | localStorage | localStorage |
+| Preferências do replay (camadas, chão, áreas, auras na cabeça por boss, nomes, marcas, medidores, faixas por mecânica, quadros recolhidos) | localStorage | localStorage |
+| Eventos baixados do WCL | `wcl-events-v4/<código>/` no diretório de dados do app | IndexedDB, com as respostas que não mudam |
+| Simulações | Diretório `simc/saved/` | Execução e persistência SimC indisponíveis no backend web comum; na ponte de desenvolvimento, localStorage |
 | Conversas com IA | Memória da sessão por pull | Memória da sessão por pull |
 | Arquivo aberto para reanálise/replay | Caminho do arquivo original | Objeto `File` mantido em memória enquanto a página permanece aberta |
 
-O desktop tem armazenamento próprio de credenciais para integrações, separado de diversas preferências de UI. No site, integrações como IA e Discord guardam configurações/chaves em localStorage; não se deve atribuir a elas as garantias do cofre do sistema. Detalhes de cada integração estão nos respectivos módulos, não numa política única de armazenamento.
+O desktop tem armazenamento próprio de credenciais para integrações, separado de diversas preferências de UI. No site, integrações como IA e Discord guardam configurações/chaves em localStorage; não se deve atribuir a elas as garantias do cofre do sistema. O Discord do site começa com os envios de wipe, kill, resumo da noite e clipe ligados, mas, sem ao vivo no navegador, só o envio manual pelo Compartilhar acontece. Detalhes de cada integração estão nos respectivos módulos, não numa política única de armazenamento.
 
 Fontes: [history.rs](../src-tauri/src/history.rs), [settings.rs](../src-tauri/src/settings.rs), [web/store](../src/web/store.ts), [web/history](../src/web/history.ts), [web/integrations](../src/web/integrations.ts), [notes](../src/lib/notes.ts), [marks](../src/lib/marks.ts).
 
@@ -523,12 +557,14 @@ A análise de um arquivo local usa o núcleo local. Integrações opcionais acre
 | Resumos e evolução | [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/night.ts), [TrendsView](../src/components/TrendsView.tsx), [trends](../src/lib/trends.ts) |
 | Individual e cura | [SoloPullView](../src/components/SoloPullView.tsx), [SoloNight](../src/components/SoloNight.tsx), [solo](../src/lib/solo.ts), [healer](../src/lib/healer.ts) |
 | Comparação e referências | [PerformanceView](../src/components/perf/PerformanceView.tsx), [bench](../src/lib/bench.ts), [wclApi](../src/lib/wclApi.ts), [src/data](../src/data) |
-| Simulação | [botSim](../src/lib/botSim.ts), [simProfile](../src/lib/simProfile.ts), [botDecisions](../src/lib/botDecisions.ts), [botView](../src/lib/botView.ts), [simc.rs](../src-tauri/src/simc.rs) |
-| Replay | [FightReplay](../src/components/FightReplay.tsx), [ReplayView](../src/components/ReplayView.tsx), [fullReplay](../src/lib/fullReplay.ts), [core/replay.rs](../crates/wipe-core/src/replay.rs) |
+| Simulação | [botSim](../src/lib/botSim.ts), [simProfile](../src/lib/simProfile.ts), [botDecisions](../src/lib/botDecisions.ts), [botView](../src/lib/botView.ts), [simc.rs](../src-tauri/src/simc.rs), [sim-check](../scripts/sim-check.mjs) |
+| Replay | [FightReplay](../src/components/FightReplay.tsx), [ReplayView](../src/components/ReplayView.tsx), [replayLayers](../src/components/replayLayers.tsx), [fullReplay](../src/lib/fullReplay.ts), [replayTimers](../src/lib/replayTimers.ts), [replayPrefs](../src/lib/replayPrefs.ts), [arenas](../src/lib/arenas.ts), [core/replay.rs](../crates/wipe-core/src/replay.rs), [arenas.json](../data/arenas.json), [utility.json](../data/utility.json), [replay-check](../scripts/replay-check.mjs), [arena-check](../scripts/arena-check.mjs) |
 | Configuração de boss | [encounters](../encounters), [rules.rs](../crates/wipe-core/src/rules.rs), [RuleTuning](../src/components/RuleTuning.tsx) |
 | Rotação e dados de jogo | [rotations](../rotations), [rotation.rs](../crates/wipe-core/src/rotation.rs), [data](../data) |
 | Exportação e ao vivo | [share](../src/lib/share.ts), [replayClip](../src/lib/replayClip.tsx), [live](../src/lib/live.ts), [discordLive](../src/lib/discordLive.tsx) |
 | Idiomas | [i18n](../src/i18n/index.ts), dicionários `*.i18n.*` junto dos componentes/módulos, [core/i18n.rs](../crates/wipe-core/src/i18n.rs) |
+
+Os scripts npm, os subcomandos do `wipe-cli`, o `simulate-live.mjs` e as conferências por boss (`replay:check`, `sim:check`) estão descritos em [Desenvolvimento](CONTRIBUTING.pt-BR.md#desenvolvimento) e [Processos padrão](CONTRIBUTING.pt-BR.md#processos-padrão), no guia de contribuição; as peças comuns desses scripts ficam em [scripts/lib/checks.mjs](../scripts/lib/checks.mjs).
 
 Uma nova propriedade do relatório exige conferir os contratos Rust/TypeScript e o caminho WASM. Uma nova operação de backend deve considerar o registro de comandos Tauri e o despacho web, inclusive uma resposta de indisponibilidade quando depender do PC. Uma mudança na interpretação de falhas merece revisão dos consumidores derivados da seção 5.
 
@@ -554,12 +590,16 @@ Não foram concluídos login externo, envio ao Discord, chamadas a provedor real
 
 ### Comportamentos e limites observados
 
-1. **Evolução Solo com histórico de amostra:** ao abrir `?demoTrends=history` no desenvolvimento, aguardar a evolução Guilda e trocar para Solo com um personagem previamente escolhido, apareceu o ErrorBoundary “Algo deu errado na sua evolução” com `Cannot read properties of undefined (reading 'filter')`. O stack aponta para `myMechanicFailures`, em [solo.ts](../src/lib/solo.ts), ao filtrar os eventos de uma mecânica, chamado por `losses → soloPull → soloEvolution`. O restante do app continuou acessível. A origem do campo ausente não foi isolada nesta tarefa; pode envolver o formato dos dados de amostra, portanto não se afirma aqui que todas as análises atuais falham.
+1. **Evolução Solo com histórico de amostra:** ao abrir `?demoTrends=history` no desenvolvimento, aguardar a evolução Guilda e trocar para Solo com um personagem previamente escolhido, apareceu o ErrorBoundary “Algo deu errado na sua evolução” com `Cannot read properties of undefined (reading 'filter')`. O stack aponta para `myMechanicFailures`, em [solo.ts](../src/lib/solo.ts), ao filtrar os eventos de uma mecânica, chamado por `losses → soloPull → soloEvolution`. O restante do app continuou acessível. Na conferência da `0.42.0`, a origem apareceu no código: a versão compacta do histórico, que alimenta a Evolução, tira `events` das mecânicas ([history.rs](../src-tauri/src/history.rs) e [web/history](../src/web/history.ts)), e `myMechanicFailures` lê `m.events` sem proteção. A amostra usa o mesmo formato compacto, então um histórico real em que o personagem falhou numa mecânica pessoal avaliada tem a mesma falha, no desktop e no site.
 2. **Replay sem origem:** o relatório WCL de amostra sem `fight`/origem suficiente exibiu a orientação de reabrir o log para obter replay completo. O replay curto da morte funcionou. A amostra específica não determina a capacidade atual do backend WCL, que implementa carregamento por report/fight.
 3. **Discord no site:** o formulário compartilhado exibe opções de envio automático, mas o backend web não implementa ao vivo. O envio manual e a configuração existem; os checkboxes não habilitam monitoramento automático no navegador.
-4. **Indicadores no desenvolvimento:** pasta detectada e IA “demo” podem ser dados sintéticos de `setup.ts`; não comprovam configuração real do usuário.
+4. **Indicadores no desenvolvimento:** sem backend, pasta detectada e IA “demo” são sempre os dados de exemplo de `setup.ts`; não comprovam configuração real do usuário.
 
 Esses pontos são registros da inspeção, sem alterações de comportamento incluídas nesta documentação.
+
+### Conferência contra o código (v0.42.0)
+
+Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima). A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`.
 
 ### Como reproduzir a navegação local
 
@@ -567,20 +607,25 @@ Esses pontos são registros da inspeção, sem alterações de comportamento inc
 # Interface de desenvolvimento com JSONs já existentes
 npm run dev -- --host 127.0.0.1
 
-# Site com backend web; requer o pacote WASM disponível em src/web/pkg
+# Site com backend web; gera antes o pacote WASM em src/web/pkg
+npm run wasm
 npm run dev:web -- --host 127.0.0.1
 ```
 
-Na porta apresentada pelo Vite, os seguintes parâmetros são suportados pelo código de desenvolvimento:
+Na porta do Vite (1420 no `dev`, 1430 no `dev:web`, fixas), os seguintes parâmetros são suportados pelo código de desenvolvimento. Os marcados com “sem backend” valem só no `npm run dev` fora do Tauri; os outros também no `dev:web`. Todos, menos `demoAiSetup`, só existem no servidor de desenvolvimento (não no build):
 
 | URL relativa | Finalidade |
 | --- | --- |
 | `/?demoLogs=1` | Lista demonstrativa de noites e fontes |
-| `/?report=/samples/n-wcl-sim.json` | Relatório de múltiplos bosses usado na inspeção |
-| `/?report=/samples/night-1015.json&fight=/samples/fight-1015-20.json` | Relatório e replay completo; selecionar o pull 20 correspondente |
-| `/?demoTrends=history` | Evolução a partir de `samples/trends-history/list.json` e arquivos associados |
+| `/?report=/samples/n-wcl-sim.json` | Sem backend: relatório de múltiplos bosses usado na inspeção |
+| `/?report=/samples/night-1015.json&fight=/samples/fight-1015-20.json` | Sem backend: relatório e replay completo; selecionar o pull 20 correspondente |
+| `/?report=<json>&videos=<scan.json>` | Sem backend: relatório com os vídeos de um scan do Warcraft Recorder casados aos pulls |
+| `/?demoHistory=1` | Sem backend: noites de exemplo na lateral |
+| `/?demoTrends=history` | Sem backend: Evolução a partir de `samples/trends-history/list.json` e arquivos associados |
+| `/?demoTrends=1` | Sem backend: Evolução a partir de `samples/trends/n1.json` a `n3.json`, gerados pelo `wipe-cli` |
+| `/?demoAiSetup=1` | Sem backend, em qualquer build: o setup de exemplo fica sem provedor de IA; com `&demoSettings=1`, abre direto em Configurações |
 | `/?demoSettings=1` | Entrada direta em Configurações no desenvolvimento |
-| `/?demoLive=1&report=/samples/n-wcl-sim.json` | Apresentação visual de ao vivo; não simula o acompanhamento real |
+| `/?demoLive=1&report=/samples/n-wcl-sim.json` | Sem backend (pelo `report=`): apresentação visual de ao vivo; não simula o acompanhamento real. No `dev:web`, o `demoLive` só mostra o aviso depois de abrir um relatório |
 | `/?demoUpdate=1` | Apresentação visual de atualização disponível |
 
 Os relatórios de `samples/` são dados locais, normalmente fora do Git; um clone novo pode não conter esses arquivos. Nesse caso, os exemplos exigem gerar relatórios com `wipe-cli` ou disponibilizar amostras compatíveis. Para gerar dados, siga o [guia de contribuição](CONTRIBUTING.pt-BR.md); não versione combat logs brutos ou credenciais junto da documentação.
