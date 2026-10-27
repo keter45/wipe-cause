@@ -691,6 +691,27 @@ pub struct MechanicResult {
     /// fantasmas (`gaze` com simulação): quantas jardas o fantasma de cada um andou no pull
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ghost_yards: Option<GhostYards>,
+    /// atribuição por posição (`detect.assign`): o resumo das levas do pull (o `replay:check` lê)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assign: Option<AssignSummary>,
+}
+
+/// Levas da atribuição por posição num pull (ver `assign.rs`). Cada escudo que ficou cai em um só
+/// de `blamed` (tem culpado), `dead_carriers` (sem culpado, com portador morto antes da explosão) e
+/// `unexplained` (nem um nem outro: alcance ou lugares a conferir).
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssignSummary {
+    pub waves: u32,
+    pub judged: u32,
+    /// (motivo, quantas levas) das que não foram julgadas
+    pub skipped: Vec<(String, u32)>,
+    pub shields_left: u32,
+    pub blamed: u32,
+    pub dead_carriers: u32,
+    pub unexplained: u32,
+    /// onde apareceram os alvos longe de todos os lugares da regra
+    pub off_spot: Vec<(f32, f32)>,
 }
 
 /// Quanto o fantasma de cada player andou no pull (caminho simulado, ver `gaze.rs`): parado é

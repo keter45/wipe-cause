@@ -2,6 +2,7 @@
 //!
 //! Formato documentado em `.claude/skills/boss-rules/references/schema.md`.
 
+use crate::assign::{AssignDetect, AssignLog};
 use crate::i18n::Text;
 use crate::gaze::{GazeDetect, GazeLog};
 use crate::orbs::{OrbDetect, OrbLog};
@@ -159,6 +160,9 @@ pub struct Detect {
     /// failure_event: fantasmas que só param com o alvo olhando para eles; o culpado da colisão é
     /// quem ficou de costas para o próprio fantasma (ver `gaze.rs`)
     pub gaze: Option<GazeDetect>,
+    /// failure_event: alvos que nascem em lugares fixos e grupos que vão em cada um por prioridade; a
+    /// falha é o alvo que ficou com a aura, e o culpado quem do grupo não estava no alcance (ver `assign.rs`)
+    pub assign: Option<AssignDetect>,
 }
 
 /// Área de uma habilidade no replay: um círculo de `radius` jardas em volta de cada player com a
@@ -906,6 +910,8 @@ pub struct RuleTracker {
     pairing: Option<(usize, PairLog)>,
     /// mecânica com `gaze` (só uma por pull): fixações, posições e direção de cada player
     gaze: Option<(usize, GazeLog)>,
+    /// mecânica com `assign` (só uma por pull): alvos, portadores e posições
+    assign: Option<(usize, AssignLog)>,
     /// caminhos dos fantasmas já simulados (`ghost_paths`), para não simular de novo no `finish`
     ghost_cache: Option<Vec<crate::gaze::GhostPath>>,
     /// fases do boss (keys), o cast que abre cada uma e a fase atual
@@ -964,6 +970,7 @@ impl RuleTracker {
         let orbs = mechs.iter().position(|m| m.detect.orbs.is_some()).map(|i| (i, OrbLog::default()));
         let pairing = mechs.iter().position(|m| m.detect.pairing.is_some()).map(|i| (i, PairLog::default()));
         let gaze = mechs.iter().position(|m| m.detect.gaze.is_some()).map(|i| (i, GazeLog::new()));
+        let assign = mechs.iter().position(|m| m.detect.assign.is_some()).map(|i| (i, AssignLog::default()));
         // fases: o cast que abre cada uma (só as do boss, o primeiro arquivo)
         let phase_keys: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.0.clone()).collect()).unwrap_or_default();
         let phase_names: Vec<String> = sets.first().map(|s| s.phases.iter().map(|p| p.1.clone()).collect()).unwrap_or_default();
@@ -1020,6 +1027,7 @@ impl RuleTracker {
             orbs,
             pairing,
             gaze,
+            assign,
             ghost_cache: None,
             files,
             mechs,
@@ -1571,7 +1579,7 @@ impl RuleTracker {
 
     /// A análise precisa da posição dos players a cada instante (orbs carregados)?
     pub fn wants_positions(&self) -> bool {
-        self.orbs.is_some() || self.pairing.is_some() || self.gaze.is_some()
+        self.orbs.is_some() || self.pairing.is_some() || self.gaze.is_some() || self.assign.is_some()
     }
 
     pub fn on_player_pos(&mut self, guid: &str, x: f32, y: f32, facing: f32, t: i64) {
@@ -1583,6 +1591,42 @@ impl RuleTracker {
         }
         if let Some((_, log)) = &mut self.pairing {
             log.on_player_pos(guid, x, y, t);
+        }
+        if let Some((_, log)) = &mut self.assign {
+            log.on_player_pos(guid, x, y, t);
+        }
+    }
+
+    /// Unidade invocada (SPELL_SUMMON): os alvos da atribuição por posição.
+    pub fn on_summon(&mut self, npc_id: Option<u32>, guid: &str, t: i64) {
+        if let Some((i, log)) = &mut self.assign {
+            if let Some(cfg) = &self.mechs[*i].detect.assign {
+                log.on_summon(cfg, npc_id, guid, t);
+            }
+        }
+    }
+
+    /// Posição de uma unidade inimiga (bloco advanced).
+    pub fn on_enemy_pos(&mut self, guid: &str, x: f32, y: f32, t: i64) {
+        if let Some((_, log)) = &mut self.assign {
+            log.on_enemy_pos(guid, x, y, t);
+        }
+    }
+
+    /// Aura com o tipo da linha (APPLIED, *_DOSE, REMOVED), em player ou inimigo: no alvo, um APPLIED
+    /// a mais é uma stack inicial, e o `on_aura` não separa isso de uma dose que caiu para 1.
+    pub fn on_aura_event(&mut self, event: &str, spell_id: u32, guid: &str, name: &str, stacks: u32, t: i64) {
+        if let Some((i, log)) = &mut self.assign {
+            if let Some(cfg) = &self.mechs[*i].detect.assign {
+                log.on_aura(cfg, event, spell_id, guid, name, stacks, t);
+            }
+        }
+    }
+
+    /// Qualquer unidade morreu (player ou inimigo).
+    pub fn on_unit_died(&mut self, guid: &str, t: i64) {
+        if let Some((_, log)) = &mut self.assign {
+            log.on_unit_died(guid, t);
         }
     }
 
@@ -1775,8 +1819,9 @@ impl RuleTracker {
         }
     }
 
-    /// `roles`: guid -> role, para não culpar quem a mecânica não envolve.
-    pub fn finish(self, roles: &HashMap<String, String>) -> Vec<MechanicResult> {
+    /// `roles`: guid -> role, para não culpar quem a mecânica não envolve; `ranges`: guid -> `melee` /
+    /// `ranged` da spec (os grupos de `assign`).
+    pub fn finish(self, roles: &HashMap<String, String>, ranges: &HashMap<String, String>) -> Vec<MechanicResult> {
         let mut out = Vec::new();
         let mut ghost_yards = self.ghost_yards().zip(self.gaze.as_ref().map(|g| g.0));
         let removals = self.removals;
@@ -1790,6 +1835,7 @@ impl RuleTracker {
         if let Some((i, log)) = &self.gaze {
             gaze_culprits(&self.mechs[*i], &mut state[*i], log);
         }
+        let mut assign_summary = self.assign.as_ref().and_then(|(i, log)| Some((assign_culprits(&self.mechs[*i], &mut state[*i], log, ranges)?, *i)));
         // acertos pela aura que a aura de confirmação mudou junto
         let mut touches = self.touches;
         for (i, (m, st)) in self.mechs.iter().zip(&mut state).enumerate() {
@@ -1945,6 +1991,7 @@ impl RuleTracker {
                 .copied()
                 .or(d.aura_id)
                 .or(d.hit_aura_id)
+                .or(d.assign.as_ref().map(|a| a.target_aura))
                 .or(d.cast_id)
                 .or_else(|| d.fail_ids.iter().flatten().next().copied())
                 .or(d.soak_aura_id)
@@ -1987,6 +2034,7 @@ impl RuleTracker {
                 stack_origins,
                 pairings: st.pairings,
                 ghost_yards: ghost_yards.take_if(|(_, gi)| *gi == mi).map(|(y, _)| y),
+                assign: assign_summary.take_if(|(_, ai)| *ai == mi).map(|(s, _)| s),
             });
         }
         let rank = |s: &str| match s {
@@ -2236,6 +2284,99 @@ fn dispel_summary(name: &str, failures: u32, dispels: &[DispelOutcome]) -> Text 
 }
 
 /// Colisão de fantasmas: quem ficou de costas para o próprio fantasma nos segundos antes.
+/// Atribuição por posição: cada grupo cujo alvo ficou com a aura é uma falha na explosão; culpado é
+/// quem do grupo estava vivo e fora do alcance. A linha do tempo mostra cada leva.
+fn assign_culprits(m: &Mechanic, st: &mut MechState, log: &AssignLog, ranges: &HashMap<String, String>) -> Option<crate::report::AssignSummary> {
+    use crate::assign::{Outcome, Skip, WaveOutcome};
+    let cfg = m.detect.assign.as_ref()?;
+    let waves = crate::assign::judge(cfg, log, ranges);
+    let spot = |i: usize| &cfg.spots[i].name;
+    let group = |i: usize| &cfg.groups[i].name;
+    let (tp, te) = (&cfg.target_name.pt, &cfg.target_name.en);
+    let n = &m.name;
+    let yd = |d: f32, en: bool| if en { format!("{d:.1}") } else { format!("{d:.1}").replace('.', ",") };
+    for w in &waves {
+        let groups = match &w.outcome {
+            WaveOutcome::Skipped(skip) => {
+                let text = match skip {
+                    Skip::NoTargets => tx!("Leva sem {tp} invocado: não foi julgada", "Wave with no {te} summoned: not judged"),
+                    Skip::OffSpot(x, y) => tx!(
+                        "Um {tp} apareceu longe dos lugares da regra (x {x:.1}, y {y:.1}): leva não julgada",
+                        "A {te} appeared away from the rule's spots (x {x:.1}, y {y:.1}): wave not judged"
+                    ),
+                    Skip::NoGroup => tx!("Portador sem spec conhecida: leva não julgada", "Carrier with an unknown spec: wave not judged"),
+                    Skip::Uneven(counts) => {
+                        let list = |en: bool| {
+                            counts.iter().map(|&(g, k)| format!("{k} {}", if en { &group(g).en } else { &group(g).pt })).collect::<Vec<_>>().join(", ")
+                        };
+                        let (lp, le) = (list(false), list(true));
+                        tx!("Portadores fora da divisão combinada ({lp}): leva não julgada", "Carriers outside the agreed split ({le}): wave not judged")
+                    }
+                    Skip::NoSpot(g) => {
+                        let (gp, ge) = (&group(*g).pt, &group(*g).en);
+                        tx!("A prioridade dos {gp} não tem lugar com {tp} livre: leva não julgada", "The {ge} priority has no spot with a free {te}: wave not judged")
+                    }
+                };
+                push_event(st, w.t, None, text);
+                continue;
+            }
+            WaveOutcome::Judged { spots, groups } => {
+                let names = |en: bool| spots.iter().map(|&s| if en { spot(s).en.clone() } else { spot(s).pt.clone() }).collect::<Vec<_>>().join(" + ");
+                let picks = |en: bool| {
+                    groups
+                        .iter()
+                        .map(|g| if en { format!("{} to {}", group(g.group).en, spot(g.spot).en) } else { format!("{} em {}", group(g.group).pt, spot(g.spot).pt) })
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
+                let (np, ne, pp, pe) = (names(false), names(true), picks(false), picks(true));
+                push_event(st, w.t, None, tx!("Lugares: {np}; {pp}", "Spots: {ne}; {pe}"));
+                groups
+            }
+        };
+        if let Some(boom) = groups.iter().map(|g| g.boom).max().filter(|_| groups.iter().all(|g| !g.shield_left)) {
+            let k = groups.len();
+            push_event(st, boom, None, tx!("{n} saiu de todos ({k})", "{n} removed from all ({k})"));
+        }
+        for g in groups.iter().filter(|g| g.shield_left) {
+            st.failures += 1;
+            st.fail_times.push(g.boom);
+            let (sp, se) = (&spot(g.spot).pt, &spot(g.spot).en);
+            let mut blamed = false;
+            for c in &g.carriers {
+                let text = match c.outcome {
+                    Outcome::Ok => continue,
+                    Outcome::Late(d) => {
+                        let (dp, de) = (yd(d, false), yd(d, true));
+                        tx!("não chegou ao {tp} de {sp} ({dp} jd na explosão)", "didn't reach the {te} at {se} ({de} yd at the explosion)")
+                    }
+                    Outcome::WrongTarget(o, _) => {
+                        let (op, oe) = (&spot(o).pt, &spot(o).en);
+                        tx!("foi no {tp} de {op} em vez do de {sp}", "went to the {te} at {oe} instead of the one at {se}")
+                    }
+                    Outcome::Dead => {
+                        push_event(st, g.boom, Some(&c.name), tx!("morreu antes da explosão", "died before the explosion"));
+                        continue;
+                    }
+                    Outcome::Unknown => {
+                        push_event(st, g.boom, Some(&c.name), tx!("sem posição na explosão", "no position at the explosion"));
+                        continue;
+                    }
+                };
+                blamed = true;
+                bump(&mut st.players, &c.guid, &c.name, 0, g.boom);
+                st.blame_texts.entry(c.guid.clone()).or_insert(text.clone());
+                push_event(st, g.boom, Some(&c.name), text);
+            }
+            if !blamed && g.carriers.iter().all(|c| c.outcome == Outcome::Ok) {
+                let (gp, ge) = (&group(g.group).pt, &group(g.group).en);
+                push_event(st, g.boom, None, tx!("{n} ficou no {tp} de {sp}, mas os {gp} estavam no alcance", "{n} stayed on the {te} at {se}, but the {ge} were in range"));
+            }
+        }
+    }
+    Some(crate::assign::summary(&waves))
+}
+
 fn gaze_culprits(m: &Mechanic, st: &mut MechState, log: &GazeLog) {
     let Some(cfg) = &m.detect.gaze else { return };
     let short = |g: &str| {
@@ -2549,7 +2690,7 @@ mechanics:
         tr.on_enemy_cast(30, "Creature-1", "Add", 8000);
         tr.on_interrupt(30, "P1", "Um-Realm", "Creature-1", "Add", 9000);
 
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         let get = |k: &str| res.iter().find(|r| r.key == k).unwrap();
         let puddle = get("puddle");
         assert_eq!(puddle.failures, 1);
@@ -2607,7 +2748,7 @@ mechanics:
         tr.on_damage(70, "P1", "Um-R", 500, 20_000);
         tr.on_damage(70, "P1", "Um-R", 500, 60_000);
 
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         let get = |k: &str| res.iter().find(|r| r.key == k).unwrap();
         let det = get("detonation");
         assert_eq!(det.failures, 1);
@@ -2668,7 +2809,7 @@ mechanics:
         }
         tr.on_aura(10, "A", "Alice-R", 6, true, 5_000);
         tr.on_aura(10, "B", "Bob-R", 6, true, 5_000);
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         let m = res.iter().find(|r| r.key == "helical").unwrap();
         assert_eq!(m.failures, 1);
         assert_eq!(m.pairings.len(), 1);
@@ -2710,7 +2851,7 @@ mechanics:
         tr.on_aura(50, "P1", "Um-R", 1, true, 4_000);
         tr.on_damage(50, "P1", "Um-R", 1_200_000, 4_001);
         tr.on_damage(50, "P1", "Um-R", 1_200_000, 6_001);
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         let det = res.iter().find(|r| r.key == "detonation").unwrap();
         assert_eq!(det.failures, 1);
         assert_eq!(det.players.len(), 1);
@@ -2743,7 +2884,7 @@ mechanics:
         tr.on_aura(80, "C", "C-R", 1, true, 10_000);
         tr.on_aura(80, "C", "C-R", 0, true, 24_000);
 
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         let m = &res[0];
         assert_eq!(m.failures, 2);
         assert_eq!(m.summary.pt, "2 de 3 Venomfang sem dispel a tempo · dispel médio 3,8s");
@@ -2869,7 +3010,7 @@ mechanics:
 
         let mut tr = RuleTracker::new(&other, 16).unwrap();
         tr.on_damage(0, "P1", "Um-Realm", 5000, 1000); // queda (ENVIRONMENTAL_DAMAGE)
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         assert_eq!(res.iter().find(|m| m.key == "environmental").unwrap().failures, 1);
     }
 
@@ -2901,7 +3042,7 @@ mechanics:
         tr.on_aura(500, "Boss-A", "A", 0, false, 206_000); // 6s, mas o raid morreu nela
         tr.on_aura(500, "Boss-A", "A", 1, false, 300_000); // wipe com a fase aberta
         tr.close_pull(305_000, false, &[201_000, 202_000, 203_000]);
-        let m = tr.finish(&HashMap::new()).into_iter().find(|m| m.key == "stasis").unwrap();
+        let m = tr.finish(&HashMap::new(), &HashMap::new()).into_iter().find(|m| m.key == "stasis").unwrap();
         assert_eq!(m.phases.len(), 4);
         assert_eq!(m.phases[0].end, Some(13_010));
         assert_eq!(m.phases[2].deaths, 3);
@@ -2963,7 +3104,7 @@ mechanics:
             pulse(&mut tr, g, 81, 113_000);
         }
         tr.close_pull(120_000, true, &[]);
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         let m = res.iter().find(|r| r.key == "double_mark").unwrap();
         let blamed: Vec<(&str, u32)> = m.players.iter().map(|p| (p.name.as_str(), p.count)).collect();
         assert_eq!(blamed, [("B-R", 1)]);
@@ -3005,7 +3146,7 @@ mechanics:
         tr.on_aura(100, "C", "C-R", 1, true, 40_000);
         tr.on_aura(101, "C", "C-R", 0, true, 40_050); // limpeza total não confirma
         tr.on_damage(102, "C", "C-R", 500_000, 41_000);
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         let m = res.iter().find(|r| r.key == "wave").unwrap();
         let got: Vec<(&str, u32)> = m.players.iter().map(|p| (p.name.as_str(), p.count)).collect();
         assert_eq!(got, [("B-R", 2), ("A-R", 1)]);
@@ -3075,7 +3216,7 @@ mechanics:
             tr.on_damage(204, "Q", "Q-R", 100, t);
             tr.on_aura(200, "Q", "Q-R", k, true, t + 5);
         }
-        let res = tr.finish(&HashMap::new());
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
         let m = res.iter().find(|r| r.key == "venom").unwrap();
         let blamed: Vec<&str> = m.players.iter().map(|p| p.name.as_str()).collect();
         assert_eq!(blamed, ["P-R"]);

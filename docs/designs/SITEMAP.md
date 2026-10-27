@@ -10,6 +10,7 @@ Quando usar o fluxo: seção "Fluxo de feature" do
 | Link | Status | Data | Autor | Componentes | Descrição |
 | :--- | :----- | :--- | :---- | :---------- | :-------- |
 | [egm-adoption.md](egm-adoption.md) | Implemented | 2026-10-26 | @keter45 | `docs/`, `CLAUDE.md`, `.claude/skills/`, `scripts/` | Regras do projeto, fluxo EGM e auditoria dos docs |
+| [gloombomb-assignment.md](gloombomb-assignment.md) | Approved | 2026-10-27 | @keter45 | `crates/wipe-core`, `encounters/`, `data/defensives.json`, `scripts/replay-check.mjs` | Atribuição por posição: quem da Gloombomb não chegou ao add |
 
 Status: Proposed → Approved → Implemented → Superseded by `<design>`.
 

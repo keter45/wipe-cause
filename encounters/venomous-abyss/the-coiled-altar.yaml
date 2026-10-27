@@ -11,8 +11,9 @@ source:
   - https://warcraft.wiki.gg/wiki/The_Coiled_Altar  # IDs do Encounter Journal
   - "log: WoWCombatLog-092826_204129 (6 wipes Mythic, só P1) — IDs de P1 calibrados"
   - "log: Archive-WoWCombatLog-092226_180441 (kill Heroic) — IDs de P2/intermissão/P3"
+  - "logs: 14, 15, 19, 20, 21, 22 e 26/10 Mythic — cantos e alcance da Gloombomb (atribuição por canto)"
   - "hotfix de 13/10: raio do Virulent Mutation e do Mutagenic Venom 8 → 6 jardas; Mythic com 8 orbs e 4 roxos na P1 (eram 10 e 5)"
-updated: 2026-10-15
+updated: 2026-10-27
 difficulties: [normal, heroic, mythic]
 
 units:
@@ -399,17 +400,42 @@ mechanics:
     message: { pt: "{player} foi atingido pelo Gloombomb de outro ({count}x)", en: "{player} was hit by someone else's Gloombomb ({count}x)" }
     notes: "Quem é atingido ganha Gravebound."
 
+  # Os 4 com Gloombomb formam dois pares, os 2 rangeds e os 2 melees, e cada par vai num add pelo canto em
+  # que ele nasceu (prioridade da guilda, norte para cima como no replay). Medido em 14, 15, 19, 20, 21, 22
+  # e 26/10 Mythic (215 levas, 432 adds; docs/designs/gloombomb-assignment.md):
+  # - os adds nascem de 2 em 2 (SPELL_SUMMON do Spiritcackle) sempre nos 4 pontos abaixo (até 0,6 jd);
+  # - a bomba sai 2,5 a 6,5s depois, dura 5s e explode quando sai; o add perde 1 stack por bomba a até
+  #   ~15 jd (alcance: o raio da área + 1,5 de folga; 58, 58 e 57 culpados com 15, 16,5 e 18);
+  # - em 198 levas o jogo deu a bomba a 2 melees + 2 rangeds (tank, Holy Paladin e Mistweaver são melee);
+  # - par que troca de add com o outro tira os dois escudos: só é erro quando o escudo fica.
+  # 196 levas julgadas, 67 escudos ficaram: 58 com culpado, 8 com portador morto, 1 no limite do raio.
   - key: spirit_shield
     name: "Spirit Shield"
-    type: info
+    type: failure_event
     source_unit: soulcoiler
     difficulty: [mythic]
     severity: wipe
-    detect: { aura_id: 1309105 }
+    detect:
+      aura_id: 1309105
+      assign:
+        carrier_aura: 1310881     # Gloombomb
+        target_npc: 261521        # Spiteful Soulcoiler
+        target_aura: 1309105      # Spirit Shield: 2 stacks; ainda no add depois das bombas = falha
+        reach: 16.5
+        target_name: { pt: add, en: add }
+        spots:
+          - { key: top_left, at: [1176.3, 20.9], name: { pt: "cima esquerda", en: "top left" } }
+          - { key: top_right, at: [1176.7, -21.0], name: { pt: "cima direita", en: "top right" } }
+          - { key: bottom_left, at: [1137.9, 20.8], name: { pt: "baixo esquerda", en: "bottom left" } }
+          - { key: bottom_right, at: [1137.3, -21.0], name: { pt: "baixo direita", en: "bottom right" } }
+        groups:
+          - { range: ranged, name: { pt: rangeds, en: ranged }, priority: [top_left, top_right, bottom_left] }
+          - { range: melee, name: { pt: melees, en: melee }, priority: [bottom_right, bottom_left, top_right] }
     unit_aura: { aura: 1309105 }   # 15/10: entra com 2 stacks no add; cada Gloombomb tira 1
-    tip: { pt: "Cada Gloombomb no add tira um stack do escudo; add sem escudo quebrado = wipe.", en: "Each Gloombomb on the add removes a shield stack; an add without its shield broken = wipe." }
-    message: { pt: "Spirit Shield", en: "Spirit Shield" }
-    notes: "Visto no Mythic de 15/10: aura no Spiteful Soulcoiler com 2 stacks (dois APPLIED seguidos). Regra de CC/escudo ainda não avaliada."
+    tip: { pt: "Rangeds com a Gloombomb vão no add de cima esquerda > cima direita > baixo esquerda; melees no de baixo direita > baixo esquerda > cima direita. Estar a menos de 15 jardas do add quando a bomba explode.", en: "Ranged with Gloombomb go to the add at top left > top right > bottom left; melee to the one at bottom right > bottom left > top right. Be within 15 yards of the add when the bomb explodes." }
+    message: { pt: "Spirit Shield ficou no add {count}x", en: "Spirit Shield left on an add {count}x" }
+    blame_message: { pt: "{player} não chegou ao add dele com a Gloombomb", en: "{player} didn't reach their add with Gloombomb" }
+    notes: "Culpado = portador do par do add que ficou com escudo, vivo e a mais de 16,5 jd dele na explosão. Leva fora de 2+2 (melees mortos no fim do pull) não é julgada."
 
   - key: dreadful_presence
     name: "Dreadful Presence"

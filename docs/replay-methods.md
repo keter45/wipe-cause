@@ -10,7 +10,7 @@ ficam as regras e o método, que valem para qualquer boss.
 
 1. **Boss é dado, não código.** Tudo que um boss mostra no mapa sai da regra dele
    (`encounters/<raid>/<boss>.yaml`: `cone`, `ground`, `area`, `soak`, `blast`, `line`, `pool`,
-   `waves`, `pickup`, `unit_aura`, `detect.orbs`, `detect.gaze`, `units.replay`) ou de um arquivo de dados
+   `waves`, `pickup`, `unit_aura`, `detect.orbs`, `detect.gaze`, `detect.assign`, `units.replay`) ou de um arquivo de dados
    (`data/arenas.json`, `data/defensives.json`, `data/utility.json`). Quando um boss pede algo que não
    existe, crie, pelo [Fluxo de feature](CONTRIBUTING.pt-BR.md#fluxo-de-feature) (critério b), um campo
    genérico novo, pensando em como outro boss usaria, nunca um `if` para aquele boss. Suposições de mecânica (a poça some quando a fase troca) viram opção da regra.

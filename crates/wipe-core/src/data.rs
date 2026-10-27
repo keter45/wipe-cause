@@ -12,6 +12,8 @@ const UTILITY_JSON: &str = include_str!("../../../data/utility.json");
 pub struct SpecInfo {
     pub class: String,
     pub role: String,
+    /// `melee` ou `ranged`, como o jogo separa os alvos (tanks e os healers paladino e monge são melee)
+    pub range: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -222,5 +224,15 @@ mod tests {
         assert_eq!(d.consumable(6262, "Healthstone"), Some(Consumable::Healthstone));
         assert_eq!(d.consumable(6201, "Create Healthstone"), None, "warlock criando pedra não é uso");
         assert_eq!(d.consumable(1236994, "Potion of Recklessness"), None, "poção de dano não é de vida");
+    }
+
+    #[test]
+    fn every_spec_is_melee_or_ranged() {
+        let d = GameData::embedded();
+        assert!(d.specs.values().all(|s| s.range == "melee" || s.range == "ranged"));
+        // como o jogo escolhe os alvos da Gloombomb: tanks, Holy Paladin e Mistweaver contam como melee
+        assert!(d.specs.values().filter(|s| s.role == "tank").all(|s| s.range == "melee"));
+        assert_eq!((d.specs[&65].range.as_str(), d.specs[&270].range.as_str()), ("melee", "melee"));
+        assert_eq!((d.specs[&256].range.as_str(), d.specs[&1468].range.as_str()), ("ranged", "ranged"));
     }
 }

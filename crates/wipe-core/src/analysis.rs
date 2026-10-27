@@ -573,6 +573,11 @@ impl PullBuilder {
             e.hp = adv.hp;
             e.max_hp = adv.max_hp;
             e.pos = Some((adv.x, adv.y, rel));
+            if self.cutoff_t.is_none() {
+                if let Some(r) = self.rules.as_mut().filter(|r| r.wants_positions()) {
+                    r.on_enemy_pos(adv.info_guid, adv.x, adv.y, rel);
+                }
+            }
             if zeroed {
                 if let Some(r) = self.rules.as_mut() {
                     r.on_enemy_zero(npc_id(adv.info_guid), rel);
@@ -774,6 +779,13 @@ impl PullBuilder {
                 if let Some(owner) = self.owner_of(f[1], hex(f[3])) {
                     self.pet_owner.insert(f[5].to_string(), owner);
                 }
+                // alvos da atribuição por posição (os adds do Spiritcackle)
+                if self.counting() {
+                    let rel = self.rel(t);
+                    if let Some(r) = self.rules.as_mut() {
+                        r.on_summon(npc_id(f[5]), f[5], rel);
+                    }
+                }
                 // totem de defensivo em área: a área fica onde ele aparecer
                 if let Some(fc) = self.fight.as_mut() {
                     fc.zone_summon(f[9].parse().unwrap_or(0), f[5]);
@@ -929,6 +941,7 @@ impl PullBuilder {
         if self.counting() {
             if let Some(r) = self.rules.as_mut() {
                 r.on_aura(spell_id, dst_guid, dst_name, stacks, is_player, rel);
+                r.on_aura_event(f[0], spell_id, dst_guid, dst_name, stacks, rel);
                 // possuído (Dreadmarch) aparece como hostil, mas ainda é player
                 if matches!(f[0], "SPELL_AURA_APPLIED" | "SPELL_AURA_REMOVED") {
                     r.on_aura_from(f[1], spell_id, dst_guid, dst_name, f[0] == "SPELL_AURA_APPLIED", rel);
@@ -1640,6 +1653,12 @@ impl PullBuilder {
 
     fn unit_died(&mut self, f: &[&str], t: i64) {
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
+        if self.counting() {
+            let rel = self.rel(t);
+            if let Some(r) = self.rules.as_mut() {
+                r.on_unit_died(dst_guid, rel);
+            }
+        }
         // o rastro de qualquer criatura acaba quando ela morre (o add do Coiled Altar morre marcado como
         // amigável, e o rastro dele seguia até o fim do pull)
         if !dst_guid.starts_with("Player-") {
@@ -1901,6 +1920,9 @@ impl PullBuilder {
 
         let roles: HashMap<String, String> =
             players.iter().filter_map(|p| Some((p.guid.clone(), p.role.clone()?))).collect();
+        // melee / ranged da spec (os grupos da atribuição por posição)
+        let ranges: HashMap<String, String> =
+            players.iter().filter_map(|p| Some((p.guid.clone(), data.specs.get(&p.spec_id?)?.range.clone()))).collect();
         let rules_file = self.rules.as_ref().and_then(|r| r.files.first().cloned());
         let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).filter(|d| !d.ignored).collect();
         let trigger = pull_trigger(&deaths_view);
@@ -1940,7 +1962,7 @@ impl PullBuilder {
                 let deaths: Vec<i64> = pending.iter().map(|d| d.death.t).collect();
                 r.close_pull(duration_ms, success, &deaths);
                 ghosts = r.ghost_paths();
-                r.finish(&roles)
+                r.finish(&roles, &ranges)
             })
             .unwrap_or_default();
 
@@ -2639,6 +2661,55 @@ mod tests {
     }
 
     #[test]
+    fn gloombomb_culpa_quem_nao_chegou_ao_add_do_seu_canto() {
+        let data = GameData::embedded();
+        let start = ["ENCOUNTER_START", "3429", "The Coiled Altar", "16", "20", "1"];
+        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::embedded(), 0);
+        let boss = "Creature-0-1-3004-1-259854-01";
+        let feed = |b: &mut PullBuilder, line: String, t: i64| {
+            let mut f = Vec::new();
+            split_fields(&line, &mut f);
+            b.feed(&f, t, &data);
+        };
+        // dois adds: cima direita e baixo esquerda (o lugar vem do cast do escudo, com posição)
+        let adds = [("Creature-0-1-3004-1-261521-0000A", 1176.74, -20.96), ("Creature-0-1-3004-1-261521-0000B", 1137.88, 20.76)];
+        for (add, x, y) in adds {
+            feed(&mut b, format!("SPELL_SUMMON,{boss},\"Hex Lord Malacrass\",0xa48,0x0,{add},\"Spiteful Soulcoiler\",0xa28,0x0,1286498,\"Spiritcackle\",0x1"), 1_000);
+            feed(&mut b, format!("SPELL_CAST_SUCCESS,{add},\"Spiteful Soulcoiler\",0xa48,0x0,0000000000000000,nil,0x80000000,0x80000000,1309105,\"Spirit Shield\",0x1,{add},{boss},7993915,7993915,0,0,1470,0,0,0,3,0,100,0,{x:.2},{y:.2},2610,3.2642,92"), 1_030);
+            for _ in 0..2 {
+                feed(&mut b, format!("SPELL_AURA_APPLIED,{add},\"Spiteful Soulcoiler\",0xa48,0x0,{add},\"Spiteful Soulcoiler\",0xa48,0x0,1309105,\"Spirit Shield\",0x1,BUFF"), 1_030);
+            }
+        }
+        // rangeds A e B, melees C e D; B fica no meio da sala
+        let carriers = [("Player-1-A", "Alice", 1176.0, -19.0), ("Player-1-B", "Bob", 1157.0, 0.0), ("Player-1-C", "Carol", 1139.0, 19.0), ("Player-1-D", "Dave", 1140.0, 22.0)];
+        for (guid, name, _, _) in carriers {
+            feed(&mut b, format!("SPELL_AURA_APPLIED,{boss},\"Hex Lord Malacrass\",0xa48,0x0,{guid},\"{name}\",0x512,0x0,1310881,\"Gloombomb\",0x1,DEBUFF"), 3_500);
+        }
+        for (guid, name, _, _) in carriers {
+            feed(&mut b, format!("SPELL_AURA_REMOVED,{boss},\"Hex Lord Malacrass\",0xa48,0x0,{guid},\"{name}\",0x512,0x0,1310881,\"Gloombomb\",0x1,DEBUFF"), 8_500);
+        }
+        // a própria bomba acerta o portador: é a posição dele na explosão
+        for (guid, name, x, y) in carriers {
+            feed(&mut b, format!("SPELL_DAMAGE,{boss},\"Hex Lord Malacrass\",0xa48,0x0,{guid},\"{name}\",0x512,0x0,1310883,\"Gloombomb\",0x20,{guid},0000000000000000,841255,925220,3830,3683,4319,787,480,178831,0,131681,260000,0,{x:.2},{y:.2},2610,2.7327,330,61699,202459,-1,32,0,0,89228,nil,nil,nil,AOE"), 8_501);
+        }
+        // o add de cima direita perde só 1 stack (o de A); o de baixo esquerda, os 2
+        let shield = |add: &str, ev: &str, extra: &str| format!("{ev},{add},\"Spiteful Soulcoiler\",0xa48,0x0,{add},\"Spiteful Soulcoiler\",0xa48,0x0,1309105,\"Spirit Shield\",0x1,BUFF{extra}");
+        feed(&mut b, shield(adds[0].0, "SPELL_AURA_REMOVED_DOSE", ",1"), 8_501);
+        feed(&mut b, shield(adds[1].0, "SPELL_AURA_REMOVED_DOSE", ",1"), 8_501);
+        feed(&mut b, shield(adds[1].0, "SPELL_AURA_REMOVED", ""), 8_501);
+        let ranges: HashMap<String, String> =
+            [("Player-1-A", "ranged"), ("Player-1-B", "ranged"), ("Player-1-C", "melee"), ("Player-1-D", "melee")].iter().map(|(g, r)| (g.to_string(), r.to_string())).collect();
+        let results = b.rules.take().unwrap().finish(&HashMap::new(), &ranges);
+        let m = results.iter().find(|m| m.key == "spirit_shield").expect("Spirit Shield");
+        assert_eq!(m.failures, 1);
+        assert_eq!(m.players.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), vec!["Bob"]);
+        assert!(m.players[0].message.pt.contains("cima direita"), "{}", m.players[0].message.pt);
+        assert!(m.events.iter().any(|e| e.detail.pt.starts_with("Lugares: cima direita + baixo esquerda; rangeds em cima direita, melees em baixo esquerda")));
+        let s = m.assign.as_ref().expect("resumo");
+        assert_eq!((s.waves, s.judged, s.shields_left, s.blamed), (1, 1, 1, 1));
+    }
+
+    #[test]
     fn pocas_de_tamanho_conhecido_por_cast_e_cortadas_na_troca_de_fase() {
         let shape = |r: f32| crate::rules::PoolShape { centers: vec![(1160.0, r), (1160.0, -r)], radius: r };
         let spec = crate::rules::PoolSpec { cast_id: 7, delay_s: 4.5, duration_s: 22.0, grow_s: 3.0, ends_on_phase_change: true, shapes: vec![shape(40.0), shape(42.5)] };
@@ -2686,7 +2757,7 @@ mod tests {
         }
         rules.on_aura_from(ghost, 1285911, "Player-1-A", "Alice", false, 6_000);
         rules.ghost_paths();
-        let results = builder.rules.take().unwrap().finish(&HashMap::new());
+        let results = builder.rules.take().unwrap().finish(&HashMap::new(), &HashMap::new());
         let yards = results.iter().find_map(|m| m.ghost_yards.as_ref()).expect("jardas do fantasma");
         assert_eq!((yards.spell_id, yards.players.len(), yards.players[0].ghosts), (1285911, 1, 1));
         // anda a partir da espera (2s) até a fixação acabar (6s), a 4,5 jd/s
