@@ -75,7 +75,8 @@ export function myMechanicFailures(s: Sample) {
     .filter((m) => PERSONAL_BLAME.has(m.kind) && m.evaluated)
     .flatMap((m) => {
       const me = m.players.find((p) => p.guid === s.player.guid && !p.credit && p.count > 0);
-      return me ? [{ mechanic: m, player: me, times: m.events.filter((e) => e.player === s.player.name || e.player === s.player.guid).map((e) => e.t) }] : [];
+      // a versão compacta do histórico (Evolução) vem sem `events`: fica só o firstT do player
+      return me ? [{ mechanic: m, player: me, times: (m.events ?? []).filter((e) => e.player === s.player.name || e.player === s.player.guid).map((e) => e.t) }] : [];
     });
 }
 
