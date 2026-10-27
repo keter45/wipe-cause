@@ -13,8 +13,9 @@ decide: **que forma** cada habilidade tem, **o tamanho** dela e **onde** ela fic
 
 **O replay é um motor para todos os bosses.** Antes de mexer, leia os princípios no topo de
 `docs/replay-methods.md`. O essencial:
-- **Boss é dado:** tudo sai da regra YAML ou de `data/*.json`. Se o boss pede algo novo, crie um campo
-  genérico, nunca um `if` para ele.
+- **Boss é dado:** tudo sai da regra YAML ou de `data/*.json`. Se o boss pede algo novo, a
+  solução é um campo genérico, nunca um `if` para ele; criar esse campo é o critério (b) do
+  Fluxo de feature (CONTRIBUTING): pare e proponha o EGM.
 - **O log manda:** meça comparando quem tomou com quem estava perto e não tomou.
 - **A arena:** calibre pelo que não pode sair dela.
 - **Ligar e desligar:** tudo pode ser desligado pelo usuário.
@@ -101,3 +102,5 @@ O log não registra o caminho de algumas unidades (machados entre um golpe e out
 - Confirme o que o usuário conta no log, e o que o log mostra com o usuário: os dois pegam erros um do outro.
 - Nomes de habilidades e bosses em inglês; textos na tela em pt-BR e inglês na mesma mudança.
 - Mudança numa forma que já existe: compare antes e depois em vários logs (falhas, culpados, o que o replay desenha); toda mudança tem que ter explicação no log.
+- Forma ou campo novo no replay (em `encounters/` ou `data/*.json`) é o critério (b) do Fluxo
+  de feature (CONTRIBUTING): pare e proponha o EGM antes de escrever o campo.

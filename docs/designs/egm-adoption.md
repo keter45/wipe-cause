@@ -576,7 +576,7 @@ O relatório fica em `.egm/`, fora do git; o PR leva o resumo (ver Alternativa H
 | :-- | :-- | :-- |
 | A auditoria aponta um REVISAR falso e a correção piora um doc certo | O desenvolvedor confirma cada REVISAR antes da correção | REVISAR recusado na confirmação |
 | O processo é abandonado (tudo depende de o Claude seguir o `CLAUDE.md`) | Reavaliar depois de 3 designs: tempo gasto × achados que mudaram uma decisão | Feature que cumpre o critério sai sem design |
-| Leitura de `samples/` por um revisor ou pela sessão (o isolamento do EGM é de contexto, não de arquivos) | Linha no `CLAUDE.md` mandando passar a proibição a todo revisor; regra opcional de negação de leitura para `samples/**/*.env` (item 6 do plano) | Revisor cita um arquivo de `samples/` |
+| Leitura de `samples/` por um revisor ou pela sessão (o isolamento do EGM é de contexto, não de arquivos) | Linha no `CLAUDE.md` mandando passar a proibição a todo revisor. A sessão principal pode ler `samples/**/*.env`: as chaves do Warcraft Logs são para o próprio agente usar (item 6, decidido em 2026-10-27) | Revisor cita um arquivo de `samples/` |
 | Atualização do plugin EGM ou do Claude Code muda o comportamento | Versões fixadas no `CLAUDE.md` (`egm@egm` 0.1.0; Claude Code 2.1.271 ou mais novo) | Revisor lê o `CLAUDE.md` ou a memória |
 | Contribuidor sem Claude Code ou sem o plugin | O CONTRIBUTING basta: regras, critério e template do design | — |
 | Cópias das skills em `.agents/skills/` sem as linhas novas | Registrado em *Fora do repo* | — |
@@ -830,7 +830,7 @@ e restantes, com o motivo; ATENÇÃO pendentes; link para este design.
         ignorados; `href` de HTML → conferido; alvo que é diretório → aceito;
         formato da linha de saída.
 
-#### 6. `.claude/settings.json` (Create, só com a aprovação do desenvolvedor)
+#### 6. `.claude/settings.json` (não criado)
 
 *   **Type / Scope**: permissões do Claude Code no projeto, versionadas
     (commit 2).
@@ -845,10 +845,12 @@ e restantes, com o motivo; ATENÇÃO pendentes; link para este design.
     ```
 
     Não bloqueia `samples/` inteiro, porque as skills leem relatórios em
-    `samples/replay/`, `samples/sim/` e `samples/refresh/`. Se a verificação
-    mostrar que Grep, Glob ou Bash ainda leem o arquivo, o limite fica escrito
-    na linha de `samples/` da tabela de riscos, sem regra nova. Sem a
-    aprovação, o item é pulado e o risco fica na tabela.
+    `samples/replay/`, `samples/sim/` e `samples/refresh/`.
+
+    **Decisão (2026-10-27): não criado.** O desenvolvedor recusou: o `.env`
+    em `samples/` existe para o próprio agente usar (scripts que baixam do
+    Warcraft Logs). A proibição continua só para os revisores isolados, pela
+    linha do `CLAUDE.md`.
 
 #### 7. `docs/CONTRIBUTING.md` (Modify)
 

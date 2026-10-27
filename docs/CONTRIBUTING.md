@@ -14,6 +14,8 @@
 | `src/lib/simProfile.ts` | the fight model the SimulationCraft bot plays, checked per boss by `npm run sim:check` and the `sim-calibrate` skill |
 | `data/` | editable tables: defensives per class, consumables |
 | `docs/screenshots/` | README screenshots and animated clips (`pt/` and `en/`) |
+| [`docs/designs/`](designs/SITEMAP.md) | design docs for big features (in Portuguese), indexed in `SITEMAP.md` |
+| [`docs/APP-MAP.pt-BR.md`](APP-MAP.pt-BR.md) | map of the screens and how they connect (in Portuguese) |
 
 ### Development
 
@@ -39,6 +41,31 @@ Every new text goes in Portuguese and English in the same change.
 - **Interface:** texts live in dictionaries (`*.i18n.ts`, with `defineMessages(pt, en)`); English is typed against Portuguese, so a missing phrase doesn't compile. One test fails if Portuguese shows up outside the dictionaries, and another if a dictionary's English side has Portuguese in it.
 - **Boss rules and rotations (YAML):** tips, messages, titles and notes are `{ pt: "...", en: "..." }`; names stay in English. The `wipe-core` test checks both.
 - **Release notes:** a `## Português` section and a `## English` section (the app shows the one for the chosen language).
+
+### Project rules
+
+Rules that decide how a feature is designed in this project.
+
+1. **A boss is data, not code.** What a boss shows or checks comes from its rule (`encounters/`) or from `data/*.json`. A boss that needs something new gets a generic field, designed with other bosses in mind, through the [Feature workflow](#feature-workflow) (criterion b); never an `if` for one boss. Details: [replay-methods.md](replay-methods.md) (in Portuguese), principle 1.
+2. **The healer reference comes from outside the guild.** Healer analysis compares only with other guilds' logs. Our raid's logs are never the "right" answer: not a teammate of the same spec, not the player's own earlier kill, not for calibrating targets. Details: [healer-analysis.md](healer-analysis.md) (in Portuguese).
+3. **Release only with an approved feature.** A version and a release come out only after the developer approves the feature. Details: "Versions and automatic updates" block.
+4. **A boss or spec piece is a standard process:** a script does the numbers and writes an OK / ATENÇÃO / REVISAR report; a skill handles the REVISAR items. Details: [Standard processes](#standard-processes).
+5. **Interface.** Every ability shows with its icon and name (icon alone only where text does not fit, with the name in the tooltip). Every boss shows with the boss icon. Every character shows in the class color, also inside sentences. Cards, lists and notices have no colored stripe or border on the side or top; a selected item changes only its background. Exception: Discord text messages.
+6. **The replay shows the boss abilities.** Frontals as cones, things on the ground, areas around whoever carries something or around a boss unit, lines, soaks, explosions, orbs and adds always show on the map, on top of the boss arena. Details: [replay-methods.md](replay-methods.md) (in Portuguese).
+
+### Feature workflow
+
+A request goes through EGM when it meets at least one of these:
+
+- **(a)** it changes the core (`crates/` or `src-tauri/`) and the interface (`src/`) in the same change;
+- **(b)** it creates a new kind of field or check in `encounters/`, `rotations/` or `data/*.json`;
+- **(c)** it brings a new external integration (a service, program or file format the app does not read yet).
+
+Left out, even if they meet (a): a bug fix with a known cause, and boss or spec content that only uses fields that already exist (those go through the standard processes). Also left out: text-only changes (docs or interface phrases) and visual-only changes that create no screen or component. When in doubt, the session asks the developer.
+
+A big feature has a design in `docs/designs/` (index in [SITEMAP.md](designs/SITEMAP.md), in Portuguese), with Status Approved, inside the feature's PR and cited in the PR description. It can be written by hand, following the template in the SITEMAP, or with the EGM plugin (`egm@egm`).
+
+Before a minor release: `npm run docs:links` exits with 0, and the doc check from [the EGM design](designs/egm-adoption.md) (in Portuguese) runs on CONTRIBUTING, the APP-MAP and the rule docs, plus any doc changed since the last minor tag.
 
 ### Standard processes
 
@@ -90,11 +117,11 @@ The texts come out as templates ("X wasted: use it before it expires"), in both 
 <details>
 <summary><b>Building a boss's replay</b></summary>
 
-Project rule: the boss's abilities always show on the replay (frontals as cones, things on the ground, areas around whoever carries something or around a boss unit, lines, soaks, explosions, orbs, adds) on top of the boss's arena (raidplan.io image aligned with the log's coordinates, `data/arenas.json`).
+[Project rule 6](#project-rules): the boss's abilities always show on the replay (frontals as cones, things on the ground, areas around whoever carries something or around a boss unit, lines, soaks, explosions, orbs, adds) on top of the boss's arena (raidplan.io image aligned with the log's coordinates, `data/arenas.json`).
 
 `npm run replay:check -- <WoWCombatLog.txt> --boss "<name>" --difficulty Mythic` crosses the log with the boss rule and the arena and writes `samples/replay/<date>-<boss>.md`: each enemy ability that hit players, the rule it is in and what it draws; the boss's casts no rule knows (frontals and lines often start there); units that deal damage and are not on the map; missing arena or a poor fit. Needs `wipe-cli` built in release.
 
-REVISAR is a shape or a rule to write: Claude Code's `replay-build` skill handles it (shapes, measuring sizes with `wipe-cli radius`, the arena with `scripts/arena-fit.mjs`, the ghosts with `scripts/ghost-calibrate.mjs`). Example audit: [docs/coiled-altar-replay-audit.md](coiled-altar-replay-audit.md).
+REVISAR is a shape or a rule to write: Claude Code's `replay-build` skill handles it (shapes, measuring sizes with `wipe-cli radius`, the arena with `scripts/arena-fit.mjs`, the ghosts with `scripts/ghost-calibrate.mjs`). Example audit: [docs/coiled-altar-replay-audit.md](coiled-altar-replay-audit.md) (in Portuguese). Method: [docs/replay-methods.md](replay-methods.md) (in Portuguese). Another audit: [docs/twin-fangs-vashnik-replay-audit.md](twin-fangs-vashnik-replay-audit.md) (in Portuguese).
 
 </details>
 
@@ -105,7 +132,7 @@ The bot plays **the fight model**, the same for the whole raid, taken from the l
 
 `npm run sim:check -- <WoWCombatLog.txt> --boss "<name>" --difficulty Mythic` simulates the whole raid on that boss with the app's own code, compares it with what each player did and writes `samples/sim/<date>-<boss>.md` with **OK**, **ATENÇÃO** or **REVISAR**: the DPS median outside 85–105% of the bot (the fight model is too easy or too hard), a DPS above 110% (the bot is weak for that spec: adds, execute or the spec's APL), a profile SimulationCraft did not run. Needs `wipe-cli` built in release and the app's SimulationCraft (or `WIPE_SIMC_EXE`).
 
-REVISAR is what changes the fight model (a measurement in the core, the boss's phases, a model constant): Claude Code's `sim-calibrate` skill handles it. The full rules are in [docs/simulation.md](simulation.md).
+REVISAR is what changes the fight model (a measurement in the core, the boss's phases, a model constant): Claude Code's `sim-calibrate` skill handles it. The full rules are in [docs/simulation.md](simulation.md) (in Portuguese).
 
 </details>
 
@@ -118,9 +145,10 @@ The installed app looks for a new version when it opens (and every 6h): it reads
 
 Publishing a version:
 
-1. Bump the version in `Cargo.toml`, `package.json` and `src-tauri/tauri.conf.json`.
-2. `npm run release:build` — a build signed with the private key in `~/.tauri/wipe-cause.key` (outside the repo; without it you can't publish updates, keep a backup).
-3. `node scripts/release.mjs notes.md` (with `## Português` and `## English` sections) — generates `target/release/upload/` with the installer (with the version in the name and a `WipeCause_x64-setup.exe` copy, which is this README's download link) and `latest.json`, and prints the `gh release create` command to publish all three.
+1. For a minor version, first run the checks in [Feature workflow](#feature-workflow).
+2. Bump the version in `Cargo.toml`, `package.json` and `src-tauri/tauri.conf.json`.
+3. `npm run release:build` — a build signed with the private key in `~/.tauri/wipe-cause.key` (outside the repo; without it you can't publish updates, keep a backup).
+4. `node scripts/release.mjs notes.md` (with `## Português` and `## English` sections) — generates `target/release/upload/` with the installer (with the version in the name and a `WipeCause_x64-setup.exe` copy, which is this README's download link) and `latest.json`, and prints the `gh release create` command to publish all three.
 
 </details>
 

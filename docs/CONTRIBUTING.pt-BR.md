@@ -14,6 +14,8 @@
 | `src/lib/simProfile.ts` | o modelo da luta que o robô do SimulationCraft joga, conferido por boss pelo `npm run sim:check` e pela skill `sim-calibrate` |
 | `data/` | tabelas editáveis: defensivos por classe, consumíveis |
 | `docs/screenshots/` | prints e clipes animados do README (`pt/` e `en/`) |
+| [`docs/designs/`](designs/SITEMAP.md) | design docs das features grandes, com índice no `SITEMAP.md` |
+| [`docs/APP-MAP.pt-BR.md`](APP-MAP.pt-BR.md) | mapa das telas e de como elas se ligam |
 
 ### Desenvolvimento
 
@@ -39,6 +41,31 @@ Todo texto novo entra em português e inglês na mesma mudança.
 - **Interface:** os textos ficam em dicionários (`*.i18n.ts`, com `defineMessages(pt, en)`); o inglês é tipado contra o português, então faltar uma frase não compila. Um teste falha se aparecer português fora dos dicionários, e outro se o lado inglês de um dicionário tiver português.
 - **Regras de boss e rotações (YAML):** dicas, mensagens, títulos e notas são `{ pt: "...", en: "..." }`; os nomes ficam em inglês. O teste do `wipe-core` confere as duas coisas.
 - **Notas de versão:** uma seção `## Português` e uma `## English` (o app mostra a do idioma escolhido).
+
+### Regras do projeto
+
+Regras que decidem como uma feature é desenhada neste projeto.
+
+1. **Boss é dado, não código.** O que um boss mostra ou cobra sai da regra dele (`encounters/`) ou de `data/*.json`. Boss que pede algo novo ganha um campo genérico, pensado para outros bosses, pelo [Fluxo de feature](#fluxo-de-feature) (critério b); nunca um `if` para um boss. Detalhe: [replay-methods.md](replay-methods.md), princípio 1.
+2. **Referência de healer vem de fora da guilda.** A análise de healer compara só com logs de outras guildas. Os logs da nossa raid nunca são o "certo": nem o colega da mesma spec, nem um kill anterior do próprio player, nem para calibrar metas. Detalhe: [healer-analysis.md](healer-analysis.md).
+3. **Release só com feature aprovada.** Versão e release saem só depois que o desenvolvedor aprova a feature. Detalhe: bloco "Versões e atualização automática".
+4. **Peça de boss ou de spec é processo padrão:** um script faz os números e escreve um relatório OK / ATENÇÃO / REVISAR; uma skill resolve os REVISAR. Detalhe: [Processos padrão](#processos-padrão).
+5. **Interface.** Toda habilidade aparece com ícone e nome (ícone sozinho só onde não cabe texto, com o nome no tooltip). Todo boss aparece com o ícone do boss. Todo personagem aparece na cor da classe, também dentro de frases. Cartões, listas e avisos não têm faixa nem borda colorida na lateral ou no topo; item selecionado muda só o fundo. Exceção: mensagens de texto do Discord.
+6. **O replay mostra as habilidades do boss.** Frontais como cone, o que fica no chão, áreas em volta de quem carrega algo ou de uma unidade do boss, linhas, soaks, explosões, orbs e adds aparecem sempre no mapa, em cima da arena do boss. Detalhe: [replay-methods.md](replay-methods.md).
+
+### Fluxo de feature
+
+Passa pelo EGM o pedido que cumpre pelo menos um destes:
+
+- **(a)** muda o núcleo (`crates/` ou `src-tauri/`) e a interface (`src/`) na mesma mudança;
+- **(b)** cria um tipo novo de campo ou de checagem em `encounters/`, `rotations/` ou `data/*.json`;
+- **(c)** traz uma integração externa nova (serviço, programa ou formato de arquivo que o app ainda não lê).
+
+Ficam fora, mesmo que cumpram (a): correção de bug com causa conhecida, e conteúdo de boss ou de spec que só usa campos que já existem (esses vão pelos processos padrão). Também ficam fora: mudança só de texto (docs ou frases da interface) e mudança só visual que não cria tela nem componente. Na dúvida, a sessão pergunta ao desenvolvedor.
+
+Uma feature grande tem um design em `docs/designs/` (índice no [SITEMAP.md](designs/SITEMAP.md)), com Status Approved, dentro do PR da feature e citado na descrição do PR. Ele pode ser escrito à mão, pelo template do SITEMAP, ou com o plugin EGM (`egm@egm`).
+
+Antes de uma release minor: `npm run docs:links` sai com 0, e a conferência dos docs do [design do EGM](designs/egm-adoption.md) roda no CONTRIBUTING, no APP-MAP e nos docs de regras, e em todo doc que mudou desde a última tag minor.
 
 ### Processos padrão
 
@@ -90,11 +117,11 @@ Os textos saem em modelo ("X perdido: use antes de acabar"): vale revisar os pon
 <details>
 <summary><b>Montar o replay de um boss</b></summary>
 
-Regra do projeto: as habilidades do boss aparecem sempre no replay (frontais como cone, o que fica no chão, áreas em volta de quem carrega algo ou de uma unidade do boss, linhas, soaks, explosões, orbs, adds), em cima da arena do boss (imagem do raidplan.io alinhada com as coordenadas do log, `data/arenas.json`).
+[Regra do projeto 6](#regras-do-projeto): as habilidades do boss aparecem sempre no replay (frontais como cone, o que fica no chão, áreas em volta de quem carrega algo ou de uma unidade do boss, linhas, soaks, explosões, orbs, adds), em cima da arena do boss (imagem do raidplan.io alinhada com as coordenadas do log, `data/arenas.json`).
 
 `npm run replay:check -- <WoWCombatLog.txt> --boss "<nome>" --difficulty Mythic` cruza o log com a regra do boss e com a arena e escreve `samples/replay/<data>-<boss>.md`: cada habilidade inimiga que acertou players, a regra em que ela está e o que desenha; os casts do boss que nenhuma regra conhece (frontais e linhas costumam começar aí); unidades que fazem dano e não aparecem no mapa; arena que falta ou mal encaixada. Precisa do `wipe-cli` compilado em release.
 
-REVISAR é uma forma ou uma regra a escrever: a skill `replay-build` do Claude Code cuida disso (formas, tamanhos medidos com `wipe-cli radius`, a arena com `scripts/arena-fit.mjs`, os fantasmas com `scripts/ghost-calibrate.mjs`). Auditoria de exemplo: [docs/coiled-altar-replay-audit.md](coiled-altar-replay-audit.md).
+REVISAR é uma forma ou uma regra a escrever: a skill `replay-build` do Claude Code cuida disso (formas, tamanhos medidos com `wipe-cli radius`, a arena com `scripts/arena-fit.mjs`, os fantasmas com `scripts/ghost-calibrate.mjs`). Auditoria de exemplo: [docs/coiled-altar-replay-audit.md](coiled-altar-replay-audit.md). Método: [docs/replay-methods.md](replay-methods.md). Outra auditoria: [docs/twin-fangs-vashnik-replay-audit.md](twin-fangs-vashnik-replay-audit.md).
 
 </details>
 
@@ -118,9 +145,10 @@ O app instalado procura versão nova ao abrir (e a cada 6h): lê o `latest.json`
 
 Publicar uma versão:
 
-1. Suba a versão em `Cargo.toml`, `package.json` e `src-tauri/tauri.conf.json`.
-2. `npm run release:build` — build assinado com a chave privada em `~/.tauri/wipe-cause.key` (fora do repo; sem ela não dá para publicar atualizações, guarde um backup).
-3. `node scripts/release.mjs notas.md` (com as seções `## Português` e `## English`) — gera `target/release/upload/` com o instalador (com a versão no nome e uma cópia `WipeCause_x64-setup.exe`, que é o link de download deste README) e o `latest.json`, e mostra o `gh release create` para publicar os três.
+1. Numa versão minor, rode antes as conferências do [Fluxo de feature](#fluxo-de-feature).
+2. Suba a versão em `Cargo.toml`, `package.json` e `src-tauri/tauri.conf.json`.
+3. `npm run release:build` — build assinado com a chave privada em `~/.tauri/wipe-cause.key` (fora do repo; sem ela não dá para publicar atualizações, guarde um backup).
+4. `node scripts/release.mjs notas.md` (com as seções `## Português` e `## English`) — gera `target/release/upload/` com o instalador (com a versão no nome e uma cópia `WipeCause_x64-setup.exe`, que é o link de download deste README) e o `latest.json`, e mostra o `gh release create` para publicar os três.
 
 </details>
 

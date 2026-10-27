@@ -17,7 +17,8 @@
     "release:build": "node scripts/release-build.mjs",
     "refresh": "node --experimental-strip-types scripts/refresh.mjs",
     "sim:check": "node scripts/sim-check.mjs",
-    "replay:check": "node scripts/replay-check.mjs"
+    "replay:check": "node scripts/replay-check.mjs",
+    "docs:links": "node scripts/check-doc-links.mjs"
   },
   "dependencies": {
     "@fontsource/instrument-sans": "^5.2.5",

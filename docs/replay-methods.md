@@ -12,8 +12,8 @@ ficam as regras e o método, que valem para qualquer boss.
    (`encounters/<raid>/<boss>.yaml`: `cone`, `ground`, `area`, `soak`, `blast`, `line`, `pool`,
    `pickup`, `unit_aura`, `orbs`, `gaze`, `units.replay`) ou de um arquivo de dados
    (`data/arenas.json`, `data/defensives.json`, `data/utility.json`). Quando um boss pede algo que não
-   existe, crie um campo genérico novo, pensando em como outro boss usaria, nunca um `if` para aquele
-   boss. Suposições de mecânica (a poça some quando a fase troca) viram opção da regra.
+   existe, crie, pelo [Fluxo de feature](CONTRIBUTING.pt-BR.md#fluxo-de-feature) (critério b), um campo
+   genérico novo, pensando em como outro boss usaria, nunca um `if` para aquele boss. Suposições de mecânica (a poça some quando a fase troca) viram opção da regra.
 2. **O log manda; o resto é hipótese.** Tooltip, guia, outro site: servem para saber o que procurar.
    O número vem do log (o Widow's Kiss diz 40 jd e o log mostra 45). Anote de onde veio cada número
    (data, logs, quantos casos) no comentário da regra.

@@ -78,3 +78,5 @@ Regras novas vão em `encounters/<raid>/<boss>.yaml` (embutidas no build). Para 
 - Diferenças por dificuldade vão em `difficulty` (lista) e `overrides` — não crie arquivos separados por dificuldade.
 - Mecânicas só de tank → `roles: [tank]`; o motor não culpa DPS/healer por elas.
 - Seja conservador em `tolerance`: na dúvida, `0` para `wipe`/`major`, e deixe um `notes` dizendo que precisa calibrar com pulls reais.
+- Se o boss pedir um tipo de campo que `encounters/` ou `data/*.json` não têm, pare o
+  cadastro e proponha o EGM: é o critério (b) do Fluxo de feature (CONTRIBUTING).

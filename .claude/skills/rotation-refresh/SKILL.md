@@ -32,3 +32,5 @@ O `npm run refresh` faz sozinho tudo o que é número: metas das checagens, ids 
 - Títulos com dois-pontos quebram o parse em silêncio: rode o `cargo test` antes de confiar no resultado.
 - Não mexa nos números que o refresh calibra (`min_uptime`, `min_usage`): a próxima rodada ajusta.
 - Formato do YAML: veja uma spec pronta (ex.: `rotations/paladin-retribution.yaml`) e o `Check` em `crates/wipe-core/src/rotation.rs`.
+- Se a spec pedir um tipo de checagem que `rotations/` não tem, pare e proponha o EGM: é o
+  critério (b) do Fluxo de feature (CONTRIBUTING).
