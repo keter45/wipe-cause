@@ -95,6 +95,8 @@ O log não registra o caminho de algumas unidades (machados entre um golpe e out
 - **Machados e afins**: posição entre aparições é estimada; quem passa por dentro sem levar dano desmente (o replay apaga), e o que para de acertar some (`vanish`).
 - **Fantasmas** (`detect.gaze`, `crates/wipe-core/src/gaze.rs`): calibre contra o que o log comprova (alcances, colisões, fantasmas limpos por frontal): `WIPE_GAZE_DUMP=<pasta> wipe-cli analyze <log>` grava cada pull, e `node scripts/ghost-calibrate.mjs <pasta>... --grid=1 | --fine=1` mede os parâmetros (velocidade, cone, espera, parada) contra eles. Confira cada dia separado antes de trocar (evita sobreajuste) e anote a tabela na auditoria do boss.
 
+- **Atribuição por posição** (`detect.assign`, `crates/wipe-core/src/assign.rs`): a seção "Atribuição por posição" do relatório soma as levas. **REVISAR** de alvo fora dos lugares: o boss nasce num ponto que a regra não tem; meça onde (o primeiro lugar do alvo no log, como em [docs/designs/gloombomb-assignment.md](../../../docs/designs/gloombomb-assignment.md)) e ponha em `spots`. **ATENÇÃO** de falhas sem culpado nem portador morto: confira o `reach` contra a distância dos portadores que tiraram stack (`wipe-cli radius`) e se os lugares ainda batem.
+
 ## Regras
 
 - Na dúvida, mostre; o que é inferido aparece como estimado, nunca como certo.

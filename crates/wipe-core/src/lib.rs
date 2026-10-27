@@ -1,6 +1,7 @@
 //! wipe-core: lê o `WoWCombatLog.txt` e gera um relatório por pull.
 
 pub mod analysis;
+pub mod assign;
 pub mod data;
 pub mod fight;
 pub mod gaze;

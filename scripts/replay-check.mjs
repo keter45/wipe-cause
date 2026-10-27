@@ -32,6 +32,8 @@ const NO_RULE_REVISAR = 0.02;
 const UNIT_SHARE = 0.01;
 /** Cast do boss sem regra visto tantas vezes por pull (em média): candidato a frontal, linha, área. */
 const CAST_PER_PULL = 1;
+/** Atribuição por posição: escudos que ficaram sem culpado nem portador morto acima disto: ATENÇÃO. */
+const ASSIGN_UNEXPLAINED = 0.2;
 /** Nota do encaixe da arena abaixo disto: reencaixar (scripts/arena-fit.mjs). */
 const ARENA_FIT = 0.9;
 /** Fora da conferência: ataque corpo a corpo (o tank está sempre no boss) e dano sem origem (o próprio player). */
@@ -155,6 +157,25 @@ const hiddenUnits = [...bySource.entries()].filter(([name, dmg]) => dmg / total 
 for (const u of hiddenUnits) add('ATENÇÃO', `${u.name} faz ${(u.share * 100).toFixed(1)}% do dano nos players e não aparece no mapa: \`units\` com \`replay: true\` (ou \`area: { npc }\` se o perigo é em volta dela).`);
 const ghosts = (rule?.mechanics ?? []).filter((m) => m.detect?.gaze);
 
+// atribuição por posição (`detect.assign`): soma o resumo de cada pull
+const assigns = (rule?.mechanics ?? [])
+  .filter((m) => m.detect?.assign)
+  .map((m) => {
+    const sum = { key: m.key, name: m.name, waves: 0, judged: 0, skipped: {}, shieldsLeft: 0, blamed: 0, deadCarriers: 0, unexplained: 0, offSpot: [] };
+    for (const p of pulls) {
+      const a = (p.mechanics ?? []).find((x) => x.key === m.key)?.assign;
+      if (!a) continue;
+      for (const k of ['waves', 'judged', 'shieldsLeft', 'blamed', 'deadCarriers', 'unexplained']) sum[k] += a[k];
+      for (const [why, n] of a.skipped) sum.skipped[why] = (sum.skipped[why] ?? 0) + n;
+      sum.offSpot.push(...a.offSpot);
+    }
+    return sum;
+  });
+for (const a of assigns) {
+  if (a.offSpot.length) add('REVISAR', `${a.name}: ${a.offSpot.length} alvo(s) apareceram a mais de 5 jd de todos os lugares da regra (${a.offSpot.slice(0, 5).map(([x, y]) => `${x.toFixed(1)}, ${y.toFixed(1)}`).join('; ')}): meça o lugar e ponha em \`detect.assign.spots\` (skill replay-build).`);
+  if (a.shieldsLeft && a.unexplained / a.shieldsLeft > ASSIGN_UNEXPLAINED) add('ATENÇÃO', `${a.name}: ${a.unexplained} de ${a.shieldsLeft} falhas sem culpado nem portador morto: confira o \`reach\` e os lugares de \`detect.assign\` (skill replay-build).`);
+}
+
 const status = items.some((i) => i.level === 'REVISAR') ? 'REVISAR' : items.length ? 'ATENÇÃO' : 'OK';
 
 // ---------------------------------------------------------------- relatório
@@ -172,8 +193,13 @@ if (unknownCasts.length) {
 }
 md.push('', '## Unidades no mapa', '', `- **Desenhadas:** ${[...drawn].join(', ') || '—'}`);
 if (hiddenUnits.length) md.push(`- **Fazem dano e não aparecem:** ${hiddenUnits.map((u) => `${u.name} (${pct(u.share)})`).join(', ')}`);
+for (const a of assigns) {
+  const skipped = Object.entries(a.skipped).map(([why, n]) => `${why} ${n}`).join(', ') || 'nenhuma';
+  md.push('', `## Atribuição por posição — ${a.name} (${a.key})`, '', `- **Levas:** ${a.waves}, julgadas ${a.judged}; não julgadas: ${skipped}`, `- **Falhas (alvo que ficou com a aura):** ${a.shieldsLeft}: com culpado ${a.blamed}, com portador morto ${a.deadCarriers}, sem explicação ${a.unexplained}`);
+  if (a.offSpot.length) md.push(`- **Alvos fora dos lugares:** ${a.offSpot.map(([x, y]) => `(${x.toFixed(1)}, ${y.toFixed(1)})`).join(', ')}`);
+}
 if (ghosts.length) md.push(`- **Fantasmas** (${ghosts.map((m) => m.key).join(', ')}): o caminho é simulado; calibre com \`WIPE_GAZE_DUMP\` + \`scripts/ghost-calibrate.mjs\` (skill replay-build).`);
 const longest = [...pulls].sort((a, b) => b.durationMs - a.durationMs)[0];
 md.push('', `Para olhar no app: pull ${longest.pullNumber} (${mmss(longest.durationMs)}), aba Replay, com o replay completo da luta.`, '');
-const file = writeReport(OUT, title, md.join('\n'), { title, night, status, items, rule: rule?.file ?? null, arena: arena ? { name: arena.name, fit: arena.fit } : null, rows, unknownCasts, hiddenUnits });
+const file = writeReport(OUT, title, md.join('\n'), { title, night, status, items, rule: rule?.file ?? null, arena: arena ? { name: arena.name, fit: arena.fit } : null, rows, unknownCasts, hiddenUnits, assigns });
 console.log(`${status} · ${rows.length} spells · ${unknownCasts.length} casts sem regra · ${file}.md`);

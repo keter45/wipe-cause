@@ -234,6 +234,8 @@ Conferido no pull 16 de 15/10 (Mythic, P3 82%).
 - **Spirit Shield** (`unit_aura`, 1309105): no Mythic entra no Spiteful Soulcoiler com 2 stacks
   (dois `SPELL_AURA_APPLIED` seguidos); cada Gloombomb tira 1. Os adds agora têm `replay: true`,
   com a vida guardada para a barra embaixo deles.
+- **Spirit Shield como falha** (27/10, `detect.assign`): a mecânica passou a dizer quem da
+  Gloombomb não chegou ao add dele (seção abaixo).
 - **Veil of Twilight** (`unit_aura` com `absorb`, 1286912): o escudo do Eternal Nightfall. O
   absorvido é a soma dos `SPELL_ABSORBED` com esse spell no Malacrass: 34,8 mi em cada um dos dois
   Nightfalls do pull, os dois cortados.
@@ -255,3 +257,26 @@ Conferido no pull 16 de 15/10 (Mythic, P3 82%).
   cantos além do alcance.
 - **Twilight / Suffocating Darkness**: sem anel. O log não mostra a poça escura, só o absorb de
   cura (1286947) em quem entrou nela.
+
+## Gloombomb e Spirit Shield: atribuição por canto (27/10)
+
+Design: [docs/designs/gloombomb-assignment.md](designs/gloombomb-assignment.md). Medido em 7 noites
+Mythic da guilda (14, 15, 19, 20, 21, 22 e 26/10/2026), 215 levas de bomba, 432 adds.
+
+| O quê | O que o log mostra | Na regra |
+| --- | --- | --- |
+| Adds | `SPELL_SUMMON` do Spiritcackle (1286498) do Malacrass, 2 Spiteful Soulcoiler (261521) no mesmo ms; a posição vem do cast do Spirit Shield em si mesmo, 30 ms depois. Só 4 pontos (até 0,6 jd): (1176,3; 20,9) 78 vezes, (1176,7; −21,0) 84, (1137,9; 20,8) 124, (1137,3; −21,0) 146. Com o norte para cima, são cima esquerda, cima direita, baixo esquerda e baixo direita. | `detect.assign.spots` |
+| Gloombomb (1310881) | Em 4 players no mesmo ms, 2,5 a 6,5 s depois do summon; dura 5,0 s (±30 ms) e explode quando sai. Em 198 das 215 levas o jogo escolhe 2 melees + 2 rangeds (tank, Holy Paladin e Mistweaver contam como melee); as outras ficam quase todas no fim de pulls com wipe. | `carrier_aura`; `range` das specs em `data/defensives.json` |
+| Acerto no add | Sem dano no add: no mesmo ms da explosão ele perde 1 stack do Spirit Shield (`REMOVED_DOSE`) por bomba a até ~15 jd (acertos: mediana 10,4 jd, 90% até 13,7; entre 15 e 18 jd, misturado). O add anda ~12 jd até a explosão. | `target_aura`, `reach: 16.5` |
+| Troca de add | Par que vai no add do outro par tira os dois escudos do mesmo jeito: longe do add designado só é erro quando o escudo fica. | falha = escudo que ficou |
+| Escudo tirado antes | Em 22/10 (pull de 430 s, leva de 367 s), o Spirit Shield saiu dos dois adds com `SPELL_AURA_REMOVED`, sem dose, 1,6 s antes das bombas: algo além da Gloombomb tira o escudo. O motor não culpa ninguém (não ficou escudo); a causa não foi identificada. | — |
+
+Conferência leva a leva do motor contra a medição (scripts de medição fora do repo), pelo
+`replay:check` nas 7 noites: 194 levas, 188 julgadas (6 puladas: 5 sem add vivo da última invocação,
+1 fora do 2+2), 39 escudos que ficaram antes da call de wipe: 33 com culpado, 5 com portador morto, 1
+sem explicação. Os 15 escudos que a medição achou depois da call de wipe não entram (o app para de
+contar ali). O resto bate pull a pull com os mesmos culpados, menos dois casos: o escudo tirado antes
+das bombas (acima), que a medição contava como falha, e uma falha sem culpado (portadores mortos) que
+a medição punha 3 s depois por estimar a explosão. A comparação achou um erro no motor, já corrigido:
+ele guardava só a primeira morte de cada player, e quem levou battle rez e morreu de novo com a bomba
+virava culpado.
