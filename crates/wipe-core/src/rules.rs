@@ -2396,7 +2396,17 @@ fn gaze_culprits(m: &Mechanic, st: &mut MechState, log: &GazeLog) {
             let (away_pt, away_en) = (fmt_secs(v.away_ms as f64 / 1000.0, false), fmt_secs(v.away_ms as f64 / 1000.0, true));
             let (win_pt, win_en) = (fmt_secs(v.window_ms as f64 / 1000.0, false), fmt_secs(v.window_ms as f64 / 1000.0, true));
             let name = log.name(&v.guid).to_string();
+            let yd = v.walked_yd.unwrap_or(0.0).round() as i64;
             let text = match (v.culprit, others.is_empty()) {
+                // o fantasma andou (simulação): a culpa não veio dos 5s de costas
+                (Some(true), false) if v.inferred => tx!(
+                    "{me} deixou o próprio fantasma andar ~{yd} jd até encostar no de {other} (estimado pela simulação; de costas só {away_pt} dos {win_pt} no fim)",
+                    "{me} let their own ghost walk ~{yd} yd until it touched {other}'s (estimated by the simulation; back turned only {away_en} of the {win_en} at the end)"
+                ),
+                (Some(true), true) if v.inferred => tx!(
+                    "{me} deixou o próprio fantasma andar ~{yd} jd até encostar em outro (estimado pela simulação)",
+                    "{me} let their own ghost walk ~{yd} yd until it touched another one (estimated by the simulation)"
+                ),
                 (Some(true), false) => tx!(
                     "{me} ficou de costas para o próprio fantasma {away_pt} dos {win_pt} antes de ele encostar no de {other}",
                     "{me} had their back to their own ghost for {away_en} of the {win_en} before it touched {other}'s"
@@ -2409,7 +2419,13 @@ fn gaze_culprits(m: &Mechanic, st: &mut MechState, log: &GazeLog) {
                 (None, _) => tx!("{me}: sem dados de para onde olhava", "{me}: no data on where they were facing"),
             };
             if v.culprit == Some(true) {
-                let blame = if others.is_empty() {
+                let blame = if v.inferred {
+                    if others.is_empty() {
+                        tx!("deixou o fantasma andar ~{yd} jd até a colisão (estimado)", "let their ghost walk ~{yd} yd until the collision (estimated)")
+                    } else {
+                        tx!("deixou o fantasma andar ~{yd} jd até encostar no de {other} (estimado)", "let their ghost walk ~{yd} yd until it touched {other}'s (estimated)")
+                    }
+                } else if others.is_empty() {
                     tx!("ficou de costas para o fantasma {away_pt} dos {win_pt} antes da colisão", "had their back to their ghost for {away_en} of the {win_en} before the collision")
                 } else {
                     tx!("ficou de costas para o fantasma {away_pt} dos {win_pt} antes de ele encostar no de {other}", "had their back to their ghost for {away_en} of the {win_en} before it touched {other}'s")

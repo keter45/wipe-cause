@@ -313,6 +313,9 @@ mechanics:
       então a direção até o ponto de início serve para saber se o player olhava. Culpado = alvo
       de costas (fora de 45°) em pelo menos metade dos 5s antes da colisão. Calibrado em 9
       colisões de 13/10: em 6 um dos dois (ou os dois) estava de costas quase o tempo todo.
+      Também culpado (28/10): o fantasma que andou pelo menos 3 jd e um quarto do caminho na
+      simulação (sim), quando os dois simulados terminam a até 8 jd na colisão; de 15 colisões
+      em 21, 22 e 26/10, o culpado passou de 2 para 14 (docs/coiled-altar-replay-audit.md).
       Debuff em um só player = os dois fantasmas eram dele, ou o outro alvo morreu/estava imune.
 
   - key: soul_sever
