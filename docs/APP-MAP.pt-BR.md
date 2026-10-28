@@ -153,7 +153,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/n
 | Progresso | Fase e vida do boss por pull; clicar permite investigar a tentativa |
 | Métricas do grupo | Mecânicas escolhidas para acompanhar, sugestões pelo que falhou, totais e contribuição individual; abre os pulls relacionados |
 | Tempos de fase | Compara transições quando os dados e as regras de fase existem |
-| CDs de cura | A note de CDs colada pelo líder (NSRT): versões, casamento de fases com o desvio do relógio do addon e, por linha de cada versão, quantos pulls foram na hora e o Δ mediano |
+| CDs de cura | A note de CDs colada pelo líder (NSRT): versões, casamento de fases com o desvio do relógio do addon e, por linha de cada versão, quantos pulls foram na hora e o Δ mediano, golpe e uso, overheal da noite contra as referências e empilhado; a note sugerida por versão (adicionar e mover, com caixas e Copiar) |
 | Origem de stacks | Acrescenta contexto de stacks nos bosses que produzem esses dados |
 | Causas dos wipes | Agrega gatilhos, mortes ligadas e falhas por mecânica |
 | Linha do tempo | Mostra combate e intervalos daquele boss |
@@ -178,7 +178,7 @@ As abas são preservadas em memória por foco: Guilda começa em Mortes; Solo, e
 | Mortes | `DeathList` | Abre a investigação de cada morte, recursos, recap e posição |
 | Mecânicas | `MechanicsView` | Expande falhas e participantes, replays, eventos, dispels e ajustes |
 | Interrupts | `InterruptsView` e `AssignmentsPanel` | Cortes, tentativas, casts que passaram e escala |
-| CDs de cura | `HealNotePanel` | Cada linha da note de CDs no pull: na hora, adiantado, atrasado, não usou e os estados sem culpa; Δ com e sem o desvio da fase; golpe e uso (no golpe, sem dano, uso de ciclo); golpes do boss com e sem CD; raide baixa sem golpe; ▶ abre o Replay no instante |
+| CDs de cura | `HealNotePanel` | Cada linha da note de CDs no pull: na hora, adiantado, atrasado, não usou e os estados sem culpa; Δ com e sem o desvio da fase; golpe e uso (no golpe, sem dano, uso de ciclo, overheal do uso com a faixa das referências e a noite ao lado, empilhado); golpes do boss com e sem CD; raide baixa sem golpe; ▶ abre o Replay no instante |
 | Jogadores | `PlayersTable` | Nota, produção, dano tomado, mortes, defensivos, consumíveis e dados complementares |
 | Desempenho / Comparação detalhada | `PerformanceView` | Rotação e comparação com tops, própria raid ou simulação, conforme papel |
 | Replay | `FightReplay` | Luta completa, mapa, quadros da raid, medidores, fases e eventos |

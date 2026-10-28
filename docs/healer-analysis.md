@@ -232,7 +232,9 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
    pela raid. Da vida da raid só ficam os eventos em que alguém cruza os 80%. `node
    --experimental-strip-types scripts/rotation/heal-bench.mjs` resume log a log em
    `src/data/heal-refs/<spec>.json` (com os casts do boss e os usos dos cooldowns, para o momento por
-   mecânica).
+   mecânica, e em `cdSpells` a cura dos CDs de `data/heal-cooldowns.json`, régua do overheal da
+   [note de CDs de cura](heal-cd-note.md)). No fim, o relatório "Tabela de CDs de cura" (OK /
+   ATENÇÃO / REVISAR) confere a tabela contra as referências e a rotação da spec.
 3. **YAML de healer**: `role: healer`, sem prioridade nem abertura. Checagens novas: `ally_uptime`
    (tempo com o buff ou média de alvos). Feitos: `priest-discipline`, `druid-restoration` e
    `paladin-holy`, conferidos com `node scripts/rotation.mjs check <spec>` nas referências.

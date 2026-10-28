@@ -3035,6 +3035,34 @@ table.heat td {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+.heal-note-suggest {
+  margin-top: 12px;
+}
+.heal-note-changes {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.heal-note-change {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 0 2px 16px;
+  cursor: pointer;
+}
+.heal-note-why {
+  padding-left: 38px;
+}
+.heal-note-manual {
+  margin-top: 8px;
+}
+.heal-note-manual textarea {
+  width: 100%;
+}
 td.warn {
   color: var(--minor);
 }

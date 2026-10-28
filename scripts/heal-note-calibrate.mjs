@@ -32,7 +32,9 @@ fs.writeFileSync(
   entry,
   ["export * from '" + path.join(root, 'src/lib/raidHits.ts').replace(/\\/g, '/') + "';", "export * from '" + path.join(root, 'src/lib/healNoteCheck.ts').replace(/\\/g, '/') + "';", "export * from '" + path.join(root, 'src/lib/healNote.ts').replace(/\\/g, '/') + "';"].join('\n'),
 );
-const bundle = await rolldown({ input: entry, platform: 'node', logLevel: 'silent' });
+// as referências de healer (import.meta.glob do Vite) não entram na calibração
+const noGlob = { name: 'no-glob', transform: (code) => (code.includes('import.meta.glob') ? code.replace(/import\.meta\.glob(<[^>]*>)?\(/g, '((..._) => ({}))(') : null) };
+const bundle = await rolldown({ input: entry, platform: 'node', logLevel: 'silent', plugins: [noGlob] });
 const { output } = await bundle.generate({ format: 'esm' });
 const built = path.join(os.tmpdir(), `heal-note-calibrate-${process.pid}.mjs`);
 fs.writeFileSync(built, output[0].code);

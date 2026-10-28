@@ -1,10 +1,10 @@
 {
-  "_comment": "CDs de cura e de redução de dano para a análise da note de CDs (docs/heal-cd-note.md). kind: heal | mitigation; sem kind, a entrada só guarda alt_ids para o timing. effect: burst (rajada ou canal curto) | sustained (dura) | active (redução ativa). duration_ms: janela do efeito (conferida na aura do CD num log da guilda em 2026-10-28; canal da rotação quando existe). cooldown_ms: base, conferido por crates/wipe-core/tests/heal_cooldowns.rs contra rotations/*.yaml e data/defensives.json. heal_ids: spells de cura que só existem com o CD ativo. specs: ids de spec que têm o CD. talent: depende de talento.",
+  "_comment": "CDs de cura e de redução de dano para a análise da note de CDs (docs/heal-cd-note.md). kind: heal | mitigation; sem kind, a entrada só guarda alt_ids para o timing e marca a spell como conhecida e fora dos CDs de raide (conferência do heal-bench). effect: burst (rajada ou canal curto) | sustained (dura) | active (redução ativa). duration_ms: janela do efeito (conferida na aura do CD num log da guilda em 2026-10-28; canal da rotação quando existe). cooldown_ms: base, conferido por crates/wipe-core/tests/heal_cooldowns.rs contra rotations/*.yaml e data/defensives.json. heal_ids: spells de cura que só existem com o CD ativo. specs: ids de spec que têm o CD. talent: depende de talento.",
   "cooldowns": [
     { "id": 740, "name": "Tranquility", "class": "Druid", "specs": [105], "kind": "heal", "effect": "sustained", "duration_ms": 6000, "cooldown_ms": 180000, "heal_ids": [157982] },
     { "id": 391528, "name": "Convoke the Spirits", "class": "Druid", "specs": [105], "talent": true, "alt_ids": [323764], "kind": "heal", "effect": "sustained", "duration_ms": 4000, "cooldown_ms": 120000 },
     { "id": 108280, "name": "Healing Tide Totem", "class": "Shaman", "specs": [264], "talent": true, "kind": "heal", "effect": "sustained", "duration_ms": 10000, "cooldown_ms": 180000, "heal_ids": [114942] },
-    { "id": 114052, "name": "Ascendance", "class": "Shaman", "specs": [264], "talent": true, "kind": "heal", "effect": "sustained", "duration_ms": 15000, "cooldown_ms": 180000, "heal_ids": [114083] },
+    { "id": 114052, "name": "Ascendance", "class": "Shaman", "specs": [264], "talent": true, "kind": "heal", "effect": "sustained", "duration_ms": 15000, "cooldown_ms": 180000, "heal_ids": [294020] },
     { "id": 98008, "name": "Spirit Link Totem", "class": "Shaman", "specs": [264], "talent": true, "kind": "mitigation", "effect": "active", "duration_ms": 6000, "cooldown_ms": 180000 },
     { "id": 64843, "name": "Divine Hymn", "class": "Priest", "specs": [257], "kind": "heal", "effect": "burst", "duration_ms": 5000, "cooldown_ms": 180000, "heal_ids": [64844] },
     { "id": 200183, "name": "Apotheosis", "class": "Priest", "specs": [257], "talent": true, "kind": "heal", "effect": "sustained", "duration_ms": 32000, "cooldown_ms": 120000 },
@@ -19,6 +19,14 @@
     { "id": 97462, "name": "Rallying Cry", "class": "Warrior", "specs": [71, 72, 73], "kind": "mitigation", "effect": "active", "duration_ms": 10000, "cooldown_ms": 180000 },
     { "id": 51052, "name": "Anti-Magic Zone", "class": "DeathKnight", "specs": [250, 251, 252], "talent": true, "kind": "mitigation", "effect": "active", "duration_ms": 8000, "cooldown_ms": 240000 },
     { "id": 196718, "name": "Darkness", "class": "DemonHunter", "specs": [577, 581, 1480], "talent": true, "kind": "mitigation", "effect": "active", "duration_ms": 8000, "cooldown_ms": 300000 },
-    { "id": 106898, "name": "Stampeding Roar", "class": "Druid", "alt_ids": [77761, 77764] }
+    { "id": 106898, "name": "Stampeding Roar", "class": "Druid", "alt_ids": [77761, 77764] },
+    { "id": 132158, "name": "Nature's Swiftness", "class": "Druid" },
+    { "id": 378081, "name": "Nature's Swiftness", "class": "Shaman", "alt_ids": [443454] },
+    { "id": 375576, "name": "Divine Toll", "class": "Paladin" },
+    { "id": 10060, "name": "Power Infusion", "class": "Priest" },
+    { "id": 120517, "name": "Halo", "class": "Priest" },
+    { "id": 2050, "name": "Holy Word: Serenity", "class": "Priest" },
+    { "id": 370537, "name": "Stasis", "class": "Evoker" },
+    { "id": 370553, "name": "Tip the Scales", "class": "Evoker" }
   ]
 }

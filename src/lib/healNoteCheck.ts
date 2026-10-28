@@ -4,9 +4,11 @@
 
 import type { PhaseMark, PlayerStats, Pull } from '../types';
 import { shortName } from './format';
-import { castIdsOf, healCd, type HealCd, type HealCdEffect } from './healCooldowns';
+import { nearestAnchor } from './cdAnchors';
+import { castIdsOf, healCd, healCooldowns, type HealCd, type HealCdEffect } from './healCooldowns';
+import { band, MIN_REFS, OVERHEAL_MARGIN, type Band, type HealRefEntry } from './healer';
 import { quantile } from './quantile';
-import { mapPhases, type ParsedNote } from './healNote';
+import { mapPhases, type NoteChange, type ParsedNote } from './healNote';
 import { raidLow, type Moment } from './raidHits';
 
 /** Uso a até isso da hora da linha = na hora. */
@@ -300,6 +302,10 @@ export interface UseVerdict {
   noDamage: boolean;
   /** linha de ciclo: não recebe veredicto de uso */
   cycle: boolean;
+  /** overheal do uso (só CD de cura com `heal_ids` e uso casado) */
+  overheal: UseOverheal | null;
+  /** dois ou mais usos de cura no mesmo momento, e este com overheal alto */
+  stacked: boolean;
 }
 
 export interface PullVerdicts {
@@ -369,7 +375,7 @@ export function cycleLines(note: ParsedNote, pulls: Pull[], offsets: Map<string,
  * Veredictos de golpe e uso de cada pull: a linha ligada ao momento, se o uso cobriu, "sem dano"
  * (só cura), linhas de ciclo, momentos sem CD e raide baixa sem golpe.
  */
-export function judgeUse(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, PhaseOffset>, checks: Map<number, LineCheck[]>, ms: Moment[]): Map<number, PullVerdicts> {
+export function judgeUse(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, PhaseOffset>, checks: Map<number, LineCheck[]>, ms: Moment[], refsOf: RefsOf = () => []): Map<number, PullVerdicts> {
   // ligação linha ↔ momento por pull, e quais linhas de cada versão têm momento em algum pull
   const assoc = new Map<number, Map<number, Moment>>();
   const withMoment = new Map<ParsedNote, Set<number>>();
@@ -416,12 +422,241 @@ export function judgeUse(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, Pha
         const [x, y] = noDamageWindow(cd.effect, used, cd.duration_ms);
         noDamage = !mine.some((mm) => overlaps(span(mm).at, span(mm).end, x, y)) && !low.some((e) => overlaps(e.start, e.end, x, y));
       }
-      lines.set(c.lineIndex, { momentKey: m?.key ?? null, onHit, noDamage, cycle });
+      const player = p.players.find((x) => x.guid === c.guid);
+      const amounts = player && used != null && !cycle ? overhealOfUse(player, cd, used) : null;
+      const overheal = amounts && player ? withRef(amounts, refOverheal(refsOf(p, player), cd)) : null;
+      lines.set(c.lineIndex, { momentKey: m?.key ?? null, onHit, noDamage, cycle, overheal, stacked: false });
     }
+    // empilhado: curas com heal_ids usadas no mesmo momento; o rótulo vai em quem tem overheal alto
+    const byMoment = new Map<string, UseVerdict[]>();
+    for (const v of lines.values()) if (v.momentKey && v.overheal) (byMoment.get(v.momentKey) ?? byMoment.set(v.momentKey, []).get(v.momentKey)!).push(v);
+    for (const vs of byMoment.values()) if (vs.length >= 2) for (const v of vs) v.stacked = v.overheal!.high;
     const covered = new Set([...a.values()].map((m) => m.key));
     const uncovered = mine.filter((m) => !covered.has(m.key)).map((m) => m.key);
     const lowWithoutHit = low.filter((e) => !mine.some((mm) => overlaps(span(mm).at - 5_000, span(mm).end + RECOVER_MS, e.start, e.end)));
     out.set(p.id, { lines, uncovered, lowWithoutHit });
   }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Overheal e note sugerida (etapa 3)
+
+/** Referências de fora para um healer do pull (na tela: `selectHealRefs` de healer.ts). */
+export type RefsOf = (pull: Pull, player: PlayerStats) => HealRefEntry[];
+
+type Amounts = { heal: number; over: number; share: number };
+
+export interface UseOverheal extends Amounts {
+  /** faixa das referências (null: menos de `MIN_REFS` com a cura do CD) e quantas têm o número */
+  ref: Band | null;
+  refs: number;
+  /** acima do p75 das referências + `OVERHEAL_MARGIN` */
+  high: boolean;
+}
+
+/** Cura e overheal de um uso: os `heal_ids` do CD (em `cdHeals`) na janela do "sem dano". */
+export function overhealOfUse(p: PlayerStats, cd: HealCd, usedMs: number): Amounts | null {
+  if (cd.kind !== 'heal' || !cd.heal_ids?.length || !cd.effect || cd.duration_ms == null) return null;
+  const [x, y] = noDamageWindow(cd.effect, usedMs, cd.duration_ms);
+  let heal = 0;
+  let over = 0;
+  for (const [sec, id, h, o] of p.cdHeals ?? []) {
+    if (id !== cd.id || sec * 1000 < x || sec * 1000 > y) continue;
+    heal += h;
+    over += o;
+  }
+  return heal + over > 0 ? { heal, over, share: over / (heal + over) } : null;
+}
+
+/** Overheal do CD em cada referência (média dos `heal_ids` pela fatia de cura) e a faixa. */
+export function refOverheal(refs: HealRefEntry[], cd: HealCd): { values: number[]; band: Band | null } {
+  const values: number[] = [];
+  for (const e of refs) {
+    const rows = (cd.heal_ids ?? []).map((id) => e.cdSpells?.[id]).filter((r) => r != null);
+    const w = rows.reduce((a, r) => a + r.share, 0);
+    if (rows.length && w > 0) values.push(rows.reduce((a, r) => a + r.overheal * r.share, 0) / w);
+  }
+  return { values, band: values.length >= MIN_REFS ? band(values) : null };
+}
+
+function withRef(o: Amounts, r: { values: number[]; band: Band | null }): UseOverheal {
+  return { ...o, ref: r.band, refs: r.values.length, high: !!r.band && o.share > r.band.p75 + OVERHEAL_MARGIN };
+}
+
+export interface NightOverheal {
+  guid: string;
+  cdId: number;
+  uses: number;
+  share: number;
+  /** contra as referências do pull mais recente julgado */
+  ref: Band | null;
+  high: boolean;
+}
+
+/** Overheal da noite por player e CD: soma dos overheals ÷ soma das curas de todos os usos. */
+export function nightOverheal(pulls: Pull[], noteOf: NoteOf, verdicts: Map<number, PullVerdicts>, checks: Map<number, LineCheck[]>, refsOf: RefsOf): NightOverheal[] {
+  const acc = new Map<string, { guid: string; cd: HealCd; heal: number; over: number; uses: number; last: Pull }>();
+  for (const p of [...pulls].sort((a, b) => a.startMs - b.startMs)) {
+    const note = noteOf(p);
+    const v = verdicts.get(p.id);
+    if (!note || !v) continue;
+    for (const c of checks.get(p.id) ?? []) {
+      const o = v.lines.get(c.lineIndex)?.overheal;
+      if (!o || !c.guid) continue;
+      const cd = healCd(note.lines[c.lineIndex].spellId!)!;
+      const k = `${c.guid}:${cd.id}`;
+      const a = acc.get(k) ?? acc.set(k, { guid: c.guid, cd, heal: 0, over: 0, uses: 0, last: p }).get(k)!;
+      a.heal += o.heal;
+      a.over += o.over;
+      a.uses++;
+      a.last = p;
+    }
+  }
+  return [...acc.values()].map((a) => {
+    const player = a.last.players.find((x) => x.guid === a.guid);
+    const share = a.over / (a.heal + a.over);
+    const r = withRef({ heal: a.heal, over: a.over, share }, refOverheal(player ? refsOf(a.last, player) : [], a.cd));
+    return { guid: a.guid, cdId: a.cd.id, uses: a.uses, share, ref: r.ref, high: r.high };
+  });
+}
+
+/** Quantas referências usaram o CD no marco do momento (`nearestAnchor` sobre os `cdUses` e `anchors` delas). */
+export function refsAt(refs: HealRefEntry[], cd: HealCd, key: string): number {
+  const ids = [cd.id, ...(cd.alt_ids ?? [])];
+  const at = (e: HealRefEntry, t: number) => {
+    const a = nearestAnchor(t, e.anchors!);
+    return !!a && `${a.anchor}:${a.k}` === key;
+  };
+  return refs.filter((e) => e.anchors && ids.some((id) => (e.cdUses?.[id] ?? []).some((t) => at(e, t)))).length;
+}
+
+/** Mínimo de pulls que chegaram no momento (ou na linha) para sugerir. */
+export const MIN_SUGGEST_PULLS = 3;
+
+export interface SuggestReason {
+  momentKey: string;
+  /** pulls com o problema e pulls que chegaram */
+  pulls: number;
+  reached: number;
+  medianSize: number | null;
+}
+
+export interface AddCandidate {
+  change: Extract<NoteChange, { kind: 'add' }>;
+  guid: string;
+  cdId: number;
+  /** referências da spec que usam o CD nesse marco (só informação) */
+  refs: number;
+}
+
+export interface NoteSuggestion {
+  /** um por golpe sem CD, com os CDs livres; o líder marca um */
+  adds: { reason: SuggestReason; candidates: AddCandidate[] }[];
+  moves: { reason: SuggestReason; change: Extract<NoteChange, { kind: 'move' }>; guid: string }[];
+}
+
+/**
+ * Note sugerida de uma versão (`pulls`: os que ela julgou): mudanças de um passo, em fase com desvio
+ * aplicado (ou na primeira), com pelo menos 3 pulls no momento (ou na linha) e o problema em metade
+ * ou mais. A conta de cooldown usa o início mais cedo de cada fase (o pior caso).
+ */
+export function suggest(
+  note: ParsedNote,
+  pulls: Pull[],
+  offsets: Map<string, PhaseOffset>,
+  checks: Map<number, LineCheck[]>,
+  ms: Moment[],
+  verdicts: Map<number, PullVerdicts>,
+  refsOf: RefsOf = () => [],
+): NoteSuggestion {
+  const out: NoteSuggestion = { adds: [], moves: [] };
+  const judged = pulls.filter((p) => verdicts.has(p.id));
+  if (judged.length < MIN_SUGGEST_PULLS) return out;
+  // ph da note ↔ chave da fase
+  const keyOf = new Map<string, string>();
+  const phOf = new Map<string, string>();
+  for (const p of judged)
+    for (const [ph, m] of mapPhases(p.phaseMarks))
+      if (!keyOf.has(ph)) {
+        keyOf.set(ph, m.key);
+        phOf.set(m.key, ph);
+      }
+  const firstKey = (p: Pull) => [...(p.phaseMarks ?? [])].sort((a, b) => a.t - b.t)[0]?.key ?? 'p1';
+  const off = (ph: string) => (offsets.get(ph)?.applied ? offsets.get(ph)!.offsetMs : 0);
+  const changeable = (ph: string) => !!offsets.get(ph)?.applied || keyOf.get(ph) === firstKey(judged[0]);
+  const abs = (ph: string | undefined, time: number | undefined) => {
+    const key = ph ? keyOf.get(ph) : undefined;
+    const start = key ? earliestPhaseStart(judged, key) : null;
+    return start == null ? null : start + (time ?? 0) * 1000 + off(ph!);
+  };
+  const prep = (cd: HealCd) => (cd.effect === 'burst' ? 0 : PREP_MS);
+  /** `time` da note para usar o CD no momento */
+  const noteTime = (m: Moment, cd: HealCd, ph: string) => Math.round((m.inPhaseMs - prep(cd) - off(ph)) / 1000);
+  const sameCd = (spellId: number | undefined, cd: HealCd) => spellId != null && healCd(spellId)?.id === cd.id;
+  /** a cadeia de usos do player com esse CD cabe no cooldown com um uso em `at` (sem a linha `skip`) */
+  const fits = (tag: string, cd: HealCd, at: number, skip: number | null) =>
+    note.lines.every((l, j) => {
+      if (j === skip || !l.tag || norm(l.tag) !== norm(tag) || !sameCd(l.spellId, cd)) return true;
+      const t = abs(l.ph, l.time);
+      return t == null || (t < at ? at - t > cd.cooldown_ms! : t - at >= cd.cooldown_ms!);
+    });
+  const last = [...judged].sort((a, b) => a.startMs - b.startMs).at(-1)!;
+  const reason = (m: Moment, n: number, reached: number): SuggestReason => ({ momentKey: m.key, pulls: n, reached, medianSize: m.medianSize });
+  const checkOf = (p: Pull, i: number) => checks.get(p.id)?.find((x) => x.lineIndex === i);
+
+  // adicionar: golpe sem CD, com os CDs livres dos players da note
+  const tags = [...new Set(note.lines.filter((l) => l.ph != null && l.tag && norm(l.tag) !== 'everyone').map((l) => l.tag!))];
+  for (const m of ms) {
+    const ph = phOf.get(m.phaseKey);
+    if (!ph || !changeable(ph)) continue;
+    const reached = judged.filter((p) => m.pulls.has(p.id));
+    const bad = reached.filter((p) => verdicts.get(p.id)!.uncovered.includes(m.key));
+    if (reached.length < MIN_SUGGEST_PULLS || bad.length * 2 < reached.length) continue;
+    const mAbs = earliestPhaseStart(judged, m.phaseKey)! + m.inPhaseMs;
+    const candidates: AddCandidate[] = [];
+    for (const tag of tags) {
+      const player = [last, ...judged].flatMap((p) => p.players).find((x) => norm(shortName(x.name)) === norm(tag));
+      if (!player || player.specId == null) continue;
+      for (const cd of healCooldowns()) {
+        if (!cd.kind || !cd.specs?.includes(player.specId) || cd.cooldown_ms == null) continue;
+        if (cd.talent && !judged.some((p) => p.players.some((x) => x.guid === player.guid && castTimes(x, cd.id).length))) continue;
+        const time = noteTime(m, cd, ph);
+        if (time < 0 || !fits(tag, cd, mAbs - prep(cd), null)) continue;
+        candidates.push({
+          change: { kind: 'add', time, ph, tag, spellId: cd.id },
+          guid: player.guid,
+          cdId: cd.id,
+          refs: refsAt(refsOf(last, player), cd, m.key),
+        });
+      }
+    }
+    if (candidates.length) out.adds.push({ reason: reason(m, bad.length, reached.length), candidates: candidates.sort((a, b) => b.refs - a.refs) });
+  }
+
+  // mover: o player usou na hora, mas a hora não cobre nenhum momento
+  note.lines.forEach((l, i) => {
+    const cd = l.spellId != null ? healCd(l.spellId) : undefined;
+    if (!cd?.kind || !cd.effect || cd.cooldown_ms == null || !l.ph || !l.tag || !changeable(l.ph)) return;
+    const reached = judged.filter((p) => {
+      const c = checkOf(p, i);
+      return !!c && !NOT_REACHED.includes(c.state);
+    });
+    if (reached.length < MIN_SUGGEST_PULLS) return;
+    const v = (p: Pull) => verdicts.get(p.id)!.lines.get(i);
+    if (reached.some((p) => v(p)?.cycle)) return;
+    const away = reached.filter((p) => !v(p)?.momentKey);
+    if (away.length * 2 < reached.length || away.some((p) => checkOf(p, i)!.state !== 'on_time')) return;
+    const key = keyOf.get(l.ph);
+    const inPhase = (l.time ?? 0) * 1000 + off(l.ph);
+    const dest = ms
+      .filter((m) => m.phaseKey === key && Math.abs(m.inPhaseMs - inPhase) <= PAIR_MS)
+      .sort((a, b) => Math.abs(a.inPhaseMs - inPhase) - Math.abs(b.inPhaseMs - inPhase))[0];
+    if (!dest) return;
+    const time = noteTime(dest, cd, l.ph);
+    // antes do início da fase no relógio do addon: a note não chega lá com essa `ph`
+    if (time < 0 || time === Math.round(l.time ?? 0) || !fits(l.tag, cd, abs(l.ph, time)!, i)) return;
+    out.moves.push({ reason: reason(dest, away.length, reached.length), change: { kind: 'move', line: i, time }, guid: checkOf(reached[0], i)!.guid! });
+  });
   return out;
 }

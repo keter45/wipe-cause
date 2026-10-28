@@ -5,8 +5,7 @@ note que o MRT mostra na tela). Design: [designs/heal-cd-note.md](designs/heal-c
 referência de healer segue a [análise de healer](healer-analysis.md) (regra 2: os healers da
 guilda nunca são o "certo").
 
-Estado: etapas 1 (note e timing) e 2 (golpes e uso). Overheal e note sugerida entram na etapa 3 do
-design.
+Estado: as três etapas do design (note e timing; golpes e uso; overheal e note sugerida).
 
 ## 1. Onde aparece
 
@@ -119,12 +118,61 @@ logging), não há golpes nem raide baixa.
   golpes por pull, 16 momentos, 14 com CD da note; 0,60 → 6,7 golpes por pull, 18 momentos. O
   desenvolvedor manteve 0,80 (2026-10-28).
 
-## 7. A tabela de CDs
+## 7. Overheal e note sugerida
+
+- **Overheal do uso** (`overhealOfUse`): overheal ÷ (cura + overheal) dos `heal_ids` do CD em
+  `cdHeals`, na janela do "sem dano". CD sem `heal_ids` (Convoke, Apotheosis) não tem overheal.
+- **Régua** (`refOverheal`): as referências de fora que a análise de healer escolhe para o player
+  (`selectHealRefs`: mesma quantidade de healers, sem os logs distorcidos), com o overheal de cada
+  `heal_id` em `cdSpells` (média pela fatia de cura). Com 3 ou mais, a faixa p25–p75; **alto** =
+  acima do p75 + 0,15 (`OVERHEAL_MARGIN`, o mesmo da dica de overheal do healer). Com menos, só o
+  número.
+- **Noite e pull:** na noite, a soma dos overheals ÷ a soma das curas de todos os usos do player com
+  o CD, contra as referências do pull mais recente; na aba do pull, o uso daquele pull, com a noite
+  ao lado sem cor.
+- **Empilhado:** duas ou mais curas com `heal_ids` ligadas ao mesmo momento no pull; o rótulo vai
+  em quem tem overheal alto. Redução de dano não é julgada (o log não mostra quanto ela evitou).
+- **Note sugerida** (`suggest`, por versão, no resumo do boss): mudanças de um passo, só em fase
+  com desvio aplicado (ou na primeira), com 3 pulls ou mais que chegaram no momento (ou na linha) e
+  o problema em metade deles ou mais. A conta de cooldown usa o início mais cedo de cada fase entre
+  os pulls (o pior caso, num push rápido).
+  - **Adicionar** num golpe sem CD: a lista dos CDs livres (da tabela, de players com linha na
+    note, da spec deles e, se for talento, castado na noite), cuja linha anterior do mesmo player e
+    CD está a mais de um cooldown antes e a próxima a pelo menos um cooldown depois. `time` = hora
+    do momento − 2 s (`PREP_MS`) para `active` e `sustained`, a própria hora para `burst`. Ao lado,
+    quantas referências de fora usam o CD naquele marco (só informação). O líder marca um por golpe.
+  - **Mover** uma linha (fora de uso de ciclo) usada na hora mas sem momento em metade ou mais dos
+    pulls: para o momento da mesma fase mais perto, a até 30 s, se a cadeia do player continua
+    cabendo no cooldown. Não troca a `ph`.
+  - Descartadas: mudança que não troca o `time` e `time` negativo (o golpe cai antes do início da
+    fase no relógio do addon; com o desvio de +8,6 s do P2, o golpe da virada não cabe em `ph:2`).
+  - **Copiar** devolve a note colada só com as mudanças marcadas (as outras linhas iguais); sem
+    acesso à área de transferência, a note aparece numa caixa para copiar à mão.
+- Conferido em 26/10 (The Coiled Altar Mythic, note da guilda, 18 pulls): uma mudança, mover o
+  Rallying Cry de P1 +47 s para +44 s (golpe da Venom Rupture depois do 1º Guillotine, fora em 11
+  de 18 pulls); nenhum golpe sem CD com 3 pulls e metade com o problema; overheal da noite: Divine
+  Hymn 81% e 78% (referências 34–66%), Tranquility 62% (55–73%), Rewind 24% (17–21%).
+
+## 8. A tabela de CDs
 
 `data/heal-cooldowns.json`: por CD, specs, talento, ids alternativos, tipo (`heal` ou
 `mitigation`), efeito (`burst`, `sustained`, `active`), duração, cooldown base e ids da cura.
 
 - O timing vale para toda linha com `spellid` e player, esteja ou não na tabela.
+- **Conferência no fluxo das referências de healer** (`scripts/rotation/heal-bench.mjs`, relatório
+  "Tabela de CDs de cura"): cura de CD que nenhuma referência da spec tem → ATENÇÃO; CD de 60 s ou
+  mais da rotação, castado nas referências e fora da tabela → REVISAR. Entrada sem `kind` = spell
+  conhecida e fora dos CDs de raide (Stampeding Roar só pelos `alt_ids`; Nature's Swiftness, Divine
+  Toll, Power Infusion, Halo, Holy Word: Serenity, Stasis, Tip the Scales).
+- Antes de gravar `cdSpells` (2026-10-28), as `spells` das referências (só as 12 maiores curas)
+  tinham a cura do CD em: Tranquility 8/8 em todos os bosses; Rewind de 0/8 a 8/8; Revival 0–1/8;
+  Divine Hymn 0–1/8; Healing Tide Totem e Ascendance 0/8. Com `cdSpells`: Tranquility, Divine Hymn,
+  Rewind e Ascendance em todas; Revival em 42 + 24 de 66 (os dois ids).
+- A cura da Ascendance nas referências é Restorative Mists (294020), não 114083 (2026-10-28,
+  conferida pelo relatório; a aura não foi conferida). Healing Tide Totem não aparece em nenhuma
+  referência porque nenhuma castou (ATENÇÃO esperado).
+- Ficam REVISAR para o desenvolvedor: Ultimate Penitence (Discipline) e Celestial Conduit
+  (Mistweaver) são CDs de raide, mas faltam efeito, duração e cura medidos.
 - `cooldown_ms`, `duration_ms` e `alt_ids` repetem números das rotações e do
   `data/defensives.json`; `crates/wipe-core/tests/heal_cooldowns.rs` confere a cópia.
 - Durações conferidas na aura do CD nos logs de 26/10 (2026-10-28): Apotheosis 32 s, Avenging
@@ -139,6 +187,7 @@ logging), não há golpes nem raide baixa.
   parâmetros da luta e podem ser calibrados nos logs da guilda (não são referência do healer).
 - 2026-10-27: a note colada é a base da note sugerida; só mudanças de um passo.
 - 2026-10-27: uma caixa só para a note (CDs e interrupts), com versões.
+- 2026-10-28: limite do golpe em 0,80 da vida máxima (calibração de 26/10).
 
 ## Para depois
 

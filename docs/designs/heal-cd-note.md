@@ -1409,6 +1409,26 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
         "empilhado" só com dois usos de `heal` com `heal_ids` no mesmo
         momento.
 
+*   **Como ficou (2026-10-28):**
+    *   as funções recebem as referências por parâmetro (`RefsOf`: na tela,
+        `selectHealRefs(pull, player).entries`): `refOverheal(refs, cd)`,
+        `refsAt(refs, cd, key)`, `judgeUse(..., refsOf)` e
+        `suggest(note, pulls, offsets, checks, ms, verdicts, refsOf)` com os
+        pulls que a versão julgou; o overheal da noite é `nightOverheal`;
+    *   o `time` negativo também é descartado (no P2 do The Coiled Altar, com
+        +8,6 s de desvio, o golpe da virada cai antes do início da fase no
+        relógio do addon);
+    *   os testes da etapa 3 ficam em `src/lib/healNoteSuggest.test.ts`;
+    *   `scripts/heal-note-calibrate.mjs` troca o `import.meta.glob` das
+        referências no empacotamento, porque `healNoteCheck.ts` passa a
+        importar `healer.ts`;
+    *   tabela: a cura da Ascendance passou a ser 294020 (Restorative Mists,
+        a que aparece nas referências); entradas sem `kind` para Nature's
+        Swiftness (Druid e Shaman), Divine Toll, Power Infusion, Halo, Holy
+        Word: Serenity, Stasis e Tip the Scales; Ultimate Penitence e Celestial
+        Conduit ficam REVISAR (CDs de raide sem efeito, duração e cura
+        medidos).
+
 #### 36. `src/components/HealNotePanel.tsx` e `src/components/HealNotePanel.i18n.ts` (Modify)
 
 *   **Type / Scope**: componente e textos.

@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { HeartPulse, Play } from 'lucide-react';
-import type { Pull } from '../types';
+import { Copy, HeartPulse, Play } from 'lucide-react';
+import type { PlayerStats, Pull } from '../types';
 import { mmss, shortName } from '../lib/format';
 import { healCd } from '../lib/healCooldowns';
-import { mapPhases, noteFor, noteVersions, parseNote, type NoteLine, type NoteVersion, type ParsedNote } from '../lib/healNote';
-import { judgeUse, matchLines, phaseOffsets, summarizeLines, type LineCheck, type UseVerdict } from '../lib/healNoteCheck';
+import { selectHealRefs } from '../lib/healer';
+import { exportNote, mapPhases, noteFor, noteVersions, parseNote, type NoteChange, type NoteLine, type NoteVersion, type ParsedNote } from '../lib/healNote';
+import { judgeUse, matchLines, nightOverheal, phaseOffsets, suggest, summarizeLines, type LineCheck, type NightOverheal, type NoteSuggestion, type UseVerdict } from '../lib/healNoteCheck';
 import { hits, moments, nightAnchors, type Moment } from '../lib/raidHits';
 import { NoteBox } from './NoteBox';
 import { PlayerName } from './Names';
@@ -23,6 +24,9 @@ interface Props {
   onReplay?: (t: number) => void;
 }
 
+/** referências de fora do healer (análise de healer, docs/healer-analysis.md §2) */
+const refsOf = (p: Pull, pl: PlayerStats) => selectHealRefs(p, pl)?.entries ?? [];
+const pct = (x: number) => `${Math.round(x * 100)}%`;
 const sec = (ms: number) => `${ms >= 0 ? '+' : '−'}${(Math.abs(ms) / 1000).toFixed(1)} s`;
 const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('pt-BR');
 
@@ -49,7 +53,8 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay }: Props) {
     const anchors = nightAnchors(pulls);
     return moments(pulls, anchors, new Map(pulls.map((p) => [p.id, hits(p, anchors.get(p.id) ?? {})])));
   }, [pulls]);
-  const verdicts = useMemo(() => judgeUse(pulls, noteOf, offsets, checks, ms), [pulls, noteOf, offsets, checks, ms]);
+  const verdicts = useMemo(() => judgeUse(pulls, noteOf, offsets, checks, ms, refsOf), [pulls, noteOf, offsets, checks, ms]);
+  const nightOH = useMemo(() => new Map(nightOverheal(pulls, noteOf, verdicts, checks, refsOf).map((o) => [`${o.guid}:${o.cdId}`, o])), [pulls, noteOf, verdicts, checks]);
   const enemyNames = useMemo(() => new Map(pulls.flatMap((p) => p.enemySpells.map((e) => [e.spellId, e.name] as const))), [pulls]);
   // nome e classe de cada player e o nome de cada spell, como aparecem nos pulls
   const people = useMemo(() => {
@@ -138,6 +143,11 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay }: Props) {
         const one = focus ? new Map((checks.get(focus.id) ?? []).map((c) => [c.lineIndex, c])) : null;
         const uses = new Map<number, UseVerdict[]>();
         for (const p of ps) for (const [i, v] of verdicts.get(p.id)?.lines ?? []) (uses.get(i) ?? uses.set(i, []).get(i)!).push(v);
+        const ohOf = (l: NoteLine) => {
+          const who = l.tag ? people.get(norm(l.tag)) : undefined;
+          const cd = l.spellId != null ? healCd(l.spellId) : undefined;
+          return who && cd ? nightOH.get(`${who.guid}:${cd.id}`) : undefined;
+        };
         return (
           <div key={savedAt} className="heal-note-version">
             {!focus && <h4 className="recap-title">{t.versionOf(idx, ps.length)}</h4>}
@@ -159,11 +169,29 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay }: Props) {
               <tbody>
                 {note.lines.map((l, i) =>
                   l.ph == null ? null : (
-                    <Row key={i} line={l} check={one?.get(i)} summary={summary.get(i)} uses={uses.get(i) ?? []} focus={!!focus} person={l.tag ? people.get(norm(l.tag)) : undefined} spellName={l.spellId != null ? nameOf(l.spellId) : ''} />
+                    <Row key={i} line={l} check={one?.get(i)} summary={summary.get(i)} uses={uses.get(i) ?? []} night={ohOf(l)} focus={!!focus} person={l.tag ? people.get(norm(l.tag)) : undefined} spellName={l.spellId != null ? nameOf(l.spellId) : ''} />
                   ),
                 )}
               </tbody>
             </table>
+            {!focus && (
+              <Suggestion
+                note={note}
+                s={suggest(note, ps, offsets, checks, ms, verdicts, refsOf)}
+                moment={(key) => {
+                  const m = ms.find((x) => x.key === key)!;
+                  const nt = noteTime(m);
+                  return (
+                    <>
+                      P{nt.ph} +{mmss(Math.max(0, nt.ms))} · <SpellName spellId={m.spellId ?? m.anchorSpell} name={enemyNames.get(m.spellId ?? m.anchorSpell) ?? `#${m.spellId}`} size={16} />{' '}
+                      <span className="muted small">{t.afterCast(enemyNames.get(m.anchorSpell) ?? '', m.k)}</span>
+                    </>
+                  );
+                }}
+                person={(guid) => [...people.values()].find((x) => x.guid === guid)}
+                nameOf={nameOf}
+              />
+            )}
           </div>
         );
       })}
@@ -257,12 +285,14 @@ interface RowProps {
   check?: LineCheck;
   uses: UseVerdict[];
   summary?: ReturnType<typeof summarizeLines>[number];
+  /** overheal da noite do player com esse CD */
+  night?: NightOverheal;
   focus: boolean;
   person?: { name: string; guid: string; cls: string | null };
   spellName: string;
 }
 
-function Row({ line, check, summary, uses, focus, person, spellName }: RowProps) {
+function Row({ line, check, summary, uses, night, focus, person, spellName }: RowProps) {
   const t = useMessages(healNoteMsg);
   const when = `P${line.ph} +${mmss((line.time ?? 0) * 1000)}`;
   const who = person ? <PlayerName name={person.name} guid={person.guid} cls={person.cls} /> : <span className="muted">{line.tag ?? '—'}</span>;
@@ -301,14 +331,14 @@ function Row({ line, check, summary, uses, focus, person, spellName }: RowProps)
       <td>{result}</td>
       <td className="num muted">{delta}</td>
       <td>
-        <UseCell uses={uses} focus={focus} />
+        <UseCell uses={uses} night={night} focus={focus} />
       </td>
     </tr>
   );
 }
 
-/** "No golpe", "fora do golpe", "sem dano" e "uso de ciclo" (um pull, ou a soma da noite). */
-function UseCell({ uses, focus }: { uses: UseVerdict[]; focus: boolean }) {
+/** "No golpe", "fora do golpe", "sem dano", overheal, "empilhado" e "uso de ciclo" (um pull, ou a soma da noite). */
+function UseCell({ uses, night, focus }: { uses: UseVerdict[]; night?: NightOverheal; focus: boolean }) {
   const t = useMessages(healNoteMsg);
   if (!uses.length) return null;
   if (uses.some((u) => u.cycle)) return <span className="muted">{t.cycle}</span>;
@@ -334,6 +364,134 @@ function UseCell({ uses, focus }: { uses: UseVerdict[]; focus: boolean }) {
         {focus ? t.noDamage : t.noDamageOf(noDamage)}
       </span>,
     );
+  // overheal: no pull, o uso contra as referências e a noite ao lado, sem cor; na noite, a soma dos usos
+  const oh = focus ? uses.find((u) => u.overheal)?.overheal : null;
+  const band = (b: { p25: number; p75: number } | null) => (b ? ` (${t.refBand(pct(b.p25), pct(b.p75))})` : '');
+  if (oh)
+    parts.push(
+      <span key="o" className={oh.high ? 'bad' : ''} title={t.overhealHint}>
+        {t.overheal(pct(oh.share))}
+        {band(oh.ref)}
+        {night && <span className="muted"> · {t.nightAvg(pct(night.share))}</span>}
+      </span>,
+    );
+  else if (!focus && night && uses.some((u) => u.overheal))
+    parts.push(
+      <span key="o" className={night.high ? 'bad' : ''} title={t.overhealHint}>
+        {t.overheal(pct(night.share))}
+        {band(night.ref)}
+      </span>,
+    );
+  const stacked = uses.filter((u) => u.stacked).length;
+  if (stacked)
+    parts.push(
+      <span key="s" className="bad" title={t.stackedHint}>
+        {focus ? t.stacked : t.stackedOf(stacked)}
+      </span>,
+    );
   if (!parts.length) return <span className="muted">—</span>;
   return <>{parts.reduce<ReactNode[]>((a, x, i) => (i ? [...a, ' · ', x] : [x]), [])}</>;
+}
+
+interface SuggestionProps {
+  note: ParsedNote;
+  s: NoteSuggestion;
+  moment: (key: string) => ReactNode;
+  person: (guid: string) => { name: string; guid: string; cls: string | null } | undefined;
+  nameOf: (id: number) => string;
+}
+
+/** Note sugerida de uma versão: cada mudança com o motivo e uma caixa; "Copiar" exporta só as marcadas. */
+function Suggestion({ note, s, moment, person, nameOf }: SuggestionProps) {
+  const t = useMessages(healNoteMsg);
+  // mover: `m<linha>`; adicionar: `a<golpe>:<candidato>` (um candidato por golpe)
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
+  // sem acesso à área de transferência: a note fica numa caixa para copiar à mão
+  const [manual, setManual] = useState<string | null>(null);
+  const toggle = (id: string, group?: string) => {
+    setCopied(false);
+    setManual(null);
+    setPicked((old) => {
+      const next = new Set([...old].filter((x) => !group || !x.startsWith(group)));
+      if (!old.has(id)) next.add(id);
+      return next;
+    });
+  };
+  const changes: NoteChange[] = [
+    ...s.moves.filter((m) => picked.has(`m${m.change.line}`)).map((m) => m.change),
+    ...s.adds.flatMap((a, i) => a.candidates.filter((_, j) => picked.has(`a${i}:${j}`)).map((c) => c.change)),
+  ];
+  const who = (guid: string, tag: string) => {
+    const p = person(guid);
+    return p ? <PlayerName name={p.name} guid={p.guid} cls={p.cls} /> : <span>{tag}</span>;
+  };
+  const copy = async () => {
+    const text = exportNote(note, changes);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      setManual(text);
+    }
+  };
+  if (!s.adds.length && !s.moves.length)
+    return (
+      <p className="muted small">
+        {t.suggestTitle}: {t.noSuggestion}
+      </p>
+    );
+  return (
+    <div className="heal-note-suggest">
+      <h4 className="recap-title">
+        {t.suggestTitle} <Hint>{t.suggestHint}</Hint>
+      </h4>
+      <ul className="heal-note-changes">
+        {s.adds.map((a, i) => (
+          <li key={`a${i}`}>
+            <div>
+              <span className="bad">{t.uncoveredHit}</span> {moment(a.reason.momentKey)}{' '}
+              <span className="muted small">· {t.reason(a.reason.pulls, a.reason.reached, a.reason.medianSize != null ? pct(a.reason.medianSize) : '')}</span>
+            </div>
+            {a.candidates.map((c, j) => (
+              <label key={j} className="heal-note-change">
+                <input type="checkbox" checked={picked.has(`a${i}:${j}`)} onChange={() => toggle(`a${i}:${j}`, `a${i}:`)} /> {t.add} <SpellName spellId={c.cdId} name={nameOf(c.cdId)} size={16} />{' '}
+                {who(c.guid, c.change.tag)}{' '}
+                <span className="muted">
+                  P{c.change.ph} +{mmss(c.change.time * 1000)}
+                  {c.refs > 0 && <> · {t.refsAt(c.refs)}</>}
+                </span>
+              </label>
+            ))}
+          </li>
+        ))}
+        {s.moves.map((m) => {
+          const l = note.lines[m.change.line];
+          return (
+            <li key={`m${m.change.line}`}>
+              <label className="heal-note-change">
+                <input type="checkbox" checked={picked.has(`m${m.change.line}`)} onChange={() => toggle(`m${m.change.line}`)} /> {t.move}{' '}
+                {l.spellId != null && <SpellName spellId={l.spellId} name={nameOf(l.spellId)} size={16} />} {who(m.guid, l.tag ?? '')}{' '}
+                <span className="muted">
+                  P{l.ph} +{mmss((l.time ?? 0) * 1000)} → +{mmss(m.change.time * 1000)}
+                </span>
+              </label>
+              <div className="muted small heal-note-why">
+                {moment(m.reason.momentKey)} · {t.moveReason(m.reason.pulls, m.reason.reached)}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      <button className="btn sm" onClick={copy} disabled={!changes.length}>
+        <Copy size={12} aria-hidden /> {copied ? t.copied : t.copy(changes.length)}
+      </button>
+      {manual != null && (
+        <div className="heal-note-manual">
+          <p className="muted small">{t.copyManual}</p>
+          <textarea className="text-input" rows={8} readOnly value={manual} spellCheck={false} autoFocus onFocus={(e) => e.currentTarget.select()} />
+        </div>
+      )}
+    </div>
+  );
 }
