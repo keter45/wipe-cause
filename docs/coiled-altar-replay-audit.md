@@ -238,6 +238,16 @@ menos um quarto do que os dois andaram. O texto diz que é estimado pela simula�
 das três noites, colisões com culpado: 2 de 15 → 14 de 15 (a que sobra tem um alvo só e o
 fantasma dele não andou: o outro alvo morreu ou estava imune).
 
+Os dois andaram (pedido do desenvolvedor, 28/10): culpado é só o que andou por último; o outro já
+estava parado quando foi alcançado. Pararem com até 1s de diferença conta como os dois andando
+juntos (os dois são culpados). Nas três noites, 3 colisões que culpavam os dois passaram a culpar
+um só (o outro tinha parado 7 a 24s antes); continuam 14 de 15 colisões com culpado.
+
+Fantasmas extras depois da possessão (Dreadmarch): uns 0,3s depois que a possessão sai do player,
+o Malacrass invoca fantasmas novos (1285844; 1 ou 2, às vezes 4 a 6 de uma vez), e cerca de 1s
+depois cada um casta a fixação (1285911). Em 26/10: 269 invocados, todos com fixação no motor. O
+replay mostra cada um a partir da fixação, no ponto do cast.
+
 ## Fase 2, contagens e faixas por mecânica (21/10)
 
 Conferido no pull 16 de 15/10 (Mythic, P3 82%).
