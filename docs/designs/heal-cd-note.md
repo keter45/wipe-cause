@@ -1,7 +1,7 @@
 # Note de CDs de cura: timing, uso e momentos sem CD
 
 *   **Author:** Vinicius Andrade (@keter45)
-*   **Status:** Approved
+*   **Status:** Implemented
 *   **Date:** 2026-10-27
 
 Convenção: títulos e rótulos do template EGM ficam em inglês; o resto, em
@@ -726,7 +726,8 @@ Um componente, `HealNotePanel`, recebe `pulls[]` do mesmo boss e dificuldade:
 *   **▶ na aba do pull:** troca para a aba Replay, com o replay completo
     começando naquele instante. Só aparece quando o replay completo pode ser
     carregado (log do PC no desktop); no Warcraft Logs e na web, não aparece.
-    No resumo da noite, o número do pull abre o pull (`onSelectPull`).
+    No resumo da noite, a tabela soma os pulls e não abre cada um (o pull se
+    abre pela barra lateral).
 
 Partes: caixa da note (um componente só, usado também pela aba Interrupts), as
 versões com "a partir
@@ -966,7 +967,7 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
     | 31821 | Aura Mastery | 65 | mitigation | active | 8000 * | 180000 | | | |
     | 31884 | Avenging Wrath | 65 | heal | sustained | 20000 * | 120000 | | 216331 | |
     | 115310 | Revival | 270 | heal | burst | 1000 | 180000 | | 388615 | 115310, 388615 |
-    | 322118 | Invoke Yu'lon | 270 | heal | sustained | 25000 * | 120000 | sim | 325197 | |
+    | 322118 | Invoke Yu'lon, the Jade Serpent | 270 | heal | sustained | 25000 * | 120000 | sim | 325197 | |
     | 363534 | Rewind | 1468 | heal | burst | 5000 * | 240000 | | | 363534 |
     | 374227 | Zephyr | 1467, 1468, 1473 | mitigation | active | 8000 * | 120000 | | | |
     | 97462 | Rallying Cry | 71, 72, 73 | mitigation | active | 10000 * | 180000 | | | |
@@ -977,7 +978,9 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
     Valores com * são conferidos antes de fechar o item, num log da guilda
     (fora do git), com uma conta só: `duration_ms` = duração mediana da aura
     do CD no player que castou, e cada `heal_id` só aparece com a aura ativa.
-    Se o log mostrar outro número, vale o do log.
+    Se o log mostrar outro número, vale o do log. Medido em 2026-10-28:
+    Apotheosis 32000, Avenging Wrath 24000, Rewind 3600; a cura da Ascendance
+    é 294020 (etapa 3).
 
 #### 2. `crates/wipe-core/tests/heal_cooldowns.rs` (Create)
 
@@ -1040,7 +1043,7 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
         *   `newVersion(key, nightPulls, live)`: o item 4 (copia a mais nova);
         *   `setFromPull(key, savedAt, pullNumber)` (marca
             `fromPullManual`);
-        *   `noteFor(pull, nightPulls): NoteVersion | null`.
+        *   `noteFor(pull, nightPulls, versions): NoteVersion | null`.
 
         Toda gravação escreve também o texto da versão mais nova, puro, na
         chave atual (texto vazio: remove a chave atual, como hoje). Na primeira
@@ -1093,8 +1096,8 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
 *   **Type / Scope**: módulo TypeScript puro.
 *   **Proposed Changes** (etapa 1), com `noteOf: (p: Pull) => ParsedNote |
     null` (a versão de `noteFor`, já lida):
-    *   `phaseOffsets(pulls, noteOf): Map<string, { offsetMs, pairs, pulls,
-        applied } | null>`: roda o primeiro passe por dentro e aplica as
+    *   `phaseOffsets(pulls, noteOf): Map<string, PhaseOffset>` (`ph`,
+        `offsetMs`, `pairs`, `pulls`, `first`, `applied`): roda o primeiro passe por dentro e aplica as
         regras de desvio (primeira fase sem desvio; ≥ `MIN_OFFSET_LINES` pares
         em ≥ 2 pulls; teto `MAX_OFFSET_MS`).
     *   `matchLines(pulls, noteOf, offsets): Map<pullId, LineCheck[]>`: o
@@ -1102,7 +1105,7 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
         (os da tabela [Estados de cada linha](#estados-de-cada-linha), na ordem
         dela), `expectedMs`, `usedMs?`, `deltaMs?` e `rawDeltaMs?`. Casamento
         pelo par de menor |Δ| a até `PAIR_MS`.
-    *   `summarizeLines(checks, noteOf, version)`: a [Agregação na
+    *   `summarizeLines(checks, pulls)` (os pulls que a versão julgou): a [Agregação na
         noite](#agregação-na-noite) por linha de uma versão, só com os pulls
         que `noteOf` liga a ela (a linha é o `lineIndex` dentro da versão).
     *   Medianas pela `quantile` de `src/lib/healer.ts`.
@@ -1134,7 +1137,7 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
 
 *   **Type / Scope**: componente React.
 *   **Proposed Changes**: recebe `pulls: Pull[]`, `focus?: Pull` (aba do pull),
-    `onSelectPull?` e `onReplay?(t)`. `NoteBox`; aviso de cabeçalho e de `tag`
+    `live?` e `onReplay?(t)`. `NoteBox`; aviso de cabeçalho e de `tag`
     desconhecido; casamento de fases com o desvio de cada fase; uma tabela por
     versão (CD com `SpellName`, player com `PlayerName` na cor da classe, "P2
     +0:15", estado, Δ e Δ sem ajuste; ▶ só quando `onReplay` existe). Item
@@ -1168,7 +1171,7 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
 #### 16. `src/components/NightSummary.tsx` e `src/App.tsx` (Modify)
 
 *   **Type / Scope**: componente React.
-*   **Proposed Changes**: `<HealNotePanel pulls={s.pulls} onSelectPull live>`
+*   **Proposed Changes**: `<HealNotePanel pulls={s.pulls} live>`
     em `BossSummaryInner`, depois de `NightPhaseTimes`; `BossSummary` ganha a
     prop `live`.
 
@@ -1286,7 +1289,7 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
     *   `hits(pull, anchors): Hit[]`: golpes pelo pseudocódigo de [Golpes e
         momentos](#golpes-e-momentos), com `nearestAnchor(início, anchors)`;
         golpe sem marco com `key: null`.
-    *   `moments(pulls, hitsByPull)`: momentos da noite, fase de cada momento,
+    *   `moments(pulls, anchors, hitsByPull)`: momentos da noite, fase de cada momento,
         "chegou", hora do momento em cada pull, tempo na fase (o desvio entra
         em `healNoteCheck.ts`), dano mediano e "golpe em X de Y pulls".
     *   `raidLow(pull)`: episódios de raide baixa.
@@ -1336,9 +1339,9 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
 #### 31. `scripts/heal-note-calibrate.mjs` (Create)
 
 *   **Type / Scope**: script Node (sem IA).
-*   **Proposed Changes**: `node --experimental-strip-types
-    scripts/heal-note-calibrate.mjs <relatório.json> [--boss "<nome>"]
-    [--difficulty Mythic] [--note note.txt]` (sem `--boss`, o boss com mais
+*   **Proposed Changes**: `node scripts/heal-note-calibrate.mjs
+    <relatório.json> [--boss "<nome>"] [--difficulty Mythic] [--note note.txt]
+    [--shares 0.6,0.7,0.8,0.9]` (empacota o código do app com o `rolldown`) (sem `--boss`, o boss com mais
     pulls, como no `replay:check`); usa `raidHits.ts` e mostra a
     distribuição do dano inevitável em 5 s pela vida máxima, quantos golpes e
     momentos por pull cada valor candidato de `STRONG_HIT_SHARE` daria,
