@@ -170,12 +170,12 @@ culpa, o placar, o Discord e a IA.
 
 ## Open Questions
 
-*   **Limite do golpe.** `STRONG_HIT_SHARE` começa em **0,80** (80% da vida
-    máxima somada dos vivos sem tanks em 5 s; ≈ p92 do dano total de 26/10,
-    medido antes de separar o dano de falha). O valor final sai da calibração
-    da etapa 2 nas noites da guilda (G10) e entra neste design, com a data,
-    antes do PR da etapa 2. A mesma calibração conta quantos golpes não têm
-    marco (cast do boss por perto), para decidir se eles entram na noite.
+*   **Limite do golpe — fechada (2026-10-28).** `STRONG_HIT_SHARE` = **0,80**,
+    aprovado pelo desenvolvedor depois da calibração da etapa 2 em 26/10 (The
+    Coiled Altar Mythic, 18 pulls): 5 s / vida máxima p50 0,46, p90 0,73, p95
+    0,85; com 0,80, 3,7 golpes por pull, 16 momentos, 14 deles com CD na note
+    da guilda; nenhum golpe sem marco (os golpes sem cast ficam só na aba do
+    pull). Com 0,60 seriam 6,7 golpes por pull; com 0,90, 8 momentos.
 *   **Janelas de cada tipo de efeito** (`RECOVER_MS`, `PREP_MS` e as folgas da
     tabela de janelas) e `HIT_ONSET_SHARE` (o dano de fundo fica em 0,1–0,17
     da vida da raide por segundo, perto do limite de 0,2 × W): conferidos na

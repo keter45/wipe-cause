@@ -116,7 +116,8 @@ logging), não há golpes nem raide baixa.
 - **Calibração:** `node scripts/heal-note-calibrate.mjs <relatório.json> [--boss] [--note]` mostra
   a distribuição e quantos golpes, momentos e momentos com CD cada limite dá. 26/10 (The Coiled
   Altar Mythic, note da guilda): 5 s / vida máxima p50 0,46, p90 0,73, p95 0,85; limite 0,80 → 3,7
-  golpes por pull, 16 momentos, 14 com CD da note; 0,60 → 6,7 golpes por pull, 18 momentos.
+  golpes por pull, 16 momentos, 14 com CD da note; 0,60 → 6,7 golpes por pull, 18 momentos. O
+  desenvolvedor manteve 0,80 (2026-10-28).
 
 ## 7. A tabela de CDs
 
