@@ -5,7 +5,7 @@
 import type { PhaseMark, PlayerStats, Pull } from '../types';
 import { shortName } from './format';
 import { castIdsOf, healCd, type HealCd, type HealCdEffect } from './healCooldowns';
-import { quantile } from './healer';
+import { quantile } from './quantile';
 import { mapPhases, type ParsedNote } from './healNote';
 import { raidLow, type Moment } from './raidHits';
 

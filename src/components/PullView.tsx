@@ -36,6 +36,7 @@ import { scorePull } from '../lib/score';
 import { meIn, useMode, useSoloCharacter, type AppMode } from '../lib/mode';
 import { SoloPullView } from './SoloPullView';
 import { FightReplay } from './FightReplay';
+import { canLoadFull } from '../lib/fullReplay';
 import { messagesOf, useMessages } from '../i18n';
 import { pullMsg } from './PullView.i18n';
 import { wipeCallText } from '../lib/wipeCall';
@@ -87,10 +88,19 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
   // trocou de modo: volta para a última aba daquele modo ("Você" não existe no modo guilda)
   useEffect(() => setTabState(lastTab[mode]), [mode]);
   const tab: Tab = !solo && tabState === 'me' ? 'deaths' : tabState;
+  // ▶ da note de CDs de cura: a aba Replay abre nesse instante; abrir o Replay pela aba começa do zero
+  const [replayAt, setReplayAt] = useState(0);
   const setTab = (t: Tab) => {
     lastTab[mode] = t;
     setTabState(t);
+    setReplayAt(0);
   };
+  const replayFrom = canLoadFull(pull)
+    ? (t: number) => {
+        setTab('replay');
+        setReplayAt(t);
+      }
+    : undefined;
   const [showVerdict, setShowVerdict] = useState(false);
   const [videoOpen, setVideoOpen] = useState(false);
   // POV escolhido (o primeiro é o deste PC, se houver)
@@ -338,12 +348,12 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
         />
       )}
       {tab === 'interrupts' && <InterruptsView pull={pull} nightPulls={nightPulls ?? [pull]} live={live} />}
-      {tab === 'healcds' && <HealNotePanel key={pull.id} pulls={nightPulls ?? [pull]} focus={pull} live={live} />}
+      {tab === 'healcds' && <HealNotePanel key={pull.id} pulls={nightPulls ?? [pull]} focus={pull} live={live} onReplay={replayFrom} />}
       {tab === 'players' && <PlayersTab pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
       {tab === 'me' && <SoloPullView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} defaultGuid={solo ? meIn(pull, chosen)?.guid : undefined} solo={solo && !!meIn(pull, chosen)} />}
       {tab === 'spells' && <EnemySpellsTable pull={pull} onRulesChanged={onRulesChanged} />}
-      {tab === 'replay' && <FightReplay key={`${pull.logFile ?? ''}:${pull.logOffset ?? ''}:${pull.startMs}:${pull.id}`} pull={pull} />}
+      {tab === 'replay' && <FightReplay key={`${pull.logFile ?? ''}:${pull.logOffset ?? ''}:${pull.startMs}:${pull.id}`} pull={pull} startAt={replayAt} />}
       {tab === 'ask' && <AskView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       </ErrorBoundary>
     </div>

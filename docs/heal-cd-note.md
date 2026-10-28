@@ -5,7 +5,7 @@ note que o MRT mostra na tela). Design: [designs/heal-cd-note.md](designs/heal-c
 referência de healer segue a [análise de healer](healer-analysis.md) (regra 2: os healers da
 guilda nunca são o "certo").
 
-Estado: etapa 1 (note e timing). Golpes, uso, overheal e note sugerida entram nas etapas 2 e 3 do
+Estado: etapas 1 (note e timing) e 2 (golpes e uso). Overheal e note sugerida entram na etapa 3 do
 design.
 
 ## 1. Onde aparece
@@ -88,7 +88,37 @@ Na ordem; vale o primeiro:
 O casamento usa o id da spell e os alternativos da tabela (Stampeding Roar pelos ids das formas,
 Convoke 323764) e casa primeiro o par de menor diferença.
 
-## 6. A tabela de CDs
+## 6. Golpes, momentos e uso
+
+O núcleo guarda, por segundo e até o corte, a raide sem tanks (`raidSeries`: vivos, abaixo de 50%,
+vida máxima e dano inevitável), o dano inevitável por spell inimiga (`enemyHits`) e a cura dos CDs
+da tabela (`PlayerStats.cdHeals`). Inevitável = o que a regra do boss não trata como falha (o mesmo
+critério da aba Mortes), com absorb e com o golpe absorvido inteiro. Sem vida no log (sem advanced
+logging), não há golpes nem raide baixa.
+
+- **Golpe** (`src/lib/raidHits.ts`): 5 s com dano inevitável ≥ `STRONG_HIT_SHARE` (0,80) da vida
+  máxima somada; começa no primeiro segundo com 20% do dano da janela. É preso ao cast do boss:
+  o da própria spell que fez o golpe (até 15 s antes) ou o mais perto entre os marcos da noite
+  (`<spell>:<k>`, k contado no pull).
+- **Momento da noite:** chave que foi golpe em pelo menos 2 pulls. Todo pull que chegou no cast tem
+  o momento, mesmo quando um CD segurou o dano abaixo do limite.
+- **Raide baixa:** um quarto ou mais dos vivos sem tanks abaixo de 50% por 2 s ou mais; "sem golpe"
+  quando fica longe de qualquer momento (sinal para olhar a cura de base).
+- **Veredictos** (`judgeUse` em `src/lib/healNoteCheck.ts`):
+  - a linha cobre o momento pela hora ajustada e pelo efeito do CD (redução ativa quando o dano
+    começa; rajada de 2 s antes a 8 s depois; cura que dura antes, se ainda ativa, ou até 8 s
+    depois);
+  - **no golpe:** o uso também cobriu; **fora do golpe:** a linha está no lugar, o player não;
+  - **sem dano:** cura (só `heal`) sem golpe nem raide baixa na janela; redução de dano não recebe;
+  - **uso de ciclo:** linha sem momento cuja próxima linha do mesmo CD tem momento e não estaria
+    pronta se esta saísse no momento seguinte; não recebe veredicto de uso;
+  - **golpe sem CD:** momento alcançado sem nenhuma linha da note ligada a ele.
+- **Calibração:** `node scripts/heal-note-calibrate.mjs <relatório.json> [--boss] [--note]` mostra
+  a distribuição e quantos golpes, momentos e momentos com CD cada limite dá. 26/10 (The Coiled
+  Altar Mythic, note da guilda): 5 s / vida máxima p50 0,46, p90 0,73, p95 0,85; limite 0,80 → 3,7
+  golpes por pull, 16 momentos, 14 com CD da note; 0,60 → 6,7 golpes por pull, 18 momentos.
+
+## 7. A tabela de CDs
 
 `data/heal-cooldowns.json`: por CD, specs, talento, ids alternativos, tipo (`heal` ou
 `mitigation`), efeito (`burst`, `sustained`, `active`), duração, cooldown base e ids da cura.

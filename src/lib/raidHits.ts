@@ -5,7 +5,7 @@
 import type { Pull } from '../types';
 import { anchorTimes } from './benchMetrics';
 import { nearestAnchor, SAME_MOMENT_MS, type Anchors } from './cdAnchors';
-import { quantile } from './healer';
+import { quantile } from './quantile';
 
 /** Golpe: dano inevitável em 5 s acima disso da vida máxima somada da raide sem tanks. */
 export const STRONG_HIT_SHARE = 0.8;
@@ -34,13 +34,13 @@ export interface Hit {
 
 const median = (xs: number[]) => quantile(xs, 0.5);
 
-/** Golpes de um pull. Sem vida no log (`low` nulo), não há golpes. */
-export function hits(pull: Pull, anchors: Anchors): Hit[] {
+/** Golpes de um pull (`share`: o limite, trocado só pela calibração). Sem vida no log (`low` nulo), não há golpes. */
+export function hits(pull: Pull, anchors: Anchors, share = STRONG_HIT_SHARE): Hit[] {
   const s = pull.raidSeries;
   if (!s || !s.low) return [];
   const n = s.unavoidableK.length;
   const W = (i: number) => s.unavoidableK.slice(i, i + WINDOW_S).reduce((a, b) => a + b, 0);
-  const strong = (i: number) => s.maxHpK[i] > 0 && W(i) >= STRONG_HIT_SHARE * s.maxHpK[i];
+  const strong = (i: number) => s.maxHpK[i] > 0 && W(i) >= share * s.maxHpK[i];
   const groups: { first: number; last: number; size: number }[] = [];
   for (let i = 0; i < n; i++) {
     if (!strong(i)) continue;

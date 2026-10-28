@@ -178,7 +178,7 @@ As abas são preservadas em memória por foco: Guilda começa em Mortes; Solo, e
 | Mortes | `DeathList` | Abre a investigação de cada morte, recursos, recap e posição |
 | Mecânicas | `MechanicsView` | Expande falhas e participantes, replays, eventos, dispels e ajustes |
 | Interrupts | `InterruptsView` e `AssignmentsPanel` | Cortes, tentativas, casts que passaram e escala |
-| CDs de cura | `HealNotePanel` | Cada linha da note de CDs no pull: na hora, adiantado, atrasado, não usou e os estados sem culpa; Δ com e sem o desvio da fase |
+| CDs de cura | `HealNotePanel` | Cada linha da note de CDs no pull: na hora, adiantado, atrasado, não usou e os estados sem culpa; Δ com e sem o desvio da fase; golpe e uso (no golpe, sem dano, uso de ciclo); golpes do boss com e sem CD; raide baixa sem golpe; ▶ abre o Replay no instante |
 | Jogadores | `PlayersTable` | Nota, produção, dano tomado, mortes, defensivos, consumíveis e dados complementares |
 | Desempenho / Comparação detalhada | `PerformanceView` | Rotação e comparação com tops, própria raid ou simulação, conforme papel |
 | Replay | `FightReplay` | Luta completa, mapa, quadros da raid, medidores, fases e eventos |

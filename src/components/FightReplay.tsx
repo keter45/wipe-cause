@@ -35,7 +35,8 @@ const ROLE_RANK: Record<string, number> = { tank: 0, healer: 1, dps: 2 };
  * Replay completo do pull: o mapa da luta inteira, o quadro do raid, a linha do tempo com os
  * pontos de interesse e o que aconteceu com o player selecionado. Relê o pull no log do PC.
  */
-export function FightReplay({ pull }: { pull: Pull }) {
+/** `startAt`: ms do pull em que o replay começa (o ▶ da note de CDs de cura). */
+export function FightReplay({ pull, startAt = 0 }: { pull: Pull; startAt?: number }) {
   const t = useMessages(fightMsg);
   const canLoad = canLoadFull(pull);
   const [full, setFull] = useState<Pull | null>(pull.fight ? pull : null);
@@ -64,15 +65,15 @@ export function FightReplay({ pull }: { pull: Pull }) {
       </p>
     );
   if (!full?.fight) return <p className="muted pad">{t.loading}</p>;
-  return <FightReplayInner pull={full} />;
+  return <FightReplayInner pull={full} startAt={startAt} />;
 }
 
-function FightReplayInner({ pull }: { pull: Pull }) {
+function FightReplayInner({ pull, startAt }: { pull: Pull; startAt: number }) {
   const data = useMemo(() => decodeReplay(pull), [pull]);
   const view = useMemo(() => fightView(pull)!, [pull]);
   const classes = useMemo(() => new Map(pull.players.map((p) => [p.guid, p.class] as const)), [pull]);
   const duration = pull.durationMs;
-  const pb = usePlayback(0, duration, 0, false);
+  const pb = usePlayback(0, duration, Math.min(Math.max(0, startAt), duration), false);
   const [selected, setSelected] = useState<string | null>(null);
   const replay = useMemo<ReplayRef>(() => ({ t: 0, from: 0, to: duration, focus: selected ? [selected] : [] }), [duration, selected]);
   // mortes, áreas, machados e defensivos em área (os mesmos do clipe)
