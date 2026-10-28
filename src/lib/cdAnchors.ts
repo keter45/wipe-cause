@@ -11,7 +11,7 @@ export const ANCHOR_AFTER_MS = 30_000;
 /** O seu uso conta como "nesse momento" até isso de distância do momento da referência. */
 export const MATCH_MS = 12_000;
 /** Dois momentos a menos disso um do outro são o mesmo (mecânicas coladas). */
-const SAME_MOMENT_MS = 20_000;
+export const SAME_MOMENT_MS = 20_000;
 
 /** Casts do boss que servem de marco, por spell: tempos (ms do pull) em ordem. */
 export type Anchors = Record<string, number[]>;

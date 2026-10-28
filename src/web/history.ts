@@ -102,15 +102,16 @@ export async function historyDeleteUnpinned(): Promise<number> {
 }
 
 /** Versão enxuta para a Evolução (sem recap, eventos, posições): o mesmo corte do app. */
-function compact(report: LogReport): LogReport {
+export function compact(report: LogReport): LogReport {
   const strip = (o: object | undefined, keys: string[]) => {
     for (const k of keys) delete (o as Record<string, unknown> | undefined)?.[k];
   };
   const r = structuredClone(report);
   for (const p of r.pulls) {
+    strip(p, ['raidSeries', 'enemyHits']);
     for (const d of p.deaths ?? []) strip(d, ['recap', 'debuffs', 'mechanicDamage', 'positions']);
     for (const m of p.mechanics ?? []) strip(m, ['events', 'snapshots']);
-    for (const pl of p.players ?? []) strip(pl, ['takenByAbility', 'interruptLog', 'casts', 'damageBySpell', 'healingBySpell', 'setup']);
+    for (const pl of p.players ?? []) strip(pl, ['takenByAbility', 'interruptLog', 'casts', 'damageBySpell', 'healingBySpell', 'setup', 'cdHeals']);
   }
   return r;
 }

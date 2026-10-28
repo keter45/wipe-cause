@@ -4,9 +4,10 @@
 
 import type { PhaseMark, PlayerStats, Pull } from '../types';
 import { shortName } from './format';
-import { castIdsOf, healCd } from './healCooldowns';
+import { castIdsOf, healCd, type HealCd, type HealCdEffect } from './healCooldowns';
 import { quantile } from './healer';
 import { mapPhases, type ParsedNote } from './healNote';
+import { raidLow, type Moment } from './raidHits';
 
 /** Uso a até isso da hora da linha = na hora. */
 export const ON_TIME_MS = 10_000;
@@ -264,4 +265,163 @@ export function summarizeLines(checks: Map<number, LineCheck[]>, pulls: Pull[]):
         states,
       };
     });
+}
+
+// ---------------------------------------------------------------------------
+// Golpes e uso (etapa 2): cada linha ligada a um momento da noite (raidHits.ts)
+
+/** Cura até isso depois do golpe ainda é recuperação. */
+export const RECOVER_MS = 8_000;
+/** Quanto antes do golpe a note chama um CD `active` ou `sustained` (uso de ciclo, mover, adicionar). */
+export const PREP_MS = 2_000;
+
+/** A janela do efeito do CD usado em `u` cobre o momento [start, end]? */
+export function covers(effect: HealCdEffect, u: number, d: number, start: number, end: number): boolean {
+  if (effect === 'active') return u <= start + 1_000 && u + d >= start;
+  if (effect === 'sustained') return u <= end + RECOVER_MS && u + d >= start;
+  return start - 2_000 <= u && u <= end + RECOVER_MS;
+}
+
+/** Janela em que um uso precisa ver dano para não ser "sem dano". */
+function noDamageWindow(effect: HealCdEffect, u: number, d: number): [number, number] {
+  if (effect === 'active') return [u, u + d];
+  if (effect === 'sustained') return [u, u + d + RECOVER_MS];
+  return [u - 5_000, u + d + RECOVER_MS];
+}
+
+const overlaps = (a: number, b: number, c: number, d: number) => a <= d && c <= b;
+
+export interface UseVerdict {
+  /** momento da noite que a linha cobre neste pull */
+  momentKey: string | null;
+  /** o uso cobriu o momento (null = sem momento ou sem uso) */
+  onHit: boolean | null;
+  /** cura usada sem golpe nem raide baixa na janela dela */
+  noDamage: boolean;
+  /** linha de ciclo: não recebe veredicto de uso */
+  cycle: boolean;
+}
+
+export interface PullVerdicts {
+  lines: Map<number, UseVerdict>;
+  /** momentos que o pull alcançou sem nenhuma linha da note */
+  uncovered: string[];
+  /** raide baixa longe de qualquer momento */
+  lowWithoutHit: { start: number; end: number }[];
+}
+
+const PLANNED: LineState[] = ['on_time', 'early', 'late', 'not_used', 'dead'];
+
+/** O momento que a linha cobre (pela hora ajustada), o mais perto quando cobre mais de um. */
+function momentOf(cd: HealCd, at: number, pullId: number, ms: Moment[]): Moment | null {
+  let best: Moment | null = null;
+  for (const m of ms) {
+    const p = m.pulls.get(pullId);
+    if (!p || !covers(cd.effect!, at, cd.duration_ms!, p.at, p.end)) continue;
+    if (!best || Math.abs(p.at - at) < Math.abs(best.pulls.get(pullId)!.at - at)) best = m;
+  }
+  return best;
+}
+
+/** Início mais cedo de uma fase (chave da regra) nos pulls: o pior caso, num push rápido. */
+function earliestPhaseStart(pulls: Pull[], key: string): number | null {
+  const ts = pulls.flatMap((p) => (p.phaseMarks ?? []).filter((m) => m.key === key).map((m) => m.t));
+  return ts.length ? Math.min(...ts) : key === 'p1' ? 0 : null;
+}
+
+/** Linhas de ciclo de uma versão da note: gastas cedo para o próximo uso estar pronto num momento. */
+export function cycleLines(note: ParsedNote, pulls: Pull[], offsets: Map<string, PhaseOffset>, ms: Moment[], associated: Set<number>): Set<number> {
+  const marks = new Map<string, string>();
+  for (const p of pulls) for (const [ph, m] of mapPhases(p.phaseMarks)) if (!marks.has(ph)) marks.set(ph, m.key);
+  const abs = (l: { ph?: string; time?: number }) => {
+    const key = l.ph ? marks.get(l.ph) : undefined;
+    const start = key ? earliestPhaseStart(pulls, key) : null;
+    const off = l.ph && offsets.get(l.ph)?.applied ? offsets.get(l.ph)!.offsetMs : 0;
+    return start == null ? null : start + (l.time ?? 0) * 1000 + off;
+  };
+  const momentAbs = ms
+    .map((m) => {
+      const s = earliestPhaseStart(pulls, m.phaseKey);
+      return s == null ? null : s + m.inPhaseMs;
+    })
+    .filter((x): x is number => x != null)
+    .sort((a, b) => a - b);
+  const out = new Set<number>();
+  note.lines.forEach((l, i) => {
+    const cd = l.spellId != null ? healCd(l.spellId) : undefined;
+    if (!cd?.kind || associated.has(i) || !l.tag || cd.cooldown_ms == null) return;
+    const at = abs(l);
+    if (at == null) return;
+    const next = note.lines
+      .map((n, j) => ({ n, j, t: abs(n) }))
+      .filter(({ n, j, t }) => j !== i && n.spellId === l.spellId && n.tag != null && norm(n.tag) === norm(l.tag!) && t != null && t > at)
+      .sort((a, b) => a.t! - b.t!)[0];
+    if (!next || !associated.has(next.j)) return;
+    const m = momentAbs.find((t) => t > at);
+    if (m == null) return;
+    const moved = m - (cd.effect === 'burst' ? 0 : PREP_MS);
+    if (next.t! - moved < cd.cooldown_ms) out.add(i);
+  });
+  return out;
+}
+
+/**
+ * Veredictos de golpe e uso de cada pull: a linha ligada ao momento, se o uso cobriu, "sem dano"
+ * (só cura), linhas de ciclo, momentos sem CD e raide baixa sem golpe.
+ */
+export function judgeUse(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, PhaseOffset>, checks: Map<number, LineCheck[]>, ms: Moment[]): Map<number, PullVerdicts> {
+  // ligação linha ↔ momento por pull, e quais linhas de cada versão têm momento em algum pull
+  const assoc = new Map<number, Map<number, Moment>>();
+  const withMoment = new Map<ParsedNote, Set<number>>();
+  for (const p of pulls) {
+    const note = noteOf(p);
+    if (!note) continue;
+    const a = new Map<number, Moment>();
+    for (const c of checks.get(p.id) ?? []) {
+      const l = note.lines[c.lineIndex];
+      const cd = l.spellId != null ? healCd(l.spellId) : undefined;
+      if (!cd?.kind || c.expectedMs == null || !PLANNED.includes(c.state)) continue;
+      const m = momentOf(cd, c.expectedMs, p.id, ms);
+      if (!m) continue;
+      a.set(c.lineIndex, m);
+      (withMoment.get(note) ?? withMoment.set(note, new Set()).get(note)!).add(c.lineIndex);
+    }
+    assoc.set(p.id, a);
+  }
+  const cycles = new Map<ParsedNote, Set<number>>();
+  const cycleOf = (note: ParsedNote) => {
+    if (!cycles.has(note)) cycles.set(note, cycleLines(note, pulls.filter((p) => noteOf(p) === note), offsets, ms, withMoment.get(note) ?? new Set()));
+    return cycles.get(note)!;
+  };
+
+  const out = new Map<number, PullVerdicts>();
+  for (const p of pulls) {
+    const note = noteOf(p);
+    if (!note) continue;
+    const a = assoc.get(p.id)!;
+    const low = raidLow(p);
+    const mine = ms.filter((m) => m.pulls.has(p.id));
+    const span = (m: Moment) => m.pulls.get(p.id)!;
+    const lines = new Map<number, UseVerdict>();
+    for (const c of checks.get(p.id) ?? []) {
+      const l = note.lines[c.lineIndex];
+      const cd = l.spellId != null ? healCd(l.spellId) : undefined;
+      if (!cd?.kind || !cd.effect || cd.duration_ms == null) continue;
+      const m = a.get(c.lineIndex) ?? null;
+      const cycle = cycleOf(note).has(c.lineIndex);
+      const used = c.usedMs;
+      const onHit = m && used != null ? covers(cd.effect, used, cd.duration_ms, span(m).at, span(m).end) : null;
+      let noDamage = false;
+      if (cd.kind === 'heal' && !cycle && used != null) {
+        const [x, y] = noDamageWindow(cd.effect, used, cd.duration_ms);
+        noDamage = !mine.some((mm) => overlaps(span(mm).at, span(mm).end, x, y)) && !low.some((e) => overlaps(e.start, e.end, x, y));
+      }
+      lines.set(c.lineIndex, { momentKey: m?.key ?? null, onHit, noDamage, cycle });
+    }
+    const covered = new Set([...a.values()].map((m) => m.key));
+    const uncovered = mine.filter((m) => !covered.has(m.key)).map((m) => m.key);
+    const lowWithoutHit = low.filter((e) => !mine.some((mm) => overlaps(span(mm).at - 5_000, span(mm).end + RECOVER_MS, e.start, e.end)));
+    out.set(p.id, { lines, uncovered, lowWithoutHit });
+  }
+  return out;
 }

@@ -99,6 +99,21 @@ export interface Pull {
   unitCounts?: { npc: number; name: string; series: [number, number][] }[];
   /** cara de cada tipo de unidade no mapa (regra `units` com `color` / `icon`) */
   unitLooks?: { npc: number; color?: string; icon?: number }[];
+  /** note de CDs de cura: a raide sem tanks segundo a segundo, até o corte (análises antigas não têm) */
+  raidSeries?: RaidSeries;
+  /** dano inevitável em players sem tanks: [segundo, spellId (0 = ambiente), dano] */
+  enemyHits?: [number, number, number][];
+}
+
+/** Raide sem tanks por segundo do pull (índice = segundo). */
+export interface RaidSeries {
+  alive: number[];
+  /** abaixo de 50% de vida; null sem amostras de vida no log */
+  low: number[] | null;
+  /** vida máxima somada dos vivos, em milhares */
+  maxHpK: number[];
+  /** dano inevitável no segundo (com absorb), em milhares */
+  unavoidableK: number[];
 }
 
 /**
@@ -438,6 +453,8 @@ export interface PlayerStats {
   manaTimeline?: number[];
   /** ms andando por janela de 5s (pela distância entre as posições), até o corte; análises antigas não têm */
   moveTimeline?: number[];
+  /** cura e overheal dos CDs de cura por segundo: [segundo, cast do CD, cura, overheal] */
+  cdHeals?: [number, number, number, number][];
 }
 
 export interface SpellCasts {
