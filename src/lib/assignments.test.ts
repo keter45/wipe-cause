@@ -31,6 +31,27 @@ describe('parseAssignments', () => {
   it('aceita a escala escrita à mão e ignora quem não está no raid', () => {
     expect(parseAssignments('Wail of Terror: fulano, Ninguém, zé', p).get('wail')).toEqual([['Fulano', 'Zé']]);
   });
+
+  // a note de CDs de cura (NSRT) inteira na mesma caixa: só o bloco intstart…intend vira escala
+  const cds = ['EncounterID:1;Name:Boss;Difficulty:Mythic', 'time:2;ph:1;tag:Fulano;spellid:64843;', 'time:47;ph:1;tag:Ciclano;spellid:97462;'];
+
+  it('note NSRT com bloco: a escala sai só do bloco', () => {
+    const note = [...cds, 'intstart', 'Zé Eternål', 'intend'].join('\n');
+    expect(parseAssignments(note, p).get('wail')).toEqual([['Zé', 'Eternål']]);
+  });
+
+  it('note NSRT sem bloco não gera escala (as linhas de CD não viram grupos)', () => {
+    expect(parseAssignments(cds.join('\n'), p).size).toBe(0);
+  });
+
+  it('com duas mecânicas, o bloco é lido pelo {spell:id} de cada grupo', () => {
+    const scream = { ...wail([]), key: 'scream', name: 'Eternal Nightfall', spellId: 99 };
+    const two = { ...p, mechanics: [wail([]), scream] };
+    const note = [...cds, 'intstart', '{spell:1286399} Fulano Ciclano', '{spell:99} Zé', 'intend'].join('\n');
+    const r = parseAssignments(note, two);
+    expect(r.get('wail')).toEqual([['Fulano', 'Ciclano']]);
+    expect(r.get('scream')).toEqual([['Zé']]);
+  });
 });
 
 describe('checkAssignments', () => {

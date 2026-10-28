@@ -118,7 +118,7 @@ function overlap(ours: string[], theirs: string[], self: string): number {
 }
 
 const median = (xs: number[]) => quantile(xs, 0.5);
-function quantile(xs: number[], q: number): number | null {
+export function quantile(xs: number[], q: number): number | null {
   const v = xs.filter((x) => x != null && Number.isFinite(x)).sort((a, b) => a - b);
   if (!v.length) return null;
   const i = (v.length - 1) * q;

@@ -8,9 +8,13 @@
 //   Wail of Terror: Fulano, Ciclano, Beltrano
 //   {spell:1286399} Fulano Ciclano Beltrano
 //   ||cffc41e3aFulano||r ||cff0070ddCiclano||r        (cores do MRT)
+//
+// Note NSRT inteira (a de CDs de cura, docs/heal-cd-note.md): a escala sai só do bloco
+// intstart…intend; sem o bloco, não há escala (as linhas de CD não viram grupos).
 
 import type { MechanicResult, Pull } from '../types';
 import { shortName } from './format';
+import { parseNote } from './healNote';
 
 /** mecânica (key) -> grupos -> players (nome curto, como no raid) em ordem */
 export type Assignments = Map<string, string[][]>;
@@ -27,6 +31,9 @@ function clean(line: string): string {
 }
 
 export function parseAssignments(text: string, pull: Pull): Assignments {
+  const note = parseNote(text);
+  if (note.intBlock != null) text = note.intBlock;
+  else if (note.isNsrt) return new Map();
   const mechs = pull.mechanics.filter((m) => m.kind === 'interrupt');
   const roster = new Map(pull.players.map((p) => [norm(shortName(p.name)), shortName(p.name)]));
   const out: Assignments = new Map();
