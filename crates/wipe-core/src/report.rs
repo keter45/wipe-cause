@@ -149,6 +149,27 @@ pub struct Pull {
     /// cara de cada tipo de unidade no mapa (`units` com `color` / `icon`)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub unit_looks: Vec<UnitLook>,
+    /// vida e dano inevitável da raide sem tanks por segundo, até o corte (note de CDs de cura)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raid_series: Option<RaidSeries>,
+    /// dano inevitável em players sem tanks por segundo e spell inimiga: (segundo, spellId, dano);
+    /// ambiente com spellId 0; só as entradas com pelo menos 1% da vida máxima da raide no segundo
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub enemy_hits: Vec<(u32, u32, i64)>,
+}
+
+/// Raide sem tanks segundo a segundo (o índice é o segundo do pull), até o corte.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RaidSeries {
+    /// vivos
+    pub alive: Vec<u8>,
+    /// vivos abaixo de 50% de vida; nulo sem amostras de vida (log sem advanced logging)
+    pub low: Option<Vec<u8>>,
+    /// vida máxima somada dos vivos com amostra de vida, em milhares
+    pub max_hp_k: Vec<u32>,
+    /// dano inevitável tomado no segundo (com absorb), em milhares
+    pub unavoidable_k: Vec<u32>,
 }
 
 /// Como um tipo de unidade aparece no mapa: a cor dela e um ícone (spell) para saber quem é quem.
@@ -967,6 +988,9 @@ pub struct PlayerStats {
     /// healer: mana % por janela de 5s, até o corte
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub mana_timeline: Vec<u8>,
+    /// cura e overheal por segundo dos CDs de data/heal-cooldowns.json: (segundo, cast do CD, cura, overheal)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cd_heals: Vec<(u32, u32, i64, i64)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
