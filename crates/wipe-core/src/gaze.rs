@@ -440,6 +440,15 @@ pub fn paths(cfg: &GazeDetect, log: &GazeLog, fail_times: &[i64]) -> Vec<GhostPa
         .collect()
 }
 
+/// Andou pelo menos isto (jardas) na simulação...
+const WALK_MIN_YD: f32 = 3.0;
+/// ...e pelo menos esta parte do que os dois fantasmas andaram: é dele a culpa.
+const WALK_SHARE: f32 = 0.25;
+/// A simulação só decide quando os dois fantasmas simulados terminam a até isto um do outro na
+/// colisão (o que o log comprova). Medido em 21, 22 e 26/10 (22 colisões no Mythic): 18 de 20
+/// pares a até 6 jd.
+const SIM_AGREE_YD: f32 = 8.0;
+
 /// Um dos alvos da colisão: quanto tempo ficou de costas para o próprio fantasma.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Victim {
@@ -448,10 +457,56 @@ pub struct Victim {
     pub window_ms: i64,
     /// None = sem fantasma conhecido ou poucas amostras para julgar
     pub culprit: Option<bool>,
+    /// jardas que o fantasma dele andou na simulação até a colisão (sem simulação: None)
+    pub walked_yd: Option<f32>,
+    /// a culpa veio da simulação (o fantasma andou), não dos 5s de costas
+    pub inferred: bool,
 }
 
 /// Alvos da colisão em `boom` e quem deixou o fantasma andar.
+///
+/// Primeiro, os 5s antes da colisão: de costas para onde o fantasma começou em pelo menos metade
+/// deles = culpado. Isso só vê quem passou o fim de costas; o fantasma pode ter andado antes, e o
+/// cone de 45° em volta do ponto de início perdoa quem olhava um pouco de lado. Então, com a
+/// simulação do replay (calibrada contra alcances, colisões e Soul Sever), o fantasma que andou
+/// boa parte do caminho até encostar também é culpado, quando os dois simulados terminam juntos.
 pub fn judge(cfg: &GazeDetect, log: &GazeLog, boom: i64) -> Vec<Victim> {
+    let mut out = judge_facing(cfg, log, boom);
+    let Some(sim) = &cfg.sim else { return out };
+    // o fantasma de cada alvo que mais andou até a colisão, e onde ele terminou
+    let walked: Vec<Option<(f32, (f32, f32))>> = out
+        .iter()
+        .map(|v| {
+            log.fixes
+                .iter()
+                .filter(|f| f.player == v.guid && f.from <= boom && f.to.is_none_or(|e| e >= boom - FIX_GRACE_MS))
+                .map(|f| {
+                    let path = GhostPath { ghost: f.ghost.clone(), owner: f.player.clone(), pts: simulate(sim, log, f, 1.0, boom).0, estimated_from: None };
+                    (path.moved(), at(&path.pts, boom))
+                })
+                .max_by(|a, b| a.0.total_cmp(&b.0))
+        })
+        .collect();
+    let agree = match walked.as_slice() {
+        [Some((_, a)), Some((_, b))] => (a.0 - b.0).hypot(a.1 - b.1) <= SIM_AGREE_YD,
+        // um alvo só (os dois fantasmas eram dele, ou o outro alvo morreu/estava imune)
+        [Some(_)] => true,
+        _ => false,
+    };
+    let total: f32 = walked.iter().flatten().map(|w| w.0).sum();
+    for (v, w) in out.iter_mut().zip(&walked) {
+        v.walked_yd = w.map(|w| w.0);
+        let Some((moved, _)) = *w else { continue };
+        if agree && v.culprit != Some(true) && moved >= WALK_MIN_YD && moved >= total * WALK_SHARE {
+            v.culprit = Some(true);
+            v.inferred = true;
+        }
+    }
+    out
+}
+
+/// Os 5s antes da colisão: quanto cada alvo ficou de costas para onde o fantasma começou.
+fn judge_facing(cfg: &GazeDetect, log: &GazeLog, boom: i64) -> Vec<Victim> {
     let mut guids: Vec<&String> = Vec::new();
     for (_, g) in log.hits.iter().filter(|(t, _)| (t - boom).abs() <= HIT_NEAR_MS) {
         if !guids.contains(&g) {
@@ -478,8 +533,10 @@ pub fn judge(cfg: &GazeDetect, log: &GazeLog, boom: i64) -> Vec<Victim> {
                     away_ms: away,
                     window_ms: covered,
                     culprit: Some(away as f32 >= covered as f32 * cfg.min_share),
+                    walked_yd: None,
+                    inferred: false,
                 },
-                _ => Victim { guid: g.clone(), away_ms: 0, window_ms: 0, culprit: None },
+                _ => Victim { guid: g.clone(), away_ms: 0, window_ms: 0, culprit: None, walked_yd: None, inferred: false },
             }
         })
         .collect()
@@ -659,6 +716,45 @@ mod tests {
         let (a, b) = (at(&ps[0].pts, 8_000), at(&ps[1].pts, 8_000));
         assert!((a.0 - b.0).hypot(a.1 - b.1) <= ANCHOR_OK_YD + 0.5, "{a:?} {b:?}");
         assert!(ps[0].moved() > 10.0 && ps[1].moved() > 10.0);
+    }
+
+    /// A de costas para o fantasma dele até 6s (ele anda ~16 jd) e olhando depois; o de B parado em
+    /// (20, y2), com B olhando para ele o tempo todo. Colisão em 10s.
+    fn walked_before_the_window(y2: f32) -> (GazeDetect, GazeLog) {
+        let c = sim_cfg();
+        let mut log = GazeLog::default();
+        log.on_enemy_cast(&c, "G1", 10, 0.0, 0.0);
+        log.on_aura(&c, "G1", 10, "A", "Alice-R", true, 0);
+        log.on_enemy_cast(&c, "G2", 10, 20.0, y2);
+        log.on_aura(&c, "G2", 10, "B", "Bob-R", true, 0);
+        stand(&mut log, "A", (60.0, 0.0), 0.0, 0, 6_000);
+        stand(&mut log, "A", (60.0, 0.0), std::f32::consts::PI, 6_250, 10_000);
+        stand(&mut log, "B", (20.0, y2 - 40.0), std::f32::consts::FRAC_PI_2, 0, 10_000);
+        log.on_aura(&c, "Boss", 20, "A", "Alice-R", true, 10_000);
+        log.on_aura(&c, "Boss", 20, "B", "Bob-R", true, 10_000);
+        (c, log)
+    }
+
+    #[test]
+    fn fantasma_que_andou_antes_dos_5s_e_culpado_pela_simulacao() {
+        let (c, log) = walked_before_the_window(0.0);
+        let v = judge(&c, &log, 10_000);
+        let a = v.iter().find(|x| x.guid == "A").unwrap();
+        let b = v.iter().find(|x| x.guid == "B").unwrap();
+        // nos 5s finais A olhava (a regra de costas não pega), mas o fantasma dele andou
+        assert!(a.away_ms < a.window_ms / 2, "{a:?}");
+        assert_eq!((a.culprit, a.inferred), (Some(true), true));
+        assert!(a.walked_yd.unwrap() >= 10.0, "{a:?}");
+        assert_eq!((b.culprit, b.inferred), (Some(false), false));
+        assert_eq!(b.walked_yd, Some(0.0));
+    }
+
+    #[test]
+    fn simulacao_que_nao_bate_com_a_colisao_nao_culpa() {
+        // o fantasma de B estava a 30 jd do caminho do de A: a simulação não explica a colisão
+        let (c, log) = walked_before_the_window(30.0);
+        let v = judge(&c, &log, 10_000);
+        assert!(v.iter().all(|x| x.culprit != Some(true) && !x.inferred), "{v:?}");
     }
 
     #[test]

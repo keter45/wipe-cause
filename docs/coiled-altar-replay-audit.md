@@ -223,6 +223,21 @@ estimados; o cone do Soul Sever (30°/45 jd) também é calibração, não núme
 Com os caminhos novos, cada pull guarda quantas jardas o fantasma de cada um andou
 (`MechanicResult.ghostYards`); o resumo do boss soma na noite como métrica do grupo.
 
+## Culpa da colisão pela simulação (28/10)
+
+Pedido: de 7 colisões numa noite, só 2 tinham culpado. A regra antiga (de costas para onde o
+fantasma começou, em cone de 45°, por pelo menos metade dos 5s antes da colisão) dava "os dois
+olhavam" na maioria: o fantasma anda antes desses 5s, e 45° perdoa quem olha um pouco de lado.
+Medido em 21, 22 e 26/10 (Mythic, `WIPE_GAZE_DUMP`): 22 colisões únicas; os fantasmas começaram
+a 8–31 jd um do outro, então alguém andou. A simulação calibrada acima (escala 1, sem âncora)
+deixa os dois fantasmas a até 6 jd um do outro na colisão em 18 de 20 pares.
+
+Regra nova (`gaze::judge`): a antiga continua; além dela, com os dois fantasmas simulados a até
+8 jd na colisão (ou um alvo só), é culpado quem teve o fantasma andando pelo menos 3 jd e pelo
+menos um quarto do que os dois andaram. O texto diz que é estimado pela simulação. Nos relatórios
+das três noites, colisões com culpado: 2 de 15 → 14 de 15 (a que sobra tem um alvo só e o
+fantasma dele não andou: o outro alvo morreu ou estava imune).
+
 ## Fase 2, contagens e faixas por mecânica (21/10)
 
 Conferido no pull 16 de 15/10 (Mythic, P3 82%).
