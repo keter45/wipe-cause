@@ -153,7 +153,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/n
 | Progresso | Fase e vida do boss por pull; clicar permite investigar a tentativa |
 | Métricas do grupo | Mecânicas escolhidas para acompanhar, sugestões pelo que falhou, totais e contribuição individual; abre os pulls relacionados |
 | Tempos de fase | Compara transições quando os dados e as regras de fase existem |
-| CDs de cura | A note de CDs colada pelo líder (NSRT): versões, casamento de fases com o desvio do relógio do addon e, por linha de cada versão, quantos pulls foram na hora e o Δ mediano, golpe e uso, overheal da noite contra as referências e empilhado; a note sugerida por versão (adicionar e mover, com caixas e Copiar) |
+| CDs de cura | No fim do resumo, recolhe e expande. A note de CDs colada pelo líder (NSRT): versões, casamento de fases com o desvio do relógio do addon e, por linha de cada versão, quantos pulls foram na hora e o Δ mediano, golpe e uso, overheal da noite contra as referências e empilhado; a note sugerida por versão (adicionar e mover, com caixas e Copiar) |
 | Origem de stacks | Acrescenta contexto de stacks nos bosses que produzem esses dados |
 | Causas dos wipes | Agrega gatilhos, mortes ligadas e falhas por mecânica |
 | Linha do tempo | Mostra combate e intervalos daquele boss |
@@ -521,6 +521,7 @@ O corte por N mortes é aplicado a wipes; kills preservam a luta completa. O rep
 | Notas e marcas | localStorage por encontro e início do pull | Mesmo mecanismo |
 | Escala e métricas escolhidas | Preferências locais | Preferências locais |
 | Note de CDs de cura (versões) | localStorage `wipe-cause:heal-note:<encounter>:<dificuldade>`; a chave da escala guarda o texto da versão mais nova | Mesmo mecanismo |
+| Seção "CDs de cura" do resumo do boss aberta ou recolhida | localStorage `wipe-cause:heal-note-open` (`0` = recolhida) | Mesmo mecanismo |
 | Modo, personagem e lateral | localStorage | localStorage |
 | Corte de mortes e filtro da Nova análise | localStorage | localStorage |
 | Parses do WCL e link do report por log | localStorage | localStorage |

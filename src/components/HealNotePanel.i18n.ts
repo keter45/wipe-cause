@@ -32,6 +32,8 @@ const stateEn: Record<LineState, string> = {
 export const healNoteMsg = defineMessages(
   {
     title: 'CDs de cura',
+    collapse: 'Recolher',
+    expand: 'Expandir',
     hint: 'Cole a note de CDs do addon (NSRT/MRT). Cada linha é casada com o cast do player a até 30 s da hora chamada; "na hora" é a até 10 s, depois de descontar o desvio do relógio do addon em cada fase.',
     paste: 'Cole aqui a note de CDs do addon (formato NSRT: time:47;ph:1;tag:Fulano;spellid:97462;).',
     empty: 'Sem note para este boss: cole a note do addon para conferir os CDs.',
@@ -105,6 +107,8 @@ export const healNoteMsg = defineMessages(
   },
   {
     title: 'Healing CDs',
+    collapse: 'Collapse',
+    expand: 'Expand',
     hint: 'Paste the addon CD note (NSRT/MRT). Each line is matched to the player cast up to 30 s from the called time; "on time" is within 10 s, after removing the addon clock offset in each phase.',
     paste: 'Paste the addon CD note here (NSRT format: time:47;ph:1;tag:Name;spellid:97462;).',
     empty: 'No note for this boss: paste the addon note to check the CDs.',
