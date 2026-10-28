@@ -4,10 +4,13 @@ import { groupByBoss, summarizeNight } from '../../lib/night';
 import { raidOnly } from '../../lib/content';
 import { bestWipe, progressLabel } from '../../lib/phases';
 import { BossName } from '../Names';
-import { ATTENTION_SCORE, Card, dateOf, hm, timeOf, type CardDetail } from './common';
+import { ATTENTION_SCORE, Card, Section, Who, dateOf, hm, timeOf, type CardDetail } from './common';
 import { CausesSection, PeopleSection, Scoreboard } from './BossCard';
 import { intlLocale, useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
+import { SpellName } from '../SpellIcon';
+import { metricNight, savedBossMetrics, type MetricNight } from '../../lib/bossMetrics';
+import { bossMetricsMsg } from '../BossMetrics.i18n';
 
 /**
  * A noite inteira (só raid). Resumo: cada boss com kill ou melhor %, as maiores causas, quem
@@ -62,7 +65,78 @@ export function NightShareCard({ pulls: all, detail = 'summary' }: { pulls: Pull
         <PeopleSection attention={attention} players={players} full={full} />
       </div>
 
+      <GroupMetrics pulls={pulls} full={full} />
+
       {full && <Scoreboard players={players} />}
     </Card>
+  );
+}
+
+/** Quantos players aparecem por métrica no resumo (o completo mostra todos). */
+const METRIC_PEOPLE = 3;
+
+/** As Métricas do grupo que o usuário escolheu no resumo de cada boss (salvas por boss). */
+function GroupMetrics({ pulls, full }: { pulls: Pull[]; full: boolean }) {
+  const t = useMessages(shareMsg);
+  const bosses = groupByBoss(pulls)
+    .map(({ key, pulls: ps }) => ({
+      key,
+      encounterId: ps[0].encounterId,
+      metrics: savedBossMetrics(ps[0].encounterId)
+        .map((k) => metricNight(ps, k))
+        .filter((m): m is MetricNight => m != null),
+    }))
+    .filter((b) => b.metrics.length);
+  if (!bosses.length) return null;
+  return (
+    <Section title={t.groupMetrics}>
+      {bosses.map((b) => (
+        <div key={b.key} className="share-metrics">
+          {bosses.length > 1 && <BossName encounterId={b.encounterId} name={b.key} size={16} />}
+          <ul>
+            {b.metrics.map((m) => (
+              <MetricLine key={m.key} m={m} full={full} />
+            ))}
+          </ul>
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+function MetricLine({ m, full }: { m: MetricNight; full: boolean }) {
+  const t = useMessages(bossMetricsMsg);
+  const ts = useMessages(shareMsg);
+  const yd = m.unit === 'yd';
+  const stack = m.kind === 'stack_limit';
+  const all = m.perPull.length;
+  const stats = yd
+    ? m.total === 0
+      ? t.cleanYards
+      : t.statsYards(m.total, m.pullsWithFailure, all)
+    : m.total === 0
+      ? t.clean
+      : stack
+        ? t.statsStack(m.players.length, m.pullsWithFailure, all)
+        : t.stats(m.total, m.pullsWithFailure, all);
+  const people = full ? m.players : m.players.slice(0, METRIC_PEOPLE);
+  return (
+    <li>
+      <strong>
+        <SpellName spellId={m.spellId} name={m.name} size={16} />
+      </strong>{' '}
+      <span className={m.total ? 'share-muted' : 'share-kill'}>— {stats}</span>
+      {people.length > 0 && (
+        <div className="share-metric-people">
+          {people.map((p, i) => (
+            <span key={p.guid}>
+              {i > 0 && ' · '}
+              <Who name={p.name} cls={p.class} /> <span className="share-muted">{yd ? t.yards(p.count) : stack ? t.maxStacks(p.max) : t.times(p.count)}</span>
+            </span>
+          ))}
+          {m.players.length > people.length && <span className="share-muted"> · {ts.more(m.players.length - people.length)}</span>}
+        </div>
+      )}
+    </li>
   );
 }

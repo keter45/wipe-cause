@@ -65,7 +65,7 @@ In the **boss summary**: the best pull, the top cause of the wipes, progress pul
 
 ### Group metrics
 
-Pick the mechanics that matter to the group under **Add metric** (the ones that failed most come first). Each one becomes a card with the failures pull by pull — click a bar to open the pull —, who failed and who helped. You can reorder and remove them; the choice is saved for that boss.
+Pick the mechanics that matter to the group under **Add metric** (the ones that failed most come first). Each one becomes a card with the failures pull by pull — click a bar to open the pull —, who failed and who helped. You can reorder and remove them; the choice is saved for that boss. The night summary (on Discord and through *Share*) also shows these metrics for each boss, with who failed most.
 
 ![Group metrics: Stir the Depths, Visceral Burst and Eternal Venom cards with the failures per pull, who failed and who helped](screenshots/en/metrics.webp)
 
