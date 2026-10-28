@@ -2415,6 +2415,14 @@ fn gaze_culprits(m: &Mechanic, st: &mut MechState, log: &GazeLog) {
                     "{me} ficou de costas para o próprio fantasma {away_pt} dos {win_pt} antes de ele encostar em outro",
                     "{me} had their back to their own ghost for {away_en} of the {win_en} before it touched another one"
                 ),
+                (Some(false), _) if v.walked_earlier => {
+                    let s = v.stopped_ms.unwrap_or(0) as f64 / 1000.0;
+                    let (s_pt, s_en) = (fmt_secs(s, false), fmt_secs(s, true));
+                    tx!(
+                        "{me} deixou o fantasma andar ~{yd} jd, mas ele parou {s_pt} antes; o de {other} andou por último e encostou nele (estimado pela simulação)",
+                        "{me} let their ghost walk ~{yd} yd, but it stopped {s_en} before; {other}'s walked last and touched it (estimated by the simulation)"
+                    )
+                }
                 (Some(false), _) => tx!("{me} olhava para o próprio fantasma (de costas só {away_pt} dos {win_pt})", "{me} was looking at their own ghost (back turned only {away_en} of the {win_en})"),
                 (None, _) => tx!("{me}: sem dados de para onde olhava", "{me}: no data on where they were facing"),
             };

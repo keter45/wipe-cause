@@ -316,6 +316,8 @@ mechanics:
       Também culpado (28/10): o fantasma que andou pelo menos 3 jd e um quarto do caminho na
       simulação (sim), quando os dois simulados terminam a até 8 jd na colisão; de 15 colisões
       em 21, 22 e 26/10, o culpado passou de 2 para 14 (docs/coiled-altar-replay-audit.md).
+      Os dois andaram: culpado é só o que andou por último (o outro já estava parado; até 1s de
+      diferença, os dois).
       Debuff em um só player = os dois fantasmas eram dele, ou o outro alvo morreu/estava imune.
 
   - key: soul_sever
