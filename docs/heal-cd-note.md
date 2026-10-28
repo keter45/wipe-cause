@@ -9,7 +9,7 @@ Estado: as três etapas do design (note e timing; golpes e uso; overheal e note 
 
 ## 1. Onde aparece
 
-- **Resumo do boss** (foco Guilda): seção "CDs de cura", depois dos tempos de fase, com uma tabela
+- **Resumo do boss** (foco Guilda): seção "CDs de cura" no fim, que recolhe e expande (a escolha fica no navegador), com uma tabela
   por versão da note: por linha, quantos pulls foram "na hora" entre os que chegaram nela e o Δ
   mediano.
 - **Aba "CDs de cura" do pull**: a mesma tabela para um pull, com o estado de cada linha e o Δ

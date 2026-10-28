@@ -177,7 +177,6 @@ function BossSummaryInner({ title, pulls, onSelectPull, live }: Props & { title:
 
       <BossMetrics pulls={s.pulls} onSelectPull={onSelectPull} />
       <NightPhaseTimes pulls={s.pulls} onSelectPull={onSelectPull} />
-      <HealNotePanel pulls={s.pulls} live={live} />
       <NightStackOrigins pulls={s.pulls} />
 
       <div className="two-col">
@@ -203,6 +202,8 @@ function BossSummaryInner({ title, pulls, onSelectPull, live }: Props & { title:
         <h3>{t.scoreboard}</h3>
         <Scoreboard players={s.players} />
       </section>
+
+      <HealNotePanel pulls={s.pulls} live={live} collapsible />
     </div>
   );
 }

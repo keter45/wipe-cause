@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Copy, HeartPulse, Play } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, HeartPulse, Play } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { mmss, shortName } from '../lib/format';
 import { healCd } from '../lib/healCooldowns';
@@ -22,6 +22,17 @@ interface Props {
   live?: boolean;
   /** ▶: abre o replay do pull nesse instante (só quando o replay completo pode ser carregado) */
   onReplay?: (t: number) => void;
+  /** resumo da noite: o painel recolhe e expande (a escolha fica no navegador) */
+  collapsible?: boolean;
+}
+
+const OPEN_KEY = 'wipe-cause:heal-note-open';
+function savedOpen(): boolean {
+  try {
+    return localStorage.getItem(OPEN_KEY) !== '0';
+  } catch {
+    return true;
+  }
 }
 
 /** referências de fora do healer (análise de healer, docs/healer-analysis.md §2) */
@@ -31,8 +42,18 @@ const sec = (ms: number) => `${ms >= 0 ? '+' : '−'}${(Math.abs(ms) / 1000).toF
 const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('pt-BR');
 
 /** A note de CDs de cura do líder conferida contra os pulls (regras em docs/heal-cd-note.md). */
-export function HealNotePanel({ pulls, focus, live = false, onReplay }: Props) {
+export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsible = false }: Props) {
   const t = useMessages(healNoteMsg);
+  const [expanded, setExpanded] = useState(savedOpen);
+  const open = !collapsible || expanded;
+  const toggle = () => {
+    setExpanded(!expanded);
+    try {
+      localStorage.setItem(OPEN_KEY, expanded ? '0' : '1');
+    } catch {
+      // sem localStorage: vale só nesta tela
+    }
+  };
   const boss = focus ?? pulls[0];
   const [versions, setVersions] = useState<NoteVersion[]>(() => (boss ? noteVersions(boss) : []));
 
@@ -101,178 +122,187 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay }: Props) {
         <h3>
           <HeartPulse size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.title} <Hint>{t.hint}</Hint>
         </h3>
+        {collapsible && (
+          <button className="btn ghost sm" onClick={toggle} aria-expanded={open} aria-label={open ? t.collapse : t.expand} title={open ? t.collapse : t.expand}>
+            {open ? <ChevronUp size={14} strokeWidth={1.75} aria-hidden /> : <ChevronDown size={14} strokeWidth={1.75} aria-hidden />} {open ? t.collapse : t.expand}
+          </button>
+        )}
       </header>
-      <NoteBox pull={boss} nightPulls={pulls} live={live} versions={versions} onChange={setVersions} placeholder={t.paste} />
+      {open && (
+        <>
+          <NoteBox pull={boss} nightPulls={pulls} live={live} versions={versions} onChange={setVersions} placeholder={t.paste} />
 
-      {!versions.length && <p className="muted small">{t.empty}</p>}
-      {mismatch && <p className="warn small">{t.headerMismatch(header?.name ?? '')}</p>}
-      {unknown.length > 0 && <p className="muted small">{t.unknownTags(unknown.join(', '))}</p>}
+          {!versions.length && <p className="muted small">{t.empty}</p>}
+          {mismatch && <p className="warn small">{t.headerMismatch(header?.name ?? '')}</p>}
+          {unknown.length > 0 && <p className="muted small">{t.unknownTags(unknown.join(', '))}</p>}
 
-      {notePhs.length > 0 && (
-        <p className="small heal-note-phases">
-          <span className="muted">
-            {t.phases} <Hint>{t.offsetHint}</Hint>:
-          </span>{' '}
-          {notePhs.map((ph, i) => {
-            const o = offsets.get(ph);
-            return (
-              <span key={ph}>
-                {i > 0 && ' · '}
-                <strong>ph:{ph}</strong> = {phaseNames.get(ph) || (phaseNames.has(ph) ? `P${ph}` : <span className="muted">{t.noPair}</span>)}
-                {o && !o.first && (
-                  <span className={o.applied ? '' : 'muted'}>
-                    {' '}
-                    ({t.offset(sec(o.offsetMs))}, {o.applied ? t.applied : t.notApplied})
+          {notePhs.length > 0 && (
+            <p className="small heal-note-phases">
+              <span className="muted">
+                {t.phases} <Hint>{t.offsetHint}</Hint>:
+              </span>{' '}
+              {notePhs.map((ph, i) => {
+                const o = offsets.get(ph);
+                return (
+                  <span key={ph}>
+                    {i > 0 && ' · '}
+                    <strong>ph:{ph}</strong> = {phaseNames.get(ph) || (phaseNames.has(ph) ? `P${ph}` : <span className="muted">{t.noPair}</span>)}
+                    {o && !o.first && (
+                      <span className={o.applied ? '' : 'muted'}>
+                        {' '}
+                        ({t.offset(sec(o.offsetMs))}, {o.applied ? t.applied : t.notApplied})
+                      </span>
+                    )}
+                    {o?.first && <span className="muted"> ({t.first})</span>}
                   </span>
+                );
+              })}
+            </p>
+          )}
+
+          {focus && versions.length > 0 && !versionOf.get(focus.id) && <p className="muted small">{t.noVersion}</p>}
+          {noSeries && <p className="muted small">{t.reanalyze}</p>}
+
+          {[...groups.entries()].map(([savedAt, ps]) => {
+            const note = parsed.get(savedAt);
+            if (!note) return null;
+            const idx = versions.findIndex((v) => v.savedAt === savedAt) + 1;
+            const summary = new Map(summarizeLines(checks, ps).map((s) => [s.lineIndex, s]));
+            const one = focus ? new Map((checks.get(focus.id) ?? []).map((c) => [c.lineIndex, c])) : null;
+            const uses = new Map<number, UseVerdict[]>();
+            for (const p of ps) for (const [i, v] of verdicts.get(p.id)?.lines ?? []) (uses.get(i) ?? uses.set(i, []).get(i)!).push(v);
+            const ohOf = (l: NoteLine) => {
+              const who = l.tag ? people.get(norm(l.tag)) : undefined;
+              const cd = l.spellId != null ? healCd(l.spellId) : undefined;
+              return who && cd ? nightOH.get(`${who.guid}:${cd.id}`) : undefined;
+            };
+            return (
+              <div key={savedAt} className="heal-note-version">
+                {!focus && <h4 className="recap-title">{t.versionOf(idx, ps.length)}</h4>}
+                <table className="players heal-note-table">
+                  <thead>
+                    <tr>
+                      <th>{t.when}</th>
+                      <th>{t.who}</th>
+                      <th>{t.cd}</th>
+                      <th>{t.result}</th>
+                      <th className="num">
+                        {t.delta} <Hint>{t.deltaHint}</Hint>
+                      </th>
+                      <th>
+                        {t.useCol} <Hint>{t.useHint}</Hint>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {note.lines.map((l, i) =>
+                      l.ph == null ? null : (
+                        <Row key={i} line={l} check={one?.get(i)} summary={summary.get(i)} uses={uses.get(i) ?? []} night={ohOf(l)} focus={!!focus} person={l.tag ? people.get(norm(l.tag)) : undefined} spellName={l.spellId != null ? nameOf(l.spellId) : ''} />
+                      ),
+                    )}
+                  </tbody>
+                </table>
+                {!focus && (
+                  <Suggestion
+                    note={note}
+                    s={suggest(note, ps, offsets, checks, ms, verdicts, refsOf)}
+                    moment={(key) => {
+                      const m = ms.find((x) => x.key === key)!;
+                      const nt = noteTime(m);
+                      return (
+                        <>
+                          P{nt.ph} +{mmss(Math.max(0, nt.ms))} · <SpellName spellId={m.spellId ?? m.anchorSpell} name={enemyNames.get(m.spellId ?? m.anchorSpell) ?? `#${m.spellId}`} size={16} />{' '}
+                          <span className="muted small">{t.afterCast(enemyNames.get(m.anchorSpell) ?? '', m.k)}</span>
+                        </>
+                      );
+                    }}
+                    person={(guid) => [...people.values()].find((x) => x.guid === guid)}
+                    nameOf={nameOf}
+                  />
                 )}
-                {o?.first && <span className="muted"> ({t.first})</span>}
-              </span>
+              </div>
             );
           })}
-        </p>
-      )}
 
-      {focus && versions.length > 0 && !versionOf.get(focus.id) && <p className="muted small">{t.noVersion}</p>}
-      {noSeries && <p className="muted small">{t.reanalyze}</p>}
+          {ms.length > 0 && (
+            <div className="heal-note-version">
+              <h4 className="recap-title">
+                {t.hitsTitle} <Hint>{t.hitsHint}</Hint>
+              </h4>
+              <table className="players heal-note-table">
+                <thead>
+                  <tr>
+                    <th>{t.when}</th>
+                    <th>{t.skill}</th>
+                    <th>{t.hitIn}</th>
+                    <th className="num">{t.size}</th>
+                    <th>{t.covered}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ms
+                    .filter((m) => shownPulls.some((p) => m.pulls.has(p.id)))
+                    .map((m) => {
+                      const nt = noteTime(m);
+                      const reached = shownPulls.filter((p) => m.pulls.has(p.id));
+                      const uncovered = reached.filter((p) => verdicts.get(p.id)?.uncovered.includes(m.key)).length;
+                      const here = focus ? m.pulls.get(focus.id) : undefined;
+                      return (
+                        <tr key={m.key}>
+                          <td className="muted">
+                            P{nt.ph} +{mmss(Math.max(0, nt.ms))}
+                            {nt.appClock && <span className="muted"> ({t.appClock})</span>}
+                          </td>
+                          <td>
+                            <SpellName spellId={m.spellId ?? m.anchorSpell} name={enemyNames.get(m.spellId ?? m.anchorSpell) ?? `#${m.spellId}`} size={16} />{' '}
+                            <span className="muted small">{t.afterCast(enemyNames.get(m.anchorSpell) ?? '', m.k)}</span>
+                          </td>
+                          <td className="muted">{focus ? (here?.hit ? t.yes : t.belowLimit) : t.hitOf(m.withHit, m.pulls.size)}</td>
+                          <td className="num muted">{m.medianSize != null ? `${Math.round(m.medianSize * 100)}%` : ''}</td>
+                          <td>
+                            {focus ? (
+                              <span className={uncovered ? 'bad' : 'ok-text'}>{uncovered ? t.noCd : t.withCd}</span>
+                            ) : (
+                              <span className={uncovered ? 'bad' : 'ok-text'}>{t.uncoveredOf(uncovered, reached.length)}</span>
+                            )}
+                            {focus && here && onReplay && (
+                              <button className="btn ghost sm" title={t.play} aria-label={t.play} onClick={() => onReplay(here.at)}>
+                                <Play size={12} aria-hidden />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-      {[...groups.entries()].map(([savedAt, ps]) => {
-        const note = parsed.get(savedAt);
-        if (!note) return null;
-        const idx = versions.findIndex((v) => v.savedAt === savedAt) + 1;
-        const summary = new Map(summarizeLines(checks, ps).map((s) => [s.lineIndex, s]));
-        const one = focus ? new Map((checks.get(focus.id) ?? []).map((c) => [c.lineIndex, c])) : null;
-        const uses = new Map<number, UseVerdict[]>();
-        for (const p of ps) for (const [i, v] of verdicts.get(p.id)?.lines ?? []) (uses.get(i) ?? uses.set(i, []).get(i)!).push(v);
-        const ohOf = (l: NoteLine) => {
-          const who = l.tag ? people.get(norm(l.tag)) : undefined;
-          const cd = l.spellId != null ? healCd(l.spellId) : undefined;
-          return who && cd ? nightOH.get(`${who.guid}:${cd.id}`) : undefined;
-        };
-        return (
-          <div key={savedAt} className="heal-note-version">
-            {!focus && <h4 className="recap-title">{t.versionOf(idx, ps.length)}</h4>}
-            <table className="players heal-note-table">
-              <thead>
-                <tr>
-                  <th>{t.when}</th>
-                  <th>{t.who}</th>
-                  <th>{t.cd}</th>
-                  <th>{t.result}</th>
-                  <th className="num">
-                    {t.delta} <Hint>{t.deltaHint}</Hint>
-                  </th>
-                  <th>
-                    {t.useCol} <Hint>{t.useHint}</Hint>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {note.lines.map((l, i) =>
-                  l.ph == null ? null : (
-                    <Row key={i} line={l} check={one?.get(i)} summary={summary.get(i)} uses={uses.get(i) ?? []} night={ohOf(l)} focus={!!focus} person={l.tag ? people.get(norm(l.tag)) : undefined} spellName={l.spellId != null ? nameOf(l.spellId) : ''} />
-                  ),
-                )}
-              </tbody>
-            </table>
-            {!focus && (
-              <Suggestion
-                note={note}
-                s={suggest(note, ps, offsets, checks, ms, verdicts, refsOf)}
-                moment={(key) => {
-                  const m = ms.find((x) => x.key === key)!;
-                  const nt = noteTime(m);
-                  return (
-                    <>
-                      P{nt.ph} +{mmss(Math.max(0, nt.ms))} · <SpellName spellId={m.spellId ?? m.anchorSpell} name={enemyNames.get(m.spellId ?? m.anchorSpell) ?? `#${m.spellId}`} size={16} />{' '}
-                      <span className="muted small">{t.afterCast(enemyNames.get(m.anchorSpell) ?? '', m.k)}</span>
-                    </>
-                  );
-                }}
-                person={(guid) => [...people.values()].find((x) => x.guid === guid)}
-                nameOf={nameOf}
-              />
-            )}
-          </div>
-        );
-      })}
-
-      {ms.length > 0 && (
-        <div className="heal-note-version">
-          <h4 className="recap-title">
-            {t.hitsTitle} <Hint>{t.hitsHint}</Hint>
-          </h4>
-          <table className="players heal-note-table">
-            <thead>
-              <tr>
-                <th>{t.when}</th>
-                <th>{t.skill}</th>
-                <th>{t.hitIn}</th>
-                <th className="num">{t.size}</th>
-                <th>{t.covered}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ms
-                .filter((m) => shownPulls.some((p) => m.pulls.has(p.id)))
-                .map((m) => {
-                  const nt = noteTime(m);
-                  const reached = shownPulls.filter((p) => m.pulls.has(p.id));
-                  const uncovered = reached.filter((p) => verdicts.get(p.id)?.uncovered.includes(m.key)).length;
-                  const here = focus ? m.pulls.get(focus.id) : undefined;
-                  return (
-                    <tr key={m.key}>
-                      <td className="muted">
-                        P{nt.ph} +{mmss(Math.max(0, nt.ms))}
-                        {nt.appClock && <span className="muted"> ({t.appClock})</span>}
-                      </td>
-                      <td>
-                        <SpellName spellId={m.spellId ?? m.anchorSpell} name={enemyNames.get(m.spellId ?? m.anchorSpell) ?? `#${m.spellId}`} size={16} />{' '}
-                        <span className="muted small">{t.afterCast(enemyNames.get(m.anchorSpell) ?? '', m.k)}</span>
-                      </td>
-                      <td className="muted">{focus ? (here?.hit ? t.yes : t.belowLimit) : t.hitOf(m.withHit, m.pulls.size)}</td>
-                      <td className="num muted">{m.medianSize != null ? `${Math.round(m.medianSize * 100)}%` : ''}</td>
-                      <td>
-                        {focus ? (
-                          <span className={uncovered ? 'bad' : 'ok-text'}>{uncovered ? t.noCd : t.withCd}</span>
-                        ) : (
-                          <span className={uncovered ? 'bad' : 'ok-text'}>{t.uncoveredOf(uncovered, reached.length)}</span>
-                        )}
-                        {focus && here && onReplay && (
-                          <button className="btn ghost sm" title={t.play} aria-label={t.play} onClick={() => onReplay(here.at)}>
+          {(() => {
+            const lows = shownPulls.flatMap((p) => (verdicts.get(p.id)?.lowWithoutHit ?? []).map((e) => ({ p, e })));
+            if (!lows.length) return null;
+            return (
+              <p className="small">
+                <strong>{t.lowTitle}</strong> <Hint>{t.lowHint}</Hint>:{' '}
+                {focus
+                  ? lows.map(({ e }, i) => (
+                      <span key={i}>
+                        {i > 0 && ' · '}
+                        {mmss(e.start)}–{mmss(e.end)}
+                        {onReplay && (
+                          <button className="btn ghost sm" title={t.play} aria-label={t.play} onClick={() => onReplay(e.start)}>
                             <Play size={12} aria-hidden />
                           </button>
                         )}
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
+                      </span>
+                    ))
+                  : t.lowCount(lows.length, new Set(lows.map((x) => x.p.id)).size)}
+              </p>
+            );
+          })()}
+        </>
       )}
-
-      {(() => {
-        const lows = shownPulls.flatMap((p) => (verdicts.get(p.id)?.lowWithoutHit ?? []).map((e) => ({ p, e })));
-        if (!lows.length) return null;
-        return (
-          <p className="small">
-            <strong>{t.lowTitle}</strong> <Hint>{t.lowHint}</Hint>:{' '}
-            {focus
-              ? lows.map(({ e }, i) => (
-                  <span key={i}>
-                    {i > 0 && ' · '}
-                    {mmss(e.start)}–{mmss(e.end)}
-                    {onReplay && (
-                      <button className="btn ghost sm" title={t.play} aria-label={t.play} onClick={() => onReplay(e.start)}>
-                        <Play size={12} aria-hidden />
-                      </button>
-                    )}
-                  </span>
-                ))
-              : t.lowCount(lows.length, new Set(lows.map((x) => x.p.id)).size)}
-          </p>
-        );
-      })()}
     </section>
   );
 }
