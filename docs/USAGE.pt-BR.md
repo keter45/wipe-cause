@@ -65,7 +65,7 @@ No **resumo do boss**: o melhor pull, a maior causa dos wipes, o progresso pull 
 
 ### Métricas do grupo
 
-Escolha as mecânicas que importam para o grupo em **Adicionar métrica** (as que mais falharam vêm primeiro). Cada uma vira um cartão com as falhas pull a pull — clique numa barra para abrir o pull —, quem errou e quem ajudou. Dá para reordenar e tirar; a escolha fica salva para aquele boss.
+Escolha as mecânicas que importam para o grupo em **Adicionar métrica** (as que mais falharam vêm primeiro). Cada uma vira um cartão com as falhas pull a pull — clique numa barra para abrir o pull —, quem errou e quem ajudou. Dá para reordenar e tirar; a escolha fica salva para aquele boss. O resumo da noite (no Discord e no *Compartilhar*) também mostra essas métricas de cada boss, com quem mais errou.
 
 ![Métricas do grupo: cartões de Stir the Depths, Visceral Burst e Eternal Venom com as falhas por pull, quem errou e quem ajudou](screenshots/pt/metrics.webp)
 

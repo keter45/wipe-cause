@@ -98,6 +98,7 @@ export const shareMsg = defineMessages(
     inCombat: (t: string) => ` · ${t} em combate`,
     bestWipe: (hp: string) => ` · melhor wipe ${hp}`,
     topWipeCauses: 'Maiores causas de wipe',
+    groupMetrics: 'Métricas do grupo',
 
     // solo
     cost: (amount: string, healer: boolean) => `~${amount} de ${healer ? 'cura' : 'dano'}`,
@@ -218,6 +219,7 @@ export const shareMsg = defineMessages(
     inCombat: (t: string) => ` · ${t} in combat`,
     bestWipe: (hp: string) => ` · best wipe ${hp}`,
     topWipeCauses: 'Top wipe causes',
+    groupMetrics: 'Group metrics',
 
     cost: (amount: string, healer: boolean) => `~${amount} ${healer ? 'healing' : 'damage'}`,
     costHigh: 'high cost',

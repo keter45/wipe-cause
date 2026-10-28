@@ -6290,6 +6290,15 @@ button.kpi:hover {
   text-transform: none;
   letter-spacing: 0;
 }
+.share-metrics + .share-metrics {
+  margin-top: 10px;
+}
+.share-metrics > ul {
+  margin-top: 4px;
+}
+.share-metric-people {
+  font-size: 13px;
+}
 .share-card li.share-more {
   list-style: none;
   margin-left: -16px;
