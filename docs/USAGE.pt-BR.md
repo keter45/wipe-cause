@@ -81,6 +81,10 @@ Fases em que o boss fica imune até o raid resolver a mecânica são cronometrad
 
 ![Tempo do Vitriolic Stasis pull a pull no Entombed Sentinels, com o melhor tempo de cada vez e as mortes na fase](screenshots/pt/phase.png)
 
+### CDs de cura da note
+
+Cole a note de CDs do addon (NSRT, a que o MRT mostra) na seção **CDs de cura** do resumo do boss ou na aba do pull. Cada linha é casada com o cast do player: **na hora** (até 10 s), adiantado, atrasado ou não usou, e sem culpa quando a fase não chegou, acabou antes, o player morreu ou não tem a spell. O app mede e desconta o desvio do relógio do addon em cada fase (no The Coiled Altar, o P2 do addon começa uns 8 s depois). Quando a note mudar entre as tries, clique em **Nova versão** antes de editar: cada pull é julgado pela versão que valia nele. A mesma caixa serve à escala de interrupts, que sai do bloco `intstart`…`intend`. Regras: [heal-cd-note.md](heal-cd-note.md).
+
 ## Mais recursos
 
 ### 🔴 Modo ao vivo e Discord

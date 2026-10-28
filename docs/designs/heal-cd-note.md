@@ -428,7 +428,7 @@ intend      = "intend"
     Interrupts, o placar, o Discord e a IA leem dela como sempre. As versões
     ficam numa chave nova (`wipe-cause:heal-note:<encounter>:<dificuldade>`),
     uma lista de `{ text, savedAt, night, fromPull, fromPullManual }` (`night` = a data local,
-    `YYYY-MM-DD`, do `startLocal` do primeiro pull do boss no relatório, ou
+    `YYYY-MM-DD`, de `startMs` + `tzOffsetHours` do primeiro pull do boss no relatório, ou
     nulo; `fromPull` = `pullNumber`), com as últimas `MAX_VERSIONS` (sai a de
     `savedAt` mais antigo). Na primeira leitura, o texto da chave atual vira a
     primeira versão, sem noite.
@@ -1033,7 +1033,7 @@ nomes e valores da tabela [Constantes](#constantes). Chave atual =
     *   Versões, pela regra de [Versões da note](#versões-da-note), com o tipo
         `NoteVersion = { text: string; savedAt: number; night: string | null;
         fromPull: number; fromPullManual: boolean }` (`night` = `YYYY-MM-DD`
-        do `startLocal` do primeiro pull do boss; `fromPull` = `pullNumber`):
+        de `startMs` + `tzOffsetHours` do primeiro pull do boss; `fromPull` = `pullNumber`):
         *   `noteVersions(key)`;
         *   `editNote(key, text, nightPulls, live)`: os itens 1–3 e 5 de
             "Salvar";

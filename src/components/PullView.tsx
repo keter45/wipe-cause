@@ -17,6 +17,7 @@ import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
 import { MechanicsView } from './MechanicsView';
 import { InterruptsView } from './InterruptsView';
+import { HealNotePanel } from './HealNotePanel';
 import { openExternal, type WcrVideo } from '../lib/api';
 import { SeekContext } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
@@ -39,7 +40,7 @@ import { messagesOf, useMessages } from '../i18n';
 import { pullMsg } from './PullView.i18n';
 import { wipeCallText } from '../lib/wipeCall';
 
-type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'players' | 'perf' | 'spells' | 'replay' | 'ask';
+type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'healcds' | 'players' | 'perf' | 'spells' | 'replay' | 'ask';
 
 /** Aba aberta por último em cada modo: continua nela ao trocar de pull ou voltar das Configurações. */
 const lastTab: Record<AppMode, Tab> = { guild: 'deaths', solo: 'me' };
@@ -56,6 +57,8 @@ interface Props {
   nightPulls?: Pull[];
   /** regras do boss ajustadas: reanalisar o log aberto */
   onRulesChanged?: () => void;
+  /** o relatório está ao vivo (versão nova da note começa no pull seguinte) */
+  live?: boolean;
 }
 
 /** HP de um boss: no corte ("ignorar após N mortes"), se houver. */
@@ -73,7 +76,7 @@ export function PullView(props: Props) {
   );
 }
 
-function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Props) {
+function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live = false }: Props) {
   const t = useMessages(pullMsg);
   useMarks(pull);
   const replayData = useMemo(() => decodeReplay(pull), [pull]);
@@ -147,6 +150,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
         { key: 'deaths', label: t.tabs.deaths, count: deathCount },
         { key: 'mechanics', label: t.tabs.mechanics, count: pull.rulesFile ? mechFailures : undefined },
         { key: 'interrupts', label: t.tabs.interrupts },
+        { key: 'healcds', label: t.tabs.healCds },
       ],
     },
     {
@@ -333,7 +337,8 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged }: Prop
           }
         />
       )}
-      {tab === 'interrupts' && <InterruptsView pull={pull} />}
+      {tab === 'interrupts' && <InterruptsView pull={pull} nightPulls={nightPulls ?? [pull]} live={live} />}
+      {tab === 'healcds' && <HealNotePanel key={pull.id} pulls={nightPulls ?? [pull]} focus={pull} live={live} />}
       {tab === 'players' && <PlayersTab pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} />}
       {tab === 'me' && <SoloPullView pull={pull} nightPulls={nightPulls ?? [pull]} />}
       {tab === 'perf' && <PerformanceView pull={pull} nightPulls={nightPulls ?? [pull]} wclCode={wclCode} defaultGuid={solo ? meIn(pull, chosen)?.guid : undefined} solo={solo && !!meIn(pull, chosen)} />}
