@@ -42,9 +42,12 @@ export function Card({
   big,
   bigTone,
   foot,
+  className = '',
   children,
 }: {
   tone: 'kill' | 'wipe' | 'neutral';
+  /** classe extra do cartão (largura própria) */
+  className?: string;
   /** cartão completo: mais largo, para as tabelas */
   wide?: boolean;
   title: ReactNode;
@@ -55,7 +58,7 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <div className={`share-card ${tone} ${wide ? 'wide' : ''}`}>
+    <div className={`share-card ${tone} ${wide ? 'wide' : ''} ${className}`}>
       <header className="share-head">
         <div>
           <div className="share-title">{title}</div>

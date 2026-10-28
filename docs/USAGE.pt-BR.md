@@ -65,7 +65,7 @@ No **resumo do boss**: o melhor pull, a maior causa dos wipes, o progresso pull 
 
 ### Métricas do grupo
 
-Escolha as mecânicas que importam para o grupo em **Adicionar métrica** (as que mais falharam vêm primeiro). Cada uma vira um cartão com as falhas pull a pull — clique numa barra para abrir o pull —, quem errou e quem ajudou. Dá para reordenar e tirar; a escolha fica salva para aquele boss. O resumo da noite (no Discord e no *Compartilhar*) também mostra essas métricas de cada boss, com quem mais errou.
+Escolha as mecânicas que importam para o grupo em **Adicionar métrica** (as que mais falharam vêm primeiro). Cada uma vira um cartão com as falhas pull a pull — clique numa barra para abrir o pull —, quem errou e quem ajudou. Dá para reordenar e tirar; a escolha fica salva para aquele boss. O resumo da noite (no Discord e no *Compartilhar*) também mostra essas métricas de cada boss, com quem mais errou; no Discord, os cartões completos chegam logo depois, numa mensagem à parte.
 
 ![Métricas do grupo: cartões de Stir the Depths, Visceral Burst e Eternal Venom com as falhas por pull, quem errou e quem ajudou](screenshots/pt/metrics.webp)
 
@@ -95,7 +95,7 @@ Fechar a janela deixa o app na bandeja (perto do relógio), com o ao vivo rodand
 
 O aviso do pull tem um campo para anotar o motivo do wipe na hora, do jeito que a raid percebeu (ele não some enquanto você escreve). A anotação fica salva no PC, aparece no topo do pull (onde dá para editar depois), marca o pull na lista, vai no cartão de compartilhar e entra no contexto do "Perguntar à IA".
 
-Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar*. Cada envio automático (wipe, kill, resumo da noite e o clipe do wipe) liga e desliga separado, e **Enviar teste** confere o webhook. O botão **Discord** no topo pausa e religa o envio automático sem mexer nas opções (o *Compartilhar* continua funcionando).
+Em **Configurações → Discord**, cole o webhook do canal da raid. No modo ao vivo, tudo chega como imagem (o mesmo cartão do *Compartilhar*): em cada wipe, o motivo do wipe; em cada kill, o resumo do boss; e no fim da raid (ao vivo desligado ou 30 min sem pull novo), o resumo da noite e, em outra mensagem, os cartões das Métricas do grupo. O pull, o resumo do boss e o resumo da noite também enviam na hora pelo *Compartilhar*. Cada envio automático (wipe, kill, resumo da noite e o clipe do wipe) liga e desliga separado, e **Enviar teste** confere o webhook. O botão **Discord** no topo pausa e religa o envio automático sem mexer nas opções (o *Compartilhar* continua funcionando).
 
 ### 📤 Compartilhar
 

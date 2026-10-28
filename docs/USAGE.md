@@ -65,7 +65,7 @@ In the **boss summary**: the best pull, the top cause of the wipes, progress pul
 
 ### Group metrics
 
-Pick the mechanics that matter to the group under **Add metric** (the ones that failed most come first). Each one becomes a card with the failures pull by pull — click a bar to open the pull —, who failed and who helped. You can reorder and remove them; the choice is saved for that boss. The night summary (on Discord and through *Share*) also shows these metrics for each boss, with who failed most.
+Pick the mechanics that matter to the group under **Add metric** (the ones that failed most come first). Each one becomes a card with the failures pull by pull — click a bar to open the pull —, who failed and who helped. You can reorder and remove them; the choice is saved for that boss. The night summary (on Discord and through *Share*) also shows these metrics for each boss, with who failed most; on Discord, the full cards arrive right after, in a separate message.
 
 ![Group metrics: Stir the Depths, Visceral Burst and Eternal Venom cards with the failures per pull, who failed and who helped](screenshots/en/metrics.webp)
 
@@ -95,7 +95,7 @@ Closing the window leaves the app in the tray (near the clock) with live mode ru
 
 The pull notification has a field to note the reason for the wipe right away, the way the raid saw it (it doesn't disappear while you type). The note is saved on the PC, shows at the top of the pull (where you can edit it later), marks the pull in the list, goes on the share card and into the "Ask the AI" context.
 
-In **Settings → Discord**, paste the raid channel's webhook. In live mode, everything arrives as an image (the same card as *Share*): on every wipe, the reason for the wipe; on every kill, the boss summary; and at the end of the raid (live turned off or 30 min with no new pull), the night summary. The pull, the boss summary and the night summary can also be sent right away through *Share*. Each automatic post (wipe, kill, night summary and the wipe clip) turns on and off separately, and **Send test** checks the webhook. The **Discord** button at the top pauses and resumes automatic posting without touching the options (*Share* keeps working).
+In **Settings → Discord**, paste the raid channel's webhook. In live mode, everything arrives as an image (the same card as *Share*): on every wipe, the reason for the wipe; on every kill, the boss summary; and at the end of the raid (live turned off or 30 min with no new pull), the night summary and, in another message, the Group metrics cards. The pull, the boss summary and the night summary can also be sent right away through *Share*. Each automatic post (wipe, kill, night summary and the wipe clip) turns on and off separately, and **Send test** checks the webhook. The **Discord** button at the top pauses and resumes automatic posting without touching the options (*Share* keeps working).
 
 ### 📤 Share
 

@@ -1,6 +1,6 @@
 // Discord no modo ao vivo, tudo como imagem (o mesmo cartão do "Compartilhar"):
 //   wipe -> o cartão do pull (motivo do wipe) e o clipe com o resumo da try, kill -> o resumo do boss, fim da raid -> o
-//   resumo da noite. O fim da raid é quando o ao vivo é desligado ou 30 min sem pull novo.
+//   resumo da noite e, em outra mensagem, os cartões das Métricas do grupo. O fim da raid é quando o ao vivo é desligado ou 30 min sem pull novo.
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { Pull } from '../types';
@@ -11,6 +11,8 @@ import { PlayerClassesContext, playerClasses } from './players';
 import { cardPng, fileSlug, sendPngToDiscord, sendToDiscord } from './share';
 import { BossShareCard } from '../components/share/BossCard';
 import { NightShareCard } from '../components/share/NightCard';
+import { MetricsShareCard } from '../components/share/MetricsCard';
+import { nightBossMetrics } from './bossMetrics';
 import { PullShareCard } from '../components/share/PullCard';
 import { messagesOf } from '../i18n';
 import { discordMsg } from './discord.i18n';
@@ -54,6 +56,8 @@ export async function postNightImage(all: Pull[]) {
   if (!raid.length) return;
   const day = raid[0].startLocal.split(' ')[0]?.split('/').slice(0, 2).reverse().join('/') ?? '';
   await send(<NightShareCard pulls={all} />, all, messagesOf(discordMsg).nightTitle(day));
+  // os cartões completos das métricas que o grupo escolheu em cada boss, numa mensagem à parte
+  if (nightBossMetrics(raid).length) await send(<MetricsShareCard pulls={all} />, all, messagesOf(discordMsg).metricsTitle(day));
 }
 
 /**

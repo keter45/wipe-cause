@@ -70,10 +70,12 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
               <MetricCard
                 key={key}
                 m={m}
-                onRemove={() => toggle(key)}
-                onMove={(dir) => setKeys(moveMetric(keys, key, dir))}
-                first={i === 0}
-                last={i === metrics.length - 1}
+                edit={{
+                  onRemove: () => toggle(key),
+                  onMove: (dir) => setKeys(moveMetric(keys, key, dir)),
+                  first: i === 0,
+                  last: i === metrics.length - 1,
+                }}
                 onSelectPull={onSelectPull}
               />
             ) : (
@@ -139,21 +141,20 @@ function AddMetric({ options, chosen, onToggle }: { options: MetricOption[]; cho
   );
 }
 
-function MetricCard({
+/**
+ * Cartão de uma métrica. No resumo do boss, com os botões de ordem e de tirar (`edit`) e as barras
+ * que abrem o pull; sem eles (imagem do Discord), só leitura, com as listas e a dica inteiras.
+ */
+export function MetricCard({
   m,
-  onRemove,
-  onMove,
-  first,
-  last,
+  edit,
   onSelectPull,
 }: {
   m: MetricNight;
-  onRemove: () => void;
-  onMove: (dir: -1 | 1) => void;
-  first: boolean;
-  last: boolean;
-  onSelectPull: (id: number) => void;
+  edit?: { onRemove: () => void; onMove: (dir: -1 | 1) => void; first: boolean; last: boolean };
+  onSelectPull?: (id: number) => void;
 }) {
+  const full = !edit;
   const t = useMessages(bossMetricsMsg);
   const peak = Math.max(1, ...m.perPull.map((x) => x.failures));
   const stack = m.kind === 'stack_limit';
@@ -174,17 +175,19 @@ function MetricCard({
           <SpellName spellId={m.spellId} name={m.name} size={18} />
           {yd && <span className="muted small"> · {t.walked}</span>}
         </strong>
-        <span className="metric-tools">
-          <button className="icon-btn" disabled={first} onClick={() => onMove(-1)} title={t.moveUp} aria-label={t.moveUp}>
-            <ArrowUp size={14} strokeWidth={1.5} aria-hidden />
-          </button>
-          <button className="icon-btn" disabled={last} onClick={() => onMove(1)} title={t.moveDown} aria-label={t.moveDown}>
-            <ArrowDown size={14} strokeWidth={1.5} aria-hidden />
-          </button>
-          <button className="icon-btn" onClick={onRemove} title={t.remove(m.name)} aria-label={t.remove(m.name)}>
-            <X size={14} strokeWidth={1.5} aria-hidden />
-          </button>
-        </span>
+        {edit && (
+          <span className="metric-tools">
+            <button className="icon-btn" disabled={edit.first} onClick={() => edit.onMove(-1)} title={t.moveUp} aria-label={t.moveUp}>
+              <ArrowUp size={14} strokeWidth={1.5} aria-hidden />
+            </button>
+            <button className="icon-btn" disabled={edit.last} onClick={() => edit.onMove(1)} title={t.moveDown} aria-label={t.moveDown}>
+              <ArrowDown size={14} strokeWidth={1.5} aria-hidden />
+            </button>
+            <button className="icon-btn" onClick={edit.onRemove} title={t.remove(m.name)} aria-label={t.remove(m.name)}>
+              <X size={14} strokeWidth={1.5} aria-hidden />
+            </button>
+          </span>
+        )}
       </header>
 
       <p className={`small metric-stats ${m.total ? '' : 'good'}`}>
@@ -193,35 +196,26 @@ function MetricCard({
       </p>
 
       <div className="metric-bars" role="img" aria-label={yd ? t.perPullYardsAria(m.name) : t.perPullAria(m.name)}>
-        {m.perPull.map(({ pull, failures }) => (
-          <button
-            key={pull.id}
-            className={`metric-bar ${failures ? 'hit' : ''} ${pull.success ? 'kill' : ''}`}
-            style={{ height: `${failures ? 18 + (failures / peak) * 82 : 6}%` }}
-            title={yd ? t.barYards(pull.pullNumber, failures) : t.barTitle(pull.pullNumber, failures)}
-            aria-label={yd ? t.barYards(pull.pullNumber, failures) : t.barTitle(pull.pullNumber, failures)}
-            onClick={() => onSelectPull(pull.id)}
-          />
-        ))}
+        {m.perPull.map(({ pull, failures }) => {
+          const label = yd ? t.barYards(pull.pullNumber, failures) : t.barTitle(pull.pullNumber, failures);
+          const bar = { className: `metric-bar ${failures ? 'hit' : ''} ${pull.success ? 'kill' : ''}`, style: { height: `${failures ? 18 + (failures / peak) * 82 : 6}%` }, title: label };
+          return onSelectPull ? <button key={pull.id} {...bar} aria-label={label} onClick={() => onSelectPull(pull.id)} /> : <span key={pull.id} {...bar} />;
+        })}
       </div>
 
       {/* nas falhas do raid a lista é de quem foi atingido; em failure_event, de quem causou */}
       {m.players.length > 0 && (
-        <PeopleList title={yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} tone="bad" />
+        <PeopleList title={yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} tone="bad" full={full} />
       )}
-      {m.helpers.length > 0 && <PeopleList title={t.helpers} people={m.helpers} tone="good" />}
-      {tr(m.tip) && (
-        <p className="muted small metric-tip">
-          <Clamp>{tr(m.tip)}</Clamp>
-        </p>
-      )}
+      {m.helpers.length > 0 && <PeopleList title={t.helpers} people={m.helpers} tone="good" full={full} />}
+      {tr(m.tip) && <p className="muted small metric-tip">{full ? tr(m.tip) : <Clamp>{tr(m.tip)}</Clamp>}</p>}
     </article>
   );
 }
 
-function PeopleList({ title, people, stack = false, yards = false, tone }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; tone: 'bad' | 'good' }) {
+function PeopleList({ title, people, stack = false, yards = false, tone, full = false }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; tone: 'bad' | 'good'; full?: boolean }) {
   const t = useMessages(bossMetricsMsg);
-  const [all, setAll] = useState(false);
+  const [all, setAll] = useState(full);
   const shown = all ? people : people.slice(0, TOP);
   return (
     <div className={`metric-people ${yards ? 'wide' : ''}`}>
@@ -235,7 +229,7 @@ function PeopleList({ title, people, stack = false, yards = false, tone }: { tit
           </li>
         ))}
       </ul>
-      {people.length > TOP && (
+      {people.length > TOP && !full && (
         <button className="btn ghost sm" onClick={() => setAll(!all)} aria-expanded={all}>
           {all ? '−' : t.more(people.length - TOP)}
         </button>

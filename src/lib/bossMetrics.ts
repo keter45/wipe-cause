@@ -5,6 +5,7 @@
 
 import type { MechanicResult, MechanicSeverity, Pull } from '../types';
 import { mechanicMistakes, mistakes } from './blame';
+import { groupByBoss } from './night';
 
 export interface MetricOption {
   key: string;
@@ -183,6 +184,19 @@ export function saveBossMetrics(encounterId: number, keys: string[]) {
   } catch {
     /* vale só nesta sessão */
   }
+}
+
+/** As métricas escolhidas de cada boss da noite (boss sem escolha fica de fora). */
+export function nightBossMetrics(pulls: Pull[]): { key: string; encounterId: number; metrics: MetricNight[] }[] {
+  return groupByBoss(pulls)
+    .map(({ key, pulls: ps }) => ({
+      key,
+      encounterId: ps[0].encounterId,
+      metrics: savedBossMetrics(ps[0].encounterId)
+        .map((k) => metricNight(ps, k))
+        .filter((m): m is MetricNight => m != null),
+    }))
+    .filter((b) => b.metrics.length > 0);
 }
 
 /** Move uma métrica uma posição para a frente (-1) ou para trás (+1). */

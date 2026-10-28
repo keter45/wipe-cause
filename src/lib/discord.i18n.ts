@@ -24,6 +24,7 @@ export const discordMsg = defineMessages(
     gap: (avg: string) => `entre trys: média ${avg}`,
     wipeTitle: (n: number, boss: string, hp: string) => `Wipe ${n} · ${boss} · boss em ${hp}`,
     nightTitle: (day: string) => `Resumo da noite · ${day}`,
+    metricsTitle: (day: string) => `Métricas do grupo · ${day}`,
   },
   {
     more: (n: number) => `+${n} more`,
@@ -46,5 +47,6 @@ export const discordMsg = defineMessages(
     gap: (avg: string) => `between tries: average ${avg}`,
     wipeTitle: (n: number, boss: string, hp: string) => `Wipe ${n} · ${boss} · boss at ${hp}`,
     nightTitle: (day: string) => `Night summary · ${day}`,
+    metricsTitle: (day: string) => `Group metrics · ${day}`,
   },
 );
