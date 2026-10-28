@@ -9,7 +9,7 @@ import { CausesSection, PeopleSection, Scoreboard } from './BossCard';
 import { intlLocale, useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
 import { SpellName } from '../SpellIcon';
-import { metricNight, savedBossMetrics, type MetricNight } from '../../lib/bossMetrics';
+import { nightBossMetrics, type MetricNight } from '../../lib/bossMetrics';
 import { bossMetricsMsg } from '../BossMetrics.i18n';
 
 /**
@@ -78,15 +78,7 @@ const METRIC_PEOPLE = 3;
 /** As Métricas do grupo que o usuário escolheu no resumo de cada boss (salvas por boss). */
 function GroupMetrics({ pulls, full }: { pulls: Pull[]; full: boolean }) {
   const t = useMessages(shareMsg);
-  const bosses = groupByBoss(pulls)
-    .map(({ key, pulls: ps }) => ({
-      key,
-      encounterId: ps[0].encounterId,
-      metrics: savedBossMetrics(ps[0].encounterId)
-        .map((k) => metricNight(ps, k))
-        .filter((m): m is MetricNight => m != null),
-    }))
-    .filter((b) => b.metrics.length);
+  const bosses = nightBossMetrics(pulls);
   if (!bosses.length) return null;
   return (
     <Section title={t.groupMetrics}>

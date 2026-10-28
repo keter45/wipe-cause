@@ -6281,6 +6281,16 @@ button.kpi:hover {
 .share-card.wide {
   width: 920px;
 }
+/* Métricas do grupo no Discord: três cartões por linha, como no resumo do boss */
+.share-card.metrics-card {
+  width: 1080px;
+}
+.share-metrics-boss + .share-metrics-boss {
+  margin-top: 16px;
+}
+.share-metrics-boss h4 {
+  margin: 0 0 8px;
+}
 .share-card.perf-card.perf-card-summary {
   width: 760px;
 }

@@ -99,6 +99,7 @@ export const shareMsg = defineMessages(
     bestWipe: (hp: string) => ` · melhor wipe ${hp}`,
     topWipeCauses: 'Maiores causas de wipe',
     groupMetrics: 'Métricas do grupo',
+    metricsSub: (day: string, pulls: number) => `${day ? `${day} · ` : ''}${n(pulls, 'pull', 'pulls')} · o que o grupo escolheu acompanhar em cada boss`,
 
     // solo
     cost: (amount: string, healer: boolean) => `~${amount} de ${healer ? 'cura' : 'dano'}`,
@@ -220,6 +221,7 @@ export const shareMsg = defineMessages(
     bestWipe: (hp: string) => ` · best wipe ${hp}`,
     topWipeCauses: 'Top wipe causes',
     groupMetrics: 'Group metrics',
+    metricsSub: (day: string, pulls: number) => `${day ? `${day} · ` : ''}${n(pulls, 'pull', 'pulls')} · what the group chose to track on each boss`,
 
     cost: (amount: string, healer: boolean) => `~${amount} ${healer ? 'healing' : 'damage'}`,
     costHigh: 'high cost',
