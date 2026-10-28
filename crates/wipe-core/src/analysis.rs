@@ -32,6 +32,10 @@ const REINCARNATION: u32 = 21169;
 const WIPE_CALL_FAILURE_KINDS: [&str; 6] = ["interrupt", "soak", "tank_soak", "enrage", "failure_event", "hp_balance"];
 /// Abaixo disso de vida o player "precisa de cura": o tempo parado do healer só conta com alguém assim.
 const INJURED_PCT: f32 = 80.0;
+/// Note de CDs de cura: abaixo disso de vida o player conta na "raide baixa" (docs/heal-cd-note.md).
+const LOW_PCT: f32 = 50.0;
+/// `enemy_hits` só guarda o dano de uma spell num segundo a partir disso da vida máxima da raide.
+const ENEMY_HIT_FLOOR: f64 = 0.01;
 /// Histórico de HP guardado por player (para slow death).
 const HP_HISTORY_MS: i64 = 60_000;
 /// Posição de player mais velha que isso não entra na foto (ele pode ter andado).
@@ -189,6 +193,14 @@ struct PlayerAcc {
     healing_timeline: Vec<i64>,
     /// overheal por habilidade (pets somados ao dono)
     overheal_by_spell: HashMap<u32, (String, i64)>,
+    /// note de CDs de cura: estado a cada segundo (0 = sem vida conhecida ou morto, 1 = vivo, 2 = vivo
+    /// abaixo de LOW_PCT) e a vida máxima em milhares, até o corte
+    sec_state: Vec<u8>,
+    sec_max_k: Vec<u32>,
+    /// dano inevitável tomado por (segundo, spell inimiga)
+    unavoidable: HashMap<(u32, u32), i64>,
+    /// cura e overheal dos CDs de cura por (segundo, cast do CD)
+    cd_heals: HashMap<(u32, u32), (i64, i64)>,
     /// mana % no último cast de cada janela de TIMELINE_MS (-1 = sem cast na janela)
     mana_timeline: Vec<i16>,
     /// ms andando por janela de TIMELINE_MS (distância entre posições ÷ velocidade de corrida)
@@ -246,6 +258,60 @@ fn by_spell(m: &HashMap<(u32, bool), (String, i64)>) -> Vec<SpellAmount> {
         m.iter().filter(|(_, (_, a))| *a > 0).map(|((id, pet), (name, amount))| SpellAmount { spell_id: *id, name: name.clone(), amount: *amount, pet: *pet }).collect();
     v.sort_by(|a, b| b.amount.cmp(&a.amount).then(a.spell_id.cmp(&b.spell_id)));
     v
+}
+
+/// Note de CDs de cura: a raide sem tanks segundo a segundo (vivos, abaixo de LOW_PCT, vida máxima e
+/// dano inevitável) e o dano inevitável por spell inimiga, só com o que passa de ENEMY_HIT_FLOOR.
+fn raid_series(players: &HashMap<String, PlayerAcc>, n: usize, data: &GameData) -> (Option<RaidSeries>, Vec<(u32, u32, i64)>) {
+    let raid: Vec<&PlayerAcc> = players
+        .values()
+        .filter(|p| p.spec_id.and_then(|s| data.specs.get(&s)).is_none_or(|s| s.role != "tank"))
+        .collect();
+    let sampled = raid.iter().filter(|p| !p.sec_state.is_empty()).count();
+    if sampled == 0 {
+        return (None, Vec::new());
+    }
+    let mut s = RaidSeries { alive: vec![0; n], low: Some(vec![0; n]), max_hp_k: vec![0; n], unavoidable_k: vec![0; n] };
+    let mut hits: HashMap<(u32, u32), i64> = HashMap::new();
+    for p in &raid {
+        for (i, &st) in p.sec_state.iter().enumerate().take(n) {
+            if st > 0 {
+                s.alive[i] += 1;
+                s.max_hp_k[i] += p.sec_max_k[i];
+            }
+            if st == 2 {
+                if let Some(low) = s.low.as_mut() {
+                    low[i] += 1;
+                }
+            }
+        }
+        for (&(sec, spell), &amount) in &p.unavoidable {
+            if (sec as usize) < n {
+                *hits.entry((sec, spell)).or_default() += amount;
+            }
+        }
+    }
+    let mut per_sec = vec![0i64; n];
+    for (&(sec, _), &amount) in &hits {
+        per_sec[sec as usize] += amount;
+    }
+    for (i, v) in per_sec.iter().enumerate() {
+        s.unavoidable_k[i] = (v / 1000).clamp(0, u32::MAX as i64) as u32;
+    }
+    // menos da metade com vida no log: "abaixo de 50%" não vale
+    if sampled * 2 < raid.len() {
+        s.low = None;
+    }
+    let mut enemy: Vec<(u32, u32, i64)> = hits
+        .into_iter()
+        .filter(|&((sec, _), amount)| {
+            let max = s.max_hp_k[sec as usize] as f64 * 1000.0;
+            max > 0.0 && amount as f64 >= max * ENEMY_HIT_FLOOR
+        })
+        .map(|((sec, spell), amount)| (sec, spell, amount))
+        .collect();
+    enemy.sort_unstable();
+    (Some(s), enemy)
 }
 
 fn overheal_list(m: &HashMap<u32, (String, i64)>) -> Vec<SpellAmount> {
@@ -323,6 +389,10 @@ pub(crate) struct PullBuilder {
     /// players vivos abaixo de INJURED_PCT agora, e os segundos do pull com alguém assim
     injured: HashSet<String>,
     injured_secs: Vec<bool>,
+    /// note de CDs de cura: até qual segundo o estado de cada player já foi guardado, e os CDs de
+    /// cura (spell de cura → cast do CD)
+    secs_done: usize,
+    heal_cds: HashMap<u32, u32>,
     /// posições de players e bosses ao longo do pull (para os replays)
     trails: Trails,
     /// acertos de mecânicas "de chão": onde a vítima estava (t, x, y, tipo)
@@ -406,6 +476,8 @@ impl PullBuilder {
             raid_active: Vec::new(),
             injured: HashSet::new(),
             injured_secs: Vec::new(),
+            secs_done: 0,
+            heal_cds: HashMap::new(),
             trails: Trails::default(),
             ground_kinds: Vec::new(),
             ground_marks: Vec::new(),
@@ -507,6 +579,43 @@ impl PullBuilder {
         }
         if !self.injured.is_empty() {
             self.injured_secs[from..=to.max(from)].iter_mut().for_each(|s| *s = true);
+        }
+        if self.counting() {
+            self.snapshot_secs(to);
+        }
+    }
+
+    /// Guarda o estado de cada player nos segundos que já acabaram (até `to`, exclusive): vivo, abaixo
+    /// de LOW_PCT e a vida máxima. É a mesma vida do `injured` (a última que o log mostrou).
+    fn snapshot_secs(&mut self, to: usize) {
+        if to <= self.secs_done {
+            return;
+        }
+        for p in self.players.values_mut() {
+            let Some(max) = p.max_hp else { continue };
+            let state = if p.dead_since.is_some() {
+                0
+            } else if p.last_hp_pct.is_some_and(|v| v < LOW_PCT) {
+                2
+            } else {
+                1
+            };
+            p.sec_state.resize(to, 0);
+            p.sec_max_k.resize(to, 0);
+            p.sec_state[self.secs_done..to].fill(state);
+            p.sec_max_k[self.secs_done..to].fill((max / 1000).clamp(0, u32::MAX as i64) as u32);
+        }
+        self.secs_done = to;
+    }
+
+    /// Dano inevitável num player (o que a regra do boss não trata como falha, o mesmo critério das
+    /// Mortes), por segundo e spell.
+    fn add_unavoidable(&mut self, dst: &str, spell_id: u32, amount: i64, rel: i64) {
+        if amount <= 0 || self.rules.as_ref().is_some_and(|r| r.failure_mechanic(spell_id, amount).is_some()) {
+            return;
+        }
+        if let Some(p) = self.players.get_mut(dst) {
+            *p.unavoidable.entry(((rel.max(0) / 1000) as u32, spell_id)).or_default() += amount;
         }
     }
 
@@ -637,6 +746,9 @@ impl PullBuilder {
     }
 
     pub fn feed(&mut self, f: &[&str], t: i64, data: &GameData) {
+        if self.heal_cds.is_empty() {
+            self.heal_cds.clone_from(&data.heal_cd_by_heal_id);
+        }
         // marca de chão posta ou tirada durante o pull
         if f.first().is_some_and(|e| e.starts_with("WORLD_MARKER")) {
             self.world_marker(f, t);
@@ -699,6 +811,10 @@ impl PullBuilder {
                         if f[12] == "ABSORB" {
                             r.on_tick(spell_id, f[5], num(f.get(15)), rel);
                         }
+                    }
+                    // golpe absorvido inteiro também é dano que entrou (note de CDs de cura)
+                    if f[12] == "ABSORB" && Self::is_enemy(f[1], hex(f[3])) {
+                        self.add_unavoidable(f[5], f[9].parse().unwrap_or(0), num(f.get(15)), rel);
                     }
                 }
             }
@@ -1241,6 +1357,9 @@ impl PullBuilder {
                 e.sources.insert(source_label.clone());
                 e.hits += 1;
                 e.damage += amount + absorbed;
+                let rel = self.rel(t);
+                self.player(dst_guid, dst_name);
+                self.add_unavoidable(dst_guid, spell_id, amount + absorbed, rel);
             }
             let hp_pct = match &adv {
                 Some(a) if a.info_guid == dst_guid && a.max_hp > 0 => {
@@ -1350,15 +1469,21 @@ impl PullBuilder {
                 if let Some(fc) = self.fight.as_mut() {
                     fc.healing_done(rel, &owner, effective);
                 }
+                let (id, name) = (f[9].parse().unwrap_or(0), f[10]);
+                let cd = self.heal_cds.get(&id).copied();
                 let p = self.player(&owner, if pet { "" } else { src_name });
                 p.healing_done += effective;
                 add_at(&mut p.healing_timeline, rel, effective);
-                let (id, name) = (f[9].parse().unwrap_or(0), f[10]);
                 if effective > 0 {
                     p.healing_by_spell.entry((id, pet)).or_insert_with(|| (name.to_string(), 0)).1 += effective;
                 }
                 if overheal > 0 {
                     p.overheal_by_spell.entry(id).or_insert_with(|| (name.to_string(), 0)).1 += overheal;
+                }
+                if let Some(cd) = cd {
+                    let e = p.cd_heals.entry(((rel.max(0) / 1000) as u32, cd)).or_default();
+                    e.0 += effective;
+                    e.1 += overheal;
                 }
             }
         }
@@ -1435,10 +1560,14 @@ impl PullBuilder {
                 fc.healing_taken(rel, f[5], amount);
             }
         }
+        let cd = self.heal_cds.get(&id).copied();
         let p = self.player(&owner, if pet { "" } else { f[at + 1] });
         p.healing_done += amount;
         add_at(&mut p.healing_timeline, rel, amount);
         p.healing_by_spell.entry((id, pet)).or_insert_with(|| (name.to_string(), 0)).1 += amount;
+        if let Some(cd) = cd {
+            p.cd_heals.entry(((rel.max(0) / 1000) as u32, cd)).or_default().0 += amount;
+        }
     }
 
     fn cast(&mut self, f: &[&str], t: i64, data: &GameData) {
@@ -1797,6 +1926,9 @@ impl PullBuilder {
         let secs = analyzed_ms as f64 / 1000.0;
         let cutoff = self.cutoff_t;
         let before_cut = |t: i64| cutoff.is_none_or(|c| t <= c);
+        let n_secs = (analyzed_ms / 1000) as usize + 1;
+        self.snapshot_secs(n_secs);
+        let (raid_series, enemy_hits) = raid_series(&self.players, n_secs, data);
 
         // bosses: inimigos com maior HP máximo (tolerância para lutas de conselho)
         let top_hp = self.enemies.values().map(|e| e.max_hp).max().unwrap_or(0);
@@ -1903,6 +2035,11 @@ impl PullBuilder {
                 overheal_by_spell: if healer { overheal_list(&p.overheal_by_spell) } else { Vec::new() },
                 mana_timeline: if healer { mana_list(&p.mana_timeline, analyzed_ms) } else { Vec::new() },
                 move_timeline: timeline(&p.move_timeline, analyzed_ms),
+                cd_heals: {
+                    let mut v: Vec<(u32, u32, i64, i64)> = p.cd_heals.iter().filter(|(&(sec, _), _)| (sec as usize) < n_secs).map(|(&(sec, cd), &(h, o))| (sec, cd, h, o)).collect();
+                    v.sort_unstable();
+                    v
+                },
             });
         }
         players.sort_by_key(|a| std::cmp::Reverse(a.damage_done));
@@ -2185,6 +2322,8 @@ impl PullBuilder {
                 waves: std::mem::take(&mut self.waves),
                 unit_counts,
                 unit_looks,
+                raid_series,
+                enemy_hits,
                 unit_auras: {
                     // o que ficou aberto vai até o fim do pull
                     for &i in self.unit_aura_open.values() {
@@ -2852,6 +2991,44 @@ mod tests {
         let p = b.players.get("Player-3209-0B7FC171").unwrap();
         let got: Vec<(u32, &str, i64)> = p.buffs_received.iter().map(|u| (u.spell_id, u.name.as_str(), u.t)).collect();
         assert_eq!(got, vec![(2825, "Bloodlust", 5000), (10060, "Power Infusion", 9000), (2825, "Bloodlust", 300000)]);
+    }
+
+    #[test]
+    fn raid_series_counts_low_life_unavoidable_damage_and_cd_heals() {
+        let data = GameData::embedded();
+        let start = ["ENCOUNTER_START", "1", "Boss", "16", "20", "1"];
+        let mut b = PullBuilder::start(&start, 0, "", 0.0, &RuleBook::default(), 0);
+        for (g, spec) in [("Player-1-A", 63), ("Player-1-B", 63), ("Player-1-T", 73), ("Player-1-D", 105)] {
+            b.players.entry(g.to_string()).or_default().spec_id = Some(spec);
+        }
+        let boss = "Creature-0-1-1-1-999-0001,\"Boss\",0xa48,0x80000000";
+        let hit = |dst: &str, spell: u32, hp: i64, amount: i64| {
+            format!("SPELL_DAMAGE,{boss},{dst},\"{dst}\",0x514,0x80000000,{spell},\"Hit\",0x20,{dst},0000000000000000,{hp},1000000,0,0,0,0,0,0,0,0,0,0,0.0,0.0,2607,0.0,80,{amount},{amount},-1,32,0,0,0,nil,nil,nil")
+        };
+        let lines = [
+            (500, hit("Player-1-A", 111, 400_000, 600_000)),
+            (600, hit("Player-1-B", 222, 900_000, 100_000)),
+            (700, hit("Player-1-T", 333, 100_000, 900_000)),
+            // Tranquility (157982) do druida: cura 300 mil, 100 mil de overheal
+            (800, "SPELL_PERIODIC_HEAL,Player-1-D,\"Druida\",0x514,0x80000000,Player-1-B,\"Player-1-B\",0x514,0x80000000,157982,\"Tranquility\",0x8,Player-1-B,0000000000000000,1000000,1000000,0,0,0,0,0,0,0,0,0,0,0.0,0.0,2607,0.0,80,300000,300000,100000,0,nil".to_string()),
+            (2500, "UNIT_DIED,0000000000000000,nil,0x80000000,0x80000000,Player-1-B,\"Player-1-B\",0x514,0x80000000,0".to_string()),
+            (3500, hit("Player-1-A", 111, 500_000, 1_000)),
+        ];
+        let mut f = Vec::new();
+        for (t, l) in &lines {
+            split_fields(l, &mut f);
+            b.feed(&f, *t, &data);
+        }
+        let end = ["ENCOUNTER_END", "1", "Boss", "16", "20", "0", "4000"];
+        let done = b.finish(Some((&end, 4000)), 0, &data);
+        let s = done.pull.raid_series.expect("série da raide");
+        // segundo 0: A abaixo de 50%, B vivo, o tank fora, o druida sem vida no log
+        assert_eq!((s.alive[0], s.low.as_ref().unwrap()[0], s.max_hp_k[0], s.unavoidable_k[0]), (2, 1, 2000, 700));
+        // B morreu no segundo 2
+        assert_eq!(s.alive[2], 1);
+        assert_eq!(done.pull.enemy_hits, vec![(0, 111, 600_000), (0, 222, 100_000)]);
+        let d = done.pull.players.iter().find(|p| p.guid == "Player-1-D").unwrap();
+        assert_eq!(d.cd_heals, vec![(0, 740, 200_000, 100_000)]);
     }
 
     #[test]

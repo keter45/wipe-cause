@@ -86,7 +86,7 @@ Os parâmetros `?report=<código>&fight=<id>` são uma entrada direta para repor
 | `SpellHoverLayer`, `SpellIcon`, `Names` | Habilidades, tooltips e nomes destacados | Reutilizados nas análises, mapas, tabelas e respostas da IA |
 | `ErrorBoundary` | Conter erros de renderização em uma área | Um problema num pull ou painel pode preservar o restante da navegação |
 
-Fontes: [App](../src/App.tsx), [Header](../src/components/Header.tsx), [Sidebar](../src/components/Sidebar.tsx), [PullList](../src/components/PullList.tsx), [setup](../src/lib/setup.ts).
+Fontes: [App](../src/App.tsx), [Header](../src/components/Header.tsx), [Sidebar](../src/components/Sidebar.tsx), [PullList](../src/components/PullList.tsx), [setup](../src/lib/setup.ts), [players](../src/lib/players.ts).
 
 ## 3. Tela por tela
 
@@ -102,7 +102,7 @@ Fontes: [SettingsView](../src/components/settings/SettingsView.tsx), [FirstSteps
 
 ### 3.2 Nova análise / escolha da noite
 
-`LogBrowser` reúne fontes locais e reports do Warcraft Logs em noites. No desktop, a pasta pode ser detectada ou configurada. A lista apresenta encontros, dificuldade, número de pulls, kills, fonte e situação da análise. Há atualização da lista, abertura de outro arquivo, análise em lote e filtros, guardados em localStorage:
+`LogBrowser` reúne fontes locais e reports do Warcraft Logs em noites. No desktop, a pasta pode ser detectada ou configurada. A lista apresenta encontros, dificuldade, número de pulls, se houve kill, fonte e situação da análise. Há atualização da lista, abertura de outro arquivo, análise em lote e filtros, guardados em localStorage:
 
 - **Guilda / Pug / Todos**, só quando há noites de pug: separa as raids com o núcleo que se repete nos seus logs das raids com outros personagens.
 - **Boss**, e, depois de escolher um boss com mais de uma dificuldade, a **dificuldade**.
@@ -153,6 +153,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/n
 | Progresso | Fase e vida do boss por pull; clicar permite investigar a tentativa |
 | Métricas do grupo | Mecânicas escolhidas para acompanhar, sugestões pelo que falhou, totais e contribuição individual; abre os pulls relacionados |
 | Tempos de fase | Compara transições quando os dados e as regras de fase existem |
+| CDs de cura | A note de CDs colada pelo líder (NSRT): versões, casamento de fases com o desvio do relógio do addon e, por linha de cada versão, quantos pulls foram na hora e o Δ mediano, golpe e uso, overheal da noite contra as referências e empilhado; a note sugerida por versão (adicionar e mover, com caixas e Copiar) |
 | Origem de stacks | Acrescenta contexto de stacks nos bosses que produzem esses dados |
 | Causas dos wipes | Agrega gatilhos, mortes ligadas e falhas por mecânica |
 | Linha do tempo | Mostra combate e intervalos daquele boss |
@@ -162,7 +163,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/n
 
 Métricas escolhidas são preferências por encontro; não são novas regras de detecção. Escolher uma métrica muda o acompanhamento exibido. Alterar uma regra muda a análise e exige reprocessamento.
 
-Fontes: [NightSummary](../src/components/NightSummary.tsx), [BossMetrics](../src/components/BossMetrics.tsx), [PhaseTimes](../src/components/PhaseTimes.tsx), [StackOrigins](../src/components/StackOrigins.tsx), [RaidBot](../src/components/perf/RaidBot.tsx).
+Fontes: [NightSummary](../src/components/NightSummary.tsx), [HealNotePanel](../src/components/HealNotePanel.tsx), [BossMetrics](../src/components/BossMetrics.tsx), [PhaseTimes](../src/components/PhaseTimes.tsx), [StackOrigins](../src/components/StackOrigins.tsx), [RaidBot](../src/components/perf/RaidBot.tsx).
 
 ### 3.6 Pull — estrutura e diagnóstico
 
@@ -177,6 +178,7 @@ As abas são preservadas em memória por foco: Guilda começa em Mortes; Solo, e
 | Mortes | `DeathList` | Abre a investigação de cada morte, recursos, recap e posição |
 | Mecânicas | `MechanicsView` | Expande falhas e participantes, replays, eventos, dispels e ajustes |
 | Interrupts | `InterruptsView` e `AssignmentsPanel` | Cortes, tentativas, casts que passaram e escala |
+| CDs de cura | `HealNotePanel` | Só no foco Guilda. Cada linha da note de CDs no pull: na hora, adiantado, atrasado, não usou e os estados sem culpa; Δ com e sem o desvio da fase; golpe e uso (no golpe, sem dano, uso de ciclo, overheal do uso com a faixa das referências e a noite ao lado, empilhado); golpes do boss com e sem CD; raide baixa sem golpe; ▶ abre o Replay no instante |
 | Jogadores | `PlayersTable` | Nota, produção, dano tomado, mortes, defensivos, consumíveis e dados complementares |
 | Desempenho / Comparação detalhada | `PerformanceView` | Rotação e comparação com tops, própria raid ou simulação, conforme papel |
 | Replay | `FightReplay` | Luta completa, mapa, quadros da raid, medidores, fases e eventos |
@@ -229,7 +231,7 @@ Fontes: [RuleTuning](../src/components/RuleTuning.tsx), [CreateRule](../src/comp
 
 `InterruptsView` mostra casts inimigos cortados ou concluídos, percentual interrompido, tentativas e resultados por jogador. Expansões detalham a participação individual. Quando não há cast interrompível, apresenta um estado vazio específico.
 
-`AssignmentsPanel` recebe uma escala colada de MRT/NSRT ou escrita à mão. O parser identifica habilidade por nome ou `{spell:ID}`, reconhece jogadores e organiza grupos por add. A checagem percorre os casts em ordem para mostrar quem tinha a vez, quem cortou e quem cobriu outra pessoa.
+`AssignmentsPanel` recebe uma escala colada de MRT/NSRT ou escrita à mão, na mesma caixa (`NoteBox`) da note de CDs de cura. Numa note NSRT, a escala sai só do bloco `intstart`…`intend`; sem o bloco, não há escala. O parser identifica habilidade por nome ou `{spell:ID}`, reconhece jogadores e organiza grupos por add. A checagem percorre os casts em ordem para mostrar quem tinha a vez, quem cortou e quem cobriu outra pessoa.
 
 **Conexão com o diagnóstico:** perder a própria vez pode afetar veredito e nota. Não ter cortes, isoladamente, não demonstra que alguém descumpriu uma escala. Os detalhes de dispel ficam nos cards de mecânica, não numa aba principal independente.
 
@@ -518,6 +520,7 @@ O corte por N mortes é aplicado a wipes; kills preservam a luta completa. O rep
 | Ajustes de regras | `rule-tuning/<encounter_id>.json` | IndexedDB |
 | Notas e marcas | localStorage por encontro e início do pull | Mesmo mecanismo |
 | Escala e métricas escolhidas | Preferências locais | Preferências locais |
+| Note de CDs de cura (versões) | localStorage `wipe-cause:heal-note:<encounter>:<dificuldade>`; a chave da escala guarda o texto da versão mais nova | Mesmo mecanismo |
 | Modo, personagem e lateral | localStorage | localStorage |
 | Corte de mortes e filtro da Nova análise | localStorage | localStorage |
 | Parses do WCL e link do report por log | localStorage | localStorage |
@@ -556,6 +559,7 @@ A análise de um arquivo local usa o núcleo local. Integrações opcionais acre
 | Diagnóstico e nota | [verdict](../src/lib/verdict.ts), [score](../src/lib/score.ts), [blame](../src/lib/blame.ts), [wipeCall](../src/lib/wipeCall.ts) |
 | Resumos e evolução | [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/night.ts), [TrendsView](../src/components/TrendsView.tsx), [trends](../src/lib/trends.ts) |
 | Individual e cura | [SoloPullView](../src/components/SoloPullView.tsx), [SoloNight](../src/components/SoloNight.tsx), [solo](../src/lib/solo.ts), [healer](../src/lib/healer.ts) |
+| Note de CDs de cura | [HealNotePanel](../src/components/HealNotePanel.tsx), [NoteBox](../src/components/NoteBox.tsx), [healNote](../src/lib/healNote.ts), [healNoteCheck](../src/lib/healNoteCheck.ts), [healCooldowns](../src/lib/healCooldowns.ts), [heal-cooldowns.json](../data/heal-cooldowns.json), [heal-note-calibrate](../scripts/heal-note-calibrate.mjs); regras em [heal-cd-note.md](heal-cd-note.md) |
 | Comparação e referências | [PerformanceView](../src/components/perf/PerformanceView.tsx), [bench](../src/lib/bench.ts), [wclApi](../src/lib/wclApi.ts), [src/data](../src/data) |
 | Simulação | [botSim](../src/lib/botSim.ts), [simProfile](../src/lib/simProfile.ts), [botDecisions](../src/lib/botDecisions.ts), [botView](../src/lib/botView.ts), [simc.rs](../src-tauri/src/simc.rs), [sim-check](../scripts/sim-check.mjs) |
 | Replay | [FightReplay](../src/components/FightReplay.tsx), [ReplayView](../src/components/ReplayView.tsx), [replayLayers](../src/components/replayLayers.tsx), [fullReplay](../src/lib/fullReplay.ts), [replayTimers](../src/lib/replayTimers.ts), [replayPrefs](../src/lib/replayPrefs.ts), [arenas](../src/lib/arenas.ts), [core/replay.rs](../crates/wipe-core/src/replay.rs), [arenas.json](../data/arenas.json), [utility.json](../data/utility.json), [replay-check](../scripts/replay-check.mjs), [arena-check](../scripts/arena-check.mjs) |

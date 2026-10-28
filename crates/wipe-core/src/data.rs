@@ -7,6 +7,20 @@ const DEFENSIVES_JSON: &str = include_str!("../../../data/defensives.json");
 const CONSUMABLES_JSON: &str = include_str!("../../../data/consumables.json");
 const INTERRUPTS_JSON: &str = include_str!("../../../data/interrupts.json");
 const UTILITY_JSON: &str = include_str!("../../../data/utility.json");
+const HEAL_COOLDOWNS_JSON: &str = include_str!("../../../data/heal-cooldowns.json");
+
+/// CDs de cura (data/heal-cooldowns.json): o núcleo só precisa das spells de cura de cada um.
+#[derive(Debug, Deserialize)]
+struct HealCooldownsFile {
+    cooldowns: Vec<HealCooldownEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct HealCooldownEntry {
+    id: u32,
+    #[serde(default)]
+    heal_ids: Vec<u32>,
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SpecInfo {
@@ -125,6 +139,8 @@ pub struct GameData {
     /// controle de grupo dos players (replay completo)
     pub cc: HashMap<u32, CcDef>,
     pub gateway: GatewayDef,
+    /// spell de cura → cast do CD de cura que a produz (data/heal-cooldowns.json)
+    pub heal_cd_by_heal_id: HashMap<u32, u32>,
     healthstone: ConsumableDef,
     health_potion: ConsumableDef,
 }
@@ -135,7 +151,9 @@ impl GameData {
         let c: ConsumablesFile = serde_json::from_str(CONSUMABLES_JSON).expect("data/consumables.json inválido");
         let i: InterruptsFile = serde_json::from_str(INTERRUPTS_JSON).expect("data/interrupts.json inválido");
         let u: UtilityFile = serde_json::from_str(UTILITY_JSON).expect("data/utility.json inválido");
+        let h: HealCooldownsFile = serde_json::from_str(HEAL_COOLDOWNS_JSON).expect("data/heal-cooldowns.json inválido");
         GameData {
+            heal_cd_by_heal_id: h.cooldowns.iter().flat_map(|c| c.heal_ids.iter().map(move |&id| (id, c.id))).collect(),
             specs: d
                 .specs
                 .into_iter()

@@ -524,7 +524,7 @@ export default function App() {
             solo ? (
               <SoloBossView key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} />
             ) : (
-              <BossSummary key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} />
+              <BossSummary key={summary} title={summary} pulls={pulls.filter((p) => bossKey(p) === summary)} onSelectPull={selectPull} live={live.status.active} />
             )
           ) : pull ? (
             <PullView
@@ -533,6 +533,7 @@ export default function App() {
               povs={videos.get(pull.id)}
               nightPulls={pulls.filter((x) => bossKey(x) === bossKey(pull))}
               onRulesChanged={rulesChanged}
+              live={live.status.active}
             />
           ) : (
             <p className="muted">{messagesOf(appMsg).noPulls}</p>

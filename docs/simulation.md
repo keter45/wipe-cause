@@ -26,7 +26,7 @@ dentro do app, sem o usuário abrir outro programa.
 - A simulação fica **salva no computador de quem clicou** (pasta de dados do app), por
   personagem + boss + dificuldade + noite. Só é refeita quando alguém pede de novo.
   *(decidido por nós)* Se o SimC instalado é de um commit diferente do usado na simulação, a
-  simulação salva continua aparecendo, com o aviso "feita com uma versão antiga do SimC" e o botão de refazer.
+  simulação salva continua aparecendo, com o aviso "Feita com uma versão antiga do SimulationCraft" e o botão de refazer.
 
 ## 3. Que pull simular
 

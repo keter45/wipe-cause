@@ -11,6 +11,7 @@ Quando usar o fluxo: seção "Fluxo de feature" do
 | :--- | :----- | :--- | :---- | :---------- | :-------- |
 | [egm-adoption.md](egm-adoption.md) | Implemented | 2026-10-26 | @keter45 | `docs/`, `CLAUDE.md`, `.claude/skills/`, `scripts/` | Regras do projeto, fluxo EGM e auditoria dos docs |
 | [gloombomb-assignment.md](gloombomb-assignment.md) | Implemented | 2026-10-27 | @keter45 | `crates/wipe-core`, `encounters/`, `data/defensives.json`, `scripts/replay-check.mjs` | Atribuição por posição: quem da Gloombomb não chegou ao add |
+| [heal-cd-note.md](heal-cd-note.md) | Implemented | 2026-10-27 | @keter45 | `src/`, `data/heal-cooldowns.json`, `crates/wipe-core` | Note de CDs de cura: timing, uso, momentos sem CD e note sugerida |
 
 Status: Proposed → Approved → Implemented → Superseded by `<design>`.
 

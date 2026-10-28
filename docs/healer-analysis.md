@@ -31,6 +31,10 @@ que queremos ajudar, e nem sempre jogam do melhor jeito. Nem o colega da mesma s
 um kill anterior do próprio player servem de referência. A evolução do player (aba Evolução) continua
 existindo, mas como acompanhamento, não como o "certo".
 
+Parâmetros da luta não são referência de healer: o golpe (dano que entra de uma vez) e a raide baixa
+da [note de CDs de cura](heal-cd-note.md) medem o boss e podem ser calibrados nos nossos logs
+(decisão de 2026-10-27).
+
 A referência são **logs de kill de outras guildas no mítico**, com composição de healer parecida com a
 nossa (filtros abaixo). Não buscamos pelo nº do kill (decisão de 2026-10-11): o que protege contra log
 distorcido são a composição, os sinais da lista abaixo e não pegar só o topo do ranking. Os nossos
@@ -228,7 +232,9 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
    pela raid. Da vida da raid só ficam os eventos em que alguém cruza os 80%. `node
    --experimental-strip-types scripts/rotation/heal-bench.mjs` resume log a log em
    `src/data/heal-refs/<spec>.json` (com os casts do boss e os usos dos cooldowns, para o momento por
-   mecânica).
+   mecânica, e em `cdSpells` a cura dos CDs de `data/heal-cooldowns.json`, régua do overheal da
+   [note de CDs de cura](heal-cd-note.md)). No fim, o relatório "Tabela de CDs de cura" (OK /
+   ATENÇÃO / REVISAR) confere a tabela contra as referências e a rotação da spec.
 3. **YAML de healer**: `role: healer`, sem prioridade nem abertura. Checagens novas: `ally_uptime`
    (tempo com o buff ou média de alvos). Feitos: `priest-discipline`, `druid-restoration` e
    `paladin-holy`, conferidos com `node scripts/rotation.mjs check <spec>` nas referências.
@@ -275,6 +281,8 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
 - 2026-10-11: não filtrar pelo nº do kill da guilda.
 - 2026-10-11: análise de healer só no mítico.
 - 2026-10-11: os logs da nossa raid nunca são referência (nem colega no mesmo pull, nem kill anterior).
+- 2026-10-27: golpe e raide baixa da note de CDs de cura são parâmetros da luta, não do healer, e
+  podem ser calibrados nos nossos logs ([heal-cd-note.md](heal-cd-note.md)).
 
 ## Dúvidas em aberto
 

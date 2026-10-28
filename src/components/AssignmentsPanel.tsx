@@ -1,17 +1,20 @@
 import { useMemo, useState } from 'react';
 import { ClipboardList } from 'lucide-react';
 import type { Pull } from '../types';
-import { checkAssignments, parseAssignments, savedNote, saveNote } from '../lib/assignments';
+import { checkAssignments, parseAssignments } from '../lib/assignments';
+import { noteVersions, type NoteVersion } from '../lib/healNote';
+import { NoteBox } from './NoteBox';
 import { mmss } from '../lib/format';
 import { SpellName } from './SpellIcon';
 import { useMessages } from '../i18n';
 import { assignMsg } from './AssignmentsPanel.i18n';
 
 /** Escala de interrupts do boss: colar a nota e ver, cast a cast, de quem era a vez. */
-export function AssignmentsPanel({ pull }: { pull: Pull }) {
+export function AssignmentsPanel({ pull, nightPulls, live = false }: { pull: Pull; nightPulls: Pull[]; live?: boolean }) {
   const t = useMessages(assignMsg);
   const mechs = pull.mechanics.filter((m) => m.kind === 'interrupt' && (m.casts?.length ?? 0) > 0);
-  const [note, setNote] = useState(() => savedNote(pull));
+  const [versions, setVersions] = useState<NoteVersion[]>(() => noteVersions(pull));
+  const note = versions[versions.length - 1]?.text ?? '';
   const [editing, setEditing] = useState(false);
   const parsed = useMemo(() => parseAssignments(note, pull), [note, pull]);
 
@@ -31,16 +34,14 @@ export function AssignmentsPanel({ pull }: { pull: Pull }) {
       {editing && (
         <div className="assign-edit">
           <p className="muted small">{t.help(`${mechs[0].name}: ${t.names}`)}</p>
-          <textarea
-            className="text-input"
+          <NoteBox
+            pull={pull}
+            nightPulls={nightPulls}
+            live={live}
+            versions={versions}
+            onChange={setVersions}
             rows={6}
-            value={note}
-            spellCheck={false}
             placeholder={`${mechs[0].name}: ${t.names}\n${mechs[0].name}: ${t.names2}`}
-            onChange={(e) => {
-              setNote(e.target.value);
-              saveNote(pull, e.target.value);
-            }}
           />
           <ul className="plain small">
             {mechs.map((m) => (

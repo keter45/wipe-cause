@@ -3009,6 +3009,60 @@ table.heat td {
   width: auto;
   min-width: 420px;
 }
+
+/* ---------------------------------------------------------------- note de CDs de cura */
+.heal-note {
+  margin-bottom: 16px;
+}
+.note-versions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+.note-version select.text-input.sm {
+  width: auto;
+  padding: 1px 4px;
+  font-size: 12px;
+}
+.heal-note-phases {
+  line-height: 1.7;
+}
+.heal-note-version {
+  margin-top: 12px;
+}
+.heal-note-table td:first-child {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.heal-note-suggest {
+  margin-top: 12px;
+}
+.heal-note-changes {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.heal-note-change {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 0 2px 16px;
+  cursor: pointer;
+}
+.heal-note-why {
+  padding-left: 38px;
+}
+.heal-note-manual {
+  margin-top: 8px;
+}
+.heal-note-manual textarea {
+  width: 100%;
+}
 td.warn {
   color: var(--minor);
 }

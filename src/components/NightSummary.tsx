@@ -23,10 +23,13 @@ import { bossPayload } from '../lib/discord';
 import { messagesOf, useMessages } from '../i18n';
 import { nightMsg } from './NightSummary.i18n';
 import { Hint } from './ui/Hint';
+import { HealNotePanel } from './HealNotePanel';
 
 interface Props {
   pulls: Pull[];
   onSelectPull: (id: number) => void;
+  /** o relatório está ao vivo (versão nova da note de CDs começa no pull seguinte) */
+  live?: boolean;
 }
 
 function endClock(s: Summary): string {
@@ -121,7 +124,7 @@ function useMechanicSpellIds(pulls: Pull[]) {
 }
 
 /** Resumo de um boss: stats, maior causa, progresso, vilões/mocinhos, downtime e placar. */
-function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: string }) {
+function BossSummaryInner({ title, pulls, onSelectPull, live }: Props & { title: string }) {
   const s = useMemo(() => summarizeNight(pulls), [pulls]);
   const mechanicSpellIds = useMechanicSpellIds(pulls);
   const t = useMessages(nightMsg);
@@ -174,6 +177,7 @@ function BossSummaryInner({ title, pulls, onSelectPull }: Props & { title: strin
 
       <BossMetrics pulls={s.pulls} onSelectPull={onSelectPull} />
       <NightPhaseTimes pulls={s.pulls} onSelectPull={onSelectPull} />
+      <HealNotePanel pulls={s.pulls} live={live} />
       <NightStackOrigins pulls={s.pulls} />
 
       <div className="two-col">

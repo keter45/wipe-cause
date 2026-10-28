@@ -10,6 +10,7 @@ import type { PlayerStats, Pull } from '../types';
 import { SPEC_NAMES } from './specs';
 import { anchorTimes } from './benchMetrics';
 import { anchoredMoments, type AnchoredMoment, type Anchors } from './cdAnchors';
+import { quantile } from './quantile';
 
 export interface HealRefEntry {
   name: string;
@@ -31,6 +32,8 @@ export interface HealRefEntry {
   manaMid: number | null;
   overheal: number;
   spells: Record<string, { share: number; overheal: number }>;
+  /** curas dos CDs de data/heal-cooldowns.json (heal_ids), só para a note de CDs (análises antigas não têm) */
+  cdSpells?: Record<string, { share: number; overheal: number }>;
   checks: Record<string, number | null>;
   cooldowns: Record<string, number | null>;
   /** casts de cada habilidade na luta (análises antigas não têm) */
@@ -79,6 +82,8 @@ export const CD_WINDOW_MS = 12_000;
 const CD_MOMENT_SHARE = 0.75;
 /** ...com pelo menos estes logs (com menos, "a maioria" é estilo de duas raids). */
 const CD_MOMENT_MIN_REFS = 5;
+/** Overheal "alto": acima do p75 das referências mais isso. */
+export const OVERHEAL_MARGIN = 0.15;
 /** A referência "cumpre" a checagem: mediana acima disso. */
 const REF_FULFILLS = 0.85;
 
@@ -118,20 +123,14 @@ function overlap(ours: string[], theirs: string[], self: string): number {
 }
 
 const median = (xs: number[]) => quantile(xs, 0.5);
-function quantile(xs: number[], q: number): number | null {
-  const v = xs.filter((x) => x != null && Number.isFinite(x)).sort((a, b) => a - b);
-  if (!v.length) return null;
-  const i = (v.length - 1) * q;
-  const lo = Math.floor(i);
-  return v[lo] + (v[Math.ceil(i)] - v[lo]) * (i - lo);
-}
+export { quantile };
 
 export interface Band {
   median: number;
   p25: number;
   p75: number;
 }
-function band(xs: (number | null | undefined)[]): Band | null {
+export function band(xs: (number | null | undefined)[]): Band | null {
   const v = xs.filter((x): x is number => x != null && Number.isFinite(x));
   if (!v.length) return null;
   return {
@@ -530,7 +529,7 @@ export function healTips(you: HealRefEntry, refs: HealRefEntry[], x: TipInput): 
     const b = band(refs.map((e) => e.spells[id]?.overheal));
     // Leech é atributo (cura de todo mundo), não habilidade que o healer escolhe lançar
     if (!b || +id === LEECH || s.share < 0.05 || refs.filter((e) => e.spells[id]).length < Math.min(3, refs.length)) continue;
-    if (s.overheal > b.p75 + 0.15)
+    if (s.overheal > b.p75 + OVERHEAL_MARGIN)
       tips.push({
         kind: 'overheal',
         rank: 5,

@@ -249,6 +249,7 @@ pub fn compact(mut report: serde_json::Value) -> serde_json::Value {
     };
     if let Some(pulls) = report.get_mut("pulls").and_then(|p| p.as_array_mut()) {
         for p in pulls {
+            strip(p, &["raidSeries", "enemyHits"]);
             for d in p.get_mut("deaths").and_then(|x| x.as_array_mut()).into_iter().flatten() {
                 strip(d, &["recap", "debuffs", "mechanicDamage", "positions"]);
             }
@@ -256,7 +257,7 @@ pub fn compact(mut report: serde_json::Value) -> serde_json::Value {
                 strip(m, &["events", "snapshots"]);
             }
             for pl in p.get_mut("players").and_then(|x| x.as_array_mut()).into_iter().flatten() {
-                strip(pl, &["takenByAbility", "interruptLog", "casts", "damageBySpell", "healingBySpell", "setup"]);
+                strip(pl, &["takenByAbility", "interruptLog", "casts", "damageBySpell", "healingBySpell", "setup", "cdHeals"]);
             }
         }
     }
@@ -301,6 +302,14 @@ mod tests {
     fn fixture_report() -> LogReport {
         let log = Path::new(env!("CARGO_MANIFEST_DIR")).join("../crates/wipe-core/tests/fixtures/twin-fangs.txt");
         wipe_core::analyze_file(&log, &wipe_core::AnalyzeOptions::default(), |_, _| {}).unwrap()
+    }
+
+    #[test]
+    fn compact_drops_the_heal_note_series() {
+        let r = compact(serde_json::json!({ "pulls": [{ "raidSeries": { "alive": [1] }, "enemyHits": [[0, 1, 2]], "players": [{ "cdHeals": [[0, 740, 1, 0]], "name": "A" }] }] }));
+        let p = &r["pulls"][0];
+        assert!(p.get("raidSeries").is_none() && p.get("enemyHits").is_none());
+        assert!(p["players"][0].get("cdHeals").is_none() && p["players"][0]["name"] == "A");
     }
 
     #[test]

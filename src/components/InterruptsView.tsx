@@ -8,7 +8,7 @@ import { interruptsMsg } from './InterruptsView.i18n';
 import { Hint } from './ui/Hint';
 
 /** Casts interrompíveis (cortados ao menos uma vez no log) e quem cortou / quem não. */
-export function InterruptsView({ pull }: { pull: Pull }) {
+export function InterruptsView({ pull, nightPulls, live = false }: { pull: Pull; nightPulls?: Pull[]; live?: boolean }) {
   const t = useMessages(interruptsMsg);
   const [open, setOpen] = useState<string | null>(null);
   const spells = pull.enemySpells.filter((e) => e.interruptible);
@@ -23,7 +23,7 @@ export function InterruptsView({ pull }: { pull: Pull }) {
 
   return (
     <div className="interrupts">
-      <AssignmentsPanel pull={pull} />
+      <AssignmentsPanel pull={pull} nightPulls={nightPulls ?? [pull]} live={live} />
       {spells.length > 0 && (
         <table className="spells">
           <thead>
