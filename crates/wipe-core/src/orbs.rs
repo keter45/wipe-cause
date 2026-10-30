@@ -10,7 +10,8 @@
 //!   Com `count_aura`, o raid ganha uma stack por orb quebrado: o salto de stacks diz quantos, e os
 //!   mais alinhados com o cone (pela direção do log ou pelo alvo do boss) são os quebrados.
 //!
-//! - `cleared_by`: casts do boss que explodem os orbs que sobraram no chão (orbs novos, troca de fase).
+//! - `cleared_by`: casts do boss que explodem os orbs voláteis que sobraram no chão.
+//!   Os outros continuam ali até serem pegos, quebrados ou a fase acabar (`cleared_on_zero`).
 //!
 //! Dois orbs carregados por players diferentes não explodem: só conta um orb no chão com outro
 //! chegando nele (carregado, ou largado em cima).
@@ -74,7 +75,7 @@ pub struct OrbDetect {
     #[serde(default = "default_window")]
     pub window_ms: i64,
     pub breaker: Option<Breaker>,
-    /// casts do boss que explodem os orbs que sobraram no chão (ex.: orbs novos, troca de fase)
+    /// casts do boss que explodem os orbs voláteis que sobraram no chão
     #[serde(default)]
     pub cleared_by: Vec<u32>,
     /// npc ids de bosses que, ao chegar a 0 de vida, explodem os orbs que sobraram (ex.: o fim da P1)
@@ -302,13 +303,13 @@ fn ground_orbs(cfg: &OrbDetect, log: &OrbLog, until: i64) -> Vec<Ground> {
         Seen(usize, f32, f32),
         Pick(&'a str, usize),
         Break(usize),
-        Clear,
+        Clear(bool),
     }
     let mut evs: Vec<(i64, Ev)> = Vec::new();
     evs.extend(log.sightings.iter().map(|&(t, k, x, y)| (t, Ev::Seen(k, x, y))));
     evs.extend(log.carries.iter().map(|c| (c.2, Ev::Pick(c.0.as_str(), c.1))));
     evs.extend(log.breaks.iter().enumerate().map(|(i, b)| (b.0, Ev::Break(i))));
-    evs.extend(log.clears.iter().map(|&t| (t, Ev::Clear)));
+    evs.extend(log.clears.iter().map(|&t| (t, Ev::Clear(log.cast_clears.contains(&t)))));
     evs.retain(|e| e.0 <= until);
     evs.sort_by_key(|e| e.0);
 
@@ -343,8 +344,8 @@ fn ground_orbs(cfg: &OrbDetect, log: &OrbLog, until: i64) -> Vec<Ground> {
                 }
             }
             // o boss explodiu o que sobrou no chão
-            Ev::Clear => {
-                for g in out.iter_mut().filter(|g| alive(g, t)) {
+            Ev::Clear(volatile_only) => {
+                for g in out.iter_mut().filter(|g| alive(g, t) && (!volatile_only || cfg.kinds[g.kind].volatile)) {
                     g.to = Some(t);
                 }
             }
@@ -420,7 +421,8 @@ pub fn leftovers(cfg: &OrbDetect, log: &OrbLog, boom: i64) -> Option<Vec<usize>>
     // o primeiro gatilho da janela é o que explodiu o chão (um segundo logo depois já acha o chão vazio)
     let clear = *log.clears.iter().filter(|&&c| c <= boom + CLEAR_SLACK_MS && boom - c <= cfg.window_ms).min()?;
     let mut n = vec![0; cfg.kinds.len()];
-    for g in ground_orbs(cfg, log, clear - 1).iter().filter(|g| alive(g, clear - 1)) {
+    let volatile_only = log.cast_clears.contains(&clear);
+    for g in ground_orbs(cfg, log, clear - 1).iter().filter(|g| alive(g, clear - 1) && (!volatile_only || cfg.kinds[g.kind].volatile)) {
         n[g.kind] += 1;
     }
     Some(n)
@@ -429,7 +431,10 @@ pub fn leftovers(cfg: &OrbDetect, log: &OrbLog, boom: i64) -> Option<Vec<usize>>
 /// Quem levou um orb até outro no chão nos instantes antes da explosão em `boom` (None = ninguém
 /// chegou perto: não dá para culpar, ex.: sobrou roxo no tempo e o boss explodiu).
 pub fn collision(cfg: &OrbDetect, log: &OrbLog, boom: i64) -> Option<Collision> {
-    let ground = ground_orbs(cfg, log, boom);
+    // O dano pode chegar antes do primeiro cast do orb que acabou de cair. Essa
+    // mesma tolerância já liga a unidade nova à remoção da aura do portador.
+    let until = boom + DROP_AFTER_MS;
+    let ground = ground_orbs(cfg, log, until);
     let from = boom - cfg.window_ms;
     let volatile = |k: usize| cfg.kinds[k].volatile;
     let contact = cfg.contact_at(log.start_ms);
@@ -454,7 +459,7 @@ pub fn collision(cfg: &OrbDetect, log: &OrbLog, boom: i64) -> Option<Collision> 
         }
     }
     // largado em cima de um orb parado
-    for fresh in ground.iter().filter(|g| g.from >= from && g.from <= boom) {
+    for fresh in ground.iter().filter(|g| g.from >= from && g.from <= until) {
         let Some(who) = &fresh.dropper else { continue };
         for g in ground.iter().filter(|g| !std::ptr::eq(*g, fresh) && alive(g, fresh.from) && g.from < fresh.from && (volatile(g.kind) || volatile(fresh.kind))) {
             keep(Collision { guid: who.clone(), moved: fresh.kind, ground: g.kind, dropped: true, dist_yd: (g.x - fresh.x).hypot(g.y - fresh.y), t: fresh.from });
@@ -549,6 +554,24 @@ mod tests {
     }
 
     #[test]
+    fn dropped_orb_can_be_logged_just_after_its_explosion() {
+        let c = cfg();
+        let mut log = OrbLog::default();
+        log.on_enemy_cast(&c, Some(2), "G1", 5, 0.0, 0.0, 0.0, 100);
+        // O portador estava longe antes da queda: não há colisão no caminho
+        // interpolado antes do dano, apenas no orb novo que o log registra depois.
+        log.on_player_pos("A", 30.0, 0.0, 1_000);
+        log.on_player_pos("A", 4.0, 0.0, 4_002);
+        log.on_aura(&c, 10, "A", "Alice", 1, 1_000);
+        log.on_aura(&c, 10, "A", "Alice", 0, 4_002);
+        log.on_enemy_cast(&c, Some(1), "P1", 5, 4.0, 0.0, 0.0, 4_002);
+        let hit = collision(&c, &log, 4_000).unwrap();
+        assert_eq!((hit.guid.as_str(), hit.dropped, hit.t), ("A", true, 4_002));
+        // Uma queda fora da tolerância não explica uma explosão anterior.
+        assert!(collision(&c, &log, 3_800).is_none());
+    }
+
+    #[test]
     fn orb_quebrado_no_frontal_some_do_chao() {
         let c = cfg();
         let mut log = OrbLog::default();
@@ -576,16 +599,33 @@ mod tests {
         log.on_aura(&c, 77, "X", "Xis", 2, 500);
         let alive: Vec<usize> = ground_orbs(&c, &log, 2000).iter().filter(|g| g.to.is_none()).map(|g| g.kind).collect();
         assert_eq!(alive, vec![1]); // só o verde de trás sobrou (tipo 1 = verde)
-        // orbs novos: o boss explode o que sobrou
+        // Orbs novos: só os voláteis explodem; o verde de trás continua no chão.
         log.on_cast(&c, 55, 3000);
-        assert!(ground_orbs(&c, &log, 4000).iter().all(|g| g.to.is_some()));
-        assert_eq!(leftovers(&c, &log, 3010), Some(vec![0, 1])); // o verde de trás tinha sobrado
+        assert_eq!(ground_orbs(&c, &log, 4000).iter().filter(|g| g.to.is_none()).map(|g| g.kind).collect::<Vec<_>>(), vec![1]);
+        assert_eq!(leftovers(&c, &log, 3010), Some(vec![0, 0]));
         assert_eq!(leftovers(&c, &log, 900), None);
         // sem stacks no frontal: nada quebra, mesmo no cone
         let mut log2 = OrbLog::default();
         log2.on_enemy_cast(&c, Some(2), "G1", 5, 10.0, 0.0, 0.0, 100);
         log2.on_enemy_cast(&c, None, "BOSS", 99, 0.0, 0.0, 0.0, 500);
         assert!(ground_orbs(&c, &log2, 2000).iter().all(|g| g.to.is_none()));
+    }
+
+    #[test]
+    fn new_wave_preserves_nonvolatile_orbs_for_collision_and_phase_end_clears_all() {
+        let mut c = cfg();
+        c.cleared_on_zero = vec![3];
+        let mut log = OrbLog::default();
+        log.on_enemy_cast(&c, Some(2), "G1", 5, 0.0, 0.0, 0.0, 100);
+        log.on_enemy_cast(&c, Some(1), "P1", 5, 30.0, 0.0, 0.0, 100);
+        log.on_cast(&c, 55, 1_000);
+        assert_eq!(leftovers(&c, &log, 1_010), Some(vec![1, 0]));
+        walk(&mut log, "A", (30.0, 30.0), (3.0, 3.0), 2_000, 4_000);
+        log.on_aura(&c, 10, "A", "Alice", 1, 2_000);
+        assert_eq!(collision(&c, &log, 4_000).unwrap().guid, "A");
+        log.on_enemy_zero(&c, 3, 4_100);
+        assert!(ground_orbs(&c, &log, 4_200).iter().all(|g| g.to.is_some()));
+        assert_eq!(leftovers(&c, &log, 4_110), Some(vec![0, 1]));
     }
 
     #[test]

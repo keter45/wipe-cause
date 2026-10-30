@@ -2446,7 +2446,7 @@ fn gaze_culprits(m: &Mechanic, st: &mut MechState, log: &GazeLog) {
             }
         }
         if victims.iter().all(|v| v.culprit != Some(true)) {
-            push_event(st, ft, None, tx!("Ninguém ficou de costas para o fantasma por muito tempo: sem culpado claro", "Nobody had their back to their ghost for long: no clear culprit"));
+            push_event(st, ft, None, tx!("Sem evidência suficiente para atribuir a colisão a um jogador", "Insufficient evidence to attribute the collision to a player"));
         }
     }
 }
@@ -2494,7 +2494,7 @@ fn orb_culprits(m: &Mechanic, st: &mut MechState, log: &OrbLog) {
         let (moved, ground) = (&cfg.kinds[c.moved].name, &cfg.kinds[c.ground].name);
         let (mp, me, gp, ge) = (&moved.pt, &moved.en, &ground.pt, &ground.en);
         let d = c.dist_yd.round() as i64;
-        let ago = format!("{:.1}", (ft - c.t) as f64 / 1000.0);
+        let ago = format!("{:.1}", (ft - c.t).max(0) as f64 / 1000.0);
         let text = if c.dropped {
             tx!("{short} largou o {mp} a {d} jardas de um {gp} no chão", "{short} dropped the {me} {d} yards from a {ge} on the ground")
         } else {

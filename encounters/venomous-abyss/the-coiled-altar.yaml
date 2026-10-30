@@ -9,11 +9,12 @@ source:
   - https://www.mythictrap.com/en/venomous-abyss/the-coiled-altar/mythic
   - https://www.youtube.com/watch?v=vGMDl0hIc48   # Dratnos, guia Mythic
   - https://warcraft.wiki.gg/wiki/The_Coiled_Altar  # IDs do Encounter Journal
+  - https://www.method.gg/guides/the-venomous-abyss/the-coiled-altar  # Toxic Deluge só detona os roxos restantes; verdes persistem
   - "log: WoWCombatLog-092826_204129 (6 wipes Mythic, só P1) — IDs de P1 calibrados"
   - "log: Archive-WoWCombatLog-092226_180441 (kill Heroic) — IDs de P2/intermissão/P3"
   - "logs: 14, 15, 19, 20, 21, 22 e 26/10 Mythic — cantos e alcance da Gloombomb (atribuição por canto)"
   - "hotfix de 13/10: raio do Virulent Mutation e do Mutagenic Venom 8 → 6 jardas; Mythic com 8 orbs e 4 roxos na P1 (eram 10 e 5)"
-updated: 2026-10-27
+updated: 2026-10-29
 difficulties: [normal, heroic, mythic]
 
 units:
@@ -58,7 +59,7 @@ mechanics:
           - { until: "2026-10-13T15:00", contact_yd: 9 }   # antes do hotfix: raio 8yd
         window_ms: 500
         breaker: { cast_id: 1299684, cast_ids: [1307292], count_aura: 1299838, half_angle: 40, range: 40 }   # Sever (e o Blighted Sever da P3) quebra os orbs no cone; o raid ganha 1 stack de Venom Rupture por orb quebrado
-        cleared_by: [1299960]          # orbs novos (Toxic Deluge): o boss explode os que sobraram no chão
+        cleared_by: [1299960]          # Toxic Deluge: só os voláteis (roxos) restantes explodem; verdes continuam
         cleared_on_zero: [257911]      # e quando o Zul'jan chega a 0 de vida (fim da P1, antes do Dreadmarch)
         kinds:
           - { npc_id: 271982, carry_aura: 1310498, volatile: true, name: { pt: roxo, en: purple } }   # Virulent Mutation / Mutagenic Venom
@@ -70,7 +71,9 @@ mechanics:
       log mostra a unidade nova com posição. O Sever quebra os parados num cone de ~40°/40yd
       (bate em 73% dos Severs com o salto de stacks de Venom Rupture). Culpado = quem passou
       carregando um orb a até 7yd de outro parado (9yd antes do hotfix de 13/10, quando o raio era 8) (um deles roxo), ou largou um em cima, nos
-      0,5s antes da explosão. O caminho do portador é a linha reta entre as posições do log,
+      0,5s antes da explosão. A unidade do orb recém-largado pode aparecer até 150ms depois
+      do dano (na noite de 29/10, 2ms depois); a atribuição também considera essa queda.
+      O caminho do portador é a linha reta entre as posições do log,
       inclusive em teleporte (Blink, Heroic Leap...): teleportar com um orb no caminho também
       detona. Calibrado em 37 explosões de 28/09, 05/10 e 08/10 (sem contar os ticks
       seguintes do DoT): culpado em 22; o resto fica sem culpado (sobrou roxo no timer, ou
