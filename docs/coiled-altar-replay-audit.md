@@ -305,3 +305,26 @@ das bombas (acima), que a medição contava como falha, e uma falha sem culpado 
 a medição punha 3 s depois por estimar a explosão. A comparação achou um erro no motor, já corrigido:
 ele guardava só a primeira morte de cada player, e quem levou battle rez e morreu de novo com a bomba
 virava culpado.
+
+## Colisões e detonações: atribuição de 29/10
+
+Conferido no log `WoWCombatLog-102926_205743.txt`, 16 pulls, corte em 4 mortes.
+
+- Fantasmas: preservados os critérios publicados na v0.44.4: a simulação precisa explicar
+  a proximidade dos fantasmas, e quem parou antes não recebe culpa quando o outro veio até ele.
+  A simulação não passa mais a culpar alguém sem cobertura recente suficiente de direção.
+  Na integração, a atribuição experimental por avanço nos últimos 5s foi substituída por
+  esses critérios mais conservadores. A lista final de culpados é conferida na reanálise.
+- Orbs: o `Toxic Deluge` detona os voláteis restantes, sem apagar os verdes da leva
+  anterior. Isso corresponde ao [guia da Method](https://www.method.gg/guides/the-venomous-abyss/the-coiled-altar).
+  O verde de 23:09:30.273 em (1155,18; −7,21) era removido indevidamente da reconstrução
+  na leva seguinte. Preservado, explica a detonação do pull 13: Antithesis levou o roxo
+  a aproximadamente 5 jd dele. O orb largado aparece 2 ms depois do primeiro dano;
+  a busca também admite a tolerância já usada para ligar queda e unidade nova (150 ms).
+  No pull 5, sobraram três roxos no timer; não há culpa individual atribuída.
+- Métricas: número e unidade das jardas ficam juntos, evitando a quebra que sobrepunha
+  as linhas na lista. Conferência visual não concluída por indisponibilidade das
+  ferramentas de navegador nesta sessão.
+
+Relatórios salvos precisam ser reanalisados. A validação da release inclui os testes do
+núcleo e da interface, clippy, build e a reanálise da noite sobre o código integrado.

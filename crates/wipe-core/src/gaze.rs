@@ -509,7 +509,7 @@ pub fn judge(cfg: &GazeDetect, log: &GazeLog, boom: i64) -> Vec<Victim> {
         v.walked_yd = w.map(|w| w.0);
         v.stopped_ms = w.and_then(|w| w.2).map(|t| boom - t);
         let Some((moved, _, _)) = *w else { continue };
-        if agree && v.culprit != Some(true) && moved >= WALK_MIN_YD && moved >= total * WALK_SHARE {
+        if agree && v.culprit == Some(false) && moved >= WALK_MIN_YD && moved >= total * WALK_SHARE {
             v.culprit = Some(true);
             v.inferred = true;
         }
@@ -802,6 +802,20 @@ mod tests {
         let (c, log) = walked_before_the_window(30.0);
         let v = judge(&c, &log, 10_000);
         assert!(v.iter().all(|x| x.culprit != Some(true) && !x.inferred), "{v:?}");
+    }
+
+    #[test]
+    fn simulation_does_not_blame_when_recent_heading_is_missing() {
+        let c = sim_cfg();
+        let mut log = GazeLog::default();
+        log.on_enemy_cast(&c, "G1", 10, 0.0, 0.0);
+        log.on_aura(&c, "G1", 10, "A", "Alice", true, 0);
+        stand(&mut log, "A", (60.0, 0.0), 0.0, 0, 4_000);
+        log.on_aura(&c, "Boss", 20, "A", "Alice", true, 10_000);
+        let victim = &judge(&c, &log, 10_000)[0];
+        assert!(victim.walked_yd.unwrap() > WALK_MIN_YD);
+        assert_eq!(victim.culprit, None);
+        assert!(!victim.inferred);
     }
 
     #[test]

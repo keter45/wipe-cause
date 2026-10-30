@@ -218,7 +218,7 @@ function PeopleList({ title, people, stack = false, yards = false, tone, full = 
   const [all, setAll] = useState(full);
   const shown = all ? people : people.slice(0, TOP);
   return (
-    <div className={`metric-people ${yards ? 'wide' : ''}`}>
+    <div className={`metric-people ${yards ? 'metric-people-yards' : ''}`}>
       <span className="tile-label">{title}</span>
       <ul className="plain">
         {shown.map((p) => (
