@@ -109,20 +109,22 @@ interface Slot {
 }
 
 /** Causa do "não usou": recarga, uso em outro momento do pull ou nenhum uso. */
-function missOf(s: Slot, cds: Map<string, number>): Pick<LineCheck, 'miss' | 'otherUseMs' | 'lastUseMs' | 'readyMs'> {
+function missOf(s: Slot, cds: Map<string, number>, used: Set<number>): Pick<LineCheck, 'miss' | 'otherUseMs' | 'lastUseMs' | 'readyMs'> {
   const times = castTimes(s.player, s.spellId).sort((a, b) => a - b);
+  // casts já casados com outra linha do mesmo player e CD não são "uso em outro momento"
+  const free = times.filter((t) => !used.has(t));
   const before = times.filter((t) => t < s.expectedMs);
-  const after = times.filter((t) => t > s.expectedMs);
+  const after = free.filter((t) => t > s.expectedMs);
   const lastUseMs = before.length ? before[before.length - 1] : undefined;
   const cd = healCd(s.spellId);
   const cooldown = cds.get(`${s.player.guid}:${cd?.id ?? s.spellId}`);
   const readyMs = lastUseMs != null && cooldown != null ? lastUseMs + cooldown : undefined;
-  // ainda recarregando na hora da linha
+  // ainda recarregando na hora da linha (o último uso pode ser um cast casado: foi ele que gastou o CD)
   if (lastUseMs != null && readyMs != null && s.expectedMs < readyMs) {
     return { miss: 'recharging', lastUseMs, readyMs, otherUseMs: after[0] };
   }
-  if (times.length) {
-    const otherUseMs = times.reduce((a, b) => (Math.abs(b - s.expectedMs) < Math.abs(a - s.expectedMs) ? b : a));
+  if (free.length) {
+    const otherUseMs = free.reduce((a, b) => (Math.abs(b - s.expectedMs) < Math.abs(a - s.expectedMs) ? b : a));
     return { miss: 'used_elsewhere', lastUseMs, readyMs, otherUseMs };
   }
   return { miss: 'never', lastUseMs, readyMs };
@@ -251,6 +253,15 @@ export function matchLines(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, P
     if (!note) continue;
     const { done, slots } = slotsOf(pull, note, offsets, phs, names, ever);
     const matched = pair(slots);
+    const cdKey = (s: Slot) => `${s.player.guid}:${healCd(s.spellId)?.id ?? s.spellId}`;
+    // casts usados pelas linhas casadas deste pull, por player e CD
+    const usedByCd = new Map<string, Set<number>>();
+    for (const s of slots) {
+      const t = matched.get(s.lineIndex);
+      if (t == null) continue;
+      const key = cdKey(s);
+      (usedByCd.get(key) ?? usedByCd.set(key, new Set()).get(key)!).add(t);
+    }
     const checks = [...done];
     for (const s of slots) {
       const base = { lineIndex: s.lineIndex, guid: s.player.guid, expectedMs: s.expectedMs };
@@ -265,7 +276,7 @@ export function matchLines(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, P
         checks.push({ ...base, state: 'dead' });
         continue;
       }
-      checks.push({ ...base, state: 'not_used', ...missOf(s, cds) });
+      checks.push({ ...base, state: 'not_used', ...missOf(s, cds, usedByCd.get(cdKey(s)) ?? new Set()) });
     }
     out.set(pull.id, checks.sort((a, b) => a.lineIndex - b.lineIndex));
   }

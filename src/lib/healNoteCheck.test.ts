@@ -95,6 +95,20 @@ describe('não usou: causa', () => {
     expect(run([never], 'time:100;ph:1;tag:Druida;spellid:740;').checks.get(2)![0]).toMatchObject({ state: 'not_used', miss: 'never' });
   });
 
+  it('cast casado com outra linha não é "uso em outro momento"', () => {
+    const p = mk(0, [druid({ 740: [12_000] })], p1);
+    const near = ['time:10;ph:1;tag:Druida;spellid:740;', 'time:100;ph:1;tag:Druida;spellid:740;'].join('\n');
+    const [first, second] = run([p], near).checks.get(0)!;
+    expect(first).toMatchObject({ state: 'on_time', usedMs: 12_000 });
+    // dentro do cooldown: recarga pelo cast casado, sem apontar "uso em outro momento" para ele
+    expect(second).toMatchObject({ state: 'not_used', miss: 'recharging', lastUseMs: 12_000 });
+    expect(second.otherUseMs).toBeUndefined();
+
+    // fora do cooldown: não sobrou cast livre, então "nenhum uso"
+    const far = ['time:10;ph:1;tag:Druida;spellid:740;', 'time:250;ph:1;tag:Druida;spellid:740;'].join('\n');
+    expect(run([p], far).checks.get(0)![1]).toMatchObject({ state: 'not_used', miss: 'never' });
+  });
+
   it('cooldown efetivo menor que o base quando o player usou mais rápido', () => {
     const p = mk(0, [druid({ 740: [10_000, 100_000] })], p1);
     expect(effectiveCooldowns([p]).get('Druida:740')).toBe(90_000);
