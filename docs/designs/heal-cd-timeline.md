@@ -110,8 +110,11 @@ Dois riscos a evitar:
 
 ## Non-Goals
 
-*   **Mudar os estados e veredictos existentes** (timing, "no golpe", "sem
-    dano", "overheal alto", "empilhado", uso de ciclo, note sugerida).
+*   **Mudar os estados e veredictos existentes** (timing, "no golpe",
+    "overheal alto", "empilhado", uso de ciclo, note sugerida). A exceção é o
+    "sem dano", que passa a exigir também nenhum dano alto na janela, com a
+    note e sem ela (decisão do desenvolvedor depois da calibração, 2026-11-03;
+    ver [Open Questions](#open-questions)).
 *   **Campo novo no núcleo:** tudo sai de `raidSeries`, `enemyHits`,
     `cdHeals` e `casts`, que o relatório já tem.
 *   **Sugerir CD para o buraco** na note sugerida: o buraco aparece no gráfico;
@@ -124,21 +127,34 @@ Dois riscos a evitar:
 
 ## Open Questions
 
-*   **`GAP_SHARE` e `GAP_MIN_S`.** Valores de partida: 0,60 e 3 s. Saem da
-    calibração na etapa 1 do [Detailed Implementation
-    Plan](#detailed-implementation-plan) (`scripts/heal-note-calibrate.mjs
-    --gap-shares`), em pelo menos duas noites da guilda, e o desenvolvedor
-    aprova antes da interface. Critério: mediana de 1 a 4 buracos por pull e
-    no máximo 25% de buracos sem evidência de dano (nenhuma morte não
-    ignorada em `[início, fim + RECOVER_MS]` e nenhum segundo de raide baixa no
-    trecho, no próprio pull). Se nenhum par atende, fica o par com a mediana
-    mais perto de 2,5, registrado aqui.
-*   **"Ciclo provável" sem note.** Sem a note, o app não sabe que um CD foi
-    gasto cedo de propósito. A regra proposta (ver [Usos sem
-    note](#usos-sem-note)) usa o cooldown base; com redução de cooldown por
-    talento, ela deixa de reconhecer alguns ciclos (nunca acusa mais do que o
-    "sem dano" já acusaria). A calibração conta quantos "sem dano" sem note
-    viram "ciclo provável".
+*   **`GAP_SHARE` e `GAP_MIN_S` — fechada (2026-11-03): 0,60 e 3 s.**
+    Calibração com `scripts/heal-note-calibrate.mjs --gap-shares --gap-min`
+    em três noites de The Coiled Altar Mythic (26/10, 18 pulls; 28/10, 18;
+    29/10, 16). Critério: mediana de 1 a 4 buracos por pull e no máximo 25% de
+    buracos sem evidência de dano.
+    *   **Primeira régua de evidência** (morte ou raide baixa, um quarto dos
+        vivos abaixo de 50%): de 65% a 82% dos buracos ficavam sem evidência
+        em qualquer par de 0,50 a 0,80, inclusive nos golpes de 0,80. A régua
+        era dura demais: a cura de fundo segura a raide acima do episódio de
+        raide baixa, mas não sem ninguém cair abaixo de 50%.
+    *   **Régua adotada:** morte não ignorada, ou `EVIDENCE_LOW` = 2 ou mais
+        players abaixo de 50%, em `[início, fim + RECOVER_MS]`. Com 0,60 e 3
+        s: 1 buraco por pull na mediana nas três noites (p90 1–2), 2 ou 3
+        buracos da noite, e 22%, 25% e 37% sem evidência (26, 28 e 29/10). Com
+        0,70 os números quase não mudam; 0,60 fica por pegar o trecho entre o
+        p75 (0,58) e o golpe.
+    *   **"Sem dano" alinhado:** com a regra da v0.44 (nenhum golpe nem raide
+        baixa na janela), 21% a 36% dos usos de CD de cura saíam "sem dano"
+        (78 a 136 por noite), e cerca de 70% deles tinham dano acima de 0,60
+        na janela. O "sem dano" passa a exigir também nenhum dano alto
+        (`highDamage`, `Wt` ≥ `GAP_SHARE`), na timeline e no veredicto da note
+        (decisão do desenvolvedor): 23 a 40 por noite, quase todos de CDs de
+        throughput usados no cooldown (Convoke the Spirits, Divine Hymn,
+        Apotheosis, Avenging Wrath).
+*   **"Ciclo provável" sem note — medido.** Com o "sem dano" alinhado, a regra
+    tira 41, 28 e 39 usos do "sem dano" nas três noites (de 64, 68 e 70). Com
+    redução de cooldown por talento ela deixa de reconhecer alguns ciclos;
+    nunca acusa mais do que o "sem dano" já acusaria.
 
 ## Critical User Journeys (CUJs)
 
@@ -214,7 +230,8 @@ Em `src/lib/healTimeline.ts`:
 
 | Nome | Valor de partida | Uso |
 | --- | --- | --- |
-| `GAP_SHARE` | 0,60 | dano em 5 s ÷ vida máxima da raide para "dano alto" (Open Questions) |
+| `GAP_SHARE` | 0,60 | dano dos últimos 5 s ÷ vida máxima da raide para "dano alto"; fica em `raidHits.ts` com `trailingShare` e `highDamage` (parâmetro da luta, como `STRONG_HIT_SHARE`) e é reexportada aqui (Open Questions) |
+| `EVIDENCE_LOW` | 2 | players abaixo de 50% que dão evidência de dano ao buraco (Open Questions) |
 | `GAP_MIN_S` | 3 s | duração mínima do buraco (Open Questions) |
 | `GAP_JOIN_S` | 1 s | falha que ainda junta dois trechos de buraco |
 
@@ -231,9 +248,10 @@ Um **uso** é um cast, em `PlayerStats.casts`, de uma spell da tabela
     ser exportada). A barra desenhada vai de `u` a `u + d` (a duração do
     efeito); a janela serve para os veredictos e para cobrir buracos.
 *   **Momento do uso:** `momentOf` (passa a ser exportada), o mesmo de hoje.
-*   **Sem dano** (`kind: heal`): nenhum golpe do pull cruza a janela e nenhum
-    segundo de raide baixa cai nela; a regra de hoje, aplicada ao cast em vez
-    da linha da note.
+*   **Sem dano** (`kind: heal`): nenhum golpe do pull cruza a janela, nenhum
+    segundo de raide baixa cai nela e não há dano alto nela
+    (`highDamage(pull, janela)`, `Wt` ≥ `GAP_SHARE`). A mesma regra vale no
+    `judgeUse` da note (ver [Open Questions](#open-questions)).
 *   **Overheal do uso e overheal alto:** `overhealOfUse` e `refOverheal` com
     `selectHealRefs(pull, player)`, como hoje; CD sem `heal_ids` fica sem
     fração.
@@ -515,7 +533,7 @@ interface Gap {
   peak: number;                  // maior Wt/V do trecho
   key: string | null;            // `${spellId}:${k}`, null sem marco
   hit: boolean;                  // cruza um golpe do pull
-  evidence: boolean;             // morte não ignorada ou raide baixa (Open Questions)
+  evidence: boolean;             // morte não ignorada ou EVIDENCE_LOW abaixo de 50% (Open Questions)
   free: { player: PlayerStats; cd: HealCd }[];
 }
 

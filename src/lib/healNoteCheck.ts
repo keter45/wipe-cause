@@ -9,7 +9,7 @@ import { castIdsOf, healCd, healCooldowns, type HealCd, type HealCdEffect } from
 import { band, MIN_REFS, OVERHEAL_MARGIN, type Band, type HealRefEntry } from './healer';
 import { quantile } from './quantile';
 import { mapPhases, type NoteChange, type ParsedNote } from './healNote';
-import { raidLow, type Moment } from './raidHits';
+import { highDamage, raidLow, type Moment } from './raidHits';
 
 /** Uso a até isso da hora da linha = na hora. */
 export const ON_TIME_MS = 10_000;
@@ -68,7 +68,7 @@ const median = (xs: number[]) => quantile(xs, 0.5);
 const playerOf = (pull: Pull, tag: string): PlayerStats | undefined => pull.players.find((p) => norm(shortName(p.name)) === norm(tag));
 
 /** Tempos (ms do pull) em que o player castou a spell ou um id alternativo dela. */
-function castTimes(p: PlayerStats, spellId: number): number[] {
+export function castTimes(p: PlayerStats, spellId: number): number[] {
   const ids = new Set(castIdsOf(spellId));
   return (p.casts ?? []).filter((c) => ids.has(c.spellId)).flatMap((c) => c.times);
 }
@@ -285,13 +285,13 @@ export function covers(effect: HealCdEffect, u: number, d: number, start: number
 }
 
 /** Janela em que um uso precisa ver dano para não ser "sem dano". */
-function noDamageWindow(effect: HealCdEffect, u: number, d: number): [number, number] {
+export function noDamageWindow(effect: HealCdEffect, u: number, d: number): [number, number] {
   if (effect === 'active') return [u, u + d];
   if (effect === 'sustained') return [u, u + d + RECOVER_MS];
   return [u - 5_000, u + d + RECOVER_MS];
 }
 
-const overlaps = (a: number, b: number, c: number, d: number) => a <= d && c <= b;
+export const overlaps = (a: number, b: number, c: number, d: number) => a <= d && c <= b;
 
 export interface UseVerdict {
   /** momento da noite que a linha cobre neste pull */
@@ -319,7 +319,7 @@ export interface PullVerdicts {
 const PLANNED: LineState[] = ['on_time', 'early', 'late', 'not_used', 'dead'];
 
 /** O momento que a linha cobre (pela hora ajustada), o mais perto quando cobre mais de um. */
-function momentOf(cd: HealCd, at: number, pullId: number, ms: Moment[]): Moment | null {
+export function momentOf(cd: HealCd, at: number, pullId: number, ms: Moment[]): Moment | null {
   let best: Moment | null = null;
   for (const m of ms) {
     const p = m.pulls.get(pullId);
@@ -420,7 +420,10 @@ export function judgeUse(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, Pha
       let noDamage = false;
       if (cd.kind === 'heal' && !cycle && used != null) {
         const [x, y] = noDamageWindow(cd.effect, used, cd.duration_ms);
-        noDamage = !mine.some((mm) => overlaps(span(mm).at, span(mm).end, x, y)) && !low.some((e) => overlaps(e.start, e.end, x, y));
+        noDamage =
+          !mine.some((mm) => overlaps(span(mm).at, span(mm).end, x, y)) &&
+          !low.some((e) => overlaps(e.start, e.end, x, y)) &&
+          !highDamage(p, x, y);
       }
       const player = p.players.find((x) => x.guid === c.guid);
       const amounts = player && used != null && !cycle ? overhealOfUse(player, cd, used) : null;
@@ -445,7 +448,7 @@ export function judgeUse(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, Pha
 /** Referências de fora para um healer do pull (na tela: `selectHealRefs` de healer.ts). */
 export type RefsOf = (pull: Pull, player: PlayerStats) => HealRefEntry[];
 
-type Amounts = { heal: number; over: number; share: number };
+export type Amounts = { heal: number; over: number; share: number };
 
 export interface UseOverheal extends Amounts {
   /** faixa das referências (null: menos de `MIN_REFS` com a cura do CD) e quantas têm o número */
@@ -480,7 +483,7 @@ export function refOverheal(refs: HealRefEntry[], cd: HealCd): { values: number[
   return { values, band: values.length >= MIN_REFS ? band(values) : null };
 }
 
-function withRef(o: Amounts, r: { values: number[]; band: Band | null }): UseOverheal {
+export function withRef(o: Amounts, r: { values: number[]; band: Band | null }): UseOverheal {
   return { ...o, ref: r.band, refs: r.values.length, high: !!r.band && o.share > r.band.p75 + OVERHEAL_MARGIN };
 }
 

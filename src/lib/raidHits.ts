@@ -14,6 +14,8 @@ export const HIT_ONSET_SHARE = 0.2;
 /** Raide baixa: um quarto ou mais dos vivos abaixo de 50%, por pelo menos 2 s. */
 export const LOW_SHARE = 0.25;
 export const LOW_MIN_S = 2;
+/** Dano em 5 s ÷ vida máxima da raide para "dano alto" num buraco. */
+export const GAP_SHARE = 0.6;
 const WINDOW_S = 5;
 /** segundos fortes com até isso de buraco são o mesmo golpe */
 const GAP_S = 4;
@@ -83,7 +85,7 @@ export function hits(pull: Pull, anchors: Anchors, share = STRONG_HIT_SHARE): Hi
   return merged;
 }
 
-function topSpell(pull: Pull, start: number, end: number): number | null {
+export function topSpell(pull: Pull, start: number, end: number): number | null {
   const by = new Map<number, number>();
   for (const [sec, spell, dmg] of pull.enemyHits ?? []) if (sec * 1000 >= start && sec * 1000 < end) by.set(spell, (by.get(spell) ?? 0) + dmg);
   let best: number | null = null;
@@ -91,7 +93,7 @@ function topSpell(pull: Pull, start: number, end: number): number | null {
   return best;
 }
 
-function keyOf(spellId: number | null, start: number, anchors: Anchors): string | null {
+export function keyOf(spellId: number | null, start: number, anchors: Anchors): string | null {
   // o cast da própria spell que fez o golpe, se ela é um marco da noite
   const own = spellId != null ? anchors[String(spellId)] : undefined;
   if (own) {
@@ -203,6 +205,26 @@ export function moments(pulls: Pull[], anchors: Map<number, Anchors>, hitsByPull
     });
   }
   return out.sort((a, b) => a.inPhaseMs - b.inPhaseMs);
+}
+
+/** Dano inevitável dos últimos 5 s até o segundo `i` ÷ vida máxima no segundo `i`; 0 sem vida no log. */
+export function trailingShare(pull: Pull, i: number): number {
+  const s = pull.raidSeries;
+  if (!s || !(s.maxHpK[i] > 0)) return 0;
+  let w = 0;
+  for (let j = Math.max(0, i - 4); j <= i; j++) w += s.unavoidableK[j];
+  return w / s.maxHpK[i];
+}
+
+/** Existe um segundo com `trailingShare` no limite cuja janela de 1 s cruza `[from, to]`. */
+export function highDamage(pull: Pull, from: number, to: number, share = GAP_SHARE): boolean {
+  const s = pull.raidSeries;
+  if (!s) return false;
+  for (let i = 0; i < s.unavoidableK.length; i++) {
+    const at = i * 1000;
+    if (at <= to && from <= at + 999 && trailingShare(pull, i) >= share) return true;
+  }
+  return false;
 }
 
 /** Episódios de raide baixa (ms do pull): um quarto ou mais dos vivos abaixo de 50% por 2 s ou mais. */
