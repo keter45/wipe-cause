@@ -6,7 +6,7 @@
 
 1. **[Baixe o instalador](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`). Windows 10 ou 11 (o app usa o WebView2, que vem com o Windows).
 2. Abra o arquivo. Na primeira vez, o Windows pode mostrar *"O Windows protegeu o computador"*: clique em **Mais informações → Executar assim mesmo** (o app ainda não tem certificado de assinatura pago).
-3. Pronto. O app **se atualiza sozinho** quando sai versão nova; não precisa baixar de novo.
+3. Pronto. O app **se atualiza sozinho** quando sai versão nova: uma faixa avisa e um clique instala; não precisa baixar de novo.
 
 ### Ou use online
 
@@ -57,7 +57,9 @@ Quando a raid desiste (depois de um desastre, vários players param de castar ao
 ## Resumo da noite e do boss
 
 ![Resumo da noite: tempo de raid, downtime, um cartão por boss com o resultado e a linha do tempo da noite](screenshots/pt/night.webp)
-<p align="center"><i>O resumo da noite: tempo de raid, downtime entre as trys, um cartão por boss e a linha do tempo com as pausas.</i></p>
+<p align="center"><i>O resumo da noite: tempo de raid, downtime entre as tries, um cartão por boss e a linha do tempo com as pausas.</i></p>
+
+Os cartões dos dois resumos recolhem e expandem, e o app lembra a escolha.
 
 No **resumo do boss**: o melhor pull, a maior causa dos wipes, o progresso pull a pull, a tabela **Causas dos wipes** (mecânica, gatilho, mortes e falhas), a linha do tempo do boss com os intervalos, o placar de vilões e mocinhos e o downtime.
 
@@ -83,7 +85,9 @@ Fases em que o boss fica imune até o raid resolver a mecânica são cronometrad
 
 ### CDs de cura da note
 
-Cole a note de CDs do addon (NSRT, a que o MRT mostra) na seção **CDs de cura**, no fim do resumo do boss (recolhe e expande), ou na aba do pull. Cada linha é casada com o cast do player: **na hora** (até 10 s), adiantado, atrasado ou não usou, e sem culpa quando a fase não chegou, acabou antes, o player morreu ou não tem a spell. O app mede e desconta o desvio do relógio do addon em cada fase (no The Coiled Altar, o P2 do addon começa uns 8 s depois). Quando a note mudar entre as tries, clique em **Nova versão** antes de editar: cada pull é julgado pela versão que valia nele. A mesma caixa serve à escala de interrupts, que sai do bloco `intstart`…`intend`. A seção também mostra os **golpes do boss** (dano que não dá para evitar acima de 80% da vida da raide em 5 s): se cada linha cobriu o golpe, a cura usada sem dano por perto e os golpes sem CD na note. Cada cura de CD mostra o **overheal** contra os healers de fora da mesma spec (e, na aba do pull, o número da noite ao lado); duas curas no mesmo golpe com overheal alto ficam **empilhadas**. No resumo do boss, a **Note sugerida** lista mudanças de um passo por versão (adicionar um CD livre num golpe sem CD, mover uma linha usada na hora mas fora do golpe): marque as que quiser e **Copiar** devolve a note colada só com essas mudanças. Regras: [heal-cd-note.md](heal-cd-note.md).
+A seção abre na **linha do tempo**, que funciona sem note: o dano da raide, a raide baixa e os golpes em cima; embaixo, um grupo por player com uma linha por CD e uma barra para cada uso (cura útil × overheal; redução de dano; CD de cura sem medição), com os alertas **sem dano**, **overheal alto** e **empilhado**. Uma linha fina depois de cada barra vai até o CD voltar. Os **buracos** são as colunas vermelhas: dano alto ou raide baixa sem CD ativo, com os CDs que estavam livres (na noite, "em X de Y pulls"). Com note, cada linha aparece na hora chamada, na cor do estado, e o "não usou" traz a causa: em recarga, usou em outro momento ou não usou no pull. As tabelas ficam em **Detalhes**.
+
+Cole a note de CDs do addon (NSRT, a que o MRT mostra) na seção **CDs de cura**, no fim do resumo do boss (recolhe e expande), ou na aba do pull. Cada linha é casada com o cast do player: **na hora** (até 10 s), adiantado, atrasado ou não usou, e sem culpa quando a fase não chegou, acabou antes, o player morreu ou não tem a spell. O app mede e desconta o desvio do relógio do addon em cada fase (no The Coiled Altar, o P2 do addon começa uns 8 s depois). Quando a note mudar entre as tries, clique em **Nova versão** antes de editar: cada pull é julgado pela versão que valia nele. A mesma caixa serve à escala de interrupts, que sai do bloco `intstart`…`intend`. A seção também mostra os **golpes do boss** (dano que não dá para evitar acima de 80% da vida da raide em 5 s): se cada linha cobriu o golpe, a cura usada sem dano por perto e os golpes sem CD na note. Cada cura de CD mostra o **overheal** contra os healers de fora da mesma spec (e, na aba do pull, o número da noite ao lado); duas curas no mesmo golpe com overheal alto ficam **empilhadas**. No resumo do boss, a **Note sugerida** lista mudanças de um passo por versão (adicionar um CD livre num golpe sem CD, mover uma linha usada na hora mas fora do golpe): marque as que quiser e **Copiar** devolve a note colada só com essas mudanças. Regras: [heal-cd-note.md](heal-cd-note.md) (seção 9 para a linha do tempo).
 
 ## Mais recursos
 

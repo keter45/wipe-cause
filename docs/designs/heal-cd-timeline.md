@@ -386,12 +386,13 @@ momento ou se o CD ainda não tinha voltado, e desenhar a recarga.
     favor do player.
 *   **Causa** (`LineCheck.miss`, só em `not_used`): `recharging` (uso anterior
     + cooldown efetivo passa da hora ajustada), senão `used_elsewhere` (cast
-    do CD no pull fora do `PAIR_MS`), senão `never`; com `otherUseMs`,
+    do CD no pull que não casou com nenhuma linha da note; `missOf` em
+    `healNoteCheck.ts`), senão `never`; com `otherUseMs`,
     `lastUseMs` e `readyMs`. O estado não muda: a causa é um detalhe dele.
 *   **Tela:** `CdUse.readyAt` (cortado no próximo uso e no fim do pull) vira
     uma linha fina depois da barra. Para a recarga não cobrir outros itens,
     cada player tem uma linha por CD (`cdRows`; nome do player na primeira,
-    ícone do CD em cada uma, 18 px), no lugar das sub-faixas por
+    ícone de 14 px numa linha de 18 px), no lugar das sub-faixas por
     sobreposição; marca `recharging` com anel tracejado;
     marca com `otherUseAt` ligada ao cast por um traço tracejado; a tabela
     mostra a causa e a noite soma as causas.
@@ -531,6 +532,7 @@ interface CdUse {
   cd: HealCd;
   at: number;                    // ms do pull (cast)
   end: number;                   // at + duration_ms (a barra)
+  readyAt: number | null;        // at + cooldown efetivo, cortado no próximo uso e no fim do pull
   window: [number, number];      // noDamageWindow (veredictos e cobertura)
   momentKey: string | null;
   noDamage: boolean;
@@ -547,8 +549,15 @@ interface NoteMark {
   at: number;                    // expectedMs
   state: LineState;              // on_time | early | late | not_used | dead
   cycle: boolean;
+  spellId: number | null;        // spellId da linha da note
   useAt?: number;                // usedMs do uso casado
+  deltaMs?: number;              // uso − hora ajustada
+  miss?: LineCheck['miss'];      // causa do "não usou"
+  otherUseAt?: number;           // otherUseMs da linha
+  readyAt?: number;              // readyMs da linha
 }
+
+interface CdRow { guid: string; cdId: number; key: string; lane: number }
 
 interface Gap {
   start: number;                 // ms desde o início do pull
@@ -564,14 +573,16 @@ interface GapOpts { share: number; minS: number; joinS: number }
 
 interface NightGap { key: string; spellId: number; k: number; pulls: Set<number>; reached: number }
 
-function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycleRule = true): CdUse[];
+function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycleRule = true,
+              cds?: Map<string, number>): CdUse[];   // cds: cooldown efetivo por `${guid}:${cdId}`
 function withNote(pull: Pull, uses: CdUse[], note: ParsedNote, checks: LineCheck[],
                   verdicts: PullVerdicts | null): { uses: CdUse[]; marks: NoteMark[] };
 function gaps(pull: Pull, uses: CdUse[], anchors: Anchors, hits: Hit[],
               usedInNight: Set<string>, opts?: GapOpts): Gap[];
 function nightGaps(pulls: Pull[], anchors: Map<number, Anchors>,
                    gapsByPull: Map<number, Gap[]>): NightGap[];
-function stackLanes(uses: CdUse[]): Map<CdUse, number>;   // sub-faixa por player
+function stackLanes(uses: CdUse[]): Map<CdUse, number>;   // sub-faixa dentro da linha de um CD
+function cdRows(uses: CdUse[], marks: NoteMark[]): CdRow[];  // uma linha por player e CD
 function defaultPull(pulls: Pull[]): Pull;
 ```
 
@@ -703,9 +714,10 @@ function useTimeWindow(o: { duration: number; win: [number, number];
         `GAP_SHARE` e `STRONG_HIT_SHARE`; divisões de fase com "P1", "P2";
     *   tira de raide baixa (6 px);
     *   linhas dos players: `role === 'healer'` primeiro, depois os demais,
-        cada grupo pelo primeiro uso; nome com `PlayerName`; sub-faixas de
-        22 px por `stackLanes`; barra de `at` a `end`, no mínimo 4 px, com
-        `SpellIcon` de 16 px no começo.
+        cada grupo pelo primeiro uso; nome com `PlayerName`; uma linha de
+        18 px (`--heal-tl-row-h`) por CD (`cdRows`), com `stackLanes` só
+        dentro da linha de um CD; barra de `at` a `end`, no mínimo 4 px, com
+        `SpellIcon` de 14 px no começo.
 *   **Barra:** cura útil em `--heal-tl-useful`; overheal na mesma cor com
     listras a 45° e opacidade 0,45 (`--heal-tl-over`), na proporção de
     `overheal.share`; `mitigation` em `--heal-tl-mitig`; CD de cura sem
@@ -764,8 +776,10 @@ function useTimeWindow(o: { duration: number; win: [number, number];
 *   **Type / Scope:** estilos.
 *   **What:** classes `heal-tl-*` (faixas, barras, listras do overheal,
     coluna de buraco, losango, foco por teclado, cartões, fileira de pulls) e
-    as variáveis `--heal-tl-useful`, `--heal-tl-over`, `--heal-tl-mitig`,
-    `--heal-tl-gap` (`--bad` a 12%) nos temas claro e escuro; sem borda
+    as variáveis `--heal-tl-useful` (`--kill`), `--heal-tl-over` (`--minor`),
+    `--heal-tl-mitig` (`--info`), `--heal-tl-noheal` e `--heal-tl-gap`
+    (`--wipe` a 18%, `color-mix`); derivam das cores do tema, sem bloco
+    separado por tema; sem borda
     colorida lateral (regra 5 das [Regras do
     projeto](../CONTRIBUTING.pt-BR.md#regras-do-projeto)).
 

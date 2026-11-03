@@ -50,7 +50,8 @@ Obrigatórios:
   inflados;
 - região US ou EU (o próprio vídeo recomenda deixar CN de fora: os parses de lá fogem do padrão);
 - **mesmo número de healers que o nosso pull.** Se não houver logs suficientes, aceitar ±1 e avisar
-  na tela;
+  na tela. Isso vale para as referências embutidas em `src/data/heal-refs`; a busca no WCL na tela
+  usa composição de healers em comum de pelo menos 70% (`COMP_MIN_SIMILARITY` em `src/lib/wclApi.ts`);
 - nenhum Power Infusion de outra pessoa no healer de referência, mesma regra dos DPS. Innervate e
   Source of Magic de outra pessoa não descartam o log; ficam só nos eventos baixados de cada luta
   (`fight-<id>.json`, não no `refs.json`), porque mudam a mana dele, e ainda não aparecem na tela.
@@ -98,7 +99,8 @@ momentos perigosos da luta.
   cooldown grande quase sempre cobre um golpe grande, e o tempo de luta escorrega de uma raid para
   outra. Cada uso vira "k-ésimo cast do boss + Δs" (o cast mais perto, de 15 s antes a 30 s depois);
   uma mecânica é momento da referência quando 60% ou mais dos logs que chegaram nela usam o cooldown
-  ali (com pelo menos 5 logs). Na tela: "2ª Stir the Depths · referência +3 s (80% dos logs) · você +8 s ▶". É
+  ali (com pelo menos 5 logs). Sem âncora de mecânica, o momento por tempo de luta exige 75% dos logs
+  (`CD_MOMENT_SHARE` em `src/lib/healer.ts`). Na tela: "2ª Stir the Depths · referência +3 s (80% dos logs) · você +8 s ▶". É
   informação, não dica: usar em outra mecânica pode ser a estratégia da raid.
 - Cooldown que o player terminou a luta sem usar nenhuma vez.
 
@@ -225,7 +227,7 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
      (Lifebloom do Everbloom);
    - o tempo parado do healer só conta nos segundos com alguém vivo abaixo de 80% de vida.
    Conferido contra a tabela de cura do WCL (Nek'zali mítico, 29/09): diferença de −0,2% a +3,4% por
-   healer.
+   healer. Medição manual datada; nenhum script a reproduz.
 2. **Referência**: `node scripts/rotation.mjs refs <spec> [--per-boss N]` (`scripts/rotation/heal-refs.mjs`)
    baixa kills no mítico, US/EU, de 4 páginas do ranking de cura, sem as 10 primeiras posições e sem
    usar a nota na escolha. Cada log guarda a composição de healers, a fatia da cura e o dano tomado
@@ -237,7 +239,7 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
    ATENÇÃO / REVISAR) confere a tabela contra as referências e a rotação da spec.
 3. **YAML de healer**: `role: healer`, sem prioridade nem abertura. Checagens novas: `ally_uptime`
    (tempo com o buff ou média de alvos). Feitos: `priest-discipline`, `druid-restoration` e
-   `paladin-holy`, conferidos com `node scripts/rotation.mjs check <spec>` nas referências.
+   `paladin-holy` (protótipo; as 7 specs depois, ver item 6), conferidos com `node scripts/rotation.mjs check <spec>` nas referências.
 4. **No app** (`src/lib/healer.ts`, `HealerPanel`): a escolha da referência e as dicas desta página,
    na tela do player.
 5. **Calibração** (`src/lib/healer.calibration.test.ts`): cada log de referência contra os outros do
@@ -249,11 +251,11 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
    - a referência "cumpre" uma checagem com mediana ≥ 85%; dica só com o player 5 pontos abaixo do
      p25 e 12 pontos (15 em proc) abaixo da mediana; no tempo parado, 2 e 5 pontos;
    - uptime dos HoTs sem checagem no YAML saiu das dicas (varia com o estilo).
-   Hoje: até 35% dos logs de referência com alguma dica (os de referência não são tops; parte das
+   Teto do teste de calibração: até 35% dos logs de referência com alguma dica (os de referência não são tops; parte das
    dicas entre eles é erro de verdade).
 6. **As 7 specs** (2026-10-11): Discipline Priest, Holy Priest, Holy Paladin, Restoration Druid,
    Restoration Shaman, Mistweaver Monk e Preservation Evoker, com 64 a 72 logs de referência cada (8 por
-   chefe). Calibração (referência contra referência) com dica em 13% a 26% dos logs; o resto do que
+   chefe: contagem da baixa daquela data, feita com `--per-boss 8`; o padrão do script é 4). Calibração (referência contra referência) com dica em 13% a 26% dos logs (medição datada de 2026-10-11); o resto do que
    aparece é erro de verdade desses players (proc gasto no spell errado, mana sobrando).
    Ajustes que saíram da calibração e das referências:
    - momento do cooldown virou informação ("Momentos dos cooldowns"), não dica;

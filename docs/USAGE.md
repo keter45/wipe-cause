@@ -6,7 +6,7 @@
 
 1. **[Download the installer](https://github.com/keter45/wipe-cause/releases/latest/download/WipeCause_x64-setup.exe)** (`WipeCause_x64-setup.exe`). Windows 10 or 11 (the app uses WebView2, which comes with Windows).
 2. Open the file. The first time, Windows may show *"Windows protected your PC"*: click **More info → Run anyway** (the app doesn't have a paid signing certificate yet).
-3. Done. The app **updates itself** when a new version comes out; no need to download it again.
+3. Done. The app **updates itself** when a new version comes out: a banner announces it and one click installs it; no need to download it again.
 
 ### Or use it online
 
@@ -59,6 +59,8 @@ When the raid gives up (after a disaster, several players stop casting at the sa
 ![Night summary: raid time, downtime, one card per boss with the result and the night's timeline](screenshots/en/night.webp)
 <p align="center"><i>The night summary: raid time, downtime between tries, one card per boss and the timeline with the breaks.</i></p>
 
+The cards of both summaries collapse and expand, and the app remembers the choice.
+
 In the **boss summary**: the best pull, the top cause of the wipes, progress pull by pull, the **Wipe causes** table (mechanic, trigger, deaths and failures), the boss's timeline with the breaks, the villains and heroes scoreboard and the downtime.
 
 ![Boss summary: best pull 5.8%, top cause Stone Breaker, progress chart per pull and the start of the group metrics](screenshots/en/boss.webp)
@@ -83,7 +85,9 @@ Phases where the boss is immune until the raid solves the mechanic are timed pul
 
 ### Healing CDs from the note
 
-Paste the addon CD note (NSRT, the one MRT shows) in the **Healing CDs** section at the end of the boss summary (it collapses and expands), or in the pull tab. Each line is matched to the player cast: **on time** (within 10 s), early, late or not used, and no blame when the phase was not reached, ended before, the player died or does not have the spell. The app measures and removes the addon clock offset in each phase (on The Coiled Altar, the addon P2 starts about 8 s later). When the note changes between tries, click **New version** before editing: each pull is judged by the version that applied to it. The same box serves the interrupt assignments, which come from the `intstart`…`intend` block. The section also shows the **boss hits** (unavoidable damage over 80% of the raid health in 5 s): whether each line covered the hit, heals used with no damage around, and hits with no CD in the note. Each CD heal shows its **overheal** against outside healers of the same spec (and the night number next to it in the pull tab); two heals on the same hit with high overheal are marked **stacked**. In the boss summary, **Suggested note** lists one-step changes for each version (add a free CD on an uncovered hit, move a line used on time but off the hit): tick the ones you want and **Copy** returns the pasted note with only those changes. Rules (in Portuguese): [heal-cd-note.md](heal-cd-note.md).
+The section opens on a **timeline**, which works without a note: the raid's damage, the low raid and the hits on top; below, one group per player with a line per CD and a bar for each use (useful heal × overheal; damage reduction; healing CD with no measurement), with the alerts **no damage**, **high overheal** and **stacked**. A thin line after each bar runs until the CD is back. **Gaps** are the red columns: high damage or a low raid with no CD active, with the CDs that were available (in the night, "in X of Y pulls"). With a note, each line shows at its called time in the colour of its state, and "not used" gives the cause: on cooldown, used at another time or not used in the pull. The tables below are under **Details**.
+
+Paste the addon CD note (NSRT, the one MRT shows) in the **Healing CDs** section at the end of the boss summary (it collapses and expands), or in the pull tab. Each line is matched to the player cast: **on time** (within 10 s), early, late or not used, and no blame when the phase was not reached, ended before, the player died or does not have the spell. The app measures and removes the addon clock offset in each phase (on The Coiled Altar, the addon P2 starts about 8 s later). When the note changes between tries, click **New version** before editing: each pull is judged by the version that applied to it. The same box serves the interrupt assignments, which come from the `intstart`…`intend` block. The section also shows the **boss hits** (unavoidable damage over 80% of the raid health in 5 s): whether each line covered the hit, heals used with no damage around, and hits with no CD in the note. Each CD heal shows its **overheal** against outside healers of the same spec (and the night number next to it in the pull tab); two heals on the same hit with high overheal are marked **stacked**. In the boss summary, **Suggested note** lists one-step changes for each version (add a free CD on an uncovered hit, move a line used on time but off the hit): tick the ones you want and **Copy** returns the pasted note with only those changes. Rules (in Portuguese): [heal-cd-note.md](heal-cd-note.md) (section 9 for the timeline).
 
 ## More features
 

@@ -180,8 +180,8 @@ Os downloads oficiais do SimC só funcionam por HTTP, sem HTTPS nem assinatura. 
 binário sem como conferir:
 
 - Um workflow do GitHub Actions compila o SimC (só a linha de comando) a partir do branch padrão
-  do projeto, toda semana e quando chamado à mão, e publica num release próprio com o SHA-256 e o
-  commit de origem.
+  do projeto, toda segunda-feira (cron `0 6 * * 1`) e quando chamado à mão, e publica num release próprio
+  com o SHA-256 e o commit de origem. O release guarda os 3 builds mais recentes (`KEEP: 3`).
 - O app baixa o SimC **na primeira simulação** (com aviso do tamanho: ~15 MB compactado), confere o SHA-256 e guarda na pasta de dados (`<dados>/simc/`). Antes de uma simulação, no máximo a cada 6 h, confere o manifesto e baixa o build novo; sem internet, ou se o download falha, segue com o SimC instalado.
   O instalador não cresce e o SimC acompanha o patch sem release nosso.
 - O SimC é GPL-3; ele roda como programa separado. Mostramos a versão e o link do código-fonte do
