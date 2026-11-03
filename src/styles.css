@@ -1,4 +1,6 @@
 :root {
+  --viz-series: #3987e5;
+  --viz-good: #0ca30c;
   --bg: #131115;
   --panel: #1b181e;
   --panel-2: #241f28;
@@ -1457,8 +1459,6 @@ ul.plain {
 
 /* resumo da noite */
 .night {
-  --viz-series: #3987e5;
-  --viz-good: #0ca30c;
   --viz-grid: var(--border);
   --viz-axis: #898781;
   display: flex;
@@ -1640,20 +1640,6 @@ ul.plain {
   fill: var(--viz-series);
   stroke: var(--text);
   stroke-width: 1.5;
-}
-/* boss de várias fases: a cor da fase em que o pull acabou (como na lista de pulls) */
-.chart .mark.ph-0 {
-  fill: var(--accent);
-}
-.chart .mark.ph-1,
-.chart .mark.ph-2 {
-  fill: var(--info);
-}
-.chart .mark.ph-3 {
-  fill: var(--phase-3);
-}
-.chart .mark-good {
-  fill: var(--viz-good);
 }
 .chart .bar-hit {
   cursor: pointer;
@@ -3073,22 +3059,38 @@ table.heat td {
 
 /* ---------------------------------------------------------------- timeline dos CDs de cura */
 .heal-tl {
+  --heal-tl-row-h: 18px;
   position: relative;
   display: grid;
   gap: 4px;
 }
+.heal-tl-player {
+  display: grid;
+  gap: 4px;
+}
+.heal-tl-player + .heal-tl-player {
+  margin-top: 4px;
+}
 .heal-tl-row {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: clamp(96px, 12vw, 132px) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
 .heal-tl-label {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 4px;
   min-width: 0;
-  max-width: clamp(96px, 12vw, 132px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.heal-tl-who {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -3099,7 +3101,7 @@ table.heat td {
 }
 .heal-tl-boss {
   position: relative;
-  height: 18px;
+  height: var(--heal-tl-row-h);
 }
 .heal-tl-curve {
   position: relative;
@@ -3123,12 +3125,12 @@ table.heat td {
 }
 .heal-tl-sub {
   position: relative;
-  height: 22px;
+  height: var(--heal-tl-row-h);
 }
 .heal-tl-gap {
   position: absolute;
-  top: -2px;
-  bottom: -2px;
+  top: -4px;
+  bottom: -4px;
   background: var(--heal-tl-gap);
   border-left: 1px solid color-mix(in srgb, var(--wipe) 45%, transparent);
   border-right: 1px solid color-mix(in srgb, var(--wipe) 45%, transparent);
@@ -3214,10 +3216,26 @@ table.heat td {
   opacity: 0.5;
   box-shadow: 0 0 0 2px var(--wipe);
 }
+.heal-tl-swatch-cd {
+  position: relative;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--muted);
+  opacity: 0.35;
+}
+.heal-tl-swatch-cd::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 2px;
+  height: 8px;
+  background: inherit;
+}
 .heal-tl-bar {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
+  top: 2px;
+  bottom: 2px;
   min-width: 4px;
   border-radius: 3px;
   cursor: pointer;
@@ -3243,10 +3261,40 @@ table.heat td {
   background: var(--muted);
   opacity: 0.5;
 }
+.heal-tl-cd {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.heal-tl-cd::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 2px;
+  height: 8px;
+  background: inherit;
+}
+.heal-tl-cd.useful {
+  background: var(--heal-tl-useful);
+}
+.heal-tl-cd.mitig {
+  background: var(--heal-tl-mitig);
+}
+.heal-tl-cd.noheal {
+  background: var(--heal-tl-noheal);
+}
+.heal-tl-cd.cycle {
+  background: var(--muted);
+}
 .heal-tl-alert {
   position: absolute;
-  top: -2px;
-  transform: translate(-50%, -100%);
+  top: 1px;
+  transform: translate(-50%, 0);
   color: var(--minor);
   font-size: 11px;
   line-height: 1;
@@ -3295,12 +3343,24 @@ table.heat td {
   opacity: 0.5;
   box-shadow: 0 0 0 2px var(--wipe);
 }
+.heal-tl-mark.heal-tl-mark-cd.recharging {
+  box-shadow: none;
+  border: 2px dashed var(--wipe);
+}
 .heal-tl-link {
   position: absolute;
   top: 50%;
   height: 1px;
   background: var(--muted);
   opacity: 0.6;
+  pointer-events: none;
+}
+.heal-tl-miss-link {
+  position: absolute;
+  top: 50%;
+  height: 0;
+  border-top: 1px dashed var(--wipe);
+  opacity: 0.7;
   pointer-events: none;
 }
 .heal-tl-bar:focus-visible,
@@ -8591,9 +8651,6 @@ button.kpi:hover {
   background: var(--accent);
   transform-origin: left;
 }
-.tree-pull.kill .tp-bar i {
-  background: var(--kill);
-}
 .tp-pct {
   justify-self: end;
   font-weight: 600;
@@ -8676,4 +8733,13 @@ button.kpi:hover {
   .pull-outcome .boss-hp-pills {
     justify-content: flex-start;
   }
+}
+
+.head-collapse {
+  margin-left: auto;
+}
+.panel-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }

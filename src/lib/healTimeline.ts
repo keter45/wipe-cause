@@ -38,6 +38,8 @@ export interface CdUse {
   at: number;
   /** at + duration_ms (a barra) */
   end: number;
+  /** quando o CD volta: at + cooldown efetivo, cortado pelo próximo uso e pelo fim do pull; null sem cooldown */
+  readyAt: number | null;
   /** noDamageWindow (veredictos e cobertura) */
   window: [number, number];
   momentKey: string | null;
@@ -64,6 +66,12 @@ export interface NoteMark {
   useAt?: number;
   /** uso − hora ajustada */
   deltaMs?: number;
+  /** causa do "não usou" */
+  miss?: LineCheck['miss'];
+  /** otherUseMs da linha */
+  otherUseAt?: number;
+  /** readyMs da linha */
+  readyAt?: number;
 }
 
 export interface Gap {
@@ -98,7 +106,7 @@ export interface NightGap {
 const PLANNED: LineState[] = ['on_time', 'early', 'late', 'not_used', 'dead'];
 
 /** Usos de CD do pull, pelos casts da tabela; com note, `withNote` troca pelos veredictos da linha. */
-export function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycleRule = true): CdUse[] {
+export function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycleRule = true, cds?: Map<string, number>): CdUse[] {
   const low = raidLow(pull);
   const out: CdUse[] = [];
   const all = ms.filter((m) => m.pulls.has(pull.id));
@@ -118,8 +126,25 @@ export function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycl
             !highDamage(pull, window[0], window[1]);
         const amounts = overhealOfUse(player, cd, at);
         const overheal = amounts ? withRef(amounts, refOverheal(refsOf(pull, player), cd)) : null;
-        out.push({ pullId: pull.id, player, cd, at, end: at + d, window, momentKey, noDamage, overheal, stacked: false, cycle: false, onHit: null });
+        out.push({ pullId: pull.id, player, cd, at, end: at + d, readyAt: null, window, momentKey, noDamage, overheal, stacked: false, cycle: false, onHit: null });
       }
+    }
+  }
+  // recarga: cooldown efetivo (ou o base) cortado pelo próximo uso do mesmo player e CD e pelo fim do pull
+  const end = pull.cutoffT ?? pull.durationMs;
+  const byKey = new Map<string, CdUse[]>();
+  for (const u of out) {
+    const k = `${u.player.guid}:${u.cd.id}`;
+    (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(u);
+  }
+  for (const [k, group] of byKey) {
+    group.sort((a, b) => a.at - b.at);
+    for (let i = 0; i < group.length; i++) {
+      const u = group[i];
+      const cooldown = cds?.get(k) ?? u.cd.cooldown_ms;
+      if (cooldown == null) continue;
+      const next = group[i + 1]?.at ?? end;
+      u.readyAt = Math.min(u.at + cooldown, next, end);
     }
   }
   out.sort((a, b) => a.at - b.at);
@@ -158,7 +183,21 @@ export function withNote(_pull: Pull, uses: CdUse[], note: ParsedNote, checks: L
   const planned = checks.filter((c) => PLANNED.includes(c.state));
   const marks: NoteMark[] = planned.flatMap((c) => {
     if (c.guid == null || c.expectedMs == null) return [];
-    return [{ lineIndex: c.lineIndex, guid: c.guid, at: c.expectedMs, state: c.state, cycle: verdicts?.lines.get(c.lineIndex)?.cycle ?? false, spellId: note.lines[c.lineIndex]?.spellId ?? null, useAt: c.usedMs, deltaMs: c.deltaMs }];
+    return [
+      {
+        lineIndex: c.lineIndex,
+        guid: c.guid,
+        at: c.expectedMs,
+        state: c.state,
+        cycle: verdicts?.lines.get(c.lineIndex)?.cycle ?? false,
+        spellId: note.lines[c.lineIndex]?.spellId ?? null,
+        useAt: c.usedMs,
+        deltaMs: c.deltaMs,
+        miss: c.miss,
+        otherUseAt: c.otherUseMs,
+        readyAt: c.readyMs,
+      },
+    ];
   });
   for (const u of out) {
     const c = planned.find((x) => {
@@ -263,7 +302,7 @@ export function nightGaps(pulls: Pull[], anchors: Map<number, Anchors>, gapsByPu
   return out;
 }
 
-/** Sub-faixa de cada barra: a primeira livre do player (barras sobrepostas não se cobrem). */
+/** Sub-faixa de cada barra: a primeira livre do player/CD (usos sobrepostos não se cobrem). */
 export function stackLanes(uses: CdUse[]): Map<CdUse, number> {
   const out = new Map<CdUse, number>();
   const byPlayer = new Map<string, CdUse[]>();
@@ -282,6 +321,54 @@ export function stackLanes(uses: CdUse[]): Map<CdUse, number> {
     }
   }
   return out;
+}
+
+export interface CdRow {
+  guid: string;
+  cdId: number;
+  /** `${guid}:${cdId}` */
+  key: string;
+  /** maior sub-faixa da linha (0 quando não há usos sobrepostos do mesmo CD) */
+  lane: number;
+}
+
+/** Chave da linha de um CD: player + id da tabela (ou spellId da marca fora da tabela). */
+export function cdRowKey(guid: string, cdId: number): string {
+  return `${guid}:${cdId}`;
+}
+
+/** CD de uma marca: o uso casado (pelo momento ou por qualquer uso do mesmo botão), senão o spellId. */
+export function markCdId(mark: NoteMark, uses: CdUse[]): number {
+  if (mark.spellId == null) return 0;
+  const ids = new Set(castIdsOf(mark.spellId));
+  const mine = uses.filter((u) => u.player.guid === mark.guid);
+  const matched = mine.find((u) => u.at === mark.useAt && ids.has(u.cd.id)) ?? mine.find((u) => ids.has(u.cd.id));
+  return matched?.cd.id ?? mark.spellId;
+}
+
+/**
+ * Uma linha por player e CD, pela ordem do primeiro uso/marca. Marcas de CD fora da tabela ganham a
+ * linha do próprio spellId. Usos sobrepostos do mesmo CD pedem sub-faixas (`lane`) só dentro da linha.
+ */
+export function cdRows(uses: CdUse[], marks: NoteMark[]): CdRow[] {
+  const rows = new Map<string, { guid: string; cdId: number; firstAt: number; uses: CdUse[] }>();
+  const add = (guid: string, cdId: number, at: number, use?: CdUse) => {
+    const key = cdRowKey(guid, cdId);
+    const row = rows.get(key) ?? { guid, cdId, firstAt: at, uses: [] };
+    row.firstAt = Math.min(row.firstAt, at);
+    if (use) row.uses.push(use);
+    rows.set(key, row);
+  };
+  for (const u of uses) add(u.player.guid, u.cd.id, u.at, u);
+  for (const m of marks) add(m.guid, markCdId(m, uses), m.at);
+  return [...rows.entries()]
+    .map(([key, row]) => {
+      const lanes = stackLanes(row.uses);
+      const lane = lanes.size ? Math.max(...lanes.values()) : 0;
+      return { ...row, key, lane };
+    })
+    .sort((a, b) => a.firstAt - b.firstAt || a.guid.localeCompare(b.guid) || a.key.localeCompare(b.key))
+    .map((row) => ({ guid: row.guid, cdId: row.cdId, key: row.key, lane: row.lane }));
 }
 
 /** Pull padrão da noite: mais fases, menor vida da fase, o mais longo e o mais recente. */

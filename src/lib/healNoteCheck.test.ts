@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PlayerStats, Pull } from '../types';
 import { parseNote } from './healNote';
-import { matchLines, MAX_OFFSET_MS, phaseOffsets, summarizeLines, type LineState } from './healNoteCheck';
+import { effectiveCooldowns, matchLines, MAX_OFFSET_MS, phaseOffsets, summarizeLines, type LineState } from './healNoteCheck';
 import { death, player, pull } from './test-fixtures';
 
 // Druida Resto (105) com Tranquility (740) e Convoke (391528, talento); Warrior (71) com Rallying Cry
@@ -66,6 +66,72 @@ describe('matchLines: estados', () => {
     const text = ['time:10;ph:1;tag:Druida;spellid:391528;', 'time:30;ph:1;tag:Druida;spellid:391528;'].join('\n');
     const r = run([mk(0, [druid({ 323764: [28_000] })])], text).checks.get(0)!;
     expect(r.map((c) => c.state)).toEqual(['not_used', 'on_time']);
+  });
+});
+
+describe('não usou: causa', () => {
+  const p1 = { phaseMarks: [marks[0]] };
+
+  it('recarga, uso em outro momento e nenhum uso', () => {
+    const recharging = mk(0, [druid({ 740: [20_000, 200_000] })], p1);
+    expect(run([recharging], 'time:100;ph:1;tag:Druida;spellid:740;').checks.get(0)![0]).toMatchObject({
+      state: 'not_used',
+      miss: 'recharging',
+      lastUseMs: 20_000,
+      readyMs: 200_000,
+      otherUseMs: 200_000,
+    });
+
+    const elsewhere = mk(1, [druid({ 740: [10_000] })], p1);
+    expect(run([elsewhere], 'time:200;ph:1;tag:Druida;spellid:740;').checks.get(1)![0]).toMatchObject({
+      state: 'not_used',
+      miss: 'used_elsewhere',
+      lastUseMs: 10_000,
+      readyMs: 190_000,
+      otherUseMs: 10_000,
+    });
+
+    const never = mk(2, [druid()], p1);
+    expect(run([never], 'time:100;ph:1;tag:Druida;spellid:740;').checks.get(2)![0]).toMatchObject({ state: 'not_used', miss: 'never' });
+  });
+
+  it('cast casado com outra linha não é "uso em outro momento"', () => {
+    const p = mk(0, [druid({ 740: [12_000] })], p1);
+    const near = ['time:10;ph:1;tag:Druida;spellid:740;', 'time:100;ph:1;tag:Druida;spellid:740;'].join('\n');
+    const [first, second] = run([p], near).checks.get(0)!;
+    expect(first).toMatchObject({ state: 'on_time', usedMs: 12_000 });
+    // dentro do cooldown: recarga pelo cast casado, sem apontar "uso em outro momento" para ele
+    expect(second).toMatchObject({ state: 'not_used', miss: 'recharging', lastUseMs: 12_000 });
+    expect(second.otherUseMs).toBeUndefined();
+
+    // fora do cooldown: não sobrou cast livre, então "nenhum uso"
+    const far = ['time:10;ph:1;tag:Druida;spellid:740;', 'time:250;ph:1;tag:Druida;spellid:740;'].join('\n');
+    expect(run([p], far).checks.get(0)![1]).toMatchObject({ state: 'not_used', miss: 'never' });
+  });
+
+  it('cooldown efetivo menor que o base quando o player usou mais rápido', () => {
+    const p = mk(0, [druid({ 740: [10_000, 100_000] })], p1);
+    expect(effectiveCooldowns([p]).get('Druida:740')).toBe(90_000);
+    // com o cooldown efetivo (90 s) a linha de 200 s já não está em recarga
+    expect(run([p], 'time:200;ph:1;tag:Druida;spellid:740;').checks.get(0)![0]).toMatchObject({
+      state: 'not_used',
+      miss: 'used_elsewhere',
+      lastUseMs: 100_000,
+      readyMs: 190_000,
+    });
+  });
+
+  it('o intervalo não cruza pulls', () => {
+    const a = mk(0, [druid({ 740: [10_000, 100_000] })], p1);
+    const b = mk(1, [druid({ 740: [140_000] })], p1);
+    expect(effectiveCooldowns([a, b]).get('Druida:740')).toBe(90_000);
+  });
+
+  it('linhas com outro estado não recebem miss', () => {
+    const p = mk(0, [druid({ 740: [12_000] })]);
+    const c = run([p], 'time:10;ph:1;tag:Druida;spellid:740;').checks.get(0)![0];
+    expect(c.state).toBe('on_time');
+    expect([c.miss, c.otherUseMs, c.lastUseMs, c.readyMs]).toEqual([undefined, undefined, undefined, undefined]);
   });
 });
 

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronUp, Copy, HeartPulse, Play } from 'lucide-react';
+import { Copy, HeartPulse, Play } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { mmss, shortName } from '../lib/format';
 import { healCd } from '../lib/healCooldowns';
 import { progressLabel } from '../lib/phases';
 import { selectHealRefs } from '../lib/healer';
 import { exportNote, mapPhases, noteFor, noteVersions, parseNote, type NoteChange, type NoteLine, type NoteVersion, type ParsedNote } from '../lib/healNote';
-import { judgeUse, matchLines, nightOverheal, phaseOffsets, suggest, summarizeLines, type LineCheck, type NightOverheal, type NoteSuggestion, type UseVerdict } from '../lib/healNoteCheck';
+import { effectiveCooldowns, judgeUse, matchLines, nightOverheal, phaseOffsets, suggest, summarizeLines, type LineCheck, type NightOverheal, type NoteSuggestion, type UseVerdict } from '../lib/healNoteCheck';
 import { defaultPull, gaps as computeGaps, nightGaps as computeNightGaps, uses as computeUses, withNote } from '../lib/healTimeline';
 import { hits as computeHits, moments, nightAnchors, raidLow, type Moment } from '../lib/raidHits';
 import { HealTimeline } from './HealTimeline';
@@ -16,6 +16,7 @@ import { SpellIcon, SpellName } from './SpellIcon';
 import { Hint } from './ui/Hint';
 import { useMessages } from '../i18n';
 import { healNoteMsg } from './HealNotePanel.i18n';
+import { CollapseButton, useCollapsed } from './CollapsiblePanel';
 
 interface Props {
   /** pulls do mesmo boss e dificuldade na noite */
@@ -29,15 +30,6 @@ interface Props {
   collapsible?: boolean;
 }
 
-const OPEN_KEY = 'wipe-cause:heal-note-open';
-function savedOpen(): boolean {
-  try {
-    return localStorage.getItem(OPEN_KEY) !== '0';
-  } catch {
-    return true;
-  }
-}
-
 /** referências de fora do healer (análise de healer, docs/healer-analysis.md §2) */
 const refsOf = (p: Pull, pl: PlayerStats) => selectHealRefs(p, pl)?.entries ?? [];
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -47,16 +39,8 @@ const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('pt-BR');
 /** A note de CDs de cura do líder conferida contra os pulls (regras em docs/heal-cd-note.md). */
 export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsible = false }: Props) {
   const t = useMessages(healNoteMsg);
-  const [expanded, setExpanded] = useState(savedOpen);
+  const [expanded, toggle] = useCollapsed('heal-note-open');
   const open = !collapsible || expanded;
-  const toggle = () => {
-    setExpanded(!expanded);
-    try {
-      localStorage.setItem(OPEN_KEY, expanded ? '0' : '1');
-    } catch {
-      // sem localStorage: vale só nesta tela
-    }
-  };
   const boss = focus ?? pulls[0];
   const [versions, setVersions] = useState<NoteVersion[]>(() => (boss ? noteVersions(boss) : []));
   // pull escolhido na fileira do resumo da noite (volta ao padrão quando o conjunto de pulls muda)
@@ -92,7 +76,11 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
   const verdicts = useMemo(() => judgeUse(pulls, noteOf, offsets, checks, ms, refsOf), [pulls, noteOf, offsets, checks, ms]);
   const nightOH = useMemo(() => new Map(nightOverheal(pulls, noteOf, verdicts, checks, refsOf).map((o) => [`${o.guid}:${o.cdId}`, o])), [pulls, noteOf, verdicts, checks]);
   const lows = useMemo(() => new Map(pulls.map((p) => [p.id, raidLow(p)] as const)), [pulls]);
-  const baseUses = useMemo(() => new Map(pulls.map((p) => [p.id, computeUses(p, ms, hitsByPull.get(p.id) ?? [], refsOf)] as const)), [pulls, ms, hitsByPull]);
+  const effectiveCds = useMemo(() => effectiveCooldowns(pulls), [pulls]);
+  const baseUses = useMemo(
+    () => new Map(pulls.map((p) => [p.id, computeUses(p, ms, hitsByPull.get(p.id) ?? [], refsOf, true, effectiveCds)] as const)),
+    [pulls, ms, hitsByPull, effectiveCds],
+  );
   const usedInNight = useMemo(() => new Set([...baseUses.values()].flatMap((us) => us.map((u) => `${u.player.guid}:${u.cd.id}`))), [baseUses]);
   const usesByPull = useMemo(
     () =>
@@ -163,11 +151,7 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
         <h3>
           <HeartPulse size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.title} <Hint>{t.hint}</Hint>
         </h3>
-        {collapsible && (
-          <button className="btn ghost sm" onClick={toggle} aria-expanded={open} aria-label={open ? t.collapse : t.expand} title={open ? t.collapse : t.expand}>
-            {open ? <ChevronUp size={14} strokeWidth={1.75} aria-hidden /> : <ChevronDown size={14} strokeWidth={1.75} aria-hidden />} {open ? t.collapse : t.expand}
-          </button>
-        )}
+        {collapsible && <CollapseButton open={open} onToggle={toggle} />}
       </header>
       {open && (
         <>
@@ -308,6 +292,14 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
             const one = focus ? new Map((checks.get(focus.id) ?? []).map((c) => [c.lineIndex, c])) : null;
             const uses = new Map<number, UseVerdict[]>();
             for (const p of ps) for (const [i, v] of verdicts.get(p.id)?.lines ?? []) (uses.get(i) ?? uses.set(i, []).get(i)!).push(v);
+            const misses = new Map<number, MissCounts>();
+            for (const p of ps)
+              for (const c of checks.get(p.id) ?? []) {
+                if (c.state !== 'not_used' || !c.miss) continue;
+                const m = misses.get(c.lineIndex) ?? {};
+                m[c.miss] = (m[c.miss] ?? 0) + 1;
+                misses.set(c.lineIndex, m);
+              }
             const ohOf = (l: NoteLine) => {
               const who = l.tag ? people.get(norm(l.tag)) : undefined;
               const cd = l.spellId != null ? healCd(l.spellId) : undefined;
@@ -334,7 +326,7 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
                   <tbody>
                     {note.lines.map((l, i) =>
                       l.ph == null ? null : (
-                        <Row key={i} line={l} check={one?.get(i)} summary={summary.get(i)} uses={uses.get(i) ?? []} night={ohOf(l)} focus={!!focus} person={l.tag ? people.get(norm(l.tag)) : undefined} spellName={l.spellId != null ? nameOf(l.spellId) : ''} />
+                        <Row key={i} line={l} check={one?.get(i)} summary={summary.get(i)} uses={uses.get(i) ?? []} misses={misses.get(i)} night={ohOf(l)} focus={!!focus} person={l.tag ? people.get(norm(l.tag)) : undefined} spellName={l.spellId != null ? nameOf(l.spellId) : ''} />
                       ),
                     )}
                   </tbody>
@@ -447,12 +439,16 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
 
 const GOOD = new Set(['on_time']);
 const BAD = new Set(['not_used', 'early', 'late']);
+type MissCounts = Partial<Record<NonNullable<LineCheck['miss']>, number>>;
+const MISS_ORDER: NonNullable<LineCheck['miss']>[] = ['recharging', 'used_elsewhere', 'never'];
 
 interface RowProps {
   line: NoteLine;
   check?: LineCheck;
   uses: UseVerdict[];
   summary?: ReturnType<typeof summarizeLines>[number];
+  /** contagem de causas do "não usou" na noite */
+  misses?: MissCounts;
   /** overheal da noite do player com esse CD */
   night?: NightOverheal;
   focus: boolean;
@@ -460,20 +456,35 @@ interface RowProps {
   spellName: string;
 }
 
-function Row({ line, check, summary, uses, night, focus, person, spellName }: RowProps) {
+function Row({ line, check, summary, uses, misses, night, focus, person, spellName }: RowProps) {
   const t = useMessages(healNoteMsg);
   const when = `P${line.ph} +${mmss((line.time ?? 0) * 1000)}`;
   const who = person ? <PlayerName name={person.name} guid={person.guid} cls={person.cls} /> : <span className="muted">{line.tag ?? '—'}</span>;
   const what = line.spellId != null ? <SpellName spellId={line.spellId} name={spellName} size={16} /> : <span className="muted">{line.text ?? ''}</span>;
+  const missText = (c: LineCheck) => {
+    if (c.miss === 'recharging' && c.lastUseMs != null && c.readyMs != null) return t.missRecharging(c.lastUseMs, c.readyMs);
+    if (c.miss === 'used_elsewhere' && c.otherUseMs != null) return t.missElsewhere(c.otherUseMs - (c.expectedMs ?? 0));
+    if (c.miss === 'never') return t.missNever;
+    return null;
+  };
+  const shortMiss: Record<NonNullable<LineCheck['miss']>, string> = {
+    recharging: t.missRechargingShort,
+    used_elsewhere: t.missElsewhereShort,
+    never: t.missNeverShort,
+  };
   let result: ReactNode = <span className="muted">{t.state.not_evaluated}</span>;
   let delta: ReactNode = '';
   if (focus && check) {
     const cls = GOOD.has(check.state) ? 'ok-text' : BAD.has(check.state) || check.state === 'dead' ? 'bad' : 'muted';
+    const cause = check.state === 'not_used' ? missText(check) : null;
     result = (
-      <span className={cls}>
-        {t.state[check.state]}
-        {check.neverUsed && <span className="muted"> · {t.neverUsed}</span>}
-      </span>
+      <>
+        <span className={cls}>
+          {t.state[check.state]}
+          {check.neverUsed && <span className="muted"> · {t.neverUsed}</span>}
+        </span>
+        {cause && <span className="muted small"> · {cause}</span>}
+      </>
     );
     if (check.deltaMs != null) delta = `${sec(check.deltaMs)}${check.rawDeltaMs != null && check.rawDeltaMs !== check.deltaMs ? ` (${sec(check.rawDeltaMs)})` : ''}`;
   } else if (!focus && summary) {
@@ -481,7 +492,16 @@ function Row({ line, check, summary, uses, night, focus, person, spellName }: Ro
       result = (
         <span className={summary.onTime === summary.reached ? 'ok-text' : summary.onTime < summary.reached / 2 ? 'bad' : ''}>
           {t.onTimeOf(summary.onTime, summary.reached)}
-          {summary.notUsed > 0 && <span className="muted"> · {t.state.not_used} {summary.notUsed}</span>}
+          {summary.notUsed > 0 && (
+            <span className="muted">
+              {' · '}
+              {t.state.not_used} {summary.notUsed}
+              {MISS_ORDER.map((k) => {
+                const n = misses?.[k] ?? 0;
+                return n > 0 ? <span key={k}> · {n} {shortMiss[k]}</span> : null;
+              })}
+            </span>
+          )}
           {summary.dead > 0 && <span className="muted"> · {t.state.dead} {summary.dead}</span>}
         </span>
       );

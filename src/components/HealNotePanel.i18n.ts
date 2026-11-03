@@ -1,5 +1,14 @@
 import { defineMessages } from '../i18n';
+import { mmss } from '../lib/format';
 import type { LineState } from '../lib/healNoteCheck';
+
+const clock = (v: number | string) => (typeof v === 'number' ? mmss(v) : v);
+
+const span = (v: number | string) => {
+  if (typeof v === 'string') return v;
+  const s = Math.round(Math.abs(v) / 1000);
+  return s < 60 ? `${s} s` : mmss(Math.abs(v));
+};
 
 const statePt: Record<LineState, string> = {
   not_evaluated: 'não avaliada',
@@ -103,7 +112,15 @@ export const healNoteMsg = defineMessages(
     copy: (n: number) => `Copiar a note (${n} mudança${n === 1 ? '' : 's'})`,
     copied: 'Copiada',
     copyManual: 'Não deu para copiar sozinho: selecione o texto abaixo e copie (Ctrl+C).',
+    missRecharging: (last: number | string, ready: number | string) => `CD em recarga: usado em ${clock(last)}, voltou em ${clock(ready)}`,
+    missElsewhere: (dt: number | string) => (typeof dt === 'string' ? `usou ${dt}` : `usou ${span(dt)} ${dt < 0 ? 'antes' : 'depois'}`),
+    missNever: 'não usou no pull',
+    missRechargingShort: 'em recarga',
+    missElsewhereShort: 'em outro momento',
+    missNeverShort: 'sem uso',
+    tlReady: (t: number | string) => `volta em ${clock(t)}`,
     tlLegend: {
+      cd: 'recarga',
       dmg: 'dano em 5 s',
       low: 'raide baixa',
       hit: 'golpe',
@@ -201,7 +218,15 @@ export const healNoteMsg = defineMessages(
     copy: (n: number) => `Copy the note (${n} change${n === 1 ? '' : 's'})`,
     copied: 'Copied',
     copyManual: 'Could not copy on its own: select the text below and copy it (Ctrl+C).',
+    missRecharging: (last: number | string, ready: number | string) => `on cooldown: used at ${clock(last)}, back at ${clock(ready)}`,
+    missElsewhere: (dt: number | string) => (typeof dt === 'string' ? `used ${dt}` : `used ${span(dt)} ${dt < 0 ? 'earlier' : 'later'}`),
+    missNever: 'not used in the pull',
+    missRechargingShort: 'on cooldown',
+    missElsewhereShort: 'elsewhere',
+    missNeverShort: 'never used',
+    tlReady: (t: number | string) => `back at ${clock(t)}`,
     tlLegend: {
+      cd: 'cooldown',
       dmg: 'damage in 5 s',
       low: 'low raid',
       hit: 'hit',

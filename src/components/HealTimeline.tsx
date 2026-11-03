@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import type { Anchors } from '../lib/cdAnchors';
 import { mmss } from '../lib/format';
 import { castIdsOf, healCd } from '../lib/healCooldowns';
 import { mapPhases } from '../lib/healNote';
-import { stackLanes, type CdUse, type Gap, type NoteMark } from '../lib/healTimeline';
+import { cdRowKey, cdRows, markCdId, stackLanes, type CdRow, type CdUse, type Gap, type NoteMark } from '../lib/healTimeline';
 import { GAP_SHARE, STRONG_HIT_SHARE, trailingShare, type Hit } from '../lib/raidHits';
 import { ZOOM_MIN_MS, useTimeWindow } from '../lib/useTimeWindow';
 import type { PlayerStats, Pull } from '../types';
@@ -76,7 +76,17 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
 
   const enemyNames = useMemo(() => new Map(pull.enemySpells.map((e) => [e.spellId, e.name] as const)), [pull]);
   const nameOf = (id: number) => enemyNames.get(id) ?? `#${id}`;
-  const laneByUse = useMemo(() => stackLanes(uses), [uses]);
+  const rows = useMemo(() => cdRows(uses, marks), [uses, marks]);
+  const rowsByPlayer = useMemo(() => {
+    const out = new Map<string, CdRow[]>();
+    for (const row of rows) (out.get(row.guid) ?? out.set(row.guid, []).get(row.guid)!).push(row);
+    return out;
+  }, [rows]);
+  const rowKeyByUse = useMemo(() => new Map(uses.map((u) => [u, cdRowKey(u.player.guid, u.cd.id)] as const)), [uses]);
+  const rowKeyByMark = useMemo(
+    () => new Map(marks.map((m) => [m, cdRowKey(m.guid, markCdId(m, uses))] as const)),
+    [marks, uses],
+  );
 
   const bossEntries = useMemo(() => {
     const casts: BossEntry[] = Object.entries(bossCasts).flatMap(([id, times]) =>
@@ -194,7 +204,7 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
   const useLabel = (u: CdUse) => {
     const who = `${u.player.name} · ${mmss(u.at)}`;
     const oh = u.overheal;
-    return `${u.cd.name} · ${who}${oh ? ` · ${t.tlUseTip(pct(oh.share), oh.ref ? t.refBand(pct(oh.ref.p25), pct(oh.ref.p75)) : '')}` : ''}${u.noDamage ? ` · ${t.noDamage}` : ''}${u.cycle ? ` · ${t.tlCycleLikely}` : ''}`;
+    return `${u.cd.name} · ${who}${oh ? ` · ${t.tlUseTip(pct(oh.share), oh.ref ? t.refBand(pct(oh.ref.p25), pct(oh.ref.p75)) : '')}` : ''}${u.noDamage ? ` · ${t.noDamage}` : ''}${u.cycle ? ` · ${t.tlCycleLikely}` : ''}${u.readyAt != null ? ` · ${t.tlReady(u.readyAt)}` : ''}`;
   };
 
   return (
@@ -245,6 +255,10 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
         <span>
           <span className="heal-tl-swatch heal-tl-swatch-mark-cd" aria-hidden />
           {t.tlLegend.noteCd}
+        </span>
+        <span>
+          <span className="heal-tl-swatch heal-tl-swatch-cd" aria-hidden />
+          {t.tlLegend.cd}
         </span>
       </p>
 
@@ -343,105 +357,151 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
           const ids = new Set(castIdsOf(spellId));
           return p.casts?.find((c) => c.name && ids.has(c.spellId))?.name ?? `#${spellId}`;
         };
-        const laneCount = Math.max(1, ...mine.map((u) => (laneByUse.get(u) ?? 0) + 1));
-        const id = `p-${p.guid}`;
+        // último cast do mesmo CD antes da marca (a recarga que não voltou a tempo)
+        const lastUseAt = (m: NoteMark) => {
+          if (m.spellId == null) return undefined;
+          const ids = new Set(castIdsOf(m.spellId));
+          return mine.filter((u) => ids.has(u.cd.id) && u.at < m.at).at(-1)?.at;
+        };
+        const missLabel = (m: NoteMark) => {
+          if (m.miss === 'recharging' && m.readyAt != null) return t.missRecharging(lastUseAt(m) ?? m.at, m.readyAt);
+          if (m.miss === 'used_elsewhere' && m.otherUseAt != null) return t.missElsewhere(m.otherUseAt - m.at);
+          if (m.miss === 'never') return t.missNever;
+          return null;
+        };
+        const myRows = rowsByPlayer.get(p.guid) ?? [];
         return (
-          <div className="heal-tl-row" key={p.guid}>
-            <span className="heal-tl-label small">
-              <PlayerName name={p.name} guid={p.guid} cls={p.class} />
-            </span>
-            <div className="heal-tl-track" onPointerDown={startPan}>
-              <div className="heal-tl-lane">
-                {gapCols(false)}
-                {Array.from({ length: laneCount }, (_, lane) => (
-                  <div className="heal-tl-sub" key={lane}>
-                    {lane === 0 &&
-                      myMarks.map((m) => {
-                        const hasBar = m.useAt != null && mine.some((u) => u.at === m.useAt);
-                        const iconMark = !hasBar && m.spellId != null;
-                        const label = `${m.spellId != null ? `${markName(m.spellId)} · ` : ''}${t.state[m.state]} · ${mmss(m.at)}${m.deltaMs != null ? ` · ${t.delta} ${sec(m.deltaMs)}` : ''}`;
-                        return (
-                          <button
-                            key={markKey(m)}
-                            type="button"
-                            className={`heal-tl-mark ${m.state}${iconMark ? ' heal-tl-mark-cd' : ''}`}
-                            style={{ left: left(m.at), border: 0, padding: 0 }}
-                            tabIndex={order.get(markKey(m))}
-                            title={label}
-                            aria-label={label}
-                            onClick={(ev) => seek(ev, m.useAt ?? m.at)}
-                            onMouseEnter={() =>
-                              showTip(
-                                id,
-                                m.at,
-                                <>
-                                  {m.spellId != null && <SpellName spellId={m.spellId} name={markName(m.spellId)} size={14} />}
-                                  <PlayerName name={p.name} guid={p.guid} cls={p.class} />
-                                  <span className="muted">{t.state[m.state]}{m.cycle ? ` · ${t.tlCycleLikely}` : ''}</span>
-                                  <span className="muted">{t.when} {mmss(m.at)}</span>
-                                  {m.deltaMs != null && <span className="muted">{t.delta} {sec(m.deltaMs)}</span>}
-                                </>,
-                              )
-                            }
-                            onFocus={() => showTip(id, m.at, <PlayerName name={p.name} guid={p.guid} cls={p.class} />)}
-                            onBlur={() => setTip(null)}
-                          >
-                            {iconMark && m.spellId != null && <SpellIcon spellId={m.spellId} size={14} title={markName(m.spellId)} hover={false} />}
-                          </button>
-                        );
-                      })}
-                    {lane === 0 &&
-                      myMarks.flatMap((m) => {
-                        if (m.useAt == null || m.useAt === m.at) return [];
-                        if (!mine.some((u) => u.at === m.useAt)) return [];
-                        const a = Math.min(m.at, m.useAt);
-                        const b = Math.max(m.at, m.useAt);
-                        return <span key={`l-${m.lineIndex}-${m.at}`} className="heal-tl-link" style={{ left: left(a), width: width(a, b) }} />;
-                      })}
-                    {mine
-                      .filter((u) => (laneByUse.get(u) ?? 0) === lane)
-                      .map((u) => {
-                        const key = useKey(u);
-                        const alert = !u.cycle && (u.noDamage || !!u.overheal?.high || u.stacked);
-                        const tone = u.cycle
-                          ? 'cycle'
-                          : u.cd.kind === 'heal'
-                            ? u.cd.heal_ids?.length
-                              ? 'heal-tl-bar-useful'
-                              : 'noheal'
-                            : 'mitig';
-                        const start = Math.max(u.at, w0);
-                        const end = Math.min(u.end, w1);
-                        if (end < w0 || u.at > w1) return null;
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            className={`heal-tl-bar ${tone}`}
-                            style={{ left: left(start), width: width(start, Math.max(end, start)), border: 0, padding: 0 }}
-                            tabIndex={order.get(key)}
-                            title={useLabel(u)}
-                            aria-label={useLabel(u)}
-                            onClick={(ev) => seek(ev, u.at)}
-                            onMouseEnter={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} />{u.overheal && <span className={u.overheal.high ? 'bad' : ''}>{t.tlUseTip(pct(u.overheal.share), u.overheal.ref ? t.refBand(pct(u.overheal.ref.p25), pct(u.overheal.ref.p75)) : '')}</span>}{u.noDamage && <span className="bad">{t.noDamage}</span>}{u.cycle && <span className="muted">{t.tlCycleLikely}</span>}{u.stacked && <span className="bad">{t.stacked}</span>}<span className="muted">{mmss(u.at)}–{mmss(u.end)}</span></>)}
-                            onFocus={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} /></>)}
-                            onBlur={() => setTip(null)}
-                          >
-                            {!u.cycle && u.cd.kind === 'heal' && !!u.cd.heal_ids?.length && u.overheal && (
-                              <span className="heal-tl-bar-over" style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: `${u.overheal.share * 100}%`, borderRadius: 3 }} />
-                            )}
-                            <span style={{ position: 'absolute', left: 1, top: '50%', transform: 'translateY(-50%)', lineHeight: 0 }}>
-                              <SpellIcon spellId={u.cd.id} size={14} title={u.cd.name} hover={false} />
-                            </span>
-                            {alert && <TriangleAlert className="heal-tl-alert" size={11} strokeWidth={2} style={{ left: '50%' }} aria-hidden />}
-                          </button>
-                        );
-                      })}
+          <div className="heal-tl-player" key={p.guid}>
+            {myRows.map((row, rowIndex) => {
+              const rowUses = mine.filter((u) => rowKeyByUse.get(u) === row.key);
+              const rowMarks = myMarks.filter((m) => rowKeyByMark.get(m) === row.key);
+              const laneByUse = stackLanes(rowUses);
+              const laneCount = Math.max(1, ...rowUses.map((u) => (laneByUse.get(u) ?? 0) + 1));
+              const first = rowIndex === 0;
+              const cdName = markName(row.cdId);
+              const id = row.key;
+              return (
+                <div className={`heal-tl-row heal-tl-cd-row${first ? ' heal-tl-group-start' : ''}`} key={row.key}>
+                  <span className="heal-tl-label small">
+                    <span className="heal-tl-who">{first && <PlayerName name={p.name} guid={p.guid} cls={p.class} />}</span>
+                    {row.cdId > 0 && <SpellIcon spellId={row.cdId} size={14} title={cdName} hover={false} />}
+                  </span>
+                  <div className="heal-tl-track" onPointerDown={startPan}>
+                    <div className="heal-tl-lane">
+                      {gapCols(false)}
+                      {Array.from({ length: laneCount }, (_, lane) => (
+                        <div className="heal-tl-sub" key={lane}>
+                          {lane === 0 &&
+                            rowMarks.map((m) => {
+                              const hasBar = m.useAt != null && rowUses.some((u) => u.at === m.useAt);
+                              const iconMark = !hasBar && m.spellId != null;
+                              const cause = missLabel(m);
+                              const label = `${m.spellId != null ? `${markName(m.spellId)} · ` : ''}${t.state[m.state]} · ${mmss(m.at)}${m.deltaMs != null ? ` · ${t.delta} ${sec(m.deltaMs)}` : ''}${cause ? ` · ${cause}` : ''}`;
+                              return (
+                                <button
+                                  key={markKey(m)}
+                                  type="button"
+                                  className={`heal-tl-mark ${m.state}${iconMark ? ' heal-tl-mark-cd' : ''}${m.miss === 'recharging' ? ' recharging' : ''}`}
+                                  style={{ left: left(m.at), border: m.miss === 'recharging' ? '2px dashed var(--wipe)' : 0, padding: 0 }}
+                                  tabIndex={order.get(markKey(m))}
+                                  title={label}
+                                  aria-label={label}
+                                  onClick={(ev) => seek(ev, m.useAt ?? m.at)}
+                                  onMouseEnter={() =>
+                                    showTip(
+                                      id,
+                                      m.at,
+                                      <>
+                                        {m.spellId != null && <SpellName spellId={m.spellId} name={markName(m.spellId)} size={14} />}
+                                        <PlayerName name={p.name} guid={p.guid} cls={p.class} />
+                                        <span className="muted">{t.state[m.state]}{m.cycle ? ` · ${t.tlCycleLikely}` : ''}</span>
+                                        <span className="muted">{t.when} {mmss(m.at)}</span>
+                                        {m.deltaMs != null && <span className="muted">{t.delta} {sec(m.deltaMs)}</span>}
+                                        {cause && <span className="muted">{cause}</span>}
+                                      </>,
+                                    )
+                                  }
+                                  onFocus={() => showTip(id, m.at, <PlayerName name={p.name} guid={p.guid} cls={p.class} />)}
+                                  onBlur={() => setTip(null)}
+                                >
+                                  {iconMark && m.spellId != null && <SpellIcon spellId={m.spellId} size={14} title={markName(m.spellId)} hover={false} />}
+                                </button>
+                              );
+                            })}
+                          {lane === 0 &&
+                            rowMarks.flatMap((m) => {
+                              if (m.useAt == null || m.useAt === m.at) return [];
+                              if (!rowUses.some((u) => u.at === m.useAt)) return [];
+                              const a = Math.min(m.at, m.useAt);
+                              const b = Math.max(m.at, m.useAt);
+                              return <span key={`l-${m.lineIndex}-${m.at}`} className="heal-tl-link" style={{ left: left(a), width: width(a, b) }} />;
+                            })}
+                          {lane === 0 &&
+                            rowMarks.flatMap((m) => {
+                              if (m.otherUseAt == null) return [];
+                              if (m.miss !== 'used_elsewhere' && m.miss !== 'recharging') return [];
+                              const a = Math.min(m.at, m.otherUseAt);
+                              const b = Math.max(m.at, m.otherUseAt);
+                              if (!visible(a, b)) return [];
+                              return <span key={`ml-${m.lineIndex}-${m.at}`} className="heal-tl-miss-link" style={{ left: left(a), width: width(a, b) }} />;
+                            })}
+                          {rowUses
+                            .filter((u) => (laneByUse.get(u) ?? 0) === lane)
+                            .map((u) => {
+                              const key = useKey(u);
+                              const alert = !u.cycle && (u.noDamage || !!u.overheal?.high || u.stacked);
+                              const tone = u.cycle
+                                ? 'cycle'
+                                : u.cd.kind === 'heal'
+                                  ? u.cd.heal_ids?.length
+                                    ? 'heal-tl-bar-useful'
+                                    : 'noheal'
+                                  : 'mitig';
+                              const start = Math.max(u.at, w0);
+                              const end = Math.min(u.end, w1);
+                              if (end < w0 || u.at > w1) return null;
+                              const cdFrom = u.readyAt != null ? Math.max(u.end, w0) : 0;
+                              const cdTo = u.readyAt != null ? Math.min(u.readyAt, w1) : 0;
+                              return (
+                                <Fragment key={key}>
+                                  <button
+                                    type="button"
+                                    className={`heal-tl-bar ${tone}`}
+                                    style={{ left: left(start), width: width(start, Math.max(end, start)), border: 0, padding: 0 }}
+                                    tabIndex={order.get(key)}
+                                    title={useLabel(u)}
+                                    aria-label={useLabel(u)}
+                                    onClick={(ev) => seek(ev, u.at)}
+                                    onMouseEnter={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} />{u.overheal && <span className={u.overheal.high ? 'bad' : ''}>{t.tlUseTip(pct(u.overheal.share), u.overheal.ref ? t.refBand(pct(u.overheal.ref.p25), pct(u.overheal.ref.p75)) : '')}</span>}{u.noDamage && <span className="bad">{t.noDamage}</span>}{u.cycle && <span className="muted">{t.tlCycleLikely}</span>}{u.stacked && <span className="bad">{t.stacked}</span>}<span className="muted">{mmss(u.at)}–{mmss(u.end)}</span>{u.readyAt != null && <span className="muted">{t.tlReady(u.readyAt)}</span>}</>)}
+                                    onFocus={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} /></>)}
+                                    onBlur={() => setTip(null)}
+                                  >
+                                    {!u.cycle && u.cd.kind === 'heal' && !!u.cd.heal_ids?.length && u.overheal && (
+                                      <span className="heal-tl-bar-over" style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: `${u.overheal.share * 100}%`, borderRadius: 3 }} />
+                                    )}
+                                    <span style={{ position: 'absolute', left: 1, top: '50%', transform: 'translateY(-50%)', lineHeight: 0 }}>
+                                      <SpellIcon spellId={u.cd.id} size={14} title={u.cd.name} hover={false} />
+                                    </span>
+                                    {alert && <TriangleAlert className="heal-tl-alert" size={11} strokeWidth={2} style={{ left: '50%' }} aria-hidden />}
+                                  </button>
+                                  {cdTo > cdFrom && (
+                                    <span
+                                      className={`heal-tl-cd ${tone === 'heal-tl-bar-useful' ? 'useful' : tone}`}
+                                      style={{ left: left(cdFrom), width: width(cdFrom, cdTo) }}
+                                      aria-hidden
+                                    />
+                                  )}
+                                </Fragment>
+                              );
+                            })}
+                        </div>
+                      ))}
+                      {tipIn(id)}
+                    </div>
                   </div>
-                ))}
-                {tipIn(id)}
-              </div>
-            </div>
+                </div>
+              );
+            })}
           </div>
         );
       })}

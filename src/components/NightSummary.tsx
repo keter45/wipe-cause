@@ -6,6 +6,7 @@ import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummar
 import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
 import { lowestBossHp } from '../lib/verdict';
+import { pullColor } from '../lib/pullColors';
 import { phaseCountOf, progressLabel, pullProgress, reachedPhase } from '../lib/phases';
 import { SpellName } from './SpellIcon';
 import { scoreTier } from '../lib/score';
@@ -24,6 +25,7 @@ import { messagesOf, useMessages } from '../i18n';
 import { nightMsg } from './NightSummary.i18n';
 import { Hint } from './ui/Hint';
 import { HealNotePanel } from './HealNotePanel';
+import { CollapseButton, CollapsiblePanel, useCollapsed } from './CollapsiblePanel';
 
 interface Props {
   pulls: Pull[];
@@ -68,13 +70,15 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
         </span>
       </header>
 
-      <StatGrid>
-        <Stat label={t.raidTime} value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
-        <Stat label={t.inCombat} value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
-        <Stat label={t.downtime} value={duration(s.downtimeMs)} sub={t.breaks(s.gaps.filter((g) => g.isBreak).length)} />
-        <Stat label={t.avgGap} value={mmss(s.avgGapMs)} sub={t.median(mmss(s.medianGapMs))} />
-        <Stat label={t.longestGap} value={s.longestGap ? mmss(s.longestGap.ms) : '—'} sub={s.longestGap ? t.after(pullName(s.longestGap.after, true), s.longestGap.isBreak) : undefined} />
-      </StatGrid>
+      <CollapsiblePanel storageKey="summary.night-time" title={t.nightTime}>
+        <StatGrid>
+          <Stat label={t.raidTime} value={duration(s.totalMs)} sub={`${clock(s.pulls[0])} → ${endClock(s)}`} />
+          <Stat label={t.inCombat} value={s.totalMs ? `${Math.round((s.combatMs / s.totalMs) * 100)}%` : '—'} sub={duration(s.combatMs)} />
+          <Stat label={t.downtime} value={duration(s.downtimeMs)} sub={t.breaks(s.gaps.filter((g) => g.isBreak).length)} />
+          <Stat label={t.avgGap} value={mmss(s.avgGapMs)} sub={t.median(mmss(s.medianGapMs))} />
+          <Stat label={t.longestGap} value={s.longestGap ? mmss(s.longestGap.ms) : '—'} sub={s.longestGap ? t.after(pullName(s.longestGap.after, true), s.longestGap.isBreak) : undefined} />
+        </StatGrid>
+      </CollapsiblePanel>
 
       <section className="boss-cards" aria-label={t.bossesAria}>
         {bosses.map(({ key, s: b }) => {
@@ -105,11 +109,10 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
         <p className="muted small">{t.alsoDungeons(dungeonBosses)}</p>
       )}
 
-      <section className="panel">
-        <h3>{t.nightTimeline} <Hint>{t.timelineHint}</Hint></h3>
+      <CollapsiblePanel storageKey="summary.night-timeline" title={<>{t.nightTimeline} <Hint>{t.timelineHint}</Hint></>}>
         <Timeline s={s} onSelect={onSelectPull} />
         <GapList s={s} />
-      </section>
+      </CollapsiblePanel>
     </div>
   );
 }
@@ -158,8 +161,7 @@ function BossSummaryInner({ title, pulls, onSelectPull, live }: Props & { title:
       </StatGrid>
 
       {topCause && (
-        <section className="panel hero-cause">
-          <span className="muted small">{t.topCauseTitle}</span>
+        <CollapsiblePanel storageKey="summary.top-cause" title={t.topCauseTitle} className="hero-cause">
           <div className="hero-figure">
             <SpellName spellId={mechanicSpellIds.get(topCause.key)} name={topCause.name} size={30} />
           </div>
@@ -167,41 +169,37 @@ function BossSummaryInner({ title, pulls, onSelectPull, live }: Props & { title:
             {topCause.triggers > 0 && t.triggerIn(topCause.triggers, s.wipes, Math.round((topCause.triggers / Math.max(1, s.wipes)) * 100))}
             {t.linked(topCause.deaths, topCause.failures)}
           </p>
-        </section>
+        </CollapsiblePanel>
       )}
 
-      <section className="panel">
-        <h3>{t.progress} <Hint>{t.progressHint}</Hint></h3>
+      <CollapsiblePanel storageKey="summary.progress" title={<>{t.progress} <Hint>{t.progressHint}</Hint></>}>
         <ProgressChart pulls={s.pulls} onSelect={onSelectPull} bestId={s.best?.pull.id} />
-      </section>
+      </CollapsiblePanel>
 
       <BossMetrics pulls={s.pulls} onSelectPull={onSelectPull} />
       <NightPhaseTimes pulls={s.pulls} onSelectPull={onSelectPull} />
       <NightStackOrigins pulls={s.pulls} />
 
       <div className="two-col">
-        <section className="panel">
-          <h3>{t.causes}</h3>
+        <CollapsiblePanel storageKey="summary.causes" title={t.causes}>
           <CausesTable s={s} spellIds={mechanicSpellIds} />
-        </section>
-        <section className="panel">
-          <h3>{t.timeline} <Hint>{t.timelineHint}</Hint></h3>
+        </CollapsiblePanel>
+        <CollapsiblePanel storageKey="summary.timeline" title={<>{t.timeline} <Hint>{t.timelineHint}</Hint></>}>
           <Timeline s={s} onSelect={onSelectPull} />
           <GapList s={s} />
-        </section>
+        </CollapsiblePanel>
       </div>
 
       <div className="two-col">
-        <Awards title={t.villains} tone="bad" players={s.players} awards={villainAwards()} overall={(p) => p.villainScore} overallLabel={t.villainOverall} reasons={villainReasons} />
-        <Awards title={t.heroes} tone="good" players={s.players} awards={heroAwards()} overall={(p) => p.heroScore} overallLabel={t.heroOverall} reasons={heroReasons} />
+        <Awards storageKey="summary.villains" title={t.villains} tone="bad" players={s.players} awards={villainAwards()} overall={(p) => p.villainScore} overallLabel={t.villainOverall} reasons={villainReasons} />
+        <Awards storageKey="summary.heroes" title={t.heroes} tone="good" players={s.players} awards={heroAwards()} overall={(p) => p.heroScore} overallLabel={t.heroOverall} reasons={heroReasons} />
       </div>
 
       <RaidBot pulls={s.pulls} />
 
-      <section className="panel">
-        <h3>{t.scoreboard}</h3>
+      <CollapsiblePanel storageKey="summary.scoreboard" title={t.scoreboard}>
         <Scoreboard players={s.players} />
-      </section>
+      </CollapsiblePanel>
 
       <HealNotePanel pulls={s.pulls} live={live} collapsible />
     </div>
@@ -242,7 +240,6 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
         {pulls.map((p, i) => {
           // até onde foi na luta toda (fases passadas + vida da fase): mais alto = mais perto do kill
           const progress = pullProgress(p, phases) * 100;
-          const phase = p.success ? null : reachedPhase(p);
           const cx = pad.l + band * i + band / 2;
           const top = y(progress);
           const h = Math.max(p.success ? 0 : 1, base - top);
@@ -259,9 +256,9 @@ function ProgressChart({ pulls, onSelect, bestId }: { pulls: Pull[]; onSelect: (
             >
               <rect x={cx - band / 2} y={pad.t} width={band} height={base - pad.t} fill="transparent" />
               {p.success ? (
-                <circle cx={cx} cy={base - 6} r={5} className="mark-good" />
+                <circle cx={cx} cy={base - 6} r={5} className="mark-good" style={{ fill: pullColor(p) }} />
               ) : (
-                <path d={roundedTop(cx - barW / 2, top, barW, h)} className={`${p.id === bestId ? 'mark mark-best' : 'mark'} ${phase ? `ph-${Math.min(phase.index, 3)}` : (p.phaseCount ?? 0) >= 2 ? 'ph-0' : ''}`} />
+                <path d={roundedTop(cx - barW / 2, top, barW, h)} className={p.id === bestId ? 'mark mark-best' : 'mark'} style={{ fill: pullColor(p) }} />
               )}
               {label && (
                 <text x={cx} y={p.success ? base - 16 : top - 4} className="value-label" textAnchor="middle">
@@ -483,6 +480,7 @@ function heroReasons(p: PlayerNight): string {
 }
 
 function Awards(props: {
+  storageKey: string;
   title: string;
   tone: 'good' | 'bad';
   players: PlayerNight[];
@@ -491,40 +489,48 @@ function Awards(props: {
   overallLabel: string;
   reasons: (p: PlayerNight) => string;
 }) {
+  const [open, toggle] = useCollapsed(props.storageKey);
   const winner = topBy(props.players, props.overall, 1)[0];
   return (
     <section className={`panel awards ${props.tone}`}>
-      <h3>{props.title}</h3>
-      {winner && (
-        <div className="award-winner">
-          <span className="muted small">{props.overallLabel}</span>
-          <strong style={{ color: classColor(winner.class) }}>{shortName(winner.name)}</strong>
-          <span className="muted small">{props.reasons(winner)}</span>
-        </div>
+      <header className="assign-head">
+        <h3>{props.title}</h3>
+        <CollapseButton open={open} onToggle={toggle} />
+      </header>
+      {open && (
+        <>
+          {winner && (
+            <div className="award-winner">
+              <span className="muted small">{props.overallLabel}</span>
+              <strong style={{ color: classColor(winner.class) }}>{shortName(winner.name)}</strong>
+              <span className="muted small">{props.reasons(winner)}</span>
+            </div>
+          )}
+          <ul className="plain award-list">
+            {props.awards.map((a) => {
+              const top = topBy(props.players, a.score, 3);
+              return (
+                <li key={a.label}>
+                  <span className="award-label">
+                    <a.icon size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> {a.label}
+                  </span>
+                  <span className="award-people">
+                    {top.length === 0 ? (
+                      <span className="muted">{messagesOf(nightMsg).nobody}</span>
+                    ) : (
+                      top.map((p, i) => (
+                        <span key={p.guid} className={i === 0 ? 'first' : 'muted'}>
+                          <span style={{ color: classColor(p.class) }}>{shortName(p.name)}</span> {a.format(p)}
+                        </span>
+                      ))
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
-      <ul className="plain award-list">
-        {props.awards.map((a) => {
-          const top = topBy(props.players, a.score, 3);
-          return (
-            <li key={a.label}>
-              <span className="award-label">
-                <a.icon size={14} strokeWidth={1.5} className="inline-icon" aria-hidden /> {a.label}
-              </span>
-              <span className="award-people">
-                {top.length === 0 ? (
-                  <span className="muted">{messagesOf(nightMsg).nobody}</span>
-                ) : (
-                  top.map((p, i) => (
-                    <span key={p.guid} className={i === 0 ? 'first' : 'muted'}>
-                      <span style={{ color: classColor(p.class) }}>{shortName(p.name)}</span> {a.format(p)}
-                    </span>
-                  ))
-                )}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
     </section>
   );
 }
