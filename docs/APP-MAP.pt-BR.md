@@ -3,8 +3,8 @@
 Documentação funcional e técnica das telas, componentes e conexões entre funcionalidades.
 
 **Referência:** navegação na versão `0.37.0` em **21/10/2026**, com as alterações locais da
-árvore de trabalho daquela data; texto conferido contra o código da versão `0.42.0` em
-**27/10/2026**, só pelo código, sem abrir as telas.
+árvore de trabalho daquela data; texto conferido contra o código da versão `0.45.0` em
+**03/11/2026**, só pelo código, sem abrir as telas.
 
 ## Como ler
 
@@ -23,7 +23,7 @@ Existem três ambientes distintos:
 | Ambiente | Dados e execução | Consequência para a interface |
 | --- | --- | --- |
 | Desktop Tauri | Núcleo Rust, arquivos do PC e integrações nativas | Análise, histórico, ao vivo, Warcraft Recorder, SimulationCraft, bandeja e atualizações |
-| Site, com `VITE_TARGET=web` | O mesmo núcleo compilado para WASM em Worker; armazenamento do navegador | Análise local de arquivo, histórico, Warcraft Logs, regras, IA e compartilhamento; sem os recursos que exigem programas e monitoramento do PC |
+| Site, com `VITE_TARGET=web` (`npm run dev:web` para desenvolver, `npm run build:web` para gerar) | O mesmo núcleo compilado para WASM em Worker; armazenamento do navegador | Análise local de arquivo, histórico, Warcraft Logs, regras, IA e compartilhamento; sem os recursos que exigem programas e monitoramento do PC |
 | Desenvolvimento da UI, `npm run dev` fora do Tauri | Relatórios JSON e dados de demonstração; `hasBackend=false` | Permite percorrer a UI; várias integrações são exemplos ou exibem aviso de indisponibilidade |
 
 Um aviso de “disponível no app instalado” visto no terceiro ambiente não prova que o recurso falta no site. A versão web tem seu próprio backend. As condições estão em [backend.ts](../src/lib/backend.ts), [api.ts](../src/lib/api.ts) e [commands.ts](../src/web/commands.ts).
@@ -80,7 +80,7 @@ Os parâmetros `?report=<código>&fight=<id>` são uma entrada direta para repor
 | `Header` | Foco Guilda/Solo, noite aberta, reanálise, corte e integrações da noite | Troca o contexto global e associa WCL e vídeos |
 | `Sidebar` | Nova análise (sem backend, “Abrir relatório JSON”), Evolução, noites fixadas/recentes, árvore de bosses e pulls, configurações e, no desktop, o indicador de versão que confere atualizações | Selecionar um item atualiza a área principal |
 | `SidebarRail` | Versão recolhida da lateral | Oferece atalhos, até oito noites salvas e, se a análise aberta não estiver no histórico, mais uma entrada para ela |
-| `PullList` | Árvore noite → boss/dificuldade → resumo e pulls | Mostra resultado, progresso, duração e gatilho/mortes antes de abrir o pull |
+| `PullList` | Árvore noite → boss/dificuldade → resumo e pulls | Mostra resultado, progresso, duração e gatilho/mortes antes de abrir o pull; a barrinha de cada pull usa as cores do gráfico “Progresso por pull” ([pullColors](../src/lib/pullColors.ts)) |
 | `SetupContext` | Status das integrações e atalhos até uma seção de configurações | Salvar um formulário recarrega os indicadores compartilhados |
 | `PlayerClassesContext` | Relação entre jogadores e classes | Mantém cores e apresentação dos nomes consistentes |
 | `SpellHoverLayer`, `SpellIcon`, `Names` | Habilidades, tooltips e nomes destacados | Reutilizados nas análises, mapas, tabelas e respostas da IA |
@@ -135,7 +135,7 @@ Fontes: [Sidebar](../src/components/Sidebar.tsx), [history.rs](../src-tauri/src/
 
 ### 3.4 Resumo da noite — Guilda
 
-`NightOverview` é a visão ampla da sessão. Mostra número de bosses, pulls e kills; tempo de raid; tempo em combate; downtime; intervalos médios/medianos e maiores pausas. Cards de boss apresentam resultado, melhor progresso e principal causa dos wipes. A linha do tempo reúne pulls e intervalos.
+`NightOverview` é a visão ampla da sessão. Mostra número de bosses, pulls e kills; tempo de raid; tempo em combate; downtime; intervalos médios/medianos e maiores pausas. O card **Tempo da noite** agrupa esses números. Cards de boss apresentam resultado, melhor progresso e principal causa dos wipes. A linha do tempo reúne pulls e intervalos. Todos os cards do resumo da noite recolhem e expandem, e o estado fica salvo (ver 3.5).
 
 **Entradas:** pulls do relatório, com filtro de conteúdo de raid. Masmorras podem existir nos dados, mas não entram nas métricas de tempo e nos cards de raid.
 
@@ -150,6 +150,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/n
 | Bloco | Conteúdo e conexão |
 | --- | --- |
 | Resumo | Quantidade de pulls/wipes/kills, melhor tentativa e ritmo entre trys |
+| Maior causa | Card “Maior causa dos wipes”: a mecânica que mais disparou wipes, com gatilhos, mortes e falhas ligadas (bloco `summary.top-cause`) |
 | Progresso | Fase e vida do boss por pull; clicar permite investigar a tentativa |
 | Métricas do grupo | Mecânicas escolhidas para acompanhar, sugestões pelo que falhou, totais e contribuição individual; abre os pulls relacionados |
 | Tempos de fase | Compara transições quando os dados e as regras de fase existem |
@@ -161,7 +162,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/n
 | Robô para a raide | Simula DPS e tanks elegíveis em fila e mostra potencial dos resultados salvos |
 | Placar | Consolida nota, mortes, erros, recursos e produção por jogador |
 
-Métricas escolhidas são preferências por encontro; não são novas regras de detecção. Escolher uma métrica muda o acompanhamento exibido. Alterar uma regra muda a análise e exige reprocessamento.
+Todos os cards do resumo do boss e da noite usam `CollapsiblePanel`/`useCollapsed`: recolhem e expandem, e o estado fica no localStorage (chaves `wipe-cause:summary.*`). Métricas escolhidas são preferências por encontro; não são novas regras de detecção. Escolher uma métrica muda o acompanhamento exibido. Alterar uma regra muda a análise e exige reprocessamento.
 
 Fontes: [NightSummary](../src/components/NightSummary.tsx), [HealNotePanel](../src/components/HealNotePanel.tsx), [BossMetrics](../src/components/BossMetrics.tsx), [PhaseTimes](../src/components/PhaseTimes.tsx), [StackOrigins](../src/components/StackOrigins.tsx), [RaidBot](../src/components/perf/RaidBot.tsx).
 
@@ -410,7 +411,7 @@ O usuário pode continuar examinando um pull antigo ou Configurações: a atuali
 
 Há dois gatilhos automáticos adicionais: abertura do WoW, quando configurada no desktop, e detecção de report ao vivo da guilda. A descoberta automática da guilda é distinta do polling de um ao vivo já ligado.
 
-O Discord respeita webhook, pausa global e as opções de cada wipe, cada kill, resumo da noite e clipe (todas ligadas por padrão). Com a opção do resumo da noite ligada, `useNightRecap` envia o resumo quando o acompanhamento é desligado ou após 30 minutos sem pull novo. O cabeçalho oferece pausar/retomar o autoenvio sem apagar a configuração.
+O Discord respeita webhook, pausa global e as opções de cada wipe, cada kill, resumo da noite e clipe (todas ligadas por padrão). Com a opção do resumo da noite ligada, `useNightRecap` envia o resumo quando o acompanhamento é desligado ou após 30 minutos sem pull novo. O resumo da noite manda também o cartão das métricas escolhidas (`MetricsShareCard`, [MetricsCard](../src/components/share/MetricsCard.tsx)) numa mensagem à parte, quando algum boss tem métricas. O cabeçalho oferece pausar/retomar o autoenvio sem apagar a configuração.
 
 Fontes: [live](../src/lib/live.ts), [autoLive](../src/lib/autoLive.ts), [live.rs](../src-tauri/src/live.rs), [LiveControls](../src/components/LiveControls.tsx), [LiveToast](../src/components/LiveToast.tsx), [discordLive](../src/lib/discordLive.tsx).
 
@@ -520,9 +521,10 @@ O corte por N mortes é aplicado a wipes; kills preservam a luta completa. O rep
 | Ajustes de regras | `rule-tuning/<encounter_id>.json` | IndexedDB |
 | Notas e marcas | localStorage por encontro e início do pull | Mesmo mecanismo |
 | Escala e métricas escolhidas | Preferências locais | Preferências locais |
-| Note de CDs de cura (versões) | localStorage `wipe-cause:heal-note:<encounter>:<dificuldade>`; a chave da escala guarda o texto da versão mais nova | Mesmo mecanismo |
+| Note de CDs de cura (versões) | localStorage `wipe-cause:heal-note:<encounter>:<dificuldade>`, com até 20 versões; a chave da escala `wipe-cause:assignments:<encounter>:<dificuldade>` guarda o texto da versão mais nova ([healNote](../src/lib/healNote.ts)) | Mesmo mecanismo |
 | Seção "CDs de cura" do resumo do boss aberta ou recolhida | localStorage `wipe-cause:heal-note-open` (`0` = recolhida) | Mesmo mecanismo |
 | Modo, personagem e lateral | localStorage | localStorage |
+| Preferências da tela | localStorage: `wipe-cause:locale` (idioma), `wipe-cause:auto-live` (ligar o ao vivo sozinho), `wipe-cause:wcl-guild` (guilda do WCL), `wipe-cause:onboarded` (primeiros passos vistos) e os cards recolhidos `wipe-cause:summary.*`; a lista não é exaustiva | localStorage |
 | Corte de mortes e filtro da Nova análise | localStorage | localStorage |
 | Parses do WCL e link do report por log | localStorage | localStorage |
 | Preferências do replay (camadas, chão, áreas, auras na cabeça por boss, nomes, marcas, medidores, faixas por mecânica, quadros recolhidos) | localStorage | localStorage |
@@ -604,7 +606,7 @@ Esses pontos são registros da inspeção; o item 1 foi corrigido depois, no #73
 
 ### Conferência contra o código (v0.42.0)
 
-Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`.
+Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026**.
 
 ### Como reproduzir a navegação local
 

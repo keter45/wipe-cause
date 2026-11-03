@@ -33,9 +33,9 @@ culpa nem recalibra velocidade/ângulo dos fantasmas sem evidência nova.
 | Guillotine — cast 1283489, dano 1283594, aura 1307425 | ~5,42M físico dividido no raio de 9 yd do alvo; cast de 3,5s; mínimo 5 no Mythic. | Corrigido de 5 para 9 yd. O começo do círculo usa o cast real (incluindo o voo até o hit), não os 3s artificiais anteriores ao dano. Centro usa o alvo explícito do cast quando sua posição recente é compatível com os hits; sem isso, conserva o centro inferido dos atingidos. |
 | Grim Guillotine — cast 1299267, dano 1299296, aura 1307652 | ~5,42M Shadow dividido em 9 yd, absorb de cura; cast de 3,5s. | Mesma correção de raio e associação ao cast, ID confirmado no log Heroic. Grim Execution continua sem ID resolvido; não inventado nesta revisão. |
 | Guillotine / Grim Guillotine (double soak) | Mesmo impacto, com vulnerabilidade prévia. | Usa o mesmo círculo do soak; a regra de erro continua separada, sem criar outro centro. |
-| Widow's Kiss — 1283623 | ~1,25M Nature a até 40 yd do machado, depois do soak. | Disco de 40 yd ligado ao centro estimado do soak. Aviso até o evento real de explosão (incluindo Widow's Touch); fallback temporal de 6s explicitamente estimado. |
+| Widow's Kiss — 1283623 | ~1,25M Nature a até 40 yd do machado, depois do soak (tooltip). | Disco de 45 yd (o tooltip diz 40; `blast.radius` no YAML) ligado ao centro estimado do soak. Aviso até o evento real de explosão (incluindo Widow's Touch); fallback temporal de 6s explicitamente estimado. |
 | Widow's Touch — 1283631 | ~208k Nature a pelo menos 40 yd do epicentro. | Dano contextual, não um segundo círculo perigoso pequeno. Não confundir range ilimitado de lançamento com área. |
-| Death's Embrace — 1299396 | ~1,25M Shadow a até 40 yd do machado. | Disco de 40 yd ligado ao Grim Guillotine, com o mesmo contrato de aviso/impacto e incerteza do centro. |
+| Death's Embrace — 1299396 | ~1,25M Shadow a até 40 yd do machado (tooltip). | Disco de 45 yd (o tooltip diz 40; `blast.radius` no YAML) ligado ao Grim Guillotine, com o mesmo contrato de aviso/impacto e incerteza do centro. |
 | Axegrinder — 1283832 / 1285017, NPC 260474 | Impacto de ~1M físico em 4 yd; machados vagam por até 3 min, ~125k/0,25s no contato. | Área móvel presente em torno do NPC, raio calibrado de 4 yd. Posições entre eventos continuam inferidas; o tooltip quebrado de contato em 0 yd não serve de raio. Desaparecimento da P2 já tratado. |
 | Volatile Venom — 1282419 / 1282288 | ~87,5k Nature/s em 5 yd por 5s; deixa orb verde ao expirar. | Área do portador presente em 5 yd; mantém vínculo à aura. |
 | Mutagenic Venom — 1310498 / 1310691 | Tooltip: ~250k Nature/s por 5s, raio ainda descrito como 8 yd; deixa roxo. | Área do portador presente; mantidos 6 yd pós-hotfix. Não regredir para 8 apenas pelo tooltip. |
@@ -84,7 +84,7 @@ Refinamentos conservadores implementados:
    O encontro ainda é inferido pelo ajuste conjunto de velocidade. O texto
    de ajuda agora distingue isso de uma posição registrada.
 
-Mantidos: velocidade-base de 4 yd/s, cone de visão de 35°, espera de 2,5s,
+Mantidos, valores de antes da recalibração de 15/10 (os atuais estão mais abaixo neste doc): velocidade-base de 4 yd/s, cone de visão de 35°, espera de 2,5s,
 parada de 1,5s e critério de culpa. Não há evidência nova suficiente para
 alegar aumento percentual de precisão ou trocar esses valores globalmente.
 O caminho inteiro é estimado; tracejado indica correção adicional, não que
@@ -118,7 +118,7 @@ fallback sem cast, posição obsoleta, auras em NPCs, fim exato do fantasma,
 - Frontais mostram contorno durante todo o cast disponível e impacto somente
   no fim; casts interrompidos não mostram impacto. A origem no impacto fica
   presa à posição do boss naquele instante, sem acompanhar movimentos posteriores.
-- Widow's Kiss e Death's Embrace têm círculos completos de 40 yd ligados ao
+- Widow's Kiss e Death's Embrace têm círculos completos de 45 yd (40 é o do tooltip) ligados ao
   centro do soak, nunca à posição atual do boss. O aviso começa no impacto do
   machado. Eventos de dano, miss/immune e absorb da mesma origem, próximos aos
   6s esperados, determinam o momento da explosão; Widow's Touch também serve
