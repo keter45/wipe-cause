@@ -1,4 +1,6 @@
 :root {
+  --viz-series: #3987e5;
+  --viz-good: #0ca30c;
   --bg: #131115;
   --panel: #1b181e;
   --panel-2: #241f28;
@@ -1457,8 +1459,6 @@ ul.plain {
 
 /* resumo da noite */
 .night {
-  --viz-series: #3987e5;
-  --viz-good: #0ca30c;
   --viz-grid: var(--border);
   --viz-axis: #898781;
   display: flex;
@@ -1640,20 +1640,6 @@ ul.plain {
   fill: var(--viz-series);
   stroke: var(--text);
   stroke-width: 1.5;
-}
-/* boss de várias fases: a cor da fase em que o pull acabou (como na lista de pulls) */
-.chart .mark.ph-0 {
-  fill: var(--accent);
-}
-.chart .mark.ph-1,
-.chart .mark.ph-2 {
-  fill: var(--info);
-}
-.chart .mark.ph-3 {
-  fill: var(--phase-3);
-}
-.chart .mark-good {
-  fill: var(--viz-good);
 }
 .chart .bar-hit {
   cursor: pointer;
@@ -8665,9 +8651,6 @@ button.kpi:hover {
   background: var(--accent);
   transform-origin: left;
 }
-.tree-pull.kill .tp-bar i {
-  background: var(--kill);
-}
 .tp-pct {
   justify-self: end;
   font-weight: 600;
@@ -8750,4 +8733,13 @@ button.kpi:hover {
   .pull-outcome .boss-hp-pills {
     justify-content: flex-start;
   }
+}
+
+.head-collapse {
+  margin-left: auto;
+}
+.panel-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronUp, Copy, HeartPulse, Play } from 'lucide-react';
+import { Copy, HeartPulse, Play } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { mmss, shortName } from '../lib/format';
 import { healCd } from '../lib/healCooldowns';
@@ -16,6 +16,7 @@ import { SpellIcon, SpellName } from './SpellIcon';
 import { Hint } from './ui/Hint';
 import { useMessages } from '../i18n';
 import { healNoteMsg } from './HealNotePanel.i18n';
+import { CollapseButton, useCollapsed } from './CollapsiblePanel';
 
 interface Props {
   /** pulls do mesmo boss e dificuldade na noite */
@@ -29,15 +30,6 @@ interface Props {
   collapsible?: boolean;
 }
 
-const OPEN_KEY = 'wipe-cause:heal-note-open';
-function savedOpen(): boolean {
-  try {
-    return localStorage.getItem(OPEN_KEY) !== '0';
-  } catch {
-    return true;
-  }
-}
-
 /** referências de fora do healer (análise de healer, docs/healer-analysis.md §2) */
 const refsOf = (p: Pull, pl: PlayerStats) => selectHealRefs(p, pl)?.entries ?? [];
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -47,16 +39,8 @@ const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('pt-BR');
 /** A note de CDs de cura do líder conferida contra os pulls (regras em docs/heal-cd-note.md). */
 export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsible = false }: Props) {
   const t = useMessages(healNoteMsg);
-  const [expanded, setExpanded] = useState(savedOpen);
+  const [expanded, toggle] = useCollapsed('heal-note-open');
   const open = !collapsible || expanded;
-  const toggle = () => {
-    setExpanded(!expanded);
-    try {
-      localStorage.setItem(OPEN_KEY, expanded ? '0' : '1');
-    } catch {
-      // sem localStorage: vale só nesta tela
-    }
-  };
   const boss = focus ?? pulls[0];
   const [versions, setVersions] = useState<NoteVersion[]>(() => (boss ? noteVersions(boss) : []));
   // pull escolhido na fileira do resumo da noite (volta ao padrão quando o conjunto de pulls muda)
@@ -167,11 +151,7 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
         <h3>
           <HeartPulse size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.title} <Hint>{t.hint}</Hint>
         </h3>
-        {collapsible && (
-          <button className="btn ghost sm" onClick={toggle} aria-expanded={open} aria-label={open ? t.collapse : t.expand} title={open ? t.collapse : t.expand}>
-            {open ? <ChevronUp size={14} strokeWidth={1.75} aria-hidden /> : <ChevronDown size={14} strokeWidth={1.75} aria-hidden />} {open ? t.collapse : t.expand}
-          </button>
-        )}
+        {collapsible && <CollapseButton open={open} onToggle={toggle} />}
       </header>
       {open && (
         <>

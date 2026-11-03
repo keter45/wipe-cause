@@ -9,6 +9,7 @@ import { tr, useMessages } from '../i18n';
 import { bossMetricsMsg } from './BossMetrics.i18n';
 import { Hint } from './ui/Hint';
 import { Clamp } from './ui/Clamp';
+import { CollapseButton, useCollapsed } from './CollapsiblePanel';
 
 /** Quantas pessoas cada lista mostra antes do "+ N". */
 const TOP = 5;
@@ -18,6 +19,7 @@ const SUGGEST = 3;
 /** Resumo do boss: as mecânicas que o grupo escolheu acompanhar, cada uma somada na noite. */
 export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPull: (id: number) => void }) {
   const t = useMessages(bossMetricsMsg);
+  const [open, toggle] = useCollapsed('summary.boss-metrics');
   const encounterId = pulls[0]?.encounterId ?? 0;
   const [keys, setKeysState] = useState<string[]>(() => savedBossMetrics(encounterId));
   const [loadedFor, setLoadedFor] = useState(encounterId);
@@ -32,7 +34,7 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
   };
   const options = useMemo(() => metricOptions(pulls), [pulls]);
   const metrics = useMemo(() => keys.map((k) => ({ key: k, m: metricNight(pulls, k) })), [pulls, keys]);
-  const toggle = (k: string) => setKeys(keys.includes(k) ? keys.filter((x) => x !== k) : [...keys, k]);
+  const toggleKey = (k: string) => setKeys(keys.includes(k) ? keys.filter((x) => x !== k) : [...keys, k]);
 
   if (!options.length) return null;
   // as que mais falharam e, com fantasmas, as jardas que eles andaram
@@ -47,47 +49,54 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
         <div>
           <h3>{t.title} <Hint>{t.hint}</Hint></h3>
         </div>
-        <AddMetric options={options} chosen={keys} onToggle={toggle} />
+        <span className="panel-head-actions">
+          <AddMetric options={options} chosen={keys} onToggle={toggleKey} />
+          <CollapseButton open={open} onToggle={toggle} />
+        </span>
       </header>
-      {keys.length === 0 && suggestions.length > 0 && (
-        <div className="metric-suggest">
-          <span className="muted small">{t.empty}</span>
-          <div className="chips">
-            {suggestions.map((o) => (
-              <button key={o.key} onClick={() => toggle(o.key)}>
-                <Plus size={12} strokeWidth={2} aria-hidden /> <SpellName spellId={o.spellId} name={o.name} size={14} />
-                {o.unit && <span className="muted">· {t.walked}</span>}
-                <span className="muted tabular">{o.unit ? t.yards(o.amount ?? 0) : o.failures}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      {metrics.length > 0 && (
-        <div className="metric-grid">
-          {metrics.map(({ key, m }, i) =>
-            m ? (
-              <MetricCard
-                key={key}
-                m={m}
-                edit={{
-                  onRemove: () => toggle(key),
-                  onMove: (dir) => setKeys(moveMetric(keys, key, dir)),
-                  first: i === 0,
-                  last: i === metrics.length - 1,
-                }}
-                onSelectPull={onSelectPull}
-              />
-            ) : (
-              <article key={key} className="metric-card gone">
-                <span className="muted small">{t.gone(key)}</span>
-                <button className="icon-btn" onClick={() => toggle(key)} title={t.remove(key)} aria-label={t.remove(key)}>
-                  <X size={14} strokeWidth={1.5} aria-hidden />
-                </button>
-              </article>
-            ),
+      {open && (
+        <>
+          {keys.length === 0 && suggestions.length > 0 && (
+            <div className="metric-suggest">
+              <span className="muted small">{t.empty}</span>
+              <div className="chips">
+                {suggestions.map((o) => (
+                  <button key={o.key} onClick={() => toggleKey(o.key)}>
+                    <Plus size={12} strokeWidth={2} aria-hidden /> <SpellName spellId={o.spellId} name={o.name} size={14} />
+                    {o.unit && <span className="muted">· {t.walked}</span>}
+                    <span className="muted tabular">{o.unit ? t.yards(o.amount ?? 0) : o.failures}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
-        </div>
+          {metrics.length > 0 && (
+            <div className="metric-grid">
+              {metrics.map(({ key, m }, i) =>
+                m ? (
+                  <MetricCard
+                    key={key}
+                    m={m}
+                    edit={{
+                      onRemove: () => toggleKey(key),
+                      onMove: (dir) => setKeys(moveMetric(keys, key, dir)),
+                      first: i === 0,
+                      last: i === metrics.length - 1,
+                    }}
+                    onSelectPull={onSelectPull}
+                  />
+                ) : (
+                  <article key={key} className="metric-card gone">
+                    <span className="muted small">{t.gone(key)}</span>
+                    <button className="icon-btn" onClick={() => toggleKey(key)} title={t.remove(key)} aria-label={t.remove(key)}>
+                      <X size={14} strokeWidth={1.5} aria-hidden />
+                    </button>
+                  </article>
+                ),
+              )}
+            </div>
+          )}
+        </>
       )}
     </section>
   );
