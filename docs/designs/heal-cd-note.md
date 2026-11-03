@@ -642,6 +642,8 @@ Em `src/lib/healNoteCheck.ts`, por pull:
     sem segundo de raide baixa nela. Redução de dano (`mitigation`) não recebe
     "sem dano", pelo mesmo motivo do "empilhado": o log não mostra quanto ela
     evitou; uma redução fora de hora aparece pelo "no golpe" e pelo "mover".
+    Desde [heal-cd-timeline.md](heal-cd-timeline.md#open-questions)
+    (2026-11-03), também sem dano alto na janela (`highDamage`).
 *   **Overheal do uso:**
     *   **Fração:** overheal ÷ (cura + overheal), somando os `heal_ids` do CD
         em `cdHeals` na janela do "sem dano".

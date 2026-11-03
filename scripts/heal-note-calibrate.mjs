@@ -4,9 +4,9 @@
 // O desenvolvedor escolhe o limite (parâmetro da luta, calibrável nos nossos logs; G10 do design).
 //
 //   node scripts/heal-note-calibrate.mjs <relatório.json> [--boss "<nome>"] [--difficulty Mythic]
-//        [--note note.txt] [--shares 0.6,0.7,0.8,0.9]
+//        [--note note.txt] [--shares 0.6,0.7,0.8,0.9] [--gap-shares 0.5,0.6,0.7] [--gap-min 2,3,4]
 //
-// Usa o próprio código do app (src/lib/raidHits.ts e healNoteCheck.ts), empacotado com o rolldown.
+// Usa o próprio código do app (src/lib/raidHits.ts, healNoteCheck.ts e healTimeline.ts), empacotado com o rolldown.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,7 +21,7 @@ const opt = (name, def) => {
 };
 const file = args.find((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
 if (!file) {
-  console.error('uso: node scripts/heal-note-calibrate.mjs <relatório.json> [--boss "<nome>"] [--difficulty Mythic] [--note note.txt] [--shares 0.6,0.7,0.8,0.9]');
+  console.error('uso: node scripts/heal-note-calibrate.mjs <relatório.json> [--boss "<nome>"] [--difficulty Mythic] [--note note.txt] [--shares 0.6,0.7,0.8,0.9] [--gap-shares 0.5,0.6,0.7] [--gap-min 2,3,4]');
   process.exit(1);
 }
 
@@ -30,7 +30,7 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace
 const entry = path.join(os.tmpdir(), `heal-note-calibrate-entry-${process.pid}.ts`);
 fs.writeFileSync(
   entry,
-  ["export * from '" + path.join(root, 'src/lib/raidHits.ts').replace(/\\/g, '/') + "';", "export * from '" + path.join(root, 'src/lib/healNoteCheck.ts').replace(/\\/g, '/') + "';", "export * from '" + path.join(root, 'src/lib/healNote.ts').replace(/\\/g, '/') + "';"].join('\n'),
+  ["export * from '" + path.join(root, 'src/lib/raidHits.ts').replace(/\\/g, '/') + "';", "export * from '" + path.join(root, 'src/lib/healNoteCheck.ts').replace(/\\/g, '/') + "';", "export * from '" + path.join(root, 'src/lib/healNote.ts').replace(/\\/g, '/') + "';", "export * from '" + path.join(root, 'src/lib/healTimeline.ts').replace(/\\/g, '/') + "';"].join('\n'),
 );
 // as referências de healer (import.meta.glob do Vite) não entram na calibração
 const noGlob = { name: 'no-glob', transform: (code) => (code.includes('import.meta.glob') ? code.replace(/import\.meta\.glob(<[^>]*>)?\(/g, '((..._) => ({}))(') : null) };
@@ -88,4 +88,40 @@ for (const share of opt('shares', '0.6,0.7,0.8,0.9').split(',').map(Number)) {
   }
   console.log(line);
   if (share === original) for (const m of ms) console.log(`   ${m.phaseKey} +${Math.round(m.inPhaseMs / 1000)} s · ${names.get(m.spellId) ?? m.spellId} (${m.k}º ${names.get(m.anchorSpell) ?? m.anchorSpell}) · golpe em ${m.withHit} de ${m.pulls.size} · ${Math.round((m.medianSize ?? 0) * 100)}%`);
+}
+
+// buracos: calibra GAP_SHARE × GAP_MIN_S com os usos de CD do pull (sem note; refsOf vazio, sem overheal)
+const strongHits = new Map(pulls.map((p) => [p.id, lib.hits(p, anchors.get(p.id) ?? {})]));
+const strongMs = lib.moments(pulls, anchors, strongHits);
+const usesByPull = new Map(pulls.map((p) => [p.id, lib.uses(p, strongMs, strongHits.get(p.id) ?? [], () => [])]));
+const usesNoCycle = new Map(pulls.map((p) => [p.id, lib.uses(p, strongMs, strongHits.get(p.id) ?? [], () => [], false)]));
+const usedInNight = new Set([...usesByPull.values()].flat().map((u) => `${u.player.guid}:${u.cd.id}`));
+const noDamage = [...usesByPull.values()].flat().filter((u) => u.noDamage).length;
+const noDamageNoCycle = [...usesNoCycle.values()].flat().filter((u) => u.noDamage).length;
+const cycles = [...usesByPull.values()].flat().filter((u) => u.cycle).length;
+const median = (values) => {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+const p90 = (values) => {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(0.9 * (sorted.length - 1))];
+};
+console.log(`\nburacos: ${withLife.length} pulls com vida · GAP_JOIN_S ${lib.GAP_JOIN_S} s · GAP_SHARE × GAP_MIN_S`);
+console.log(`  sem dano ${noDamage} (${noDamageNoCycle} sem a regra de ciclo) · ciclo provável ${cycles}`);
+for (const share of opt('gap-shares', '0.5,0.6,0.7').split(',').map(Number)) {
+  for (const minS of opt('gap-min', '2,3,4').split(',').map(Number)) {
+    const gapsByPull = new Map(
+      withLife.map((p) => [p.id, lib.gaps(p, usesByPull.get(p.id) ?? [], anchors.get(p.id) ?? {}, strongHits.get(p.id) ?? [], usedInNight, { share, minS })]),
+    );
+    const counts = [...gapsByPull.values()].map((gs) => gs.length);
+    const all = [...gapsByPull.values()].flat();
+    const noEvidence = all.filter((g) => !g.evidence).length;
+    const pct = all.length ? Math.round((noEvidence / all.length) * 100) : 0;
+    const night = lib.nightGaps(pulls, anchors, gapsByPull).length;
+    console.log(`share ${share.toFixed(2)} · minS ${minS} s: ${median(counts).toFixed(1)} buracos por pull (mediana), p90 ${p90(counts)}, ${pct}% sem evidência, ${night} na noite, sem dano ${noDamage} (${noDamageNoCycle} sem ciclo), ciclo provável ${cycles}`);
+  }
 }

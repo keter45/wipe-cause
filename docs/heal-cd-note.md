@@ -5,15 +5,19 @@ note que o MRT mostra na tela). Design: [designs/heal-cd-note.md](designs/heal-c
 referência de healer segue a [análise de healer](healer-analysis.md) (regra 2: os healers da
 guilda nunca são o "certo").
 
-Estado: as três etapas do design (note e timing; golpes e uso; overheal e note sugerida).
+Estado: as três etapas do design (note e timing; golpes e uso; overheal e note sugerida) e a
+timeline com buracos na cura ([designs/heal-cd-timeline.md](designs/heal-cd-timeline.md)).
 
 ## 1. Onde aparece
 
-- **Resumo do boss** (foco Guilda): seção "CDs de cura" no fim, que recolhe e expande (a escolha fica no navegador), com uma tabela
-  por versão da note: por linha, quantos pulls foram "na hora" entre os que chegaram nela e o Δ
-  mediano.
-- **Aba "CDs de cura" do pull**: a mesma tabela para um pull, com o estado de cada linha e o Δ
-  (entre parênteses, o Δ sem o desvio da fase).
+- **Resumo do boss** (foco Guilda): seção "CDs de cura" no fim, que recolhe e expande (a escolha
+  fica no navegador). Em cima, a [timeline](#9-timeline) de um pull escolhido na fileira de pulls
+  (padrão: o que foi mais longe) e os buracos da noite; no bloco "Detalhes", a caixa da note e uma
+  tabela por versão da note: por linha, quantos pulls foram "na hora" entre os que chegaram nela e
+  o Δ mediano.
+- **Aba "CDs de cura" do pull**: a timeline do pull e os buracos dele; em "Detalhes", a mesma
+  tabela para um pull, com o estado de cada linha e o Δ (entre parênteses, o Δ sem o desvio da
+  fase).
 - **Aba Interrupts**: a mesma caixa da note. A escala de interrupts sai só do bloco
   `intstart`…`intend`.
 
@@ -108,7 +112,8 @@ logging), não há golpes nem raide baixa.
     começa; rajada de 2 s antes a 8 s depois; cura que dura antes, se ainda ativa, ou até 8 s
     depois);
   - **no golpe:** o uso também cobriu; **fora do golpe:** a linha está no lugar, o player não;
-  - **sem dano:** cura (só `heal`) sem golpe nem raide baixa na janela; redução de dano não recebe;
+  - **sem dano:** cura (só `heal`) sem golpe, sem raide baixa e sem dano alto (dano dos últimos
+    5 s ≥ `GAP_SHARE`, 0,60 da vida máxima) na janela; redução de dano não recebe;
   - **uso de ciclo:** linha sem momento cuja próxima linha do mesmo CD tem momento e não estaria
     pronta se esta saísse no momento seguinte; não recebe veredicto de uso;
   - **golpe sem CD:** momento alcançado sem nenhuma linha da note ligada a ele.
@@ -180,6 +185,34 @@ logging), não há golpes nem raide baixa.
   do Ascendance mistura os procs do talento, então fica a duração base. Curas exclusivas
   confirmadas: Divine Hymn 64844, Rewind 363534.
 
+## 9. Timeline
+
+Funciona sem note: usa todos os casts dos CDs da tabela (`src/lib/healTimeline.ts`, componente
+`src/components/HealTimeline.tsx`).
+
+- **Em cima:** ícones dos casts do boss e dos golpes; a curva do dano inevitável dos últimos 5 s
+  sobre a vida máxima da raide, com as linhas de `GAP_SHARE` (0,60) e do golpe (0,80); as fases; a
+  tira de raide baixa.
+- **Embaixo:** uma linha por player (healers primeiro, cor da classe), uma barra por uso, do cast
+  ao fim do efeito. Verde = cura útil, listrado = overheal; roxo = redução de dano; cinza claro =
+  CD de cura sem medição (sem `heal_ids`: Convoke, Apotheosis, Avenging Wrath); cinza = uso de
+  ciclo. Ícone de alerta em cima = "sem dano", "overheal alto" ou "empilhado". Com note, cada
+  linha vira um losango na hora ajustada, na cor do estado, ligado ao uso casado; com note, o uso
+  casado leva o veredicto da linha.
+- **Buraco:** coluna vermelha numerada. Trecho de 3 s ou mais (`GAP_MIN_S`) com dano alto ou raide
+  baixa e nenhum CD ativo (pela janela do efeito, a mesma do "sem dano"). A dica mostra o pico e os
+  **CDs livres** (fora de cooldown pela duração base, só CDs que o player usou na noite).
+- **Ciclo provável** (sem note): uso sem dano cujo próximo uso do mesmo CD, no mesmo pull, tem
+  momento e não estaria pronto se este saísse no momento seguinte; fica cinza, sem veredicto.
+- **Cartões:** "Buracos do pull" (com o número da timeline) ou "Buracos da noite" (skill do boss,
+  "em X de Y pulls" e os CDs livres). Clicar leva a timeline ao trecho.
+- **Interação:** roda do mouse dá zoom, Shift ou arrastar anda; na aba do pull, clicar ou Enter
+  num item abre o Replay naquele instante (log do PC no desktop).
+- **Calibração:** `node scripts/heal-note-calibrate.mjs <relatório.json> --gap-shares 0.5,0.6,0.7
+  --gap-min 2,3,4`. Em 26, 28 e 29/10 (The Coiled Altar Mythic): 1 buraco por pull na mediana, 2 a
+  3 buracos da noite, 22% a 37% sem evidência de dano (nenhuma morte e menos de 2 players abaixo de
+  50%).
+
 ## Decisões
 
 - 2026-10-27: dois veredictos, "na hora da note" (relógio, ±10 s) e "no golpe" (etapa 2).
@@ -188,6 +221,9 @@ logging), não há golpes nem raide baixa.
 - 2026-10-27: a note colada é a base da note sugerida; só mudanças de um passo.
 - 2026-10-27: uma caixa só para a note (CDs e interrupts), com versões.
 - 2026-10-28: limite do golpe em 0,80 da vida máxima (calibração de 26/10).
+- 2026-11-03: timeline como visual principal, também sem note; buraco com `GAP_SHARE` 0,60 e
+  `GAP_MIN_S` 3 s; "sem dano" passa a exigir também nenhum dano alto, com e sem note (calibração
+  de 26, 28 e 29/10).
 
 ## Para depois
 

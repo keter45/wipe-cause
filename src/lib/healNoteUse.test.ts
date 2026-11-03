@@ -16,6 +16,13 @@ const quiet = (low: Record<number, number> = {}) => ({
 });
 const mk = (players: PlayerStats[], low: Record<number, number> = {}) =>
   pull(0, 0, 300_000, { players, raidSeries: quiet(low), phaseMarks: [{ key: 'p1', name: 'P1', t: 0 }] });
+/** Dano alto (Wt/V = 0,625) abaixo do limite do golpe. */
+const mkHigh = (players: PlayerStats[]) =>
+  pull(0, 0, 300_000, {
+    players,
+    raidSeries: { ...quiet(), unavoidableK: Array(300).fill(2_500) },
+    phaseMarks: [{ key: 'p1', name: 'P1', t: 0 }],
+  });
 const moment = (key: string, at: number): Moment => ({
   key, anchorSpell: 900, k: Number(key.split(':')[1]), spellId: 900, phaseKey: 'p1', inPhaseMs: at,
   pulls: new Map([[0, { at, end: at + 5_000, hit: true, size: 1 }]]), withHit: 2, medianSize: 1,
@@ -52,6 +59,7 @@ describe('judgeUse', () => {
     const text = 'time:100;ph:1;tag:Druida;spellid:740;';
     expect(run(mk([druid({ 740: [100_000] })]), text, []).lines.get(0)).toMatchObject({ momentKey: null, noDamage: true });
     expect(run(mk([druid({ 740: [100_000] })], { 103: 6, 104: 6 }), text, []).lines.get(0)?.noDamage).toBe(false);
+    expect(run(mkHigh([druid({ 740: [100_000] })]), text, []).lines.get(0)).toMatchObject({ momentKey: null, noDamage: false });
   });
 
   it('linha de outro pull não cobre o golpe', () => {
