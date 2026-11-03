@@ -302,7 +302,7 @@ export function nightGaps(pulls: Pull[], anchors: Map<number, Anchors>, gapsByPu
   return out;
 }
 
-/** Sub-faixa de cada barra: a primeira livre do player (barras sobrepostas não se cobrem). */
+/** Sub-faixa de cada barra: a primeira livre do player/CD (usos sobrepostos não se cobrem). */
 export function stackLanes(uses: CdUse[]): Map<CdUse, number> {
   const out = new Map<CdUse, number>();
   const byPlayer = new Map<string, CdUse[]>();
@@ -321,6 +321,54 @@ export function stackLanes(uses: CdUse[]): Map<CdUse, number> {
     }
   }
   return out;
+}
+
+export interface CdRow {
+  guid: string;
+  cdId: number;
+  /** `${guid}:${cdId}` */
+  key: string;
+  /** maior sub-faixa da linha (0 quando não há usos sobrepostos do mesmo CD) */
+  lane: number;
+}
+
+/** Chave da linha de um CD: player + id da tabela (ou spellId da marca fora da tabela). */
+export function cdRowKey(guid: string, cdId: number): string {
+  return `${guid}:${cdId}`;
+}
+
+/** CD de uma marca: o uso casado (pelo momento ou por qualquer uso do mesmo botão), senão o spellId. */
+export function markCdId(mark: NoteMark, uses: CdUse[]): number {
+  if (mark.spellId == null) return 0;
+  const ids = new Set(castIdsOf(mark.spellId));
+  const mine = uses.filter((u) => u.player.guid === mark.guid);
+  const matched = mine.find((u) => u.at === mark.useAt && ids.has(u.cd.id)) ?? mine.find((u) => ids.has(u.cd.id));
+  return matched?.cd.id ?? mark.spellId;
+}
+
+/**
+ * Uma linha por player e CD, pela ordem do primeiro uso/marca. Marcas de CD fora da tabela ganham a
+ * linha do próprio spellId. Usos sobrepostos do mesmo CD pedem sub-faixas (`lane`) só dentro da linha.
+ */
+export function cdRows(uses: CdUse[], marks: NoteMark[]): CdRow[] {
+  const rows = new Map<string, { guid: string; cdId: number; firstAt: number; uses: CdUse[] }>();
+  const add = (guid: string, cdId: number, at: number, use?: CdUse) => {
+    const key = cdRowKey(guid, cdId);
+    const row = rows.get(key) ?? { guid, cdId, firstAt: at, uses: [] };
+    row.firstAt = Math.min(row.firstAt, at);
+    if (use) row.uses.push(use);
+    rows.set(key, row);
+  };
+  for (const u of uses) add(u.player.guid, u.cd.id, u.at, u);
+  for (const m of marks) add(m.guid, markCdId(m, uses), m.at);
+  return [...rows.entries()]
+    .map(([key, row]) => {
+      const lanes = stackLanes(row.uses);
+      const lane = lanes.size ? Math.max(...lanes.values()) : 0;
+      return { ...row, key, lane };
+    })
+    .sort((a, b) => a.firstAt - b.firstAt || a.guid.localeCompare(b.guid) || a.key.localeCompare(b.key))
+    .map((row) => ({ guid: row.guid, cdId: row.cdId, key: row.key, lane: row.lane }));
 }
 
 /** Pull padrão da noite: mais fases, menor vida da fase, o mais longo e o mais recente. */

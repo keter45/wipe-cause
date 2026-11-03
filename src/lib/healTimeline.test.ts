@@ -5,7 +5,7 @@ import { parseNote } from './healNote';
 import { judgeUse, matchLines, phaseOffsets, type RefsOf } from './healNoteCheck';
 import type { Hit, Moment } from './raidHits';
 import { death, player, pull } from './test-fixtures';
-import { defaultPull, GAP_JOIN_S, GAP_MIN_S, GAP_SHARE, gaps, nightGaps, stackLanes, uses, withNote, type CdUse, type Gap } from './healTimeline';
+import { cdRows, defaultPull, GAP_JOIN_S, GAP_MIN_S, GAP_SHARE, gaps, nightGaps, stackLanes, uses, withNote, type CdUse, type Gap, type NoteMark } from './healTimeline';
 
 // Os CDs usados nos testes: 740 Tranquility (sustained, 6 s, 180 s), 64843 Divine Hymn (burst, 5 s),
 // 31821 Aura Mastery (mitigation active, 8 s), 97462 Rallying Cry (mitigation active, 10 s),
@@ -242,6 +242,51 @@ describe('withNote: causa da linha', () => {
     const checks = matchLines([p], () => note, offsets);
     const { marks } = withNote(p, uses(p, [], [], () => []), note, checks.get(0)!, null);
     expect(marks[0]).toMatchObject({ state: 'not_used', miss: 'recharging', otherUseAt: 150_000, readyAt: 150_000 });
+  });
+});
+
+describe('cdRows: uma linha por CD', () => {
+  const use = (guid: string, cdId: number, at: number, end = at + 5_000) =>
+    ({ player: player(guid), cd: { id: cdId } as CdUse['cd'], at, end }) as CdUse;
+  const mark = (guid: string, at: number, spellId: number | null, over: Partial<NoteMark> = {}) =>
+    ({ lineIndex: 0, guid, at, state: 'on_time', cycle: false, spellId, ...over }) as NoteMark;
+
+  it('ordena os CDs do player pelo primeiro uso/marca e agrupa usos do mesmo CD', () => {
+    const rows = cdRows(
+      [use('Druida', 740, 10_000), use('Druida', 64843, 5_000), use('Druida', 740, 100_000)],
+      [mark('Druida', 50_000, 391528)],
+    );
+    expect(rows.map((r) => [r.key, r.lane])).toEqual([
+      ['Druida:64843', 0],
+      ['Druida:740', 0],
+      ['Druida:391528', 0],
+    ]);
+  });
+
+  it('dois usos sobrepostos do mesmo CD pedem sub-faixa só nessa linha', () => {
+    const rows = cdRows(
+      [use('Druida', 740, 10_000, 20_000), use('Druida', 740, 15_000, 25_000), use('Druida', 64843, 30_000)],
+      [],
+    );
+    expect(rows.map((r) => [r.key, r.lane])).toEqual([
+      ['Druida:740', 1],
+      ['Druida:64843', 0],
+    ]);
+  });
+
+  it('marca usa a linha do CD casado; CD fora da tabela usa o spellId da marca', () => {
+    const used = cdRows([use('Druida', 740, 10_000)], [mark('Druida', 12_000, 740)]);
+    expect(used.map((r) => r.key)).toEqual(['Druida:740']);
+    const outside = cdRows([], [mark('Druida', 12_000, 999_999)]);
+    expect(outside).toEqual([{ guid: 'Druida', cdId: 999_999, key: 'Druida:999999', lane: 0 }]);
+  });
+
+  it('separa os players e usa o uso casado pelo momento da marca', () => {
+    const rows = cdRows(
+      [use('A', 740, 10_000), use('B', 740, 20_000), use('A', 740, 30_000)],
+      [mark('A', 30_500, 740, { useAt: 30_000 }), mark('B', 20_500, 740, { useAt: 20_000 })],
+    );
+    expect(rows.map((r) => r.key)).toEqual(['A:740', 'B:740']);
   });
 });
 

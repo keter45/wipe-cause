@@ -389,7 +389,10 @@ momento ou se o CD ainda não tinha voltado, e desenhar a recarga.
     do CD no pull fora do `PAIR_MS`), senão `never`; com `otherUseMs`,
     `lastUseMs` e `readyMs`. O estado não muda: a causa é um detalhe dele.
 *   **Tela:** `CdUse.readyAt` (cortado no próximo uso e no fim do pull) vira
-    uma linha fina depois da barra; marca `recharging` com anel tracejado;
+    uma linha fina depois da barra. Para a recarga não cobrir outros itens,
+    cada player tem uma linha por CD (`cdRows`; nome do player na primeira,
+    ícone do CD em cada uma, 18 px), no lugar das sub-faixas por
+    sobreposição; marca `recharging` com anel tracejado;
     marca com `otherUseAt` ligada ao cast por um traço tracejado; a tabela
     mostra a causa e a noite soma as causas.
 

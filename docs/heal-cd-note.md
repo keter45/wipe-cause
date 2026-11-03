@@ -205,7 +205,8 @@ Funciona sem note: usa todos os casts dos CDs da tabela (`src/lib/healTimeline.t
 - **Em cima:** ícones dos casts do boss e dos golpes; a curva do dano inevitável dos últimos 5 s
   sobre a vida máxima da raide, com as linhas de `GAP_SHARE` (0,60) e do golpe (0,80); as fases; a
   tira de raide baixa.
-- **Embaixo:** uma linha por player (healers primeiro, cor da classe), uma barra por uso, do cast
+- **Embaixo:** um grupo por player (healers primeiro, nome na cor da classe) com uma linha por CD
+  (ícone do CD à esquerda); as linhas da note ficam na linha do seu CD. Uma barra por uso, do cast
   ao fim do efeito. Verde = cura útil, listrado = overheal; roxo = redução de dano; cinza claro =
   CD de cura sem medição (sem `heal_ids`: Convoke, Apotheosis, Avenging Wrath); cinza = uso de
   ciclo. Ícone de alerta em cima = "sem dano", "overheal alto" ou "empilhado". Com note, cada
