@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, ChevronUp, CircleUserRound, X, ZoomOut } from 'lucide-react';
 import type { Pull, ReplayRef } from '../types';
 import { classColor, mmss, num, shortName } from '../lib/format';
@@ -6,6 +6,7 @@ import { decodeReplay } from '../lib/replay';
 import { aurasAt, bossHpAt, crucialAt, crucialSpells, deadAt, EV, eventsBetween, fightView, hpAt, mechanicLanes, meterAt, METERS, type FightEventView, type FightMarker, type FightView, type MeterKind } from '../lib/fight';
 import { canLoadFull, fightOverlays, headBadge, loadFullPull } from '../lib/fullReplay';
 import { nextCast, UPCOMING_MS } from '../lib/replayTimers';
+import { useTimeWindow } from '../lib/useTimeWindow';
 import { useMessages } from '../i18n';
 import * as prefs from '../lib/replayPrefs';
 import { fightMsg } from './FightReplay.i18n';
@@ -21,12 +22,6 @@ const MARKER_LEAD_MS = 3_000;
 /** Marcas do eixo: o menor passo que deixa até ~10 rótulos na janela. */
 const AXIS_STEPS_MS = [5_000, 10_000, 15_000, 30_000, 60_000, 120_000];
 const AXIS_MAX_TICKS = 10;
-/** Zoom da linha do tempo: o menor trecho (ms) e quanto cada passo da roda aproxima. */
-const ZOOM_MIN_MS = 15_000;
-const ZOOM_STEP = 1.25;
-/** Arrastar só começa depois disso (px): menos é clique. */
-const PAN_SLOP_PX = 4;
-
 type Filter = 'all' | 'damage' | 'heal' | 'cast' | 'other';
 
 const ROLE_RANK: Record<string, number> = { tank: 0, healer: 1, dps: 2 };
@@ -412,71 +407,12 @@ function FightTimeline({
   const span = Math.max(1, w1 - w0);
   const pct = (tt: number) => `${Math.min(100, Math.max(0, ((tt - w0) / span) * 100))}%`;
   const inWin = (tt: number) => tt >= w0 && tt <= w1;
-  const zoomed = w0 > 0 || w1 < duration;
-  // roda do mouse: zoom em volta do cursor; Shift (ou roda de lado): anda para os lados. Listener nativo
-  // para poder impedir a rolagem da página.
-  const rootRef = useRef<HTMLDivElement>(null);
-  const winRef = useRef(win);
-  winRef.current = win;
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      const track = el.querySelector('.fight-lane .fight-track') as HTMLElement | null;
-      if (!track) return;
-      e.preventDefault();
-      const r = track.getBoundingClientRect();
-      const [a, b] = winRef.current;
-      const w = b - a;
-      const pan = e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY);
-      if (pan) {
-        const d = ((e.shiftKey ? e.deltaY : e.deltaX) / Math.max(1, r.width)) * w;
-        const from = Math.min(Math.max(0, a + d), duration - w);
-        onWin([from, from + w]);
-        return;
-      }
-      const at = a + Math.min(1, Math.max(0, (e.clientX - r.left) / Math.max(1, r.width))) * w;
-      const nw = Math.min(duration, Math.max(ZOOM_MIN_MS, e.deltaY < 0 ? w / ZOOM_STEP : w * ZOOM_STEP));
-      const from = Math.min(Math.max(0, at - ((at - a) / w) * nw), duration - nw);
-      onWin([from, from + nw]);
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [duration, onWin]);
-  // segurar e arrastar (em qualquer faixa, com zoom): anda para os lados. Um clique sem arrastar
-  // continua indo para o instante (ou para o marcador clicado).
-  const dragged = useRef(false);
-  const [panning, setPanning] = useState(false);
-  const startPan = (ev: React.PointerEvent<HTMLDivElement>) => {
-    if (!zoomed || ev.button !== 0) return;
-    const r = ev.currentTarget.getBoundingClientRect();
-    const start = ev.clientX;
-    const [a, b] = win;
-    let moved = false;
-    const move = (e: PointerEvent) => {
-      if (!moved && Math.abs(e.clientX - start) < PAN_SLOP_PX) return;
-      if (!moved) setPanning(true);
-      moved = true;
-      const d = ((start - e.clientX) / Math.max(1, r.width)) * (b - a);
-      const from = Math.min(Math.max(0, a + d), duration - (b - a));
-      onWin([from, from + (b - a)]);
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-      setPanning(false);
-      // o clique que vem logo depois do arrasto não conta
-      dragged.current = moved;
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  };
-  const swallowClick = (e: React.MouseEvent) => {
-    if (!dragged.current) return;
-    dragged.current = false;
-    e.stopPropagation();
-    e.preventDefault();
-  };
+  const { rootRef, startPan, panning, zoomed, swallowClick } = useTimeWindow({
+    duration,
+    win,
+    onWin,
+    measure: () => rootRef.current?.querySelector('.fight-lane .fight-track') ?? null,
+  });
   const names = useMemo(() => new Map(pull.players.map((p) => [p.guid, shortName(p.name)] as const)), [pull]);
   const shown = (m: FightMarker) => m.kind !== 'failure' || m.severity === 'wipe' || m.severity === 'major' || (selected != null && m.guid === selected);
   const markers = view.markers.filter(shown);

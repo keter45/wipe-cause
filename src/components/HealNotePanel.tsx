@@ -1,15 +1,18 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp, Copy, HeartPulse, Play } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { mmss, shortName } from '../lib/format';
 import { healCd } from '../lib/healCooldowns';
+import { progressLabel } from '../lib/phases';
 import { selectHealRefs } from '../lib/healer';
 import { exportNote, mapPhases, noteFor, noteVersions, parseNote, type NoteChange, type NoteLine, type NoteVersion, type ParsedNote } from '../lib/healNote';
 import { judgeUse, matchLines, nightOverheal, phaseOffsets, suggest, summarizeLines, type LineCheck, type NightOverheal, type NoteSuggestion, type UseVerdict } from '../lib/healNoteCheck';
-import { hits, moments, nightAnchors, type Moment } from '../lib/raidHits';
+import { defaultPull, gaps as computeGaps, nightGaps as computeNightGaps, uses as computeUses, withNote } from '../lib/healTimeline';
+import { hits as computeHits, moments, nightAnchors, raidLow, type Moment } from '../lib/raidHits';
+import { HealTimeline } from './HealTimeline';
 import { NoteBox } from './NoteBox';
 import { PlayerName } from './Names';
-import { SpellName } from './SpellIcon';
+import { SpellIcon, SpellName } from './SpellIcon';
 import { Hint } from './ui/Hint';
 import { useMessages } from '../i18n';
 import { healNoteMsg } from './HealNotePanel.i18n';
@@ -56,6 +59,19 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
   };
   const boss = focus ?? pulls[0];
   const [versions, setVersions] = useState<NoteVersion[]>(() => (boss ? noteVersions(boss) : []));
+  // pull escolhido na fileira do resumo da noite (volta ao padrão quando o conjunto de pulls muda)
+  const [picked, setPicked] = useState<Pull | null>(() => (pulls.length ? defaultPull(pulls) : null));
+  const pullIds = pulls.map((p) => p.id).join(',');
+  const [focusAt, setFocusAt] = useState<number | undefined>(undefined);
+  const [detailsOpen, setDetailsOpen] = useState(() => versions.length > 0);
+  const hadVersions = useRef(versions.length > 0);
+  useEffect(() => {
+    setPicked(pulls.length ? defaultPull(pulls) : null);
+  }, [pullIds]);
+  useEffect(() => {
+    if (!hadVersions.current && versions.length > 0) setDetailsOpen(true);
+    hadVersions.current = versions.length > 0;
+  }, [versions.length]);
 
   const parsed = useMemo(() => new Map(versions.map((v) => [v.savedAt, parseNote(v.text)])), [versions]);
   const versionOf = useMemo(() => new Map(pulls.map((p) => [p.id, noteFor(p, pulls, versions)])), [pulls, versions]);
@@ -70,12 +86,31 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
   const offsets = useMemo(() => phaseOffsets(pulls, noteOf), [pulls, noteOf]);
   const checks = useMemo(() => matchLines(pulls, noteOf, offsets), [pulls, noteOf, offsets]);
   // golpes do boss e momentos da noite (não dependem da note) e os veredictos de uso
-  const ms = useMemo(() => {
-    const anchors = nightAnchors(pulls);
-    return moments(pulls, anchors, new Map(pulls.map((p) => [p.id, hits(p, anchors.get(p.id) ?? {})])));
-  }, [pulls]);
+  const anchors = useMemo(() => nightAnchors(pulls), [pulls]);
+  const hitsByPull = useMemo(() => new Map(pulls.map((p) => [p.id, computeHits(p, anchors.get(p.id) ?? {})] as const)), [pulls, anchors]);
+  const ms = useMemo(() => moments(pulls, anchors, hitsByPull), [pulls, anchors, hitsByPull]);
   const verdicts = useMemo(() => judgeUse(pulls, noteOf, offsets, checks, ms, refsOf), [pulls, noteOf, offsets, checks, ms]);
   const nightOH = useMemo(() => new Map(nightOverheal(pulls, noteOf, verdicts, checks, refsOf).map((o) => [`${o.guid}:${o.cdId}`, o])), [pulls, noteOf, verdicts, checks]);
+  const lows = useMemo(() => new Map(pulls.map((p) => [p.id, raidLow(p)] as const)), [pulls]);
+  const baseUses = useMemo(() => new Map(pulls.map((p) => [p.id, computeUses(p, ms, hitsByPull.get(p.id) ?? [], refsOf)] as const)), [pulls, ms, hitsByPull]);
+  const usedInNight = useMemo(() => new Set([...baseUses.values()].flatMap((us) => us.map((u) => `${u.player.guid}:${u.cd.id}`))), [baseUses]);
+  const usesByPull = useMemo(
+    () =>
+      new Map(
+        pulls.map((p) => {
+          const us = baseUses.get(p.id) ?? [];
+          const note = noteOf(p);
+          return [p.id, note ? withNote(p, us, note, checks.get(p.id) ?? [], verdicts.get(p.id) ?? null) : { uses: us, marks: [] }] as const;
+        }),
+      ),
+    [pulls, baseUses, noteOf, checks, verdicts],
+  );
+  const gapsByPull = useMemo(
+    () => new Map(pulls.map((p) => [p.id, computeGaps(p, usesByPull.get(p.id)!.uses, anchors.get(p.id) ?? {}, hitsByPull.get(p.id) ?? [], usedInNight)] as const)),
+    [pulls, usesByPull, anchors, hitsByPull, usedInNight],
+  );
+  const nightGapList = useMemo(() => computeNightGaps(pulls, anchors, gapsByPull), [pulls, anchors, gapsByPull]);
+  const totalUses = [...baseUses.values()].reduce((n, us) => n + us.length, 0);
   const enemyNames = useMemo(() => new Map(pulls.flatMap((p) => p.enemySpells.map((e) => [e.spellId, e.name] as const))), [pulls]);
   // nome e classe de cada player e o nome de cada spell, como aparecem nos pulls
   const people = useMemo(() => {
@@ -91,6 +126,12 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
   const nameOf = (id: number) => spellNames.get(id) ?? healCd(id)?.name ?? `#${id}`;
 
   if (!boss) return null;
+  const selected = focus ?? (picked && pulls.some((p) => p.id === picked.id) ? picked : defaultPull(pulls));
+  const sel = usesByPull.get(selected.id) ?? { uses: [], marks: [] };
+  const selGaps = gapsByPull.get(selected.id) ?? [];
+  const selHits = hitsByPull.get(selected.id) ?? [];
+  const selLow = lows.get(selected.id) ?? [];
+  const selAnchors = anchors.get(selected.id) ?? {};
   const shownPulls = focus ? [focus] : pulls;
   // uma tabela por versão que julgou algum pull mostrado
   const groups = new Map<number, Pull[]>();
@@ -130,13 +171,109 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
       </header>
       {open && (
         <>
-          <NoteBox pull={boss} nightPulls={pulls} live={live} versions={versions} onChange={setVersions} placeholder={t.paste} />
+          {!focus && (
+            <div className="heal-tl-pulls">
+              {pulls.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={selected.id === p.id ? 'selected' : ''}
+                  title={`${mmss(p.durationMs)} · ${progressLabel(p)}`}
+                  onClick={() => {
+                    setPicked(p);
+                    setFocusAt(undefined);
+                  }}
+                >
+                  #{p.pullNumber} {progressLabel(p)}
+                </button>
+              ))}
+            </div>
+          )}
+          {totalUses === 0 && <p className="muted small">{t.noCds}</p>}
+          {!selected.raidSeries?.low && <p className="muted small">{t.noLife}</p>}
+          <HealTimeline
+            pull={selected}
+            uses={sel.uses}
+            marks={sel.marks}
+            gaps={selGaps}
+            hits={selHits}
+            low={selLow}
+            bossCasts={selAnchors}
+            onReplay={focus ? onReplay : undefined}
+            focusAt={focusAt}
+          />
+          {selGaps.length > 0 && (
+            <>
+              <p className="small muted">{focus ? t.gapsPull : t.gapsNight}</p>
+              <div className="heal-tl-cards">
+                {focus
+                  ? selGaps.map((g, i) => {
+                      const spellId = g.key ? Number(g.key.split(':')[0]) : null;
+                      return (
+                        <button key={`${g.start}-${g.end}`} type="button" className="heal-tl-card" onClick={() => setFocusAt(g.start)}>
+                          <span>{t.tlGapTip(i + 1, pct(g.peak))}</span>
+                          {spellId != null && <SpellName spellId={spellId} name={enemyNames.get(spellId) ?? nameOf(spellId)} size={14} />}
+                          {g.free.length > 0 && (
+                            <span>
+                              {g.free.map(({ player, cd }) => (
+                                <SpellIcon key={`${player.guid}:${cd.id}`} spellId={cd.id} size={14} title={cd.name} hover={false} />
+                              ))}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
+                  : nightGapList.map((ng) => {
+                      const here = selGaps.find((g) => g.key === ng.key);
+                      const pullsWith = pulls.filter((p) => ng.pulls.has(p.id)).sort((a, b) => b.startMs - a.startMs);
+                      const newest = pullsWith[0];
+                      const target = here ? selected : newest;
+                      const gap = target ? (gapsByPull.get(target.id) ?? []).find((g) => g.key === ng.key) : undefined;
+                      const free: { player: PlayerStats; cd: { id: number; name: string } }[] = [];
+                      const seen = new Set<string>();
+                      for (const p of pullsWith)
+                        for (const g of gapsByPull.get(p.id) ?? [])
+                          if (g.key === ng.key)
+                            for (const f of g.free) {
+                              const k = `${f.player.guid}:${f.cd.id}`;
+                              if (seen.has(k)) continue;
+                              seen.add(k);
+                              free.push(f);
+                            }
+                      return (
+                        <button
+                          key={ng.key}
+                          type="button"
+                          className="heal-tl-card"
+                          onClick={() => {
+                            if (!here && newest) setPicked(newest);
+                            setFocusAt(gap?.start ?? 0);
+                          }}
+                        >
+                          <SpellName spellId={ng.spellId} name={enemyNames.get(ng.spellId) ?? nameOf(ng.spellId)} size={14} />
+                          <span className="muted small">{t.gapCard(ng.pulls.size, ng.reached)}</span>
+                          {free.length > 0 && (
+                            <span>
+                              {free.map(({ player, cd }) => (
+                                <SpellIcon key={`${player.guid}:${cd.id}`} spellId={cd.id} size={14} title={cd.name} hover={false} />
+                              ))}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+              </div>
+            </>
+          )}
 
-          {!versions.length && <p className="muted small">{t.empty}</p>}
-          {mismatch && <p className="warn small">{t.headerMismatch(header?.name ?? '')}</p>}
-          {unknown.length > 0 && <p className="muted small">{t.unknownTags(unknown.join(', '))}</p>}
+          <details className="heal-note-details" open={detailsOpen} onToggle={(e) => setDetailsOpen(e.currentTarget.open)}>
+            <summary>{t.details}</summary>
+            <NoteBox pull={boss} nightPulls={pulls} live={live} versions={versions} onChange={setVersions} placeholder={t.paste} />
 
-          {notePhs.length > 0 && (
+            {mismatch && <p className="warn small">{t.headerMismatch(header?.name ?? '')}</p>}
+            {unknown.length > 0 && <p className="muted small">{t.unknownTags(unknown.join(', '))}</p>}
+
+            {notePhs.length > 0 && (
             <p className="small heal-note-phases">
               <span className="muted">
                 {t.phases} <Hint>{t.offsetHint}</Hint>:
@@ -301,6 +438,7 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
               </p>
             );
           })()}
+          </details>
         </>
       )}
     </section>

@@ -1,7 +1,7 @@
 # Timeline dos CDs de cura: buracos na cura e CDs que renderam pouco
 
 *   **Author:** Vinicius Andrade (@keter45)
-*   **Status:** Approved
+*   **Status:** Implemented
 *   **Date:** 2026-11-03
 
 Convenção: títulos e rótulos do template EGM ficam em inglês; o resto, em
@@ -338,8 +338,9 @@ os itens são divs posicionadas em % do tempo e só a curva é SVG (assim os
     usos do mesmo player ao mesmo tempo vão para sub-faixas. Cada uso é uma barra
     de `u` a `u + d` com o ícone do CD no começo; o preenchimento separa cura
     útil (cor sólida) de overheal (a mesma cor, listrada e mais clara), na
-    proporção do uso. `mitigation` e CD sem `heal_ids` ficam numa cor sólida
-    neutra.
+    proporção do uso. `mitigation` fica numa cor sólida própria e CD de cura
+    sem `heal_ids` numa cor neutra ("CD de cura sem medição"), cada um com a
+    sua entrada na legenda.
 *   **Veredicto na barra:** ícone de alerta em cima da barra para "sem dano",
     "overheal alto" e "empilhado"; uso de ciclo em cinza. Sem faixa lateral
     colorida (regra 5).
@@ -685,7 +686,8 @@ function useTimeWindow(o: { duration: number; win: [number, number];
         `SpellIcon` de 16 px no começo.
 *   **Barra:** cura útil em `--heal-tl-useful`; overheal na mesma cor com
     listras a 45° e opacidade 0,45 (`--heal-tl-over`), na proporção de
-    `overheal.share`; `mitigation` e CD sem `heal_ids` em `--heal-tl-mitig`;
+    `overheal.share`; `mitigation` em `--heal-tl-mitig`; CD de cura sem
+    `heal_ids` em `--heal-tl-noheal`;
     uso de ciclo em cinza; ícone de alerta em cima para "sem dano",
     "overheal alto" e "empilhado".
 *   **Note:** losango em `mark.at` na linha do player, com a cor do estado e
