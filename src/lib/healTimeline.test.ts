@@ -214,8 +214,8 @@ describe('withNote', () => {
     expect(after[0]).toMatchObject({ noDamage: false, onHit: true, line: { lineIndex: 0 } });
     expect(after[1]).toMatchObject({ noDamage: true, onHit: null });
     expect(after[1].line).toBeUndefined();
-    expect(marks.find((m) => m.lineIndex === 0)).toMatchObject({ state: 'on_time', useAt: 60_000 });
-    expect(marks.find((m) => m.lineIndex === 1)).toMatchObject({ state: 'not_used', useAt: undefined });
+    expect(marks.find((m) => m.lineIndex === 0)).toMatchObject({ state: 'on_time', spellId: 740, useAt: 60_000, deltaMs: 0 });
+    expect(marks.find((m) => m.lineIndex === 1)).toMatchObject({ state: 'not_used', spellId: 391528, useAt: undefined, deltaMs: undefined });
   });
 });
 

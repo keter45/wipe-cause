@@ -58,8 +58,12 @@ export interface NoteMark {
   at: number;
   state: LineState;
   cycle: boolean;
+  /** spellId da linha da note */
+  spellId: number | null;
   /** usedMs do uso casado */
   useAt?: number;
+  /** uso − hora ajustada */
+  deltaMs?: number;
 }
 
 export interface Gap {
@@ -154,7 +158,7 @@ export function withNote(_pull: Pull, uses: CdUse[], note: ParsedNote, checks: L
   const planned = checks.filter((c) => PLANNED.includes(c.state));
   const marks: NoteMark[] = planned.flatMap((c) => {
     if (c.guid == null || c.expectedMs == null) return [];
-    return [{ lineIndex: c.lineIndex, guid: c.guid, at: c.expectedMs, state: c.state, cycle: verdicts?.lines.get(c.lineIndex)?.cycle ?? false, useAt: c.usedMs }];
+    return [{ lineIndex: c.lineIndex, guid: c.guid, at: c.expectedMs, state: c.state, cycle: verdicts?.lines.get(c.lineIndex)?.cycle ?? false, spellId: note.lines[c.lineIndex]?.spellId ?? null, useAt: c.usedMs, deltaMs: c.deltaMs }];
   });
   for (const u of out) {
     const c = planned.find((x) => {
