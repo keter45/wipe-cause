@@ -11,6 +11,7 @@ import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
 import { useMessages } from '../i18n';
 import { pullListMsg } from './PullList.i18n';
+import { pullColor } from '../lib/pullColors';
 import { bestWipe, progressLabel, reachedPhase } from '../lib/phases';
 
 const DUNGEONS_OPEN_KEY = 'wipe-cause:dungeons-open';
@@ -163,7 +164,7 @@ function BossGroups({ pulls, selected, onSelect, summary, onSummary }: PullListP
                         </span>
                         {/* progresso na fase em que o pull acabou: quanto da vida dos bosses dela já foi (como o Warcraft Logs) */}
                         <span className="tp-bar" aria-hidden>
-                          <i style={{ transform: `scaleX(${p.success ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
+                          <i style={{ background: pullColor(p), transform: `scaleX(${p.success ? 1 : hp != null ? (100 - hp) / 100 : 0})` }} />
                         </span>
                         <span className="tp-pct">
                           {p.success ? (
