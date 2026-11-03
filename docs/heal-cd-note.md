@@ -88,6 +88,18 @@ Na ordem; vale o primeiro:
 | morto antes | sem uso, e morreu antes da hora sem castar nada depois (castar de novo = foi ressuscitado) |
 | não usou | sem uso a até 30 s |
 
+Toda linha "não usou" leva a causa (`LineCheck.miss`, em `matchLines`):
+
+- **CD em recarga:** o player usou o mesmo CD antes e, na hora chamada, ele ainda não tinha
+  voltado. A recarga é o **cooldown efetivo**: o menor entre o `cooldown_ms` da tabela e o menor
+  intervalo entre dois usos seguidos do mesmo player e CD num pull da noite (`effectiveCooldowns`;
+  um talento que encurta o cooldown aparece aí). Assim a dúvida fica a favor do player.
+- **Usou em outro momento:** há um cast do CD no pull, fora dos 30 s do casamento (mostra quanto
+  antes ou depois).
+- **Não usou no pull:** nenhum cast do CD no pull.
+
+Na noite, a tabela soma as causas ao lado do "não usou N".
+
 O casamento usa o id da spell e os alternativos da tabela (Stampeding Roar pelos ids das formas,
 Convoke 323764) e casa primeiro o par de menor diferença.
 
@@ -199,6 +211,11 @@ Funciona sem note: usa todos os casts dos CDs da tabela (`src/lib/healTimeline.t
   ciclo. Ícone de alerta em cima = "sem dano", "overheal alto" ou "empilhado". Com note, cada
   linha vira um losango na hora ajustada, na cor do estado, ligado ao uso casado; com note, o uso
   casado leva o veredicto da linha.
+- **Recarga:** depois de cada barra, uma linha fina até o CD voltar (cooldown efetivo), cortada
+  no próximo uso do mesmo CD ou no fim do pull; a dica da barra diz "volta em m:ss". Uma linha da
+  note sem barra vira o ícone do CD com anel na cor do estado; com a causa "em recarga", o anel
+  fica tracejado (o ícone cai em cima da linha de recarga do uso que gastou o CD); com "usou em
+  outro momento", um traço tracejado liga o ícone ao cast feito em outra hora.
 - **Buraco:** coluna vermelha numerada. Trecho de 3 s ou mais (`GAP_MIN_S`) com dano alto ou raide
   baixa e nenhum CD ativo (pela janela do efeito, a mesma do "sem dano"). A dica mostra o pico e os
   **CDs livres** (fora de cooldown pela duração base, só CDs que o player usou na noite).
@@ -224,6 +241,9 @@ Funciona sem note: usa todos os casts dos CDs da tabela (`src/lib/healTimeline.t
 - 2026-11-03: timeline como visual principal, também sem note; buraco com `GAP_SHARE` 0,60 e
   `GAP_MIN_S` 3 s; "sem dano" passa a exigir também nenhum dano alto, com e sem note (calibração
   de 26, 28 e 29/10).
+- 2026-11-03: "não usou" com causa (em recarga, em outro momento, não usou no pull) e recarga
+  desenhada na timeline, pelo cooldown efetivo (o menor entre o da tabela e o menor intervalo do
+  player na noite).
 
 ## Para depois
 

@@ -219,6 +219,32 @@ describe('withNote', () => {
   });
 });
 
+describe('readyAt: recarga do uso', () => {
+  it('corta no próximo uso do mesmo player e CD, e no fim do pull', () => {
+    const p = mk(0, [druid({ 740: [10_000, 100_000] })], series(400));
+    expect(uses(p, [], [], () => []).map((u) => u.readyAt)).toEqual([100_000, 280_000]);
+    const late = mk(1, [druid({ 740: [390_000] })], series(400));
+    expect(uses(late, [], [], () => [])[0].readyAt).toBe(400_000);
+  });
+
+  it('usa o cooldown efetivo do player e CD', () => {
+    const p = mk(0, [druid({ 740: [10_000] })], series(400));
+    expect(uses(p, [], [], () => [])[0].readyAt).toBe(190_000);
+    expect(uses(p, [], [], () => [], true, new Map([['Druida:740', 90_000]]))[0].readyAt).toBe(100_000);
+  });
+});
+
+describe('withNote: causa da linha', () => {
+  it('copia miss, otherUseAt e readyAt', () => {
+    const p = mk(0, [druid({ 740: [20_000, 150_000] })], series(400));
+    const note = parseNote('time:100;ph:1;tag:Druida;spellid:740;');
+    const offsets = phaseOffsets([p], () => note);
+    const checks = matchLines([p], () => note, offsets);
+    const { marks } = withNote(p, uses(p, [], [], () => []), note, checks.get(0)!, null);
+    expect(marks[0]).toMatchObject({ state: 'not_used', miss: 'recharging', otherUseAt: 150_000, readyAt: 150_000 });
+  });
+});
+
 describe('noite', () => {
   it('nightGaps: chave em 1 pull não entra; em 2+ entra com os pulls que chegaram', () => {
     const pulls = [0, 1, 2, 3].map((id) => pull(id, id * 1_000_000, 60_000, { phaseMarks: marks }));

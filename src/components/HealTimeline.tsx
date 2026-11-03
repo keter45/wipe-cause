@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import type { Anchors } from '../lib/cdAnchors';
 import { mmss } from '../lib/format';
@@ -194,7 +194,7 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
   const useLabel = (u: CdUse) => {
     const who = `${u.player.name} · ${mmss(u.at)}`;
     const oh = u.overheal;
-    return `${u.cd.name} · ${who}${oh ? ` · ${t.tlUseTip(pct(oh.share), oh.ref ? t.refBand(pct(oh.ref.p25), pct(oh.ref.p75)) : '')}` : ''}${u.noDamage ? ` · ${t.noDamage}` : ''}${u.cycle ? ` · ${t.tlCycleLikely}` : ''}`;
+    return `${u.cd.name} · ${who}${oh ? ` · ${t.tlUseTip(pct(oh.share), oh.ref ? t.refBand(pct(oh.ref.p25), pct(oh.ref.p75)) : '')}` : ''}${u.noDamage ? ` · ${t.noDamage}` : ''}${u.cycle ? ` · ${t.tlCycleLikely}` : ''}${u.readyAt != null ? ` · ${t.tlReady(u.readyAt)}` : ''}`;
   };
 
   return (
@@ -245,6 +245,10 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
         <span>
           <span className="heal-tl-swatch heal-tl-swatch-mark-cd" aria-hidden />
           {t.tlLegend.noteCd}
+        </span>
+        <span>
+          <span className="heal-tl-swatch heal-tl-swatch-cd" aria-hidden />
+          {t.tlLegend.cd}
         </span>
       </p>
 
@@ -343,6 +347,18 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
           const ids = new Set(castIdsOf(spellId));
           return p.casts?.find((c) => c.name && ids.has(c.spellId))?.name ?? `#${spellId}`;
         };
+        // último cast do mesmo CD antes da marca (a recarga que não voltou a tempo)
+        const lastUseAt = (m: NoteMark) => {
+          if (m.spellId == null) return undefined;
+          const ids = new Set(castIdsOf(m.spellId));
+          return mine.filter((u) => ids.has(u.cd.id) && u.at < m.at).at(-1)?.at;
+        };
+        const missLabel = (m: NoteMark) => {
+          if (m.miss === 'recharging' && m.readyAt != null) return t.missRecharging(lastUseAt(m) ?? m.at, m.readyAt);
+          if (m.miss === 'used_elsewhere' && m.otherUseAt != null) return t.missElsewhere(m.otherUseAt - m.at);
+          if (m.miss === 'never') return t.missNever;
+          return null;
+        };
         const laneCount = Math.max(1, ...mine.map((u) => (laneByUse.get(u) ?? 0) + 1));
         const id = `p-${p.guid}`;
         return (
@@ -359,13 +375,14 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
                       myMarks.map((m) => {
                         const hasBar = m.useAt != null && mine.some((u) => u.at === m.useAt);
                         const iconMark = !hasBar && m.spellId != null;
-                        const label = `${m.spellId != null ? `${markName(m.spellId)} · ` : ''}${t.state[m.state]} · ${mmss(m.at)}${m.deltaMs != null ? ` · ${t.delta} ${sec(m.deltaMs)}` : ''}`;
+                        const cause = missLabel(m);
+                        const label = `${m.spellId != null ? `${markName(m.spellId)} · ` : ''}${t.state[m.state]} · ${mmss(m.at)}${m.deltaMs != null ? ` · ${t.delta} ${sec(m.deltaMs)}` : ''}${cause ? ` · ${cause}` : ''}`;
                         return (
                           <button
                             key={markKey(m)}
                             type="button"
-                            className={`heal-tl-mark ${m.state}${iconMark ? ' heal-tl-mark-cd' : ''}`}
-                            style={{ left: left(m.at), border: 0, padding: 0 }}
+                            className={`heal-tl-mark ${m.state}${iconMark ? ' heal-tl-mark-cd' : ''}${m.miss === 'recharging' ? ' recharging' : ''}`}
+                            style={{ left: left(m.at), border: m.miss === 'recharging' ? '2px dashed var(--wipe)' : 0, padding: 0 }}
                             tabIndex={order.get(markKey(m))}
                             title={label}
                             aria-label={label}
@@ -380,6 +397,7 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
                                   <span className="muted">{t.state[m.state]}{m.cycle ? ` · ${t.tlCycleLikely}` : ''}</span>
                                   <span className="muted">{t.when} {mmss(m.at)}</span>
                                   {m.deltaMs != null && <span className="muted">{t.delta} {sec(m.deltaMs)}</span>}
+                                  {cause && <span className="muted">{cause}</span>}
                                 </>,
                               )
                             }
@@ -398,6 +416,15 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
                         const b = Math.max(m.at, m.useAt);
                         return <span key={`l-${m.lineIndex}-${m.at}`} className="heal-tl-link" style={{ left: left(a), width: width(a, b) }} />;
                       })}
+                    {lane === 0 &&
+                      myMarks.flatMap((m) => {
+                        if (m.otherUseAt == null) return [];
+                        if (m.miss !== 'used_elsewhere' && m.miss !== 'recharging') return [];
+                        const a = Math.min(m.at, m.otherUseAt);
+                        const b = Math.max(m.at, m.otherUseAt);
+                        if (!visible(a, b)) return [];
+                        return <span key={`ml-${m.lineIndex}-${m.at}`} className="heal-tl-miss-link" style={{ left: left(a), width: width(a, b) }} />;
+                      })}
                     {mine
                       .filter((u) => (laneByUse.get(u) ?? 0) === lane)
                       .map((u) => {
@@ -413,28 +440,38 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
                         const start = Math.max(u.at, w0);
                         const end = Math.min(u.end, w1);
                         if (end < w0 || u.at > w1) return null;
+                        const cdFrom = u.readyAt != null ? Math.max(u.end, w0) : 0;
+                        const cdTo = u.readyAt != null ? Math.min(u.readyAt, w1) : 0;
                         return (
-                          <button
-                            key={key}
-                            type="button"
-                            className={`heal-tl-bar ${tone}`}
-                            style={{ left: left(start), width: width(start, Math.max(end, start)), border: 0, padding: 0 }}
-                            tabIndex={order.get(key)}
-                            title={useLabel(u)}
-                            aria-label={useLabel(u)}
-                            onClick={(ev) => seek(ev, u.at)}
-                            onMouseEnter={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} />{u.overheal && <span className={u.overheal.high ? 'bad' : ''}>{t.tlUseTip(pct(u.overheal.share), u.overheal.ref ? t.refBand(pct(u.overheal.ref.p25), pct(u.overheal.ref.p75)) : '')}</span>}{u.noDamage && <span className="bad">{t.noDamage}</span>}{u.cycle && <span className="muted">{t.tlCycleLikely}</span>}{u.stacked && <span className="bad">{t.stacked}</span>}<span className="muted">{mmss(u.at)}–{mmss(u.end)}</span></>)}
-                            onFocus={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} /></>)}
-                            onBlur={() => setTip(null)}
-                          >
-                            {!u.cycle && u.cd.kind === 'heal' && !!u.cd.heal_ids?.length && u.overheal && (
-                              <span className="heal-tl-bar-over" style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: `${u.overheal.share * 100}%`, borderRadius: 3 }} />
+                          <Fragment key={key}>
+                            <button
+                              type="button"
+                              className={`heal-tl-bar ${tone}`}
+                              style={{ left: left(start), width: width(start, Math.max(end, start)), border: 0, padding: 0 }}
+                              tabIndex={order.get(key)}
+                              title={useLabel(u)}
+                              aria-label={useLabel(u)}
+                              onClick={(ev) => seek(ev, u.at)}
+                              onMouseEnter={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} />{u.overheal && <span className={u.overheal.high ? 'bad' : ''}>{t.tlUseTip(pct(u.overheal.share), u.overheal.ref ? t.refBand(pct(u.overheal.ref.p25), pct(u.overheal.ref.p75)) : '')}</span>}{u.noDamage && <span className="bad">{t.noDamage}</span>}{u.cycle && <span className="muted">{t.tlCycleLikely}</span>}{u.stacked && <span className="bad">{t.stacked}</span>}<span className="muted">{mmss(u.at)}–{mmss(u.end)}</span>{u.readyAt != null && <span className="muted">{t.tlReady(u.readyAt)}</span>}</>)}
+                              onFocus={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} /></>)}
+                              onBlur={() => setTip(null)}
+                            >
+                              {!u.cycle && u.cd.kind === 'heal' && !!u.cd.heal_ids?.length && u.overheal && (
+                                <span className="heal-tl-bar-over" style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: `${u.overheal.share * 100}%`, borderRadius: 3 }} />
+                              )}
+                              <span style={{ position: 'absolute', left: 1, top: '50%', transform: 'translateY(-50%)', lineHeight: 0 }}>
+                                <SpellIcon spellId={u.cd.id} size={14} title={u.cd.name} hover={false} />
+                              </span>
+                              {alert && <TriangleAlert className="heal-tl-alert" size={11} strokeWidth={2} style={{ left: '50%' }} aria-hidden />}
+                            </button>
+                            {cdTo > cdFrom && (
+                              <span
+                                className={`heal-tl-cd ${tone === 'heal-tl-bar-useful' ? 'useful' : tone}`}
+                                style={{ left: left(cdFrom), width: width(cdFrom, cdTo) }}
+                                aria-hidden
+                              />
                             )}
-                            <span style={{ position: 'absolute', left: 1, top: '50%', transform: 'translateY(-50%)', lineHeight: 0 }}>
-                              <SpellIcon spellId={u.cd.id} size={14} title={u.cd.name} hover={false} />
-                            </span>
-                            {alert && <TriangleAlert className="heal-tl-alert" size={11} strokeWidth={2} style={{ left: '50%' }} aria-hidden />}
-                          </button>
+                          </Fragment>
                         );
                       })}
                   </div>

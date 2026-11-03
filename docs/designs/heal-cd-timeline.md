@@ -374,6 +374,25 @@ Textos em `HealNotePanel.i18n.ts` (pt e en). Vocabulário novo: "buraco" /
 "gap", "CD livre" / "available CD", "ciclo provável" / "likely cycle use",
 "cura útil" / "effective healing".
 
+### Adendo: recarga e causa do "não usou" (2026-11-03)
+
+Pedido do desenvolvedor depois do merge: ver se o player usou o CD em outro
+momento ou se o CD ainda não tinha voltado, e desenhar a recarga.
+
+*   **Cooldown efetivo** (`effectiveCooldowns` em `healNoteCheck.ts`): o
+    menor entre `cooldown_ms` e o menor intervalo entre dois usos seguidos do
+    mesmo player e CD num pull da noite. O cooldown base é maior ou igual ao
+    real; o intervalo observado pega a redução de talento. A dúvida fica a
+    favor do player.
+*   **Causa** (`LineCheck.miss`, só em `not_used`): `recharging` (uso anterior
+    + cooldown efetivo passa da hora ajustada), senão `used_elsewhere` (cast
+    do CD no pull fora do `PAIR_MS`), senão `never`; com `otherUseMs`,
+    `lastUseMs` e `readyMs`. O estado não muda: a causa é um detalhe dele.
+*   **Tela:** `CdUse.readyAt` (cortado no próximo uso e no fim do pull) vira
+    uma linha fina depois da barra; marca `recharging` com anel tracejado;
+    marca com `otherUseAt` ligada ao cast por um traço tracejado; a tabela
+    mostra a causa e a noite soma as causas.
+
 ## Alternatives Considered
 
 ### Alternative A: "CD desperdiçado" com limite próprio

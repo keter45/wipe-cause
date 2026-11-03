@@ -48,6 +48,14 @@ export interface LineCheck {
   deltaMs?: number;
   /** uso − hora sem ajuste */
   rawDeltaMs?: number;
+  /** causa do "não usou" */
+  miss?: 'recharging' | 'used_elsewhere' | 'never';
+  /** cast do mesmo CD no pull mais perto de expectedMs, fora do casamento */
+  otherUseMs?: number;
+  /** último uso antes de expectedMs */
+  lastUseMs?: number;
+  /** último uso antes de expectedMs + cooldown efetivo */
+  readyMs?: number;
 }
 
 export interface PhaseOffset {
@@ -73,12 +81,51 @@ export function castTimes(p: PlayerStats, spellId: number): number[] {
   return (p.casts ?? []).filter((c) => ids.has(c.spellId)).flatMap((c) => c.times);
 }
 
+/** Cooldown efetivo por player e CD: o menor intervalo entre usos seguidos no mesmo pull, nunca acima do base. */
+export function effectiveCooldowns(pulls: Pull[]): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const pull of pulls) {
+    for (const player of pull.players) {
+      for (const cd of healCooldowns()) {
+        if (cd.cooldown_ms == null) continue;
+        const times = castTimes(player, cd.id).sort((a, b) => a - b);
+        if (!times.length) continue;
+        let ms = cd.cooldown_ms;
+        for (let i = 1; i < times.length; i++) ms = Math.min(ms, times[i] - times[i - 1]);
+        const k = `${player.guid}:${cd.id}`;
+        out.set(k, Math.min(out.get(k) ?? Infinity, ms));
+      }
+    }
+  }
+  return out;
+}
+
 interface Slot {
   lineIndex: number;
   spellId: number;
   player: PlayerStats;
   expectedMs: number;
   rawMs: number;
+}
+
+/** Causa do "não usou": recarga, uso em outro momento do pull ou nenhum uso. */
+function missOf(s: Slot, cds: Map<string, number>): Pick<LineCheck, 'miss' | 'otherUseMs' | 'lastUseMs' | 'readyMs'> {
+  const times = castTimes(s.player, s.spellId).sort((a, b) => a - b);
+  const before = times.filter((t) => t < s.expectedMs);
+  const after = times.filter((t) => t > s.expectedMs);
+  const lastUseMs = before.length ? before[before.length - 1] : undefined;
+  const cd = healCd(s.spellId);
+  const cooldown = cds.get(`${s.player.guid}:${cd?.id ?? s.spellId}`);
+  const readyMs = lastUseMs != null && cooldown != null ? lastUseMs + cooldown : undefined;
+  // ainda recarregando na hora da linha
+  if (lastUseMs != null && readyMs != null && s.expectedMs < readyMs) {
+    return { miss: 'recharging', lastUseMs, readyMs, otherUseMs: after[0] };
+  }
+  if (times.length) {
+    const otherUseMs = times.reduce((a, b) => (Math.abs(b - s.expectedMs) < Math.abs(a - s.expectedMs) ? b : a));
+    return { miss: 'used_elsewhere', lastUseMs, readyMs, otherUseMs };
+  }
+  return { miss: 'never', lastUseMs, readyMs };
 }
 
 /** Pares de menor |Δ| primeiro; cada linha e cada cast casam uma vez só. */
@@ -197,6 +244,7 @@ export function matchLines(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, P
   const phs = knownPhs(pulls);
   const names = roster(pulls);
   const ever = everCastIn(pulls);
+  const cds = effectiveCooldowns(pulls);
   const out = new Map<number, LineCheck[]>();
   for (const pull of pulls) {
     const note = noteOf(pull);
@@ -213,7 +261,11 @@ export function matchLines(pulls: Pull[], noteOf: NoteOf, offsets: Map<string, P
         checks.push({ ...base, state, usedMs: t, deltaMs: d, rawDeltaMs: t - s.rawMs });
         continue;
       }
-      checks.push({ ...base, state: diedBefore(pull, s.player, s.expectedMs) ? 'dead' : 'not_used' });
+      if (diedBefore(pull, s.player, s.expectedMs)) {
+        checks.push({ ...base, state: 'dead' });
+        continue;
+      }
+      checks.push({ ...base, state: 'not_used', ...missOf(s, cds) });
     }
     out.set(pull.id, checks.sort((a, b) => a.lineIndex - b.lineIndex));
   }

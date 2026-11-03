@@ -38,6 +38,8 @@ export interface CdUse {
   at: number;
   /** at + duration_ms (a barra) */
   end: number;
+  /** quando o CD volta: at + cooldown efetivo, cortado pelo próximo uso e pelo fim do pull; null sem cooldown */
+  readyAt: number | null;
   /** noDamageWindow (veredictos e cobertura) */
   window: [number, number];
   momentKey: string | null;
@@ -64,6 +66,12 @@ export interface NoteMark {
   useAt?: number;
   /** uso − hora ajustada */
   deltaMs?: number;
+  /** causa do "não usou" */
+  miss?: LineCheck['miss'];
+  /** otherUseMs da linha */
+  otherUseAt?: number;
+  /** readyMs da linha */
+  readyAt?: number;
 }
 
 export interface Gap {
@@ -98,7 +106,7 @@ export interface NightGap {
 const PLANNED: LineState[] = ['on_time', 'early', 'late', 'not_used', 'dead'];
 
 /** Usos de CD do pull, pelos casts da tabela; com note, `withNote` troca pelos veredictos da linha. */
-export function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycleRule = true): CdUse[] {
+export function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycleRule = true, cds?: Map<string, number>): CdUse[] {
   const low = raidLow(pull);
   const out: CdUse[] = [];
   const all = ms.filter((m) => m.pulls.has(pull.id));
@@ -118,8 +126,25 @@ export function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycl
             !highDamage(pull, window[0], window[1]);
         const amounts = overhealOfUse(player, cd, at);
         const overheal = amounts ? withRef(amounts, refOverheal(refsOf(pull, player), cd)) : null;
-        out.push({ pullId: pull.id, player, cd, at, end: at + d, window, momentKey, noDamage, overheal, stacked: false, cycle: false, onHit: null });
+        out.push({ pullId: pull.id, player, cd, at, end: at + d, readyAt: null, window, momentKey, noDamage, overheal, stacked: false, cycle: false, onHit: null });
       }
+    }
+  }
+  // recarga: cooldown efetivo (ou o base) cortado pelo próximo uso do mesmo player e CD e pelo fim do pull
+  const end = pull.cutoffT ?? pull.durationMs;
+  const byKey = new Map<string, CdUse[]>();
+  for (const u of out) {
+    const k = `${u.player.guid}:${u.cd.id}`;
+    (byKey.get(k) ?? byKey.set(k, []).get(k)!).push(u);
+  }
+  for (const [k, group] of byKey) {
+    group.sort((a, b) => a.at - b.at);
+    for (let i = 0; i < group.length; i++) {
+      const u = group[i];
+      const cooldown = cds?.get(k) ?? u.cd.cooldown_ms;
+      if (cooldown == null) continue;
+      const next = group[i + 1]?.at ?? end;
+      u.readyAt = Math.min(u.at + cooldown, next, end);
     }
   }
   out.sort((a, b) => a.at - b.at);
@@ -158,7 +183,21 @@ export function withNote(_pull: Pull, uses: CdUse[], note: ParsedNote, checks: L
   const planned = checks.filter((c) => PLANNED.includes(c.state));
   const marks: NoteMark[] = planned.flatMap((c) => {
     if (c.guid == null || c.expectedMs == null) return [];
-    return [{ lineIndex: c.lineIndex, guid: c.guid, at: c.expectedMs, state: c.state, cycle: verdicts?.lines.get(c.lineIndex)?.cycle ?? false, spellId: note.lines[c.lineIndex]?.spellId ?? null, useAt: c.usedMs, deltaMs: c.deltaMs }];
+    return [
+      {
+        lineIndex: c.lineIndex,
+        guid: c.guid,
+        at: c.expectedMs,
+        state: c.state,
+        cycle: verdicts?.lines.get(c.lineIndex)?.cycle ?? false,
+        spellId: note.lines[c.lineIndex]?.spellId ?? null,
+        useAt: c.usedMs,
+        deltaMs: c.deltaMs,
+        miss: c.miss,
+        otherUseAt: c.otherUseMs,
+        readyAt: c.readyMs,
+      },
+    ];
   });
   for (const u of out) {
     const c = planned.find((x) => {

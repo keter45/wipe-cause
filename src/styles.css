@@ -3214,6 +3214,22 @@ table.heat td {
   opacity: 0.5;
   box-shadow: 0 0 0 2px var(--wipe);
 }
+.heal-tl-swatch-cd {
+  position: relative;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--muted);
+  opacity: 0.35;
+}
+.heal-tl-swatch-cd::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 2px;
+  height: 8px;
+  background: inherit;
+}
 .heal-tl-bar {
   position: absolute;
   top: 3px;
@@ -3242,6 +3258,36 @@ table.heat td {
 .heal-tl-bar.cycle {
   background: var(--muted);
   opacity: 0.5;
+}
+.heal-tl-cd {
+  position: absolute;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.heal-tl-cd::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 2px;
+  height: 8px;
+  background: inherit;
+}
+.heal-tl-cd.useful {
+  background: var(--heal-tl-useful);
+}
+.heal-tl-cd.mitig {
+  background: var(--heal-tl-mitig);
+}
+.heal-tl-cd.noheal {
+  background: var(--heal-tl-noheal);
+}
+.heal-tl-cd.cycle {
+  background: var(--muted);
 }
 .heal-tl-alert {
   position: absolute;
@@ -3295,12 +3341,24 @@ table.heat td {
   opacity: 0.5;
   box-shadow: 0 0 0 2px var(--wipe);
 }
+.heal-tl-mark.heal-tl-mark-cd.recharging {
+  box-shadow: none;
+  border: 2px dashed var(--wipe);
+}
 .heal-tl-link {
   position: absolute;
   top: 50%;
   height: 1px;
   background: var(--muted);
   opacity: 0.6;
+  pointer-events: none;
+}
+.heal-tl-miss-link {
+  position: absolute;
+  top: 50%;
+  height: 0;
+  border-top: 1px dashed var(--wipe);
+  opacity: 0.7;
   pointer-events: none;
 }
 .heal-tl-bar:focus-visible,
