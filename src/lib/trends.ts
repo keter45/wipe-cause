@@ -9,6 +9,8 @@ import { bossKey, summarizeNight, type NightSummary } from './night';
 import { raidOnly } from './content';
 import { mechanicSpellId } from './spells';
 import { scorePull } from './score';
+import { cascadeThreshold, decisiveDeaths } from './verdict';
+import { DAMAGE_KINDS } from './bossMetrics';
 import { difficultyRank, raidOrder } from './raids';
 import { deathKey, massDeathKeys } from './massDeaths';
 import { coreRoster, isGuildGroup } from './roster';
@@ -47,6 +49,12 @@ export interface PlayerTrend {
   scorePerNight: (number | null)[];
   /** por noite: parse médio do Warcraft Logs nos kills (0-100); null = sem kill ou sem parse */
   perfPerNight: (number | null)[];
+  /** média da nota nas noites em que jogou, ponderada pelos pulls de cada noite */
+  avgScore: number;
+  /** mortes (sem call de wipe nem wipe geral) por pull */
+  avgDeathsPerPull: number;
+  /** média dos parses nas noites com kill; null = nenhum parse */
+  avgParse: number | null;
   pulls: number;
   deaths: number;
   /** mortes com defensivo disponível e nenhum usado */
@@ -98,6 +106,23 @@ export interface Progression {
   worstPerf: ProgressionPlayer | null;
 }
 
+/** Critérios dos destaques da progressão: nota, dano evitável tomado, mortes e wipes causados. */
+export type ProgAwardKey = 'bestScore' | 'leastDamage' | 'fewestDeaths' | 'mostDamage' | 'wipeCauser' | 'mostDeaths';
+
+export interface ProgAwardWinner {
+  guid: string;
+  name: string;
+  class: string | null;
+  /** valor do critério por pull (na nota: a média nos pulls da prog) */
+  value: number;
+  /** pulls da prog em que jogou */
+  pulls: number;
+  /** wipeCauser: wipes em que teve ao menos uma morte decisiva */
+  wipes?: number;
+}
+
+export type ProgAwards = Partial<Record<ProgAwardKey, ProgAwardWinner>>;
+
 export interface Trends {
   nights: TrendNight[];
   causes: CauseRow[];
@@ -106,6 +131,8 @@ export interface Trends {
   improving: PlayerMove[];
   worsening: PlayerMove[];
   progression: Progression | null;
+  /** melhores e piores da progressão (pulls antes da kill) */
+  progAwards: ProgAwards;
   insights: string[];
 }
 
@@ -114,6 +141,8 @@ export const MOVE_MIN_SCORE = 5;
 /** Na progressão, entra quem jogou ao menos isso dos wipes (e no mínimo PROGRESSION_MIN_PULLS). */
 const PROGRESSION_SHARE = 0.3;
 const PROGRESSION_MIN_PULLS = 5;
+/** Nos destaques da prog, entra quem jogou ao menos isso dos pulls. */
+const PROG_AWARD_SHARE = 0.3;
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
@@ -143,13 +172,22 @@ export function playerMoves(players: PlayerTrend[]): { improving: PlayerMove[]; 
 }
 
 /**
+ * Os wipes antes da 1ª kill do boss (em ordem, de todas as noites). Sem kill ainda, todos os pulls;
+ * a kill que fecha a progressão (se houver).
+ */
+function progPulls(nights: TrendNight[]): { wipes: Pull[]; kill: Pull | null; killedOn: string | null } {
+  const all = nights.flatMap((n) => n.summary.pulls.map((p) => ({ n, p }))).sort((a, b) => a.p.startMs - b.p.startMs);
+  const killAt = all.findIndex((x) => x.p.success);
+  const wipes = (killAt >= 0 ? all.slice(0, killAt) : all).filter((x) => !x.p.success).map((x) => x.p);
+  return { wipes, kill: killAt >= 0 ? all[killAt].p : null, killedOn: killAt >= 0 ? all[killAt].n.label : null };
+}
+
+/**
  * Os wipes antes da 1ª kill do boss (em ordem, de todas as noites): quem teve a melhor e a pior nota
  * neles, e o melhor e o pior parse na kill que fechou a progressão.
  */
 export function progressionOf(nights: TrendNight[]): Progression | null {
-  const all = nights.flatMap((n) => n.summary.pulls.map((p) => ({ n, p }))).sort((a, b) => a.p.startMs - b.p.startMs);
-  const killAt = all.findIndex((x) => x.p.success);
-  const wipes = (killAt >= 0 ? all.slice(0, killAt) : all).filter((x) => !x.p.success).map((x) => x.p);
+  const { wipes, kill, killedOn } = progPulls(nights);
   if (!wipes.length) return null;
   const acc = new Map<string, { name: string; class: string | null; pulls: number; scores: number[] }>();
   for (const p of wipes) {
@@ -164,7 +202,6 @@ export function progressionOf(nights: TrendNight[]): Progression | null {
     }
   }
   // parse na kill, pelo nome (o guid do kill é o mesmo do log; o nome cobre logs diferentes)
-  const kill = killAt >= 0 ? all[killAt].p : null;
   const killScores = kill ? scorePull(kill) : null;
   const parseOf = (name: string) => {
     const pl = kill?.players.find((x) => x.name === name);
@@ -178,13 +215,118 @@ export function progressionOf(nights: TrendNight[]): Progression | null {
   const byPerf = list.filter((x) => x.killParse != null).sort((a, b) => b.killParse! - a.killParse!);
   return {
     pulls: wipes.length,
-    killedOn: killAt >= 0 ? all[killAt].n.label : null,
+    killedOn,
     minPulls: Math.min(minPulls, wipes.length),
     best: byScore[0] ?? null,
     worst: byScore.length > 1 ? byScore[byScore.length - 1] : null,
     bestPerf: byPerf[0] ?? null,
     worstPerf: byPerf.length > 1 ? byPerf[byPerf.length - 1] : null,
   };
+}
+
+type ProgAcc = {
+  guid: string;
+  name: string;
+  class: string | null;
+  pulls: number;
+  scoreSum: number;
+  damage: number;
+  deaths: number;
+  decisive: number;
+  decisivePulls: number;
+};
+
+const perPull = (n: number, pulls: number) => (pulls ? n / pulls : 0);
+
+/**
+ * Destaques da progressão: melhores e piores nos pulls antes da 1ª kill, só entre quem jogou ao
+ * menos 30% deles. Mortes depois da call de wipe (`ignored`) e de wipe geral ficam de fora; empate
+ * fica com quem jogou mais pulls. Um player não aparece como melhor e pior do mesmo critério.
+ */
+export function progAwards(nights: TrendNight[]): ProgAwards {
+  const { wipes } = progPulls(nights);
+  if (!wipes.length) return {};
+  const minPulls = Math.max(1, Math.ceil(wipes.length * PROG_AWARD_SHARE));
+  const acc = new Map<string, ProgAcc>();
+  let damageTracked = false;
+  for (const p of wipes) {
+    const scores = scorePull(p);
+    const mass = massDeathKeys(p.deaths);
+    const sorted = [...p.deaths].filter((d) => !d.ignored).sort((a, b) => a.t - b.t);
+    const decisive = new Set(
+      (p.cutoffT != null ? sorted : decisiveDeaths(sorted, cascadeThreshold(p)))
+        .filter((d) => !mass.has(deathKey(d)))
+        .map(deathKey),
+    );
+    for (const pl of p.players) {
+      const a = acc.get(pl.guid) ?? { guid: pl.guid, name: pl.name, class: pl.class, pulls: 0, scoreSum: 0, damage: 0, deaths: 0, decisive: 0, decisivePulls: 0 };
+      a.name = pl.name;
+      a.class ??= pl.class;
+      a.pulls++;
+      a.scoreSum += scores.get(pl.guid)?.score ?? 0;
+      acc.set(pl.guid, a);
+    }
+    for (const m of p.mechanics) {
+      if (!DAMAGE_KINDS.has(m.kind)) continue;
+      damageTracked = true;
+      for (const mp of m.players) {
+        if (mp.credit) continue;
+        const a = acc.get(mp.guid);
+        if (a) a.damage += mp.amount;
+      }
+    }
+    const hitWipe = new Set<string>();
+    for (const d of p.deaths) {
+      if (d.ignored || mass.has(deathKey(d))) continue;
+      const a = acc.get(d.guid);
+      if (!a) continue;
+      a.deaths++;
+      if (decisive.has(deathKey(d))) {
+        a.decisive++;
+        hitWipe.add(d.guid);
+      }
+    }
+    for (const guid of hitWipe) {
+      const a = acc.get(guid);
+      if (a) a.decisivePulls++;
+    }
+  }
+
+  const cands = [...acc.values()].filter((a) => a.pulls >= minPulls);
+  if (!cands.length) return {};
+  const rank = (metric: (a: ProgAcc) => number, dir: 'asc' | 'desc', exclude = new Set<string>()) =>
+    cands
+      .filter((a) => !exclude.has(a.guid))
+      .sort((a, b) => (dir === 'asc' ? metric(a) - metric(b) : metric(b) - metric(a)) || b.pulls - a.pulls || a.name.localeCompare(b.name));
+  const winner = (a: ProgAcc, value: number, wipesCaused?: number): ProgAwardWinner => ({
+    guid: a.guid,
+    name: a.name,
+    class: a.class,
+    value,
+    pulls: a.pulls,
+    ...(wipesCaused != null ? { wipes: wipesCaused } : {}),
+  });
+  const out: ProgAwards = {};
+
+  const bestScore = rank((a) => perPull(a.scoreSum, a.pulls), 'desc')[0];
+  if (bestScore) out.bestScore = winner(bestScore, perPull(bestScore.scoreSum, bestScore.pulls));
+
+  if (damageTracked) {
+    const leastDamage = rank((a) => perPull(a.damage, a.pulls), 'asc')[0];
+    if (leastDamage) out.leastDamage = winner(leastDamage, perPull(leastDamage.damage, leastDamage.pulls));
+    const mostDamage = rank((a) => perPull(a.damage, a.pulls), 'desc', new Set(leastDamage ? [leastDamage.guid] : []))[0];
+    if (mostDamage && mostDamage.damage > 0) out.mostDamage = winner(mostDamage, perPull(mostDamage.damage, mostDamage.pulls));
+  }
+
+  const fewestDeaths = rank((a) => perPull(a.deaths, a.pulls), 'asc')[0];
+  if (fewestDeaths) out.fewestDeaths = winner(fewestDeaths, perPull(fewestDeaths.deaths, fewestDeaths.pulls));
+  const mostDeaths = rank((a) => perPull(a.deaths, a.pulls), 'desc', new Set(fewestDeaths ? [fewestDeaths.guid] : []))[0];
+  if (mostDeaths && mostDeaths.deaths > 0) out.mostDeaths = winner(mostDeaths, perPull(mostDeaths.deaths, mostDeaths.pulls));
+
+  const causer = rank((a) => perPull(a.decisive, a.pulls), 'desc')[0];
+  if (causer && causer.decisive > 0) out.wipeCauser = winner(causer, perPull(causer.decisive, causer.pulls), causer.decisivePulls);
+
+  return out;
 }
 
 /**
@@ -299,15 +441,20 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
   const causes = [...causeMap.values()].sort((a, b) => b.total - a.total);
 
   // players
-  const acc = new Map<string, PlayerTrend & { killers: Map<string, Set<number>>; killerCount: Map<string, number>; killerNoDef: Map<string, number> }>();
+  const acc = new Map<
+    string,
+    PlayerTrend & { killers: Map<string, Set<number>>; killerCount: Map<string, number>; killerNoDef: Map<string, number>; scoreWeighted: number; scorePulls: number; perfSum: number; perfNights: number }
+  >();
   // nome do que matou -> spell (ícone)
   const killerSpell = new Map<string, number>();
   const killerName = new Map<string, string>();
   nights.forEach((n, i) => {
     for (const pn of n.summary.players) {
       const a = acc.get(pn.guid) ?? {
-        guid: pn.guid, name: pn.name, class: pn.class, deathsPerPull: nights.map(() => null), scorePerNight: nights.map(() => null), perfPerNight: nights.map(() => null), pulls: 0, deaths: 0,
+        guid: pn.guid, name: pn.name, class: pn.class, deathsPerPull: nights.map(() => null), scorePerNight: nights.map(() => null), perfPerNight: nights.map(() => null),
+        avgScore: 0, avgDeathsPerPull: 0, avgParse: null, pulls: 0, deaths: 0,
         deathsNoDefensive: 0, topKiller: null, topKillerSpellId: null, topKillerNights: 0, topKillerNoDefensive: 0, mechanicErrors: 0, killers: new Map(), killerCount: new Map(), killerNoDef: new Map(),
+        scoreWeighted: 0, scorePulls: 0, perfSum: 0, perfNights: 0,
       };
       a.class ??= pn.class;
       a.pulls += pn.pulls;
@@ -346,17 +493,34 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
       a.deathsPerPull[i] = pn.pulls ? (deathsThisNight.get(pn.guid) ?? 0) / pn.pulls : null;
       a.scorePerNight[i] = pn.pulls ? Math.round(pn.avgScore) : null;
       a.perfPerNight[i] = pn.avgPerf;
+      if (a.scorePerNight[i] != null) {
+        a.scoreWeighted += a.scorePerNight[i]! * pn.pulls;
+        a.scorePulls += pn.pulls;
+      }
+      if (pn.avgPerf != null) {
+        a.perfSum += pn.avgPerf;
+        a.perfNights++;
+      }
     }
   });
-  const players: PlayerTrend[] = [...acc.values()].map(({ killers, killerCount, killerNoDef, ...a }) => {
+  const players: PlayerTrend[] = [...acc.values()].map(({ killers, killerCount, killerNoDef, scoreWeighted, scorePulls, perfSum, perfNights, ...a }) => {
     const best = [...killerCount.entries()].sort((x, y) => y[1] - x[1])[0] ?? null;
     const top: [string, number] | null = best ? [killerName.get(best[0]) ?? best[0], best[1]] : null;
-    return { ...a, topKiller: top, topKillerSpellId: best ? killerSpell.get(best[0]) ?? null : null, topKillerNights: best ? killers.get(best[0])!.size : 0, topKillerNoDefensive: best ? killerNoDef.get(best[0]) ?? 0 : 0 };
+    return {
+      ...a,
+      avgScore: scorePulls ? Math.round(scoreWeighted / scorePulls) : 0,
+      avgDeathsPerPull: a.pulls ? a.deaths / a.pulls : 0,
+      avgParse: perfNights ? perfSum / perfNights : null,
+      topKiller: top,
+      topKillerSpellId: best ? killerSpell.get(best[0]) ?? null : null,
+      topKillerNights: best ? killers.get(best[0])!.size : 0,
+      topKillerNoDefensive: best ? killerNoDef.get(best[0]) ?? 0 : 0,
+    };
   });
-  // quem mais morreu no total (taxa por pull desempata: quem jogou pouco não vai para o topo)
-  players.sort((a, b) => b.deaths - a.deaths || b.deaths / Math.max(1, b.pulls) - a.deaths / Math.max(1, a.pulls));
+  // a média da nota manda na lista; mortes por pull desempatam
+  players.sort((a, b) => b.avgScore - a.avgScore || b.avgDeathsPerPull - a.avgDeathsPerPull || a.name.localeCompare(b.name));
 
-  return { nights, causes, players, ...playerMoves(players), progression: progressionOf(nights), insights: insights(nights, causes, players) };
+  return { nights, causes, players, ...playerMoves(players), progression: progressionOf(nights), progAwards: progAwards(nights), insights: insights(nights, causes, players) };
 }
 
 function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend[]): string[] {

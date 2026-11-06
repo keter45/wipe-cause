@@ -41,6 +41,10 @@ export const bossMetricsMsg = defineMessages(
     damageTaken: (damage: string) => `${damage} de dano tomado`,
     playerDamage: (damage: string) => `${damage} de dano`,
     barDamage: (pull: number, k: number, damage: string) => `Pull ${pull}: ${n(k, 'falha', 'falhas')} · ${damage} de dano`,
+    whoNoDefensive: 'Quem morreu com algo livre',
+    unusedItem: (name: string, k: number) => `${name}: ${k}× sem usar`,
+    statsNoDefensive: (total: number, pulls: number, all: number) => `${n(total, 'morte', 'mortes')} sem usar pot/defensivo · em ${pulls} de ${n(all, 'pull', 'pulls')}`,
+    cleanNoDefensive: 'Ninguém morreu com pot/defensivo livre.',
   },
   {
     title: 'Group metrics',
@@ -80,5 +84,9 @@ export const bossMetricsMsg = defineMessages(
     damageTaken: (damage: string) => `${damage} damage taken`,
     playerDamage: (damage: string) => `${damage} damage`,
     barDamage: (pull: number, k: number, damage: string) => `Pull ${pull}: ${n(k, 'failure', 'failures')} · ${damage} damage`,
+    whoNoDefensive: 'Who died with something available',
+    unusedItem: (name: string, k: number) => `${name}: ${k}× unused`,
+    statsNoDefensive: (total: number, pulls: number, all: number) => `${n(total, 'death', 'deaths')} without using a pot/defensive · in ${pulls} of ${n(all, 'pull', 'pulls')}`,
+    cleanNoDefensive: 'Nobody died with a pot/defensive available.',
   },
 );

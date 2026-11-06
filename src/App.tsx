@@ -508,7 +508,11 @@ export default function App() {
               }}
             />
           ) : page === 'trends' ? (
-            solo ? <SoloTrendsView /> : <TrendsView />
+            solo ? (
+              <SoloTrendsView />
+            ) : (
+              <TrendsView history={history} onReanalyzeAll={analyzeAll} busy={status.kind === 'loading'} canReanalyzeAll={inDesktop} />
+            )
           ) : browsing ? (
             hasBackend || demoLogs ? (
               <>

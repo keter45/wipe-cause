@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MechanicResult } from '../types';
-import { metricNight, metricOptions, metricTrend, moveMetric } from './bossMetrics';
-import { player, pull } from './test-fixtures';
+import { metricNight, metricOptions, metricTrend, moveMetric, NO_DEFENSIVE } from './bossMetrics';
+import { death, player, pull } from './test-fixtures';
 
 const mech = (over: Partial<MechanicResult>): MechanicResult => ({
   key: 'm', name: 'M', spellId: 1, kind: 'avoidable_damage', severity: 'minor', tip: '', evaluated: true, failures: 0,
@@ -128,5 +128,48 @@ describe('métricas do resumo do boss', () => {
   it('reordena sem sair da lista', () => {
     expect(moveMetric(['a', 'b', 'c'], 'c', -1)).toEqual(['a', 'c', 'b']);
     expect(moveMetric(['a', 'b'], 'a', -1)).toEqual(['a', 'b']);
+  });
+});
+
+describe('mortes sem pot/defensivo', () => {
+  const avail = (spellId: number, name: string) => ({ spellId, name, kind: 'personal' as const });
+  const dth = (guid: string, t: number, over: Record<string, unknown> = {}) =>
+    death(guid, t, { defensivesAvailable: [], defensivesRecent: [], usedHealthPotion: true, usedHealthstone: true, healthstoneKnown: true, ...over } as never);
+  const night = (deaths: ReturnType<typeof dth>[]) => [pull(0, 0, 60_000, { players: [player('A'), player('B')], deaths })];
+
+  it('conta defensivo livre, poção e healthstone, especificando cada um', () => {
+    const m = metricNight(
+      night([
+        dth('A', 10_000, { defensivesAvailable: [avail(1, 'Shield Wall'), avail(2, 'Last Stand')], defensivesRecent: [{ spellId: 2, name: 'Last Stand', t: 9_000 }] }),
+        dth('A', 20_000, { usedHealthPotion: false, healthstoneKnown: true, usedHealthstone: false }),
+        dth('B', 30_000), // tudo usado: não conta
+      ]),
+      NO_DEFENSIVE,
+    )!;
+    expect([m.total, m.pullsWithFailure]).toEqual([2, 1]);
+    expect(m.players.map((p) => [p.guid, p.count])).toEqual([['A', 2]]);
+    const items = m.players[0].items!.map((i) => [i.kind, i.name, i.count]);
+    expect(items).toContainEqual(['defensive', 'Shield Wall', 1]);
+    expect(items).not.toContainEqual(['defensive', 'Last Stand', 1]);
+    expect(items.filter((i) => i[0] === 'potion' || i[0] === 'healthstone')).toHaveLength(2);
+  });
+
+  it('ignora mortes depois da call de wipe e em wipe geral', () => {
+    const free = { usedHealthPotion: false };
+    const mass = Array.from({ length: 6 }, (_, i) => dth(`M${i}`, 50_000 + i * 100, free));
+    const m = metricNight(night([dth('A', 10_000, { ...free, ignored: true }), ...mass]), NO_DEFENSIVE);
+    expect(m).toBeNull(); // nada avaliável: opção nem aparece
+    const m2 = metricNight(night([dth('A', 10_000, { ...free, ignored: true }), ...mass, dth('B', 20_000, free)]), NO_DEFENSIVE)!;
+    expect(m2.total).toBe(1);
+    expect(m2.players.map((p) => p.guid)).toEqual(['B']);
+  });
+
+  it('soma os itens entre noites e entra nas opções', () => {
+    const n1 = night([dth('A', 10_000, { usedHealthPotion: false })]);
+    const n2 = night([dth('A', 10_000, { usedHealthPotion: false })]);
+    expect(metricOptions(n1).map((o) => o.key)).toContain(NO_DEFENSIVE);
+    const trend = metricTrend([{ label: 'n1', pulls: n1 }, { label: 'n2', pulls: n2 }], NO_DEFENSIVE)!;
+    expect(trend.players[0].count).toBe(2);
+    expect(trend.players[0].items!.find((i) => i.kind === 'potion')!.count).toBe(2);
   });
 });

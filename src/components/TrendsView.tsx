@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Bot, Plus, ShieldOff, TrendingDown, TrendingUp, TriangleAlert, Trophy, X } from 'lucide-react';
-import { historyTrends } from '../lib/api';
+import { ArrowDown, ArrowUp, Bot, Plus, RotateCw, ShieldOff, TrendingDown, TrendingUp, TriangleAlert, Trophy, X } from 'lucide-react';
+import { historyTrends, type HistoryEntry } from '../lib/api';
 import { classColor, num, pct, shortName } from '../lib/format';
-import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
+import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type ProgAwardKey, type ProgAwards, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
 import { metricOptions, metricTrend, moveMetric, saveBossMetrics, savedBossMetrics, type MetricTrend, type MetricTrendPlayer } from '../lib/bossMetrics';
-import { AddMetric } from './BossMetrics';
+import { AddMetric, UnusedItems } from './BossMetrics';
 import { bossMetricsMsg } from './BossMetrics.i18n';
 import { scoreTier } from '../lib/score';
 import { phaseCountOf, pullProgress } from '../lib/phases';
@@ -22,17 +22,48 @@ import { useNightPotentials } from '../lib/botRaid';
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
  * cada player. Usa todas as análises salvas no histórico.
  */
-function TrendsViewInner() {
+interface TrendsViewProps {
+  /** noites salvas: o "Reanalisar todas" usa o logPath de cada uma */
+  history?: HistoryEntry[];
+  /** roda o lote do "Analisar todos" (só no app) */
+  onReanalyzeAll?: (paths: string[]) => Promise<void>;
+  busy?: boolean;
+  /** false no navegador, onde os logs locais não ficam disponíveis para reanalisar */
+  canReanalyzeAll?: boolean;
+}
+
+function TrendsViewInner({ history = [], onReanalyzeAll, busy = false, canReanalyzeAll = false }: TrendsViewProps) {
   const t = useMessages(trendsViewMsg);
   const [nights, setNights] = useState<NightInput[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [boss, setBoss] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
+    setError(null);
     historyTrends()
       .then((xs) => setNights(xs.map((x) => ({ id: x.id, title: x.title, raidStartMs: x.raidStartMs, pulls: x.report.pulls }))))
       .catch((e) => setError(String(e)));
-  }, []);
+  }, [reload]);
+
+  // logs locais que sumiram do disco ficam de fora (a mesma regra do botão de reanalisar do topo)
+  const reanalyze = useMemo(() => {
+    const paths: string[] = [];
+    let skipped = 0;
+    for (const e of history) {
+      if (e.logExists) paths.push(e.logPath);
+      else skipped++;
+    }
+    return { paths, skipped };
+  }, [history]);
+
+  async function reanalyzeAll() {
+    setConfirming(false);
+    if (!onReanalyzeAll || reanalyze.paths.length === 0) return;
+    await onReanalyzeAll(reanalyze.paths);
+    setReload((n) => n + 1);
+  }
 
   // a Evolução é da raid da guilda; noites com outros personagens e gente aleatória ficam à parte
   const [withPug, setWithPug] = useState(false);
@@ -58,12 +89,37 @@ function TrendsViewInner() {
       <header className="night-head">
         <h2>{t.title}</h2>
         <span className="muted small">{t.subtitle}</span>
+        <span className="topbar-spacer" />
+        {canReanalyzeAll && onReanalyzeAll && (
+          <button
+            className="btn sm"
+            disabled={busy || reanalyze.paths.length === 0}
+            onClick={() => setConfirming(true)}
+            title={t.reanalyzeAllTitle}
+          >
+            <RotateCw size={14} strokeWidth={1.5} aria-hidden /> {t.reanalyzeAll}
+          </button>
+        )}
         {grouped && grouped.pugPulls > 0 && (
           <label className="trends-pug small" title={t.withPugTitle}>
             <input type="checkbox" checked={withPug} onChange={(e) => setWithPug(e.target.checked)} /> {t.withPug(grouped.pugPulls)}
           </label>
         )}
       </header>
+
+      {confirming && (
+        <div className="night-confirm trends-reanalyze-confirm">
+          <p className="small">{t.reanalyzeConfirm(reanalyze.paths.length, reanalyze.skipped)}</p>
+          <div className="night-actions">
+            <button className="btn primary sm" disabled={busy} onClick={reanalyzeAll}>
+              <RotateCw size={14} strokeWidth={1.5} aria-hidden /> {t.reanalyzeAllConfirm}
+            </button>
+            <button className="btn ghost sm" onClick={() => setConfirming(false)}>
+              {t.cancel}
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && <div className="error">{t.error(error)}</div>}
       {!nights && !error && <p className="muted">{t.reading}</p>}
@@ -193,6 +249,8 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
 
       {t.progression && <ProgressionPanel pr={t.progression} />}
 
+      <ProgAwardsPanel awards={t.progAwards} />
+
       {t.nights.length >= 2 && (
         <section className="panel">
           <div className="two-col moves">
@@ -209,16 +267,10 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
             <thead>
               <tr>
                 <th>{m.player}</th>
-                <th title={m.perNightTitle}>
-                  <span className="night-grid" style={{ gridTemplateColumns: `repeat(${t.nights.length}, var(--night-w))` }}>
-                    {t.nights.map((n) => (
-                      <span key={n.id} className="night-date">
-                        {n.label}
-                      </span>
-                    ))}
-                  </span>
-                </th>
-                <th title={m.deathsTitle}>{m.deaths}</th>
+                <th title={m.avgScoreTitle}>{m.avgScoreCol}</th>
+                <th title={m.deathsPerPullTitle}>{m.deathsPerPull}</th>
+                {hasParse && <th title={m.avgParseTitle}>{m.avgParseCol}</th>}
+                {hasPotential && <th title={m.avgPotentialTitle}>{m.avgPotentialCol}</th>}
                 <th>{m.diesTo}</th>
                 <th title={m.mistakesTitle}>{m.mistakes}</th>
               </tr>
@@ -226,24 +278,47 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
             <tbody>
               {t.players.map((p) => {
                 const pot = potentials.get(p.name);
+                const avgPot = meanOf(pot);
+                const nightsTitle = (base: string, value: (i: number) => string) =>
+                  `${base} · ${t.nights.map((n, i) => `${n.label}: ${value(i)}`).join(' · ')}`;
                 return (
                   <tr key={p.guid}>
                     <td style={{ color: classColor(p.class) }}>{shortName(p.name)}</td>
                     <td>
-                      <span className="night-grid" style={{ gridTemplateColumns: `repeat(${t.nights.length}, var(--night-w))` }}>
-                        {t.nights.map((n, i) => (
-                          <NightCell key={n.id} label={n.label} score={p.scorePerNight[i]} parse={n.summary.kills > 0 ? p.perfPerNight[i] : null} potential={pot?.[i] ?? null} />
-                        ))}
+                      <span className={`score-pill ${scoreTier(p.avgScore)}`} title={nightsTitle(m.avgScoreTitle, (i) => (p.scorePerNight[i] != null ? m.cellScore(p.scorePerNight[i]!) : m.didNotPlay))}>
+                        {Math.round(p.avgScore)}
                       </span>
                     </td>
-                    <td>
-                      <span className="deaths-cell">
-                        <Spark values={p.deathsPerPull} labels={t.nights.map((n) => n.label)} />
+                    <td title={nightsTitle(m.deathsPerPullTitle, (i) => (p.deathsPerPull[i] != null ? m.perPull(p.deathsPerPull[i]!.toFixed(2)) : m.didNotPlay))}>
+                      <span className="trend-avg">
+                        <strong className="tabular">{p.avgDeathsPerPull.toFixed(2)}</strong>
                         <span className="muted small">
                           {p.deaths}/{p.pulls}
                         </span>
                       </span>
                     </td>
+                    {hasParse && (
+                      <td title={nightsTitle(m.avgParseTitle, (i) => (p.perfPerNight[i] != null ? m.cellParse(Math.round(p.perfPerNight[i]!)) : m.didNotPlay))}>
+                        {p.avgParse != null ? (
+                          <span className={`trend-avg tone-${perfTone(p.avgParse)}`}>
+                            <Trophy size={13} strokeWidth={1.75} aria-hidden /> {Math.round(p.avgParse)}
+                          </span>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                    )}
+                    {hasPotential && (
+                      <td title={nightsTitle(m.avgPotentialTitle, (i) => (pot?.[i] != null ? m.cellPotential(Math.round(pot[i]! * 100)) : m.didNotPlay))}>
+                        {avgPot != null ? (
+                          <span className={`trend-avg tone-${potentialTone(avgPot)}`}>
+                            <Bot size={13} strokeWidth={1.75} aria-hidden /> {Math.round(avgPot * 100)}%
+                          </span>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                    )}
                     <td>
                       {p.topKiller ? (
                         <>
@@ -381,7 +456,9 @@ function TrendMetricCard({ trend: m, edit }: { trend: MetricTrend; edit: { onRem
   const b = useMessages(bossMetricsMsg);
   const yd = m.unit === 'yd';
   const stack = m.kind === 'stack_limit';
-  const peak = Math.max(1, ...m.nights.map((n) => n.night?.total ?? 0));
+  const found = m.nights.filter((n) => n.night != null);
+  const total = found.reduce((s, n) => s + (n.night?.total ?? 0), 0);
+  const value = yd ? b.yards(total) : m.damage != null ? b.damageTaken(num(m.damage)) : t.metricSummaryFailures(total);
   return (
     <article className="metric-card trend-metric">
       <header className="metric-head">
@@ -402,30 +479,11 @@ function TrendMetricCard({ trend: m, edit }: { trend: MetricTrend; edit: { onRem
         </span>
       </header>
 
-      <div className="night-cols trend-metric-nights" role="img" aria-label={t.metricAria(m.name)}>
-        {m.nights.map(({ label, night }) => {
-          const total = night?.total ?? 0;
-          const pulls = night?.perPull.length ?? 0;
-          const failed = night?.pullsWithFailure ?? 0;
-          const value = yd ? b.yards(total) : b.failuresShort(total);
-          const title = night ? t.metricNightTitle(label, value, failed, pulls) : t.metricNightGone(label);
-          return (
-            <div key={label} className="night-col" title={night?.damage != null ? `${title} · ${b.playerDamage(num(night.damage))}` : title}>
-              <span className="night-col-value">{night ? (yd ? b.yards(total) : total) : '—'}</span>
-              <span className="night-col-track" aria-hidden>
-                <span className={night ? '' : 'none'} style={{ transform: `scaleY(${night ? Math.max(0.04, total / peak) : 0})` }} />
-              </span>
-              <strong>{label}</strong>
-              <span className="muted small">{night ? t.metricNightPulls(failed, pulls) : '—'}</span>
-              {night?.damage != null && <span className="muted small tabular">{b.playerDamage(num(night.damage))}</span>}
-            </div>
-          );
-        })}
-      </div>
+      <p className="muted small">{t.metricSummary(value, found.length, m.nights.length)}</p>
 
       {m.players.length > 0 && (
         <TrendPeople
-          title={yd ? b.whoYards : m.collective && m.kind !== 'failure_event' ? b.hit : b.who}
+          title={m.kind === 'no_defensive' ? b.whoNoDefensive : yd ? b.whoYards : m.collective && m.kind !== 'failure_event' ? b.hit : b.who}
           people={m.players}
           stack={stack}
           yards={yd}
@@ -451,6 +509,7 @@ function TrendPeople({ title, people, stack = false, yards = false, damage = fal
             <strong className="tabular bad">{yards ? b.yards(p.count) : stack ? b.inPulls(p.count) : b.times(p.count)}</strong>
             <span className="muted small">{t.metricNights(p.nights)}</span>
             {damage && <span className="muted small tabular">{b.playerDamage(num(p.damage ?? 0))}</span>}
+            {p.items && p.items.length > 0 && <UnusedItems items={p.items} />}
           </li>
         ))}
       </ul>
@@ -463,41 +522,11 @@ function TrendPeople({ title, people, stack = false, yards = false, damage = fal
   );
 }
 
-/**
- * Uma noite do player: a nota em cima; embaixo, só quando há, o % do potencial do robô e o parse
- * (o Warcraft Logs só tem parse de kill).
- */
-function NightCell({ label, score, parse, potential }: { label: string; score: number | null; parse: number | null; potential: number | null }) {
-  const m = useMessages(trendsViewMsg);
-  if (score == null && parse == null && potential == null)
-    return (
-      <span className="night-cell night-none" title={`${label}: ${m.didNotPlay}`}>
-        —
-      </span>
-    );
-  const title = [label, score != null && m.cellScore(score), potential != null && m.cellPotential(Math.round(potential * 100)), parse != null && m.cellParse(Math.round(parse))].filter(Boolean).join(' · ');
-  return (
-    <span className="night-cell" title={title}>
-      {score != null ? <span className={`score-pill ${scoreTier(score)}`}>{score}</span> : <span className="muted">—</span>}
-      {(potential != null || parse != null) && (
-        <span className="night-sub">
-          {potential != null && (
-            <span className={`tone-${potentialTone(potential)}`}>
-              <Bot size={10} aria-hidden />
-              {Math.round(potential * 100)}%
-            </span>
-          )}
-          {parse != null && (
-            <span className={`tone-${perfTone(parse)}`}>
-              <Trophy size={10} aria-hidden />
-              {Math.round(parse)}
-            </span>
-          )}
-        </span>
-      )}
-    </span>
-  );
-}
+/** Média dos valores presentes (null = sem dado). */
+const meanOf = (xs: (number | null)[] | undefined) => {
+  const vs = (xs ?? []).filter((x): x is number => x != null);
+  return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
+};
 
 /** % do potencial do robô: perto da média dele, um pouco abaixo, bem abaixo. */
 const potentialTone = (v: number) => (v >= 0.97 ? 'good' : v >= 0.85 ? 'mid' : 'bad');
@@ -505,6 +534,60 @@ const potentialTone = (v: number) => (v >= 0.97 ? 'good' : v >= 0.85 ? 'mid' : '
 /** Faixa do parse: da mediana do Warcraft Logs para cima, um pouco abaixo, bem abaixo. */
 const perfTone = (v: number) => (v >= 50 ? 'good' : v >= 25 ? 'mid' : 'bad');
 const pctOf = (v: number) => Math.round(v);
+
+const PROG_AWARD_ORDER: { key: ProgAwardKey; tone: 'good' | 'bad' }[] = [
+  { key: 'bestScore', tone: 'good' },
+  { key: 'leastDamage', tone: 'good' },
+  { key: 'fewestDeaths', tone: 'good' },
+  { key: 'mostDamage', tone: 'bad' },
+  { key: 'wipeCauser', tone: 'bad' },
+  { key: 'mostDeaths', tone: 'bad' },
+];
+
+/** Melhores e piores da progressão: nota, dano evitável, mortes e wipes causados. */
+function ProgAwardsPanel({ awards }: { awards: ProgAwards }) {
+  const m = useMessages(trendsViewMsg);
+  const shown = PROG_AWARD_ORDER.filter((x) => awards[x.key]);
+  if (shown.length === 0) return null;
+  const criterion = (key: ProgAwardKey, pulls: number, wipes = 0) =>
+    key === 'bestScore'
+      ? m.awardScoreCriterion(pulls)
+      : key === 'leastDamage' || key === 'mostDamage'
+        ? m.awardDamageCriterion
+        : key === 'wipeCauser'
+          ? m.awardWipesCriterion(wipes)
+          : m.awardDeathsCriterion;
+  return (
+    <section className="panel">
+      <h3>
+        <Trophy size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {m.progAwards}
+        <Hint>{m.progAwardsHint}</Hint>
+      </h3>
+      <div className="prog-awards-grid">
+        {shown.map(({ key, tone }) => {
+          const a = awards[key]!;
+          const Icon = tone === 'good' ? Trophy : TriangleAlert;
+          return (
+            <article key={key} className={`prog-award ${tone}`}>
+              <span className="prog-award-label">
+                <Icon size={14} strokeWidth={1.75} aria-hidden /> {m.awardLabels[key]}
+              </span>
+              <span className="prog-award-line">
+                <PlayerName name={a.name} guid={a.guid} cls={a.class} />
+                {key === 'bestScore' ? (
+                  <span className={`score-pill ${scoreTier(a.value)}`}>{Math.round(a.value)}</span>
+                ) : (
+                  <strong className="tabular">{key === 'leastDamage' || key === 'mostDamage' ? num(a.value) : a.value.toFixed(2)}</strong>
+                )}
+              </span>
+              <span className="muted small">{criterion(key, a.pulls, a.wipes)}</span>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 /** Melhor e pior nota e desempenho nos wipes antes da kill. */
 function ProgressionPanel({ pr }: { pr: Progression }) {
@@ -557,26 +640,6 @@ function Moves({ title, icon, list, hint }: { title: string; icon: 'up' | 'down'
         </ul>
       )}
     </div>
-  );
-}
-
-/** Barrinhas de mortes por pull, uma por noite (vazio = não jogou). */
-function Spark({ values, labels }: { values: (number | null)[]; labels: string[] }) {
-  const m = messagesOf(trendsViewMsg);
-  const W = 10;
-  const H = 22;
-  const max = 1; // 1 morte por pull = barra cheia
-  return (
-    <svg className="spark" width={values.length * (W + 3)} height={H} role="img" aria-label={values.map((v, i) => `${labels[i]}: ${v == null ? m.didNotPlay : v.toFixed(2)}`).join(', ')}>
-      {values.map((v, i) => {
-        const h = v == null ? 2 : Math.max(2, Math.min(1, v / max) * H);
-        return (
-          <rect key={i} x={i * (W + 3)} y={H - h} width={W} height={h} rx={2} className={v == null ? 'spark-none' : 'spark-bar'}>
-            <title>{`${labels[i]}: ${v == null ? m.didNotPlay : m.perPull(v.toFixed(2))}`}</title>
-          </rect>
-        );
-      })}
-    </svg>
   );
 }
 
