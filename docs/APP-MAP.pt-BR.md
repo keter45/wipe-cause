@@ -152,7 +152,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/n
 | Resumo | Quantidade de pulls/wipes/kills, melhor tentativa e ritmo entre trys |
 | Maior causa | Card “Maior causa dos wipes”: a mecânica que mais disparou wipes, com gatilhos, mortes e falhas ligadas (bloco `summary.top-cause`) |
 | Progresso | Fase e vida do boss por pull; clicar permite investigar a tentativa |
-| Métricas do grupo | Mecânicas escolhidas para acompanhar, sugestões pelo que falhou, totais e contribuição individual; nas métricas de hit (dano evitável, alcance do tank, posicionamento), mostra o dano tomado (total, por player e por pull); abre os pulls relacionados; a métrica “Mortes sem pot/defensivo” lista mortes com defensivo, poção de vida e healthstone livres e não usados |
+| Métricas do grupo | Mecânicas escolhidas para acompanhar, sugestões pelo que falhou, totais e contribuição individual; nas métricas de hit (dano evitável, alcance do tank, posicionamento), mostra o dano tomado (total, por player e por pull); abre os pulls relacionados; a métrica “Mortes sem pot/defensivo” lista mortes com defensivo, poção de vida e healthstone livres e não usados (um ícone de pot e um de defensivo por player) e quem morreu usando tudo |
 | Tempos de fase | Compara transições quando os dados e as regras de fase existem |
 | CDs de cura | No fim do resumo, recolhe e expande. A note de CDs colada pelo líder (NSRT): versões, casamento de fases com o desvio do relógio do addon e, por linha de cada versão, quantos pulls foram na hora e o Δ mediano, golpe e uso, overheal da noite contra as referências e empilhado; a note sugerida por versão (adicionar e mover, com caixas e Copiar) |
 | Origem de stacks | Acrescenta contexto de stacks nos bosses que produzem esses dados |
@@ -359,7 +359,7 @@ O insumo é o conjunto de análises salvas, obtido por `historyTrends`; abrir um
 | --- | --- |
 | Seleção por boss/dificuldade, agrupamento da guilda e opção de incluir pug | Seleção de personagem e bosses em que ele participou |
 | Melhor progresso por noite, gatilhos de wipe, evolução das notas e problemas recorrentes | Melhor produção, mediana de rotação, mortes e erros por pull entre noites |
-| Tabela de jogadores com médias (nota ponderada pelos pulls, mortes por pull, parse nas kills, potencial; valores por noite no tooltip), painel Destaques da prog (melhores e piores de quem jogou ≥30% dos pulls) e botão Reanalisar todas as noites (só desktop); painel Métricas do grupo com a escolha por boss do resumo (total das noites, players somados nas noites com quantas repetiram) | Gráficos e tabela da trajetória individual |
+| Tabela de jogadores com médias (nota ponderada pelos pulls, mortes por pull, parse nas kills, potencial; valores por noite no tooltip), painel Destaques da prog (top 3 de melhores e piores em cada categoria, de quem jogou ≥30% dos pulls) e botão Reanalisar as noites deste boss (só desktop); painel Métricas do grupo com a escolha por boss do resumo (total das noites, players somados nas noites com quantas repetiram) | Gráficos e tabela da trajetória individual |
 | Pode apresentar parses e potencial já salvos quando disponíveis | Depende dos campos de análise individual presentes nos relatórios |
 
 A unificação de GUIDs ocorre antes de comparar análises locais e WCL. Sem isso, a mesma pessoa poderia aparecer como identidades separadas. Sem histórico ou sem participação do personagem, há estados vazios. Uma única noite permite leitura parcial, mas não estabelece evolução entre sessões.
