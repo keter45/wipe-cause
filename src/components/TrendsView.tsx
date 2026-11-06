@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Bot, Plus, RotateCw, ShieldOff, TrendingDown, TrendingUp, TriangleAlert, Trophy, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Plus, RotateCw, ShieldOff, TrendingUp, TriangleAlert, Trophy, X } from 'lucide-react';
 import { historyTrends, type HistoryEntry } from '../lib/api';
 import { classColor, num, pct, shortName } from '../lib/format';
-import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type ProgAwardKey, type ProgAwards, type ProgAwardWinner, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
+import { buildTrends, byGroup, trendBosses, type NightInput, type DeathRow, type DeathTable, type ProgAwardKey, type ProgAwards, type ProgAwardWinner, type Progression, type Trends } from '../lib/trends';
 import { bossKey } from '../lib/night';
 import { metricOptions, metricTrend, moveMetric, saveBossMetrics, savedBossMetrics, type MetricTrend, type MetricTrendPlayer } from '../lib/bossMetrics';
 import { AddMetric, UnusedItems } from './BossMetrics';
@@ -17,7 +17,8 @@ import { BossName, PlayerName } from './Names';
 import { intlLocale, messagesOf, useMessages } from '../i18n';
 import { trendsViewMsg } from './TrendsView.i18n';
 import { Hint } from './ui/Hint';
-import { useNightPotentials } from '../lib/botRaid';
+import { DeathSeverityCard } from './DeathSeverityCard';
+import { ProgDeathCards } from './ProgDeathCards';
 
 /**
  * Evolução entre noites de um boss: progresso, causas de wipe por noite e o que se repete com
@@ -162,18 +163,14 @@ function TrendsViewInner({ history = [], onReanalyzeAll, busy = false, canReanal
 
 function TrendsBody({ tr: t }: { tr: Trends }) {
   const m = useMessages(trendsViewMsg);
-  // % do potencial do robô por noite, das simulações salvas (coluna só aparece com alguma)
-  const nightPulls = useMemo(() => t.nights.map((n) => ({ pulls: n.summary.pulls })), [t]);
-  const names = useMemo(() => t.players.map((p) => p.name), [t]);
-  const potentials = useNightPotentials(nightPulls, names);
-  const hasPotential = [...potentials.values()].some((xs) => xs.some((v) => v != null));
-  const hasParse = t.nights.some((n, i) => n.summary.kills > 0 && t.players.some((p) => p.perfPerNight[i] != null));
   // nomes de habilidades citados nas frases ganham ícone
   const spells = useMemo(() => {
     const m = new Map<string, number>();
     for (const n of t.nights) for (const p of n.summary.pulls) for (const [k, v] of spellIndex(p)) if (!m.has(k)) m.set(k, v);
     return m;
   }, [t]);
+  const nightPulls = useMemo(() => t.nights.map((n) => n.summary.pulls), [t]);
+  const allPulls = useMemo(() => nightPulls.flat(), [nightPulls]);
   return (
     <>
       {t.insights.length > 0 && (
@@ -213,8 +210,6 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
           })}
         </div>
       </section>
-
-      <MetricsPanel tr={t} />
 
       <section className="panel">
         <h3>{m.triggers} <Hint>{m.triggersHint}</Hint></h3>
@@ -256,124 +251,140 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
         )}
       </section>
 
-      {t.progression && <ProgressionPanel pr={t.progression} />}
+      <MetricsPanel tr={t} />
 
-      <ProgAwardsPanel awards={t.progAwards} />
+      <ProgAwardsPanel awards={t.progAwards} deathTable={t.deathTable} progression={t.progression} />
 
-      {t.nights.length >= 2 && (
-        <section className="panel">
-          <div className="two-col moves">
-            <Moves title={m.improving} icon="up" list={t.improving} hint={m.movesHint} />
-            <Moves title={m.worsening} icon="down" list={t.worsening} />
-          </div>
-        </section>
-      )}
+      <DeathSeverityCard pulls={allPulls} mode="evolution" />
 
-      <section className="panel">
-        <h3>{m.players}</h3>
-        <div className="table-scroll">
-          <table className="players trend-players">
-            <thead>
-              <tr>
-                <th>{m.player}</th>
-                <th title={m.avgScoreTitle}>{m.avgScoreCol}</th>
-                <th title={m.deathsPerPullTitle}>{m.deathsPerPull}</th>
-                {hasParse && <th title={m.avgParseTitle}>{m.avgParseCol}</th>}
-                {hasPotential && <th title={m.avgPotentialTitle}>{m.avgPotentialCol}</th>}
-                <th>{m.diesTo}</th>
-                <th title={m.mistakesTitle}>{m.mistakes}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {t.players.map((p) => {
-                const pot = potentials.get(p.name);
-                const avgPot = meanOf(pot);
-                const nightsTitle = (base: string, value: (i: number) => string) =>
-                  `${base} · ${t.nights.map((n, i) => `${n.label}: ${value(i)}`).join(' · ')}`;
-                return (
-                  <tr key={p.guid}>
-                    <td style={{ color: classColor(p.class) }}>{shortName(p.name)}</td>
-                    <td>
-                      <span className={`score-pill ${scoreTier(p.avgScore)}`} title={nightsTitle(m.avgScoreTitle, (i) => (p.scorePerNight[i] != null ? m.cellScore(p.scorePerNight[i]!) : m.didNotPlay))}>
-                        {Math.round(p.avgScore)}
-                      </span>
-                    </td>
-                    <td title={nightsTitle(m.deathsPerPullTitle, (i) => (p.deathsPerPull[i] != null ? m.perPull(p.deathsPerPull[i]!.toFixed(2)) : m.didNotPlay))}>
-                      <span className="trend-avg">
-                        <strong className="tabular">{p.avgDeathsPerPull.toFixed(2)}</strong>
-                        <span className="muted small">
-                          {p.deaths}/{p.pulls}
-                        </span>
-                      </span>
-                    </td>
-                    {hasParse && (
-                      <td title={nightsTitle(m.avgParseTitle, (i) => (p.perfPerNight[i] != null ? m.cellParse(Math.round(p.perfPerNight[i]!)) : m.didNotPlay))}>
-                        {p.avgParse != null ? (
-                          <span className={`trend-avg tone-${perfTone(p.avgParse)}`}>
-                            <Trophy size={13} strokeWidth={1.75} aria-hidden /> {Math.round(p.avgParse)}
-                          </span>
-                        ) : (
-                          <span className="muted">—</span>
-                        )}
-                      </td>
-                    )}
-                    {hasPotential && (
-                      <td title={nightsTitle(m.avgPotentialTitle, (i) => (pot?.[i] != null ? m.cellPotential(Math.round(pot[i]! * 100)) : m.didNotPlay))}>
-                        {avgPot != null ? (
-                          <span className={`trend-avg tone-${potentialTone(avgPot)}`}>
-                            <Bot size={13} strokeWidth={1.75} aria-hidden /> {Math.round(avgPot * 100)}%
-                          </span>
-                        ) : (
-                          <span className="muted">—</span>
-                        )}
-                      </td>
-                    )}
-                    <td>
-                      {p.topKiller ? (
-                        <>
-                          <SpellName spellId={p.topKillerSpellId} name={p.topKiller[0]} size={16} /> <span className="muted">{p.topKiller[1]}×</span>
-                        </>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className="mistakes-cell">
-                        {p.deathsNoDefensive > 0 && (
-                          <span title={m.noDefTitle}>
-                            <ShieldOff size={13} strokeWidth={1.75} aria-hidden /> {p.deathsNoDefensive}
-                          </span>
-                        )}
-                        {p.mechanicErrors > 0 && (
-                          <span title={m.mechErrors}>
-                            <TriangleAlert size={13} strokeWidth={1.75} aria-hidden /> {p.mechanicErrors}
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="muted small trend-legend">
-            <span className={`score-pill ${scoreTier(85)}`}>85</span> {m.legendScore}
-            {hasPotential && (
-              <>
-                {' '}
-                · <Bot size={12} aria-hidden /> {m.legendPotential}
-              </>
-            )}
-            {hasParse && (
-              <>
-                {' '}
-                · <Trophy size={12} aria-hidden /> {m.legendParse}
-              </>
-            )}
-          </p>
-        </div>
-      </section>
+      <ProgDeathCards nights={nightPulls} />
+
+      <PlayersPanel tr={t} />
     </>
+  );
+}
+
+/** Número com 2 casas no idioma do app (vírgula em pt-BR). */
+const fmt2 = (v: number) => v.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+type PlayerSort = 'name' | 'score' | 'deaths' | 'diesTo' | 'mistakes';
+/** Quem jogou menos que essa fração das trys fica escondido na tabela (dá para mostrar). */
+const FEW_PULLS = 0.3;
+
+/** Jogadores da Evolução: médias, ordenáveis por coluna; quem jogou pouco fica recolhido. */
+function PlayersPanel({ tr: t }: { tr: Trends }) {
+  const m = useMessages(trendsViewMsg);
+  const [sort, setSort] = useState<{ key: PlayerSort; dir: 1 | -1 }>({ key: 'score', dir: -1 });
+  const [showFew, setShowFew] = useState(false);
+  const totalPulls = t.nights.reduce((a, n) => a + n.summary.pulls.length, 0);
+  const minPulls = Math.ceil(totalPulls * FEW_PULLS);
+  const value = (p: Trends['players'][number]): number | string => {
+    switch (sort.key) {
+      case 'name':
+        return shortName(p.name).toLowerCase();
+      case 'score':
+        return p.avgScore;
+      case 'deaths':
+        return p.avgDeathsPerPull;
+      case 'diesTo':
+        return p.topKiller?.[1] ?? 0;
+      case 'mistakes':
+        return p.deathsNoDefensive + p.mechanicErrors;
+    }
+  };
+  const sorted = [...t.players].sort((a, b) => {
+    const va = value(a);
+    const vb = value(b);
+    const c = typeof va === 'string' ? va.localeCompare(vb as string) : va - (vb as number);
+    return c * sort.dir || b.pulls - a.pulls || a.name.localeCompare(b.name);
+  });
+  const few = sorted.filter((p) => p.pulls < minPulls).length;
+  const shown = showFew ? sorted : sorted.filter((p) => p.pulls >= minPulls);
+  const header = (key: PlayerSort, label: string, title?: string) => {
+    const on = sort.key === key;
+    // nome começa de A a Z; números começam do maior
+    const next = () => setSort(on ? { key, dir: sort.dir === 1 ? -1 : 1 } : { key, dir: key === 'name' ? 1 : -1 });
+    return (
+      <th title={title} aria-sort={on ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+        <button className={`sort-btn ${on ? 'on' : ''}`} onClick={next} aria-label={m.sortBy(label)}>
+          {label}
+          {on ? sort.dir === 1 ? <ArrowUp size={12} strokeWidth={2} aria-hidden /> : <ArrowDown size={12} strokeWidth={2} aria-hidden /> : <ArrowDown size={12} strokeWidth={2} className="sort-hint" aria-hidden />}
+        </button>
+      </th>
+    );
+  };
+  return (
+    <section className="panel">
+      <h3>{m.players}</h3>
+      <div className="table-scroll">
+        <table className="players trend-players">
+          <thead>
+            <tr>
+              {header('name', m.player)}
+              {header('score', m.avgScoreCol, m.avgScoreTitle)}
+              {header('deaths', m.deathsPerPull, m.deathsPerPullTitle)}
+              {header('diesTo', m.diesTo)}
+              {header('mistakes', m.mistakes, m.mistakesTitle)}
+            </tr>
+          </thead>
+          <tbody>
+          {shown.map((p) => {
+            const nightsTitle = (base: string, value: (i: number) => string) =>
+              `${base} · ${t.nights.map((n, i) => `${n.label}: ${value(i)}`).join(' · ')}`;
+            return (
+              <tr key={p.guid}>
+                <td style={{ color: classColor(p.class) }}>{shortName(p.name)}</td>
+                <td>
+                  <span className={`score-pill ${scoreTier(p.avgScore)}`} title={nightsTitle(m.avgScoreTitle, (i) => (p.scorePerNight[i] != null ? m.cellScore(p.scorePerNight[i]!) : m.didNotPlay))}>
+                    {Math.round(p.avgScore)}
+                  </span>
+                </td>
+                <td title={nightsTitle(m.deathsPerPullTitle, (i) => (p.deathsPerPull[i] != null ? m.perPull(fmt2(p.deathsPerPull[i]!)) : m.didNotPlay))}>
+                  <span className="trend-avg">
+                    <strong className="tabular">{fmt2(p.avgDeathsPerPull)}</strong>
+                    <span className="muted small">
+                      {p.deaths}/{p.pulls}
+                    </span>
+                  </span>
+                </td>
+                <td>
+                  {p.topKiller ? (
+                    <span className="trend-dies" title={p.topKiller[0]}>
+                      <SpellName spellId={p.topKillerSpellId} name={p.topKiller[0]} size={16} /> <span className="muted">{p.topKiller[1]}×</span>
+                    </span>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </td>
+                <td>
+                  <span className="mistakes-cell">
+                    {p.deathsNoDefensive > 0 && (
+                      <span title={m.noDefTitle}>
+                        <ShieldOff size={13} strokeWidth={1.75} aria-hidden /> {p.deathsNoDefensive}
+                      </span>
+                    )}
+                    {p.mechanicErrors > 0 && (
+                      <span title={m.mechErrors}>
+                        <TriangleAlert size={13} strokeWidth={1.75} aria-hidden /> {p.mechanicErrors}
+                      </span>
+                    )}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+          </tbody>
+        </table>
+        {few > 0 && (
+          <button className="btn ghost sm trend-few" onClick={() => setShowFew(!showFew)} aria-expanded={showFew}>
+            {showFew ? m.hideFewPulls(few) : m.showFewPulls(few, minPulls)}
+          </button>
+        )}
+        <p className="muted small trend-legend">
+          <span className={`score-pill ${scoreTier(85)}`}>85</span> {m.legendScore}
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -531,170 +542,164 @@ function TrendPeople({ title, people, stack = false, yards = false, damage = fal
   );
 }
 
-/** Média dos valores presentes (null = sem dado). */
-const meanOf = (xs: (number | null)[] | undefined) => {
-  const vs = (xs ?? []).filter((x): x is number => x != null);
-  return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
-};
-
-/** % do potencial do robô: perto da média dele, um pouco abaixo, bem abaixo. */
-const potentialTone = (v: number) => (v >= 0.97 ? 'good' : v >= 0.85 ? 'mid' : 'bad');
-
-/** Faixa do parse: da mediana do Warcraft Logs para cima, um pouco abaixo, bem abaixo. */
-const perfTone = (v: number) => (v >= 50 ? 'good' : v >= 25 ? 'mid' : 'bad');
-const pctOf = (v: number) => Math.round(v);
-
 const PROG_AWARD_ORDER: { key: ProgAwardKey; tone: 'good' | 'bad' }[] = [
   { key: 'bestScore', tone: 'good' },
   { key: 'leastDamage', tone: 'good' },
-  { key: 'fewestDeaths', tone: 'good' },
-  { key: 'bestPotUse', tone: 'good' },
   { key: 'fewestMechErrors', tone: 'good' },
   { key: 'mostTimeAlive', tone: 'good' },
   { key: 'mostImproved', tone: 'good' },
   { key: 'bestKillParse', tone: 'good' },
+  { key: 'mostWipesCaused', tone: 'bad' },
   { key: 'mostDamage', tone: 'bad' },
-  { key: 'wipeCauser', tone: 'bad' },
-  { key: 'mostDeaths', tone: 'bad' },
-  { key: 'mostFreeDeaths', tone: 'bad' },
   { key: 'mostMechErrors', tone: 'bad' },
-  { key: 'firstToDie', tone: 'bad' },
   { key: 'mostWorsened', tone: 'bad' },
 ];
 
-/** Melhores e piores da progressão: nota, dano evitável, mortes e wipes causados. */
-function ProgAwardsPanel({ awards }: { awards: ProgAwards }) {
+/** Tabela larga de mortes ("Quem mais / menos morre"): barra de mortes por pull com a parte "com algo livre" destacada. */
+function DeathTableCard({ rows, scale, tone, title, extra }: { rows: DeathRow[]; scale: number; tone: 'good' | 'bad'; title: string; extra: boolean }) {
+  const m = useMessages(trendsViewMsg);
+  const width = (v: number) => `${scale > 0 ? Math.min(100, (v / scale) * 100) : 0}%`;
+  return (
+    <article className={`prog-award wide ${tone}`}>
+      <span className="prog-award-label">{title}</span>
+      <div className={`death-table${extra ? ' extra' : ''}`}>
+        <div className="death-row death-head">
+          <span />
+          <span />
+          <span>{m.deathBarLabel}</span>
+          <span />
+          <span title={m.deathFreeTitle}>{m.deathColFree}</span>
+          {extra && <span title={m.deathFirstTitle}>{m.deathColFirst}</span>}
+          {extra && <span title={m.deathBestTitle}>{m.deathColBest}</span>}
+        </div>
+        {rows.map((r, i) => (
+          <div key={r.guid} className="death-row">
+            <span className="prog-award-rank" aria-label={m.awardRank(i + 1)}>
+              {m.awardRank(i + 1)}
+            </span>
+            <span className="death-name">
+              <PlayerName name={r.name} guid={r.guid} cls={r.class} />
+            </span>
+            <span className="death-bar">
+              {r.deaths === 0 ? (
+                <span className="muted small">{m.awardNoDeaths}</span>
+              ) : (
+                <span className="death-track">
+                  <i className="death-total" style={{ width: width(r.deaths) }} />
+                  <i className="death-free" style={{ width: width(Math.min(r.free, r.deaths)) }} />
+                </span>
+              )}
+            </span>
+            <strong className="tabular">{fmt2(r.deaths)}</strong>
+            <span className="tabular death-col">{fmt2(r.free)}</span>
+            {extra && <span className="tabular death-col">{fmt2(r.first)}</span>}
+            {extra && (
+              <span className="tabular death-col" title={r.bestRate == null ? m.deathBestTitle : undefined}>
+                {r.bestRate == null ? '—' : fmt2(r.bestRate)}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      <span className="death-legend muted small">
+        <i className="death-swatch free" /> {m.deathLegendFree}
+        <i className="death-swatch total" /> {m.deathLegendOther}
+      </span>
+      <span className="muted small">{m.deathCriterion}</span>
+    </article>
+  );
+}
+
+/** Melhores e piores da progressão: nota, dano evitável, mortes e erros de mecânica. */
+function ProgAwardsPanel({ awards, deathTable, progression }: { awards: ProgAwards; deathTable: DeathTable; progression: Progression | null }) {
   const m = useMessages(trendsViewMsg);
   const shown = PROG_AWARD_ORDER.filter((x) => awards[x.key]);
-  if (shown.length === 0) return null;
+  if (shown.length === 0 && deathTable.most.length === 0 && deathTable.least.length === 0) return null;
   const criterion = (key: ProgAwardKey) =>
     key === 'bestScore'
       ? m.awardScoreCriterion
-      : key === 'leastDamage' || key === 'mostDamage'
+      : key === 'mostWipesCaused'
+        ? m.awardWipesCriterion
+        : key === 'leastDamage' || key === 'mostDamage'
         ? m.awardDamageCriterion
-        : key === 'bestPotUse' || key === 'mostFreeDeaths'
-          ? m.awardFreeDeathsCriterion
-          : key === 'wipeCauser'
-            ? m.awardWipesCriterion
-            : key === 'fewestMechErrors' || key === 'mostMechErrors'
-              ? m.awardMechErrorsCriterion
-              : key === 'mostTimeAlive'
-                ? m.awardTimeAliveCriterion
-                : key === 'firstToDie'
-                  ? m.awardFirstDeathCriterion
-                  : key === 'mostImproved' || key === 'mostWorsened'
-                    ? m.awardMoveCriterion
-                    : key === 'bestKillParse'
-                      ? m.awardKillParseCriterion
-                      : m.awardDeathsCriterion;
-  const rate = (v: number) => m.awardRate(v.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }), v > 0 ? Math.round(1 / v) : null);
+        : key === 'fewestMechErrors' || key === 'mostMechErrors'
+          ? m.awardMechErrorsCriterion
+          : key === 'mostTimeAlive'
+            ? m.awardTimeAliveCriterion
+            : key === 'mostImproved' || key === 'mostWorsened'
+              ? m.awardMoveCriterion
+              : m.awardKillParseCriterion;
+  // tudo por pull: o valor fica à direita; embaixo do nome, em quantos pulls
   const detail = (key: ProgAwardKey, a: ProgAwardWinner) =>
-    key === 'bestScore' || key === 'leastDamage' || key === 'mostDamage' || key === 'mostTimeAlive' || key === 'bestKillParse'
-      ? m.awardPulls(a.pulls)
+    key === 'mostWipesCaused'
+      ? m.awardWipesDetail(a.byDeath ?? 0, a.byMechanic ?? 0, a.byTank ?? 0, a.pulls)
       : key === 'mostImproved' || key === 'mostWorsened'
-        ? `${m.awardMove(a.from ?? 0, a.to ?? 0)} · ${m.awardPulls(a.pulls)}`
-        : key === 'firstToDie'
-          ? `${m.awardFirstDeaths(a.count ?? 0)} · ${rate(a.value)}`
-          : key === 'wipeCauser'
-            ? `${m.awardWipes(a.wipes ?? 0)} · ${rate(a.value)}`
-            : rate(a.value);
+      ? m.awardSep(m.awardMove(a.from ?? 0, a.to ?? 0), m.awardPulls(a.pulls))
+      : a.value === 0 && key === 'fewestMechErrors'
+        ? m.awardSep(m.awardNoErrors, m.awardPulls(a.pulls))
+        : m.awardPulls(a.pulls);
+  const group = (tone: 'good' | 'bad', title: string) => {
+    const items = shown.filter((x) => x.tone === tone);
+    const table = tone === 'good' ? deathTable.least : deathTable.most;
+    if (items.length === 0 && table.length === 0) return null;
+    return (
+      <div className="prog-awards-group">
+        <h4 className={`prog-awards-heading ${tone}`}>{title}</h4>
+        {/* o card de mortes ocupa a linha toda; os pequenos dividem a linha de baixo sem deixar buraco */}
+        {table.length > 0 && <DeathTableCard rows={table} scale={deathTable.scale} tone={tone} title={tone === 'good' ? m.deathLeast : m.deathMost} extra={tone === 'bad'} />}
+        <div className="prog-awards-grid">
+          {items.map(({ key }) => {
+            const list = awards[key]!;
+            return (
+              <article key={key} className={`prog-award ${tone}`}>
+                <span className="prog-award-label">{m.awardLabels[key]}</span>
+                <ol className="prog-award-top">
+                  {list.map((a, i) => (
+                    <li key={a.guid} className={i === 0 ? 'first' : undefined}>
+                      <span className="prog-award-rank" aria-label={m.awardRank(i + 1)}>
+                        {m.awardRank(i + 1)}
+                      </span>
+                      <span className="prog-award-who">
+                        <PlayerName name={a.name} guid={a.guid} cls={a.class} />
+                        <span className="muted small">{detail(key, a)}</span>
+                        <span className="prog-award-bar" aria-hidden>
+                          <i style={{ width: `${a.scale > 0 ? Math.min(100, (Math.abs(a.value) / a.scale) * 100) : 0}%` }} />
+                        </span>
+                      </span>
+                      {key === 'bestScore' ? (
+                        <span className={`score-pill ${scoreTier(a.value)}`}>{Math.round(a.value)}</span>
+                      ) : key === 'leastDamage' || key === 'mostDamage' ? (
+                        <strong className="tabular">{num(a.value)}</strong>
+                      ) : key === 'mostTimeAlive' ? (
+                        <strong className="tabular">{Math.round(a.value * 100)}%</strong>
+                      ) : key === 'bestKillParse' ? (
+                        <span className={`score-pill ${scoreTier(a.value)}`}>{Math.round(a.value)}</span>
+                      ) : key === 'mostImproved' || key === 'mostWorsened' ? (
+                        <strong className="tabular">{`${(a.to ?? 0) - (a.from ?? 0) > 0 ? '+' : ''}${(a.to ?? 0) - (a.from ?? 0)}`}</strong>
+                      ) : (
+                        <strong className="tabular">{fmt2(a.value)}</strong>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+                <span className="muted small">{criterion(key)}</span>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
   return (
     <section className="panel">
       <h3>
         <Trophy size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {m.progAwards}
         <Hint>{m.progAwardsHint}</Hint>
       </h3>
-      <div className="prog-awards-grid">
-        {shown.map(({ key, tone }) => {
-          const list = awards[key]!;
-          const Icon = tone === 'good' ? Trophy : TriangleAlert;
-          return (
-            <article key={key} className={`prog-award ${tone}`}>
-              <span className="prog-award-label">
-                <Icon size={14} strokeWidth={1.75} aria-hidden /> {m.awardLabels[key]}
-              </span>
-              <ol className="prog-award-top">
-                {list.map((a, i) => (
-                  <li key={a.guid} className={i === 0 ? 'first' : undefined}>
-                    <span className="prog-award-rank" aria-label={m.awardRank(i + 1)}>
-                      {m.awardRank(i + 1)}
-                    </span>
-                    <span className="prog-award-who">
-                      <PlayerName name={a.name} guid={a.guid} cls={a.class} />
-                      <span className="muted small">{detail(key, a)}</span>
-                    </span>
-                    {key === 'bestScore' ? (
-                      <span className={`score-pill ${scoreTier(a.value)}`}>{Math.round(a.value)}</span>
-                    ) : key === 'leastDamage' || key === 'mostDamage' ? (
-                      <strong className="tabular">{num(a.value)}</strong>
-                    ) : key === 'mostTimeAlive' ? (
-                      <strong className="tabular">{Math.round(a.value * 100)}%</strong>
-                    ) : key === 'bestKillParse' ? (
-                      <span className={`score-pill ${scoreTier(a.value)}`}>{Math.round(a.value)}</span>
-                    ) : null}
-                  </li>
-                ))}
-              </ol>
-              <span className="muted small">{criterion(key)}</span>
-            </article>
-          );
-        })}
-      </div>
+      {progression && <p className="muted small">{progression.killedOn ? m.progressionKilled(progression.pulls, progression.killedOn) : m.progressionOngoing(progression.pulls)}</p>}
+      {group('good', m.awardsBest)}
+      {group('bad', m.awardsWorst)}
     </section>
-  );
-}
-
-/** Melhor e pior nota e desempenho nos wipes antes da kill. */
-function ProgressionPanel({ pr }: { pr: Progression }) {
-  const m = useMessages(trendsViewMsg);
-  const card = (label: string, p: ProgressionPlayer | null, kind: 'score' | 'perf', tone: 'good' | 'bad') =>
-    p && (
-      <div className={`progression-card ${tone}`}>
-        <span className="muted small">{label}</span>
-        <strong style={{ color: classColor(p.class) }}>{shortName(p.name)}</strong>
-        <span className="small">{kind === 'score' ? m.avgScore(Math.round(p.avgScore), p.pulls) : m.killParse(pctOf(p.killParse ?? 0))}</span>
-      </div>
-    );
-  return (
-    <section className="panel">
-      <h3>
-        <Trophy size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {m.progression}
-       <Hint>{m.progressionHint(pr.minPulls)}</Hint></h3>
-      <p className="muted small">{pr.killedOn ? m.progressionKilled(pr.pulls, pr.killedOn) : m.progressionOngoing(pr.pulls)}</p>
-      <div className="progression-cards">
-        {card(m.bestScore, pr.best, 'score', 'good')}
-        {card(m.worstScore, pr.worst, 'score', 'bad')}
-        {card(m.bestPerf, pr.bestPerf, 'perf', 'good')}
-        {card(m.worstPerf, pr.worstPerf, 'perf', 'bad')}
-      </div>
-    </section>
-  );
-}
-
-/** Quem subiu (ou caiu) de nota entre o começo e o fim das noites, com o desempenho junto. */
-function Moves({ title, icon, list, hint }: { title: string; icon: 'up' | 'down'; list: PlayerMove[]; hint?: string }) {
-  const m = useMessages(trendsViewMsg);
-  const Icon = icon === 'up' ? TrendingUp : TrendingDown;
-  return (
-    <div>
-      <h3>
-        <Icon size={16} strokeWidth={1.5} className={`inline-icon ${icon === 'up' ? 'good' : 'bad'}`} aria-hidden /> {title}
-        {hint && <Hint>{hint}</Hint>}
-      </h3>
-      {list.length === 0 ? (
-        <p className="muted small">{m.noMoves}</p>
-      ) : (
-        <ul className="plain moves-list small">
-          {list.slice(0, 8).map((p) => (
-            <li key={p.guid}>
-              <strong style={{ color: classColor(p.class) }}>{shortName(p.name)}</strong>{' '}
-              <span className="tabular">{m.scoreMove(p.scoreFrom, p.scoreTo)}</span>
-              {p.perfFrom != null && p.perfTo != null && <span className="muted tabular"> · {m.perfMove(pctOf(p.perfFrom), pctOf(p.perfTo))}</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 

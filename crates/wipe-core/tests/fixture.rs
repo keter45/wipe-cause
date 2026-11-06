@@ -274,6 +274,53 @@ fn feign_death_is_not_a_death() {
     assert!(kill.players.iter().all(|p| p.deaths == 0));
 }
 
+/// O log do pull 3 (kill, sem mortes) com linhas extras da priest, cada uma antes da primeira linha
+/// que começa com o horário dado.
+fn kill_with_priest(lines: &[(&str, &str)]) -> wipe_core::LogReport {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/twin-fangs.txt");
+    let mut log = std::fs::read_to_string(path).unwrap();
+    for (at, line) in lines {
+        let i = log.find(&format!("9/28/2026 {at}")).expect("horário no pull 3");
+        log.insert_str(i, &format!("9/28/2026 {line}\n"));
+    }
+    let book = wipe_core::rules::RuleBook::embedded();
+    wipe_core::analyze_reader(std::io::Cursor::new(log.into_bytes()), 0, &book, 1, |_, _| {}).unwrap()
+}
+
+const PRIEST: &str = "Player-3209-0A1B2C3E,\"Curandeira-Azralon\",0x514,0x0";
+fn priest_aura(time: &str, event: &str, spell: &str) -> String {
+    format!("{time}.0000-3  {event},{PRIEST},{PRIEST},{spell},BUFF")
+}
+
+#[test]
+fn spirit_of_redemption_with_restitution_is_a_death_and_a_rez() {
+    // Restitution: o golpe fatal vira espírito e ela volta viva no fim dele, sem UNIT_DIED no log
+    let spirit = priest_aura("21:15:30", "SPELL_AURA_APPLIED", "27827,\"Spirit of Redemption\",0x2");
+    let gone = priest_aura("21:15:50", "SPELL_AURA_REMOVED", "27827,\"Spirit of Redemption\",0x2");
+    let cast = format!("21:15:50.0000-3  SPELL_CAST_SUCCESS,{PRIEST},0000000000000000,nil,0x80000000,0x80000000,2061,\"Flash Heal\",0x2");
+    let r = kill_with_priest(&[("21:15:30", &spirit), ("21:15:50", &gone), ("21:15:50", &cast)]);
+    let kill = &r.pulls[2];
+    assert_eq!(kill.deaths.len(), 1, "a morte evitada pelo Restitution conta");
+    assert_eq!(kill.deaths[0].name, "Curandeira-Azralon");
+    assert_eq!(kill.deaths[0].t, 30_000, "na hora do golpe, não no fim do espírito");
+    let priest = kill.players.iter().find(|p| p.name == "Curandeira-Azralon").unwrap();
+    assert_eq!(priest.deaths, 1);
+    assert!(priest.alive_ms < kill.analyzed_ms, "o tempo no espírito é tempo morta");
+}
+
+#[test]
+fn spirit_of_redemption_without_restitution_counts_once_at_the_fatal_hit() {
+    // sem Restitution o UNIT_DIED só sai no fim do espírito: é a mesma morte
+    let spirit = priest_aura("21:15:30", "SPELL_AURA_APPLIED", "27827,\"Spirit of Redemption\",0x2");
+    let gone = priest_aura("21:15:50", "SPELL_AURA_REMOVED", "27827,\"Spirit of Redemption\",0x2");
+    let died = format!("21:15:50.0000-3  UNIT_DIED,0000000000000000,nil,0x80000000,0x80000000,{PRIEST},0");
+    let r = kill_with_priest(&[("21:15:30", &spirit), ("21:15:50", &gone), ("21:15:50", &died)]);
+    let kill = &r.pulls[2];
+    assert_eq!(kill.deaths.len(), 1);
+    assert_eq!(kill.deaths[0].t, 30_000);
+    assert_eq!(kill.players.iter().find(|p| p.name == "Curandeira-Azralon").unwrap().deaths, 1);
+}
+
 #[test]
 fn deaths_carry_positions_until_the_cutoff() {
     let r = report_with(1);

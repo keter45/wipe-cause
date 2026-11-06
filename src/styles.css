@@ -3517,10 +3517,23 @@ td.warn {
 .progression-card.bad > span:first-child {
   color: var(--wipe);
 }
+.prog-awards-group + .prog-awards-group {
+  margin-top: 14px;
+}
+.prog-awards-heading {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+/* auto-fit: os cartões esticam para fechar a linha, sem buraco no fim */
 .prog-awards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 10px;
+  margin: 8px 0;
+}
+.prog-award.wide {
   margin: 8px 0;
 }
 .prog-award {
@@ -3531,18 +3544,129 @@ td.warn {
   border-radius: var(--radius-sm);
   background: var(--panel-2);
 }
+/* título do prêmio: verde nos melhores, vermelho nos piores */
 .prog-award-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
 }
 .prog-award.good .prog-award-label {
   color: var(--kill);
 }
 .prog-award.bad .prog-award-label {
   color: var(--wipe);
+}
+/* barra fina do cartão pequeno: valor / maior valor entre todos os candidatos da categoria */
+.prog-award-bar {
+  display: block;
+  height: 4px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.prog-award-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+}
+.prog-award.good .prog-award-bar i {
+  background: var(--kill);
+}
+.prog-award.bad .prog-award-bar i {
+  background: var(--wipe);
+}
+/* tabela larga "Quem mais / menos morre" */
+.death-table {
+  display: flex;
+  flex-direction: column;
+  margin: 4px 0;
+}
+.death-row + .death-row {
+  border-top: 1px solid var(--border);
+}
+.death-row {
+  display: grid;
+  grid-template-columns: 26px minmax(90px, 160px) minmax(80px, 1fr) 48px 96px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.death-table.extra .death-row {
+  grid-template-columns: 26px minmax(90px, 160px) minmax(80px, 1fr) 48px 96px 72px 110px;
+}
+.death-head {
+  align-items: end;
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--muted);
+}
+.death-head span:nth-child(n + 5) {
+  text-align: right;
+}
+.death-col {
+  text-align: right;
+}
+.death-row > strong {
+  text-align: right;
+}
+.death-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.death-bar {
+  min-width: 0;
+}
+.death-track {
+  position: relative;
+  display: block;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.death-track i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+.death-total {
+  opacity: 0.4;
+}
+.prog-award.good .death-total,
+.prog-award.good .death-swatch.total,
+.prog-award.good .death-free,
+.prog-award.good .death-swatch.free {
+  background: var(--kill);
+}
+.prog-award.bad .death-total,
+.prog-award.bad .death-swatch.total,
+.prog-award.bad .death-free,
+.prog-award.bad .death-swatch.free {
+  background: var(--wipe);
+}
+.death-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+.death-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.death-swatch.total {
+  opacity: 0.4;
+}
+.death-swatch + .death-swatch,
+.death-legend .death-swatch.total {
+  margin-left: 8px;
 }
 .prog-award-top {
   list-style: none;
@@ -3603,6 +3727,15 @@ td.warn {
 .trend-players td {
   white-space: nowrap;
 }
+/* "Mais morre para": o nome comprido encurta com reticências (o nome inteiro está no title) para a coluna Erros caber */
+.trend-dies {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 190px;
+  min-width: 0;
+  vertical-align: middle;
+}
 .trend-avg {
   display: inline-flex;
   align-items: baseline;
@@ -3630,6 +3763,39 @@ td.warn {
   align-items: center;
   gap: 3px;
   color: var(--muted);
+}
+/* cabeçalho ordenável: o botão herda o texto do th */
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.sort-btn:hover,
+.sort-btn.on {
+  color: var(--text);
+}
+/* coluna inativa: seta apagada ao passar o mouse ou focar, para mostrar que ordena */
+.sort-btn .sort-hint {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.sort-btn:hover .sort-hint,
+.sort-btn:focus-visible .sort-hint {
+  opacity: 0.4;
+}
+.sort-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.trend-few {
+  margin-top: 8px;
 }
 .trend-legend {
   display: flex;
@@ -8807,4 +8973,191 @@ button.kpi:hover {
   gap: 4px;
   align-items: center;
   font-size: 12px;
+}
+
+/* Gravidade das mortes: DPS (card da Evolução e do resumo da noite) */
+.sev-card {
+  --sev-full: #c42ad9;
+  --sev-partial: #f77b3f;
+  --sev-used: #3d3641;
+}
+.sev-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+/* o texto encolhe e quebra; o botão de recolher fica ao lado do título */
+.sev-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.sev-head h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+}
+.sev-head p {
+  margin: 0;
+}
+.sev-legend {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+}
+.sev-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sev-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.sev-card .sev-full {
+  background: var(--sev-full);
+}
+.sev-card .sev-partial {
+  background: var(--sev-partial);
+}
+.sev-card .sev-used {
+  background: var(--sev-used);
+}
+.sev-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.sev-table th {
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 8px 6px;
+}
+.sev-table td {
+  padding: 8px 6px;
+  border-top: 1px solid var(--border);
+  vertical-align: middle;
+}
+.sev-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.sev-rank {
+  font-size: 12px;
+  color: var(--muted);
+  width: 1%;
+}
+.sev-player {
+  font-weight: 700;
+  white-space: nowrap;
+}
+/* a coluna das barras cede espaço: as outras ficam do tamanho do conteúdo e os ícones sempre cabem */
+.sev-table .sev-how {
+  width: 100%;
+}
+/* o título da barra quebra linha para a coluna poder encolher até a barra mínima */
+.sev-table th.sev-how {
+  white-space: normal;
+  min-width: 120px;
+}
+.sev-table .num {
+  white-space: nowrap;
+}
+.sev-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  min-width: 120px;
+  width: 100%;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.sev-bar > span {
+  flex-basis: 0;
+  min-width: 2px;
+}
+.sev-pct {
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+.sev-dim {
+  opacity: 0.5;
+}
+.sev-slots {
+  display: grid;
+  grid-template-columns: repeat(3, 62px);
+  gap: 6px;
+}
+.sev-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+}
+.sev-ico {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: inline-flex;
+  flex: none;
+}
+.sev-ico-empty {
+  border: 1px dashed var(--border);
+}
+.sev-slot-n {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.sev-slot-hot .sev-ico {
+  outline: 1.5px solid var(--sev-full);
+}
+.sev-slot-hot .sev-slot-n {
+  color: #fff;
+  font-weight: 700;
+}
+.sev-slot-cold .sev-ico {
+  opacity: 0.45;
+  filter: saturate(0.4);
+}
+.sev-slot-cold .sev-slot-n {
+  color: var(--muted);
+}
+
+/* Card de mortes que viraram wipe na Evolução */
+.pd-table {
+  table-layout: auto;
+}
+.pd-player {
+  white-space: nowrap;
+}
+.pd-player .muted {
+  display: block;
+}
+.pd-cause {
+  min-width: 0;
+}
+.pd-cause .spell-name {
+  display: inline-flex;
+  max-width: 150px;
+  vertical-align: middle;
+}
+.pd-every {
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.pd-every .sev-pct {
+  display: block;
+  font-size: 18px;
+}
+.pd-every .muted {
+  display: block;
 }
