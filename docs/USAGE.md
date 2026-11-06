@@ -67,7 +67,7 @@ In the **boss summary**: the best pull, the top cause of the wipes, progress pul
 
 ### Group metrics
 
-Pick the mechanics that matter to the group under **Add metric** (the ones that failed most come first). Each one becomes a card with the failures pull by pull — click a bar to open the pull —, who failed and who helped. You can reorder and remove them; the choice is saved for that boss. The night summary (on Discord and through *Share*) also shows these metrics for each boss, with who failed most; on Discord, the full cards arrive right after, in a separate message.
+Pick the mechanics that matter to the group under **Add metric** (the ones that failed most come first). Each one becomes a card with the failures pull by pull — click a bar to open the pull —, who failed and who helped. On hit metrics (avoidable damage, tank range and positioning), the card also shows the **damage taken**: in total, per player and per pull. You can reorder and remove them; the choice is saved for that boss. The night summary (on Discord and through *Share*) also shows these metrics for each boss, with who failed most and the damage taken; on Discord, the full cards arrive right after, in a separate message.
 
 ![Group metrics: Stir the Depths, Visceral Burst and Eternal Venom cards with the failures per pull, who failed and who helped](screenshots/en/metrics.webp)
 
@@ -222,7 +222,7 @@ In the Entombed Sentinels intermission, the app rebuilds everyone's Helical Toxi
 
 ### 📈 Progress
 
-In the sidebar, **Progress** compares every saved night of a boss: best pull per night, the % of wipes where each mechanic was the trigger (to see whether the mistake is going down) and, per player, deaths per pull, score and parse each night, what kills them most and how many of those deaths had a defensive left. It only uses the guild raid (pugs can be included). It also shows **who is improving and who is getting worse** (start vs end of the nights each one played) and, for the **progression** (the wipes before the first kill), the best and worst score on the wipes and the best and worst parse on the kill.
+In the sidebar, **Progress** compares every saved night of a boss: best pull per night, the % of wipes where each mechanic was the trigger (to see whether the mistake is going down) and, per player, deaths per pull, score and parse each night, what kills them most and how many of those deaths had a defensive left. The **Group metrics** panel uses the same per-boss choice saved from the summary: each metric becomes a card with one column per night and, on hit metrics (avoidable damage, tank range and positioning), the damage taken, and players are summed across the nights, with how many nights they repeated. It only uses the guild raid (pugs can be included). It also shows **who is improving and who is getting worse** (start vs end of the nights each one played) and, for the **progression** (the wipes before the first kill), the best and worst score on the wipes and the best and worst parse on the kill.
 
 ### 🌐 Warcraft Logs
 

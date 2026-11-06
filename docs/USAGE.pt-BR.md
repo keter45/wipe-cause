@@ -67,7 +67,7 @@ No **resumo do boss**: o melhor pull, a maior causa dos wipes, o progresso pull 
 
 ### Métricas do grupo
 
-Escolha as mecânicas que importam para o grupo em **Adicionar métrica** (as que mais falharam vêm primeiro). Cada uma vira um cartão com as falhas pull a pull — clique numa barra para abrir o pull —, quem errou e quem ajudou. Dá para reordenar e tirar; a escolha fica salva para aquele boss. O resumo da noite (no Discord e no *Compartilhar*) também mostra essas métricas de cada boss, com quem mais errou; no Discord, os cartões completos chegam logo depois, numa mensagem à parte.
+Escolha as mecânicas que importam para o grupo em **Adicionar métrica** (as que mais falharam vêm primeiro). Cada uma vira um cartão com as falhas pull a pull — clique numa barra para abrir o pull —, quem errou e quem ajudou. Nas métricas de hit (dano evitável, alcance do tank e posicionamento), o cartão mostra também o **dano tomado**: no total, por player e em cada pull. Dá para reordenar e tirar; a escolha fica salva para aquele boss. O resumo da noite (no Discord e no *Compartilhar*) também mostra essas métricas de cada boss, com quem mais errou e o dano tomado; no Discord, os cartões completos chegam logo depois, numa mensagem à parte.
 
 ![Métricas do grupo: cartões de Stir the Depths, Visceral Burst e Eternal Venom com as falhas por pull, quem errou e quem ajudou](screenshots/pt/metrics.webp)
 
@@ -222,7 +222,7 @@ Na intermissão do Entombed Sentinels, o app reconstrói os stacks de Helical To
 
 ### 📈 Evolução
 
-Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull, nota e parse em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando. Usa só a raid da guilda (dá para incluir os pugs). Mostra também **quem está melhorando e quem está piorando** (começo x fim das noites em que cada um jogou) e, na **progressão** (os wipes antes da primeira kill), a melhor e a pior nota nos wipes e o melhor e o pior parse na kill.
+Na barra lateral, **Evolução** compara todas as noites salvas de um boss: melhor pull por noite, a % dos wipes em que cada mecânica foi o gatilho (dá para ver se o erro está diminuindo) e, por player, mortes por pull, nota e parse em cada noite, o que mais o mata e quantas dessas mortes tinham defensivo sobrando. O painel **Métricas do grupo** usa a mesma escolha salva por boss do resumo: cada métrica vira um cartão com uma coluna por noite e o dano tomado quando é uma métrica de hit (dano evitável, alcance do tank e posicionamento), e os players são somados nas noites, com em quantas noites repetiram. Usa só a raid da guilda (dá para incluir os pugs). Mostra também **quem está melhorando e quem está piorando** (começo x fim das noites em que cada um jogou) e, na **progressão** (os wipes antes da primeira kill), a melhor e a pior nota nos wipes e o melhor e o pior parse na kill.
 
 ### 🌐 Warcraft Logs
 
