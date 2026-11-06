@@ -25,6 +25,7 @@ import { messagesOf, useMessages } from '../i18n';
 import { nightMsg } from './NightSummary.i18n';
 import { Hint } from './ui/Hint';
 import { HealNotePanel } from './HealNotePanel';
+import { DeathSeverityCard } from './DeathSeverityCard';
 import { CollapseButton, CollapsiblePanel, useCollapsed } from './CollapsiblePanel';
 
 interface Props {
@@ -113,6 +114,8 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
         <Timeline s={s} onSelect={onSelectPull} />
         <GapList s={s} />
       </CollapsiblePanel>
+
+      <DeathSeverityCard pulls={pulls} mode="night" />
     </div>
   );
 }

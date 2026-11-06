@@ -28,6 +28,13 @@ const SATED: &[u32] = &[57724, 57723, 80354, 264689, 390435];
 const POWER_INFUSION: u32 = 10060;
 /// Reincarnation do xamã: ele volta sozinho, sem SPELL_RESURRECT no log (só este cast, já morto).
 const REINCARNATION: u32 = 21169;
+/// Spirit of Redemption da priest: o golpe que a mataria vira forma de espírito. A morte é aqui; o
+/// UNIT_DIED só sai quando o espírito acaba e, com Restitution, nem sai (ela volta viva).
+const SPIRIT_OF_REDEMPTION: u32 = 27827;
+/// Restitution: o talento que traz a priest de volta no fim do Spirit of Redemption.
+const RESTITUTION: u32 = 211319;
+/// UNIT_DIED até esse tempo depois do fim do espírito é a mesma morte (sem Restitution).
+const REDEMPTION_GRACE_MS: i64 = 1_500;
 /// Falhas do raid que podem fazer o grupo desistir (gatilho da call de wipe): as coletivas.
 const WIPE_CALL_FAILURE_KINDS: [&str; 6] = ["interrupt", "soak", "tank_soak", "enrage", "failure_event", "hp_balance"];
 /// Abaixo disso de vida o player "precisa de cura": o tempo parado do healer só conta com alguém assim.
@@ -168,6 +175,10 @@ struct PlayerAcc {
     recap: VecDeque<RecapEntry>,
     last_hp_pct: Option<f32>,
     feigning: bool,
+    /// em Spirit of Redemption (já contou como morte; os casts do espírito não são "voltou")
+    redeemed: bool,
+    /// fim do último Spirit of Redemption, até ela castar de novo (Restitution) ou o UNIT_DIED chegar
+    redeemed_end: Option<i64>,
     max_hp: Option<i64>,
     /// (ms do pull, HP%) dos últimos 60s
     hp_hist: VecDeque<(i64, f32)>,
@@ -1580,6 +1591,13 @@ impl PullBuilder {
         let spell_name = f.get(10).unwrap_or(&"").to_string();
         let rel = self.rel(t);
         if Self::is_group_player(src_guid, src_flags) {
+            // castou depois do Spirit of Redemption: o Restitution a trouxe de volta
+            if let Some(end) = self.players.get_mut(src_guid).and_then(|p| p.redeemed_end.take()) {
+                self.rezzes.push((end, src_guid.to_string()));
+                if let Some(fc) = self.fight.as_mut() {
+                    fc.event(end, fight::EV_RESURRECT, src_guid, RESTITUTION, "Restitution", 0, "");
+                }
+            }
             // morto não casta: o Reincarnation é o player voltando
             if spell_id == REINCARNATION {
                 self.rezzes.push((rel, src_guid.to_string()));
@@ -1669,7 +1687,8 @@ impl PullBuilder {
         let defensive = data.defensives.get(&spell_id).filter(|d| d.kind == "personal").map(|d| d.name.clone());
         let cut = self.cutoff_t;
         let p = self.player(src_guid, src_name);
-        if let Some(d) = p.dead_since.take() {
+        // o espírito da priest cura, mas ela segue morta até o fim dele
+        if let Some(d) = (!p.redeemed).then(|| p.dead_since.take()).flatten() {
             // voltou (battle rez): o tempo morto conta só até o corte
             p.dead_ms += (cut.map_or(rel, |c| rel.min(c)) - d).max(0);
         }
@@ -1742,6 +1761,30 @@ impl PullBuilder {
             self.player(dst_guid, dst_name).feigning = applied;
             return;
         }
+        if spell_id == SPIRIT_OF_REDEMPTION {
+            let rel = self.rel(t);
+            if applied {
+                // o golpe que mataria a priest: a morte conta aqui, não no fim do espírito
+                if !self.players.get(dst_guid).is_some_and(|p| p.redeemed) {
+                    if self.counting() {
+                        if let Some(r) = self.rules.as_mut() {
+                            r.on_unit_died(dst_guid, rel);
+                        }
+                    }
+                    self.player_died(dst_guid, dst_name, rel);
+                }
+                let p = self.player(dst_guid, dst_name);
+                p.redeemed = true;
+                p.redeemed_end = None;
+            } else {
+                let p = self.player(dst_guid, dst_name);
+                if p.redeemed {
+                    p.redeemed = false;
+                    p.redeemed_end = Some(rel);
+                }
+            }
+            return;
+        }
         if !applied {
             return;
         }
@@ -1782,6 +1825,19 @@ impl PullBuilder {
 
     fn unit_died(&mut self, f: &[&str], t: i64) {
         let (dst_guid, dst_name, dst_flags) = (f[5], f[6], hex(f[7]));
+        // Spirit of Redemption: a morte já contou quando o espírito começou; o UNIT_DIED do fim
+        // dele (sem Restitution) é a mesma morte
+        let now = self.rel(t);
+        if self.players.get_mut(dst_guid).is_some_and(|p| {
+            let same = p.redeemed || p.redeemed_end.is_some_and(|e| now - e <= REDEMPTION_GRACE_MS);
+            if same {
+                p.redeemed = false;
+                p.redeemed_end = None;
+            }
+            same
+        }) {
+            return;
+        }
         if self.counting() {
             let rel = self.rel(t);
             if let Some(r) = self.rules.as_mut() {
@@ -1810,8 +1866,16 @@ impl PullBuilder {
         if f.get(9).is_some_and(|v| v.trim() == "1") || self.players.get(dst_guid).is_some_and(|p| p.feigning) {
             return;
         }
+        // morreu de novo depois de voltar sem castar nada: o Restitution já tinha valido
+        if let Some(end) = self.players.get_mut(dst_guid).and_then(|p| p.redeemed_end.take()) {
+            self.rezzes.push((end, dst_guid.to_string()));
+        }
+        self.player_died(dst_guid, dst_name, self.rel(t));
+    }
+
+    /// Morte de um player do grupo (UNIT_DIED ou o começo do Spirit of Redemption).
+    fn player_died(&mut self, dst_guid: &str, dst_name: &str, rel: i64) {
         self.injured.remove(dst_guid);
-        let rel = self.rel(t);
         if let Some(fc) = self.fight.as_mut() {
             fc.died(dst_guid, rel);
         }

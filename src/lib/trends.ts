@@ -10,11 +10,13 @@ import { raidOnly } from './content';
 import { mechanicSpellId } from './spells';
 import { scorePull } from './score';
 import { mistakes, PERSONAL_BLAME } from './blame';
-import { cascadeThreshold, decisiveDeaths } from './verdict';
 import { DAMAGE_KINDS, unusedAtDeath } from './bossMetrics';
 import { difficultyRank, raidOrder } from './raids';
 import { deathKey, massDeathKeys } from './massDeaths';
 import { coreRoster, isGuildGroup } from './roster';
+import { bestPulls, countedEarlyDeaths, DECISIVE_MS, MIN_BEST_PLAYED } from './progDeaths';
+import { wipeCause } from './verdict';
+import { phaseCountOf } from './phases';
 
 export interface NightInput {
   id: string;
@@ -107,9 +109,8 @@ export interface Progression {
   worstPerf: ProgressionPlayer | null;
 }
 
-/** Critérios dos destaques da progressão: nota, dano evitável tomado, mortes e wipes causados. */
-export type ProgAwardKey = 'bestScore' | 'leastDamage' | 'fewestDeaths' | 'bestPotUse' | 'mostDamage' | 'wipeCauser' | 'mostDeaths' | 'mostFreeDeaths'
-  | 'fewestMechErrors' | 'mostMechErrors' | 'mostTimeAlive' | 'firstToDie' | 'mostImproved' | 'mostWorsened' | 'bestKillParse';
+/** Critérios dos destaques de cartão pequeno (mortes têm a tabela própria, `deathTable`). */
+export type ProgAwardKey = 'bestScore' | 'leastDamage' | 'mostDamage' | 'fewestMechErrors' | 'mostMechErrors' | 'mostTimeAlive' | 'mostImproved' | 'mostWorsened' | 'bestKillParse' | 'mostWipesCaused';
 
 export interface ProgAwardWinner {
   guid: string;
@@ -119,20 +120,49 @@ export interface ProgAwardWinner {
   value: number;
   /** pulls da prog em que jogou */
   pulls: number;
-  /** wipeCauser: wipes em que teve ao menos uma morte decisiva */
-  wipes?: number;
-  /** firstToDie: quantas vezes foi a primeira morte da prog */
-  count?: number;
+  /** maior valor (em módulo) entre todos os candidatos da categoria: a barra do cartão é value/scale */
+  scale: number;
   /** mostImproved / mostWorsened: nota no começo e no fim da prog */
   from?: number;
   to?: number;
+  /** mostWipesCaused: wipes causados por morte decisiva, por mecânica e por tank (um pull pode contar em mais de um) */
+  byDeath?: number;
+  byMechanic?: number;
+  byTank?: number;
 }
 
 /** Top 3 de cada categoria, do 1º ao 3º (categoria sem ninguém não aparece). */
 export type ProgAwards = Partial<Record<ProgAwardKey, ProgAwardWinner[]>>;
 
+/** Uma linha da tabela de mortes: tudo por pull. */
+export interface DeathRow {
+  guid: string;
+  name: string;
+  class: string | null;
+  /** pulls da prog em que jogou */
+  pulls: number;
+  /** mortes por pull (sem call de wipe nem wipe geral) */
+  deaths: number;
+  /** parte das mortes em que ainda havia pot/defensivo/healthstone livre, por pull */
+  free: number;
+  /** vezes como primeira morte do pull, por pull */
+  first: number;
+  /** mortes por pull nos melhores pulls (20% de cada noite); null com menos de MIN_BEST_PLAYED jogados */
+  bestRate: number | null;
+}
+
+export interface DeathTable {
+  /** quem mais morre (só com mortes) e quem menos morre, do 1º ao 5º; sem repetir player entre os dois */
+  most: DeathRow[];
+  least: DeathRow[];
+  /** maior taxa de mortes por pull entre todos os candidatos: a barra é deaths/scale */
+  scale: number;
+}
+
 /** Quantos players cada destaque mostra. */
 export const PROG_AWARD_TOP = 3;
+/** Quantos players a tabela de mortes mostra de cada lado. */
+export const DEATH_TABLE_TOP = 5;
 
 export interface Trends {
   nights: TrendNight[];
@@ -144,6 +174,7 @@ export interface Trends {
   progression: Progression | null;
   /** melhores e piores da progressão (pulls antes da kill) */
   progAwards: ProgAwards;
+  deathTable: DeathTable;
   insights: string[];
 }
 
@@ -243,12 +274,8 @@ type ProgAcc = {
   scoreSum: number;
   damage: number;
   deaths: number;
-  decisive: number;
-  decisivePulls: number;
   /** mortes com pot/defensivo/healthstone livre */
   freeDeaths: number;
-  /** poções de vida + healthstones usadas na prog */
-  potUse: number;
   /** o player era tank em algum pull da prog (fica fora do dano tomado) */
   tank: boolean;
   /** erros de mecânica pessoais nos pulls da prog */
@@ -259,7 +286,52 @@ type ProgAcc = {
   firstDeaths: number;
   /** nota em cada pull da prog, em ordem */
   scores: number[];
+  /** melhores pulls (20% de cada noite) jogados e mortes contadas neles; mortes contadas em todos os pulls */
+  bestPlayed: number;
+  bestDeaths: number;
+  countedDeaths: number;
+  /** pulls da prog (wipes) que o player causou, e por qual caminho */
+  wipesCaused: number;
+  wipeByDeath: number;
+  wipeByMechanic: number;
+  wipeByTank: number;
 };
+
+interface WipeCulprit {
+  death: boolean;
+  mechanic: boolean;
+  tank: boolean;
+}
+
+/** Quem causou o wipe deste pull (cada player uma vez): morte decisiva, falha na mecânica que puxou, tank da call. */
+function wipeCulprits(p: Pull): Map<string, WipeCulprit> {
+  const out = new Map<string, WipeCulprit>();
+  const mark = (guid: string, how: keyof WipeCulprit) => {
+    const c = out.get(guid) ?? { death: false, mechanic: false, tank: false };
+    c[how] = true;
+    out.set(guid, c);
+  };
+  if (p.success) return out;
+  for (const d of countedEarlyDeaths(p)) {
+    if (p.durationMs - d.t <= DECISIVE_MS) mark(d.guid, 'death');
+  }
+  // a mecânica que puxou o wipe: só as de culpa pessoal (ou falha de evento) apontam jogadores
+  const blame = (m: Pull['mechanics'][number] | undefined) => {
+    if (!m || !(PERSONAL_BLAME.has(m.kind) || m.kind === 'failure_event')) return;
+    for (const x of m.players) if (!x.credit) mark(x.guid, 'mechanic');
+  };
+  const cause = wipeCause(p);
+  if (cause) blame(p.mechanics.find((m) => m.key === cause.key));
+  const wt = p.wipeCall?.trigger;
+  if (wt?.kind === 'mechanic') {
+    blame(p.mechanics.find((m) => (wt.spellId != null && m.spellId === wt.spellId) || (!!wt.spell && m.name === wt.spell) || (!!wt.name && m.name === wt.name)));
+  }
+  if (wt?.kind === 'tank' && wt.name) {
+    const tank = p.players.find((x) => x.name === wt.name || shortName(x.name) === shortName(wt.name!));
+    if (tank) mark(tank.guid, 'tank');
+  }
+  return out;
+}
 
 const perPull = (n: number, pulls: number) => (pulls ? n / pulls : 0);
 
@@ -269,32 +341,44 @@ const perPull = (n: number, pulls: number) => (pulls ? n / pulls : 0);
  * fica com quem jogou mais pulls. Um player não aparece como melhor e pior do mesmo critério.
  */
 export function progAwards(nights: TrendNight[]): ProgAwards {
+  return progBoard(nights).awards;
+}
+
+/** Tabela "quem mais / menos morre" da progressão (mesmos candidatos e regras dos destaques). */
+export function progDeathTable(nights: TrendNight[]): DeathTable {
+  return progBoard(nights).deathTable;
+}
+
+const EMPTY_DEATH_TABLE: DeathTable = { most: [], least: [], scale: 0 };
+
+function progBoard(nights: TrendNight[]): { awards: ProgAwards; deathTable: DeathTable } {
   const { wipes, kill } = progPulls(nights);
-  if (!wipes.length) return {};
+  if (!wipes.length) return { awards: {}, deathTable: EMPTY_DEATH_TABLE };
   const minPulls = Math.max(1, Math.ceil(wipes.length * PROG_AWARD_SHARE));
   const acc = new Map<string, ProgAcc>();
   let damageTracked = false;
   let errorsTracked = false;
+  // melhores pulls: os 20% que chegaram mais longe em cada noite, entre os pulls da prog
+  const phases = phaseCountOf(wipes);
+  const bestSet = new Set<Pull>();
+  const inProg = new Set(wipes);
+  for (const n of nights) {
+    for (const p of bestPulls(n.summary.pulls.filter((x) => inProg.has(x)), phases)) bestSet.add(p);
+  }
   for (const p of wipes) {
     const scores = scorePull(p);
     const roleOf = new Map(p.players.map((x) => [x.guid, x.role]));
     const mass = massDeathKeys(p.deaths);
     const sorted = [...p.deaths].filter((d) => !d.ignored).sort((a, b) => a.t - b.t);
-    const decisive = new Set(
-      (p.cutoffT != null ? sorted : decisiveDeaths(sorted, cascadeThreshold(p)))
-        .filter((d) => !mass.has(deathKey(d)))
-        .map(deathKey),
-    );
     for (const pl of p.players) {
-      const a = acc.get(pl.guid) ?? { guid: pl.guid, name: pl.name, class: pl.class, pulls: 0, scoreSum: 0, damage: 0, deaths: 0, decisive: 0, decisivePulls: 0, freeDeaths: 0, potUse: 0, tank: false, mechErrors: 0, aliveSum: 0, firstDeaths: 0, scores: [] };
+      const a = acc.get(pl.guid) ?? { guid: pl.guid, name: pl.name, class: pl.class, pulls: 0, scoreSum: 0, damage: 0, deaths: 0, freeDeaths: 0, tank: false, mechErrors: 0, aliveSum: 0, firstDeaths: 0, scores: [], bestPlayed: 0, bestDeaths: 0, countedDeaths: 0, wipesCaused: 0, wipeByDeath: 0, wipeByMechanic: 0, wipeByTank: 0 };
       a.name = pl.name;
-      a.class ??= pl.class;
+      a.class ||= pl.class;
       a.tank ||= pl.role === 'tank';
       a.pulls++;
       a.scoreSum += scores.get(pl.guid)?.score ?? 0;
       const sc = scores.get(pl.guid);
       if (sc) a.scores.push(sc.score);
-      a.potUse += (pl.healthPotions ?? 0) + (pl.healthstones ?? 0);
       acc.set(pl.guid, a);
     }
     for (const m of p.mechanics) {
@@ -334,84 +418,98 @@ export function progAwards(nights: TrendNight[]): ProgAwards {
       const a = acc.get(firstDeath.guid);
       if (a) a.firstDeaths++;
     }
-    const hitWipe = new Set<string>();
+    const isBest = bestSet.has(p);
+    if (isBest) for (const pl of p.players) {
+      const a = acc.get(pl.guid);
+      if (a) a.bestPlayed++;
+    }
+    // só as 3 primeiras mortes que contam (sem call de wipe nem wipe geral)
+    for (const d of countedEarlyDeaths(p)) {
+      const a = acc.get(d.guid);
+      if (!a) continue;
+      a.countedDeaths++;
+      if (isBest) a.bestDeaths++;
+    }
     for (const d of p.deaths) {
       if (d.ignored || mass.has(deathKey(d))) continue;
       const a = acc.get(d.guid);
       if (!a) continue;
       a.deaths++;
       if (unusedAtDeath(d).length) a.freeDeaths++;
-      if (decisive.has(deathKey(d))) {
-        a.decisive++;
-        hitWipe.add(d.guid);
-      }
     }
-    for (const guid of hitWipe) {
+    // quem causou o wipe: por morte decisiva, por falha na mecânica que puxou, ou o tank da call
+    const culprits = wipeCulprits(p);
+    for (const [guid, c] of culprits) {
       const a = acc.get(guid);
-      if (a) a.decisivePulls++;
+      if (!a) continue;
+      a.wipesCaused++;
+      if (c.death) a.wipeByDeath++;
+      if (c.mechanic) a.wipeByMechanic++;
+      if (c.tank) a.wipeByTank++;
     }
   }
 
   const cands = [...acc.values()].filter((a) => a.pulls >= minPulls);
-  if (!cands.length) return {};
-  const rank = (pool: ProgAcc[], metric: (a: ProgAcc) => number, dir: 'asc' | 'desc', exclude = new Set<string>(), tie?: (a: ProgAcc, b: ProgAcc) => number) =>
+  if (!cands.length) return { awards: {}, deathTable: EMPTY_DEATH_TABLE };
+  const rank = (pool: ProgAcc[], metric: (a: ProgAcc) => number, dir: 'asc' | 'desc', exclude = new Set<string>()) =>
     pool
       .filter((a) => !exclude.has(a.guid))
-      .sort((a, b) => (dir === 'asc' ? metric(a) - metric(b) : metric(b) - metric(a)) || (tie ? tie(a, b) : 0) || b.pulls - a.pulls || a.name.localeCompare(b.name));
-  const winner = (a: ProgAcc, value: number, wipesCaused?: number, extra: Partial<ProgAwardWinner> = {}): ProgAwardWinner => ({
+      .sort((a, b) => (dir === 'asc' ? metric(a) - metric(b) : metric(b) - metric(a)) || b.pulls - a.pulls || a.name.localeCompare(b.name));
+  const winner = (a: ProgAcc, value: number, scale: number, extra: Partial<ProgAwardWinner> = {}): ProgAwardWinner => ({
     guid: a.guid,
     name: a.name,
     class: a.class,
     value,
     pulls: a.pulls,
-    ...(wipesCaused != null ? { wipes: wipesCaused } : {}),
+    scale,
     ...extra,
   });
   const out: ProgAwards = {};
 
-  const top = (list: ProgAcc[], value: (a: ProgAcc) => number, wipesOf?: (a: ProgAcc) => number): ProgAwardWinner[] =>
-    list.slice(0, PROG_AWARD_TOP).map((a) => winner(a, value(a), wipesOf?.(a)));
   /** Os melhores (menor valor ou maior nota) e os piores sem repetir quem já está no top do lado oposto; valor 0 não entra no negativo. */
   const pair = (
     goodKey: ProgAwardKey | null,
     badKey: ProgAwardKey | null,
     metric: (a: ProgAcc) => number,
     goodDir: 'asc' | 'desc',
-    tie?: (a: ProgAcc, b: ProgAcc) => number,
     eligible: (a: ProgAcc) => boolean = () => true,
+    fixedScale?: number,
   ) => {
     const pool = cands.filter(eligible);
-    const good = rank(pool, metric, goodDir, new Set(), tie).slice(0, PROG_AWARD_TOP);
-    if (goodKey && good.length) out[goodKey] = top(good, metric);
+    const scale = fixedScale ?? Math.max(0, ...pool.map(metric));
+    const top = (list: ProgAcc[]) => list.slice(0, PROG_AWARD_TOP).map((a) => winner(a, metric(a), scale));
+    const good = rank(pool, metric, goodDir).slice(0, PROG_AWARD_TOP);
+    if (goodKey && good.length) out[goodKey] = top(good);
     if (badKey) {
       const taken = new Set(good.map((a) => a.guid));
       const bad = rank(pool, metric, goodDir === 'asc' ? 'desc' : 'asc', taken).filter((a) => metric(a) > 0);
-      if (bad.length) out[badKey] = top(bad, metric);
+      if (bad.length) out[badKey] = top(bad);
     }
   };
 
-  pair('bestScore', null, (a) => perPull(a.scoreSum, a.pulls), 'desc');
+  pair('bestScore', null, (a) => perPull(a.scoreSum, a.pulls), 'desc', undefined, 100);
   // dano tomado: tanks ficam de fora; healers concorrem com os DPS
-  if (damageTracked) pair('leastDamage', 'mostDamage', (a) => perPull(a.damage, a.pulls), 'asc', undefined, (a) => !a.tank);
-  pair('fewestDeaths', 'mostDeaths', (a) => perPull(a.deaths, a.pulls), 'asc');
-  // menor taxa de mortes com algo livre; empate por mais pot/healthstone por pull
-  const potRate = (a: ProgAcc) => perPull(a.potUse, a.pulls);
-  pair('bestPotUse', 'mostFreeDeaths', (a) => perPull(a.freeDeaths, a.pulls), 'asc', (a, b) => potRate(b) - potRate(a));
-
+  if (damageTracked) pair('leastDamage', 'mostDamage', (a) => perPull(a.damage, a.pulls), 'asc', (a) => !a.tank);
   if (errorsTracked) pair('fewestMechErrors', 'mostMechErrors', (a) => perPull(a.mechErrors, a.pulls), 'asc');
-  pair('mostTimeAlive', null, (a) => perPull(a.aliveSum, a.pulls), 'desc');
-  // primeiro a morrer: só o lado ruim
-  const firstTop = rank(cands, (a) => perPull(a.firstDeaths, a.pulls), 'desc').filter((a) => a.firstDeaths > 0);
-  if (firstTop.length) out.firstToDie = firstTop.slice(0, PROG_AWARD_TOP).map((a) => winner(a, perPull(a.firstDeaths, a.pulls), undefined, { count: a.firstDeaths }));
+  pair('mostTimeAlive', null, (a) => perPull(a.aliveSum, a.pulls), 'desc', undefined, 1);
+
+  // quem mais causou wipes, de qualquer forma (morte decisiva, mecânica que puxou, tank da call)
+  const wipeValue = (a: ProgAcc) => perPull(a.wipesCaused, a.pulls);
+  const wipeScale = Math.max(0, ...cands.map(wipeValue));
+  const wipeTop = rank(cands.filter((a) => a.wipesCaused > 0), wipeValue, 'desc').slice(0, PROG_AWARD_TOP);
+  if (wipeTop.length) {
+    out.mostWipesCaused = wipeTop.map((a) => winner(a, wipeValue(a), wipeScale, { byDeath: a.wipeByDeath, byMechanic: a.wipeByMechanic, byTank: a.wipeByTank }));
+  }
 
   // começo x fim da prog: metades das notas pull a pull; só entra quem tem nota nas duas metades
   const moves = cands.flatMap((a) => {
     const h = halves(a.scores);
     return h ? [{ a, from: Math.round(h[0]), to: Math.round(h[1]) }] : [];
   });
+  const moveScale = Math.max(0, ...moves.map((x) => Math.abs(x.to - x.from)));
   const moveOut = (key: 'mostImproved' | 'mostWorsened', list: typeof moves) => {
     const ranked = list.sort((x, y) => (key === 'mostImproved' ? y.to - y.from - (x.to - x.from) : x.to - x.from - (y.to - y.from)) || y.a.pulls - x.a.pulls || x.a.name.localeCompare(y.a.name));
-    if (ranked.length) out[key] = ranked.slice(0, PROG_AWARD_TOP).map((x) => winner(x.a, x.to - x.from, undefined, { from: x.from, to: x.to }));
+    if (ranked.length) out[key] = ranked.slice(0, PROG_AWARD_TOP).map((x) => winner(x.a, x.to - x.from, moveScale, { from: x.from, to: x.to }));
   };
   moveOut('mostImproved', moves.filter((x) => x.to - x.from >= MOVE_MIN_SCORE));
   moveOut('mostWorsened', moves.filter((x) => x.to - x.from <= -MOVE_MIN_SCORE));
@@ -425,13 +523,45 @@ export function progAwards(nights: TrendNight[]): ProgAwards {
       return perf != null ? [{ a, perf }] : [];
     });
     parsed.sort((x, y) => y.perf - x.perf || y.a.pulls - x.a.pulls || x.a.name.localeCompare(y.a.name));
-    if (parsed.length) out.bestKillParse = parsed.slice(0, PROG_AWARD_TOP).map((x) => winner(x.a, x.perf));
+    if (parsed.length) out.bestKillParse = parsed.slice(0, PROG_AWARD_TOP).map((x) => winner(x.a, x.perf, 100));
   }
 
-  const causers = rank(cands, (a) => perPull(a.decisive, a.pulls), 'desc').filter((a) => a.decisive > 0);
-  if (causers.length) out.wipeCauser = top(causers, (a) => perPull(a.decisive, a.pulls), (a) => a.decisivePulls);
+  // tabela de mortes: quem menos morre (5) e quem mais morre (5, sem repetir os de cima; só com mortes).
+  // Nos melhores pulls só há taxa com no mínimo MIN_BEST_PLAYED melhores pulls jogados.
+  const row = (a: ProgAcc): DeathRow => ({
+    guid: a.guid,
+    name: a.name,
+    class: a.class,
+    pulls: a.pulls,
+    deaths: perPull(a.deaths, a.pulls),
+    free: perPull(a.freeDeaths, a.pulls),
+    first: perPull(a.firstDeaths, a.pulls),
+    bestRate: a.bestPlayed >= MIN_BEST_PLAYED ? perPull(a.bestDeaths, a.bestPlayed) : null,
+  });
+  const deathRate = (a: ProgAcc) => perPull(a.deaths, a.pulls);
+  // raide pequena: o "menos" fica com a metade de cima (arredondada para cima) e o "mais" com o resto, sem repetir ninguém
+  const leastPool = rank([...cands], deathRate, 'asc').slice(0, Math.min(DEATH_TABLE_TOP, Math.ceil(cands.length / 2)));
+  const leastIds = new Set(leastPool.map((a) => a.guid));
+  const mostPool = rank([...cands], deathRate, 'desc', leastIds).filter((a) => a.deaths > 0).slice(0, DEATH_TABLE_TOP);
+  // todo mundo do "menos" sem nenhuma morte (2 ou mais) não separa ninguém: some, como nos outros destaques
+  const hideLeast = leastPool.length >= 2 && leastPool.every((a) => a.deaths === 0);
+  const deathTable: DeathTable = {
+    most: mostPool.map(row),
+    least: hideLeast ? [] : leastPool.map(row),
+    scale: Math.max(0, ...cands.map(deathRate)),
+  };
 
-  return out;
+  // categoria em que o top inteiro empata no valor perfeito (todo mundo 100% vivo, ninguém com morte
+  // ou erro) não separa ninguém: some. Empate em outro valor (três com 0,28) ainda diz algo e fica.
+  for (const key of Object.keys(out) as ProgAwardKey[]) {
+    if (key === 'mostImproved' || key === 'mostWorsened') continue; // mostram de → para, que difere
+    const list = out[key]!;
+    const shown = (v: number) => (key === 'mostTimeAlive' ? Math.round(v * 100) : Math.round(v * 100) / 100);
+    const perfect = key === 'mostTimeAlive' ? shown(list[0].value) >= 100 : shown(list[0].value) === 0;
+    if (list.length >= 2 && perfect && list.every((x) => shown(x.value) === shown(list[0].value))) delete out[key];
+  }
+
+  return { awards: out, deathTable };
 }
 
 /**
@@ -625,7 +755,7 @@ export function buildTrends(input: NightInput[], boss: string): Trends {
   // a média da nota manda na lista; mortes por pull desempatam
   players.sort((a, b) => b.avgScore - a.avgScore || b.avgDeathsPerPull - a.avgDeathsPerPull || a.name.localeCompare(b.name));
 
-  return { nights, causes, players, ...playerMoves(players), progression: progressionOf(nights), progAwards: progAwards(nights), insights: insights(nights, causes, players) };
+  return { nights, causes, players, ...playerMoves(players), progression: progressionOf(nights), progAwards: progAwards(nights), deathTable: progDeathTable(nights), insights: insights(nights, causes, players) };
 }
 
 function insights(nights: TrendNight[], causes: CauseRow[], players: PlayerTrend[]): string[] {
