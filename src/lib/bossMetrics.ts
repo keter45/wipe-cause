@@ -46,6 +46,10 @@ export interface MetricPlayer {
   damage?: number;
   /** mortes sem pot/defensivo: o que estava livre e não foi usado */
   items?: MetricItem[];
+  /** mortes sem pot/defensivo: mortes com pot ou healthstone livre */
+  potDeaths?: number;
+  /** mortes sem pot/defensivo: mortes com algum defensivo livre */
+  defensiveDeaths?: number;
 }
 
 export interface MetricNight {
@@ -81,7 +85,7 @@ const NO_DEFENSIVE_TIP: Loc = { pt: bossMetricsMsg.pt.noDefensiveTip, en: bossMe
 const itemKey = (i: MetricItem) => `${i.kind}:${i.spellId ?? i.name}`;
 
 /** O que cada morte deixou livre sem usar: defensivos, poção de vida e healthstone. */
-function unusedAtDeath(d: Death): MetricItem[] {
+export function unusedAtDeath(d: Death): MetricItem[] {
   const used = new Set(d.defensivesRecent.map((x) => x.spellId));
   const seen = new Set<number>();
   const out: MetricItem[] = [];
@@ -144,14 +148,26 @@ function noDefensiveNight(pulls: Pull[], key: string): MetricNight | null {
     collective: false, perPull: [], total: 0, pullsWithFailure: 0, players: [], helpers: [],
   };
   const by = new Map<string, { player: MetricPlayer; items: Map<string, MetricItem> }>();
+  const helped = new Map<string, MetricPlayer>();
   for (const pull of pulls) {
     const mass = massDeathKeys(pull.deaths);
     const seen = new Set<string>();
+    const helpedSeen = new Set<string>();
     let failures = 0;
     for (const d of pull.deaths) {
       if (d.ignored || mass.has(deathKey(d))) continue;
       const items = unusedAtDeath(d);
-      if (!items.length) continue;
+      if (!items.length) {
+        const h = helped.get(d.guid) ?? helped.set(d.guid, { guid: d.guid, name: d.name, class: null, count: 0, pulls: 0, max: 0 }).get(d.guid)!;
+        h.name = d.name;
+        h.class ??= d.class;
+        h.count++;
+        if (!helpedSeen.has(d.guid)) {
+          h.pulls++;
+          helpedSeen.add(d.guid);
+        }
+        continue;
+      }
       failures++;
       const e = by.get(d.guid) ?? by.set(d.guid, { player: { guid: d.guid, name: d.name, class: null, count: 0, pulls: 0, max: 0 }, items: new Map() }).get(d.guid)!;
       e.player.name = d.name;
@@ -162,6 +178,8 @@ function noDefensiveNight(pulls: Pull[], key: string): MetricNight | null {
         seen.add(d.guid);
       }
       e.player.max = Math.max(e.player.max, items.length);
+      if (items.some((i) => i.kind === 'potion' || i.kind === 'healthstone')) e.player.potDeaths = (e.player.potDeaths ?? 0) + 1;
+      if (items.some((i) => i.kind === 'defensive')) e.player.defensiveDeaths = (e.player.defensiveDeaths ?? 0) + 1;
       for (const item of items) {
         const k = itemKey(item);
         const cur = e.items.get(k);
@@ -176,6 +194,7 @@ function noDefensiveNight(pulls: Pull[], key: string): MetricNight | null {
   out.players = [...by.values()]
     .map(({ player, items }) => ({ ...player, items: [...items.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)) }))
     .sort((a, b) => b.count - a.count || b.pulls - a.pulls || a.name.localeCompare(b.name));
+  out.helpers = [...helped.values()].sort((a, b) => b.count - a.count || b.pulls - a.pulls || a.name.localeCompare(b.name));
   return out;
 }
 
@@ -316,6 +335,8 @@ export function metricTrend(nights: { label: string; pulls: Pull[] }[], key: str
       a.max = Math.max(a.max, p.max);
       a.nights++;
       if (p.damage != null) a.damage = (a.damage ?? 0) + p.damage;
+      if (p.potDeaths) a.potDeaths = (a.potDeaths ?? 0) + p.potDeaths;
+      if (p.defensiveDeaths) a.defensiveDeaths = (a.defensiveDeaths ?? 0) + p.defensiveDeaths;
       if (p.items) {
         const merged = new Map((a.items ?? []).map((i) => [itemKey(i), i]));
         for (const i of p.items) {

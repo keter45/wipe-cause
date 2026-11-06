@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Bot, Plus, RotateCw, ShieldOff, TrendingDown, TrendingUp, TriangleAlert, Trophy, X } from 'lucide-react';
 import { historyTrends, type HistoryEntry } from '../lib/api';
 import { classColor, num, pct, shortName } from '../lib/format';
-import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type ProgAwardKey, type ProgAwards, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
+import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type ProgAwardKey, type ProgAwards, type ProgAwardWinner, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
+import { bossKey } from '../lib/night';
 import { metricOptions, metricTrend, moveMetric, saveBossMetrics, savedBossMetrics, type MetricTrend, type MetricTrendPlayer } from '../lib/bossMetrics';
 import { AddMetric, UnusedItems } from './BossMetrics';
 import { bossMetricsMsg } from './BossMetrics.i18n';
@@ -13,7 +14,7 @@ import { Markdown } from './AskView';
 import { withErrorBoundary } from './ErrorBoundary';
 import { spellIndex } from '../lib/spells';
 import { BossName, PlayerName } from './Names';
-import { messagesOf, useMessages } from '../i18n';
+import { intlLocale, messagesOf, useMessages } from '../i18n';
 import { trendsViewMsg } from './TrendsView.i18n';
 import { Hint } from './ui/Hint';
 import { useNightPotentials } from '../lib/botRaid';
@@ -23,7 +24,7 @@ import { useNightPotentials } from '../lib/botRaid';
  * cada player. Usa todas as análises salvas no histórico.
  */
 interface TrendsViewProps {
-  /** noites salvas: o "Reanalisar todas" usa o logPath de cada uma */
+  /** noites salvas: o "Reanalisar as noites deste boss" usa o logPath de cada uma */
   history?: HistoryEntry[];
   /** roda o lote do "Analisar todos" (só no app) */
   onReanalyzeAll?: (paths: string[]) => Promise<void>;
@@ -47,17 +48,6 @@ function TrendsViewInner({ history = [], onReanalyzeAll, busy = false, canReanal
       .catch((e) => setError(String(e)));
   }, [reload]);
 
-  // logs locais que sumiram do disco ficam de fora (a mesma regra do botão de reanalisar do topo)
-  const reanalyze = useMemo(() => {
-    const paths: string[] = [];
-    let skipped = 0;
-    for (const e of history) {
-      if (e.logExists) paths.push(e.logPath);
-      else skipped++;
-    }
-    return { paths, skipped };
-  }, [history]);
-
   async function reanalyzeAll() {
     setConfirming(false);
     if (!onReanalyzeAll || reanalyze.paths.length === 0) return;
@@ -72,6 +62,25 @@ function TrendsViewInner({ history = [], onReanalyzeAll, busy = false, canReanal
   // sem escolha: o boss com mais pulls entre os que têm duas noites (a progressão do momento)
   const busiest = [...bosses].sort((a, b) => b.pulls - a.pulls);
   const selected = boss ?? busiest.find((b) => b.nights >= 2)?.key ?? busiest[0]?.key ?? null;
+  const bossName = bosses.find((b) => b.key === selected)?.name ?? selected ?? '';
+  // logs locais que sumiram do disco ficam de fora (a mesma regra dos outros botões de reanalisar);
+  // só entram as noites salvas que têm pulls do boss + dificuldade selecionados
+  const reanalyze = useMemo(() => {
+    const ids = new Set<string>();
+    if (selected && nights) {
+      for (const n of nights) {
+        if (n.pulls.some((p) => bossKey(p) === selected)) ids.add(n.id);
+      }
+    }
+    const paths: string[] = [];
+    let skipped = 0;
+    for (const e of history) {
+      if (!ids.has(e.id)) continue;
+      if (e.logExists) paths.push(e.logPath);
+      else skipped++;
+    }
+    return { paths, skipped };
+  }, [history, nights, selected]);
   // uma linha por dificuldade (Mythic, Heroic...), cada uma na ordem da raide
   const rows = useMemo(() => {
     const out: { id: number; name: string; bosses: typeof bosses }[] = [];
@@ -95,9 +104,9 @@ function TrendsViewInner({ history = [], onReanalyzeAll, busy = false, canReanal
             className="btn sm"
             disabled={busy || reanalyze.paths.length === 0}
             onClick={() => setConfirming(true)}
-            title={t.reanalyzeAllTitle}
+            title={t.reanalyzeBossTitle(bossName)}
           >
-            <RotateCw size={14} strokeWidth={1.5} aria-hidden /> {t.reanalyzeAll}
+            <RotateCw size={14} strokeWidth={1.5} aria-hidden /> {t.reanalyzeBoss}
           </button>
         )}
         {grouped && grouped.pugPulls > 0 && (
@@ -109,7 +118,7 @@ function TrendsViewInner({ history = [], onReanalyzeAll, busy = false, canReanal
 
       {confirming && (
         <div className="night-confirm trends-reanalyze-confirm">
-          <p className="small">{t.reanalyzeConfirm(reanalyze.paths.length, reanalyze.skipped)}</p>
+          <p className="small">{t.reanalyzeBossConfirm(bossName, reanalyze.paths.length, reanalyze.skipped)}</p>
           <div className="night-actions">
             <button className="btn primary sm" disabled={busy} onClick={reanalyzeAll}>
               <RotateCw size={14} strokeWidth={1.5} aria-hidden /> {t.reanalyzeAllConfirm}
@@ -509,7 +518,7 @@ function TrendPeople({ title, people, stack = false, yards = false, damage = fal
             <strong className="tabular bad">{yards ? b.yards(p.count) : stack ? b.inPulls(p.count) : b.times(p.count)}</strong>
             <span className="muted small">{t.metricNights(p.nights)}</span>
             {damage && <span className="muted small tabular">{b.playerDamage(num(p.damage ?? 0))}</span>}
-            {p.items && p.items.length > 0 && <UnusedItems items={p.items} />}
+            {p.items && p.items.length > 0 && <UnusedItems player={p} />}
           </li>
         ))}
       </ul>
@@ -539,9 +548,18 @@ const PROG_AWARD_ORDER: { key: ProgAwardKey; tone: 'good' | 'bad' }[] = [
   { key: 'bestScore', tone: 'good' },
   { key: 'leastDamage', tone: 'good' },
   { key: 'fewestDeaths', tone: 'good' },
+  { key: 'bestPotUse', tone: 'good' },
+  { key: 'fewestMechErrors', tone: 'good' },
+  { key: 'mostTimeAlive', tone: 'good' },
+  { key: 'mostImproved', tone: 'good' },
+  { key: 'bestKillParse', tone: 'good' },
   { key: 'mostDamage', tone: 'bad' },
   { key: 'wipeCauser', tone: 'bad' },
   { key: 'mostDeaths', tone: 'bad' },
+  { key: 'mostFreeDeaths', tone: 'bad' },
+  { key: 'mostMechErrors', tone: 'bad' },
+  { key: 'firstToDie', tone: 'bad' },
+  { key: 'mostWorsened', tone: 'bad' },
 ];
 
 /** Melhores e piores da progressão: nota, dano evitável, mortes e wipes causados. */
@@ -549,14 +567,37 @@ function ProgAwardsPanel({ awards }: { awards: ProgAwards }) {
   const m = useMessages(trendsViewMsg);
   const shown = PROG_AWARD_ORDER.filter((x) => awards[x.key]);
   if (shown.length === 0) return null;
-  const criterion = (key: ProgAwardKey, pulls: number, wipes = 0) =>
+  const criterion = (key: ProgAwardKey) =>
     key === 'bestScore'
-      ? m.awardScoreCriterion(pulls)
+      ? m.awardScoreCriterion
       : key === 'leastDamage' || key === 'mostDamage'
         ? m.awardDamageCriterion
-        : key === 'wipeCauser'
-          ? m.awardWipesCriterion(wipes)
-          : m.awardDeathsCriterion;
+        : key === 'bestPotUse' || key === 'mostFreeDeaths'
+          ? m.awardFreeDeathsCriterion
+          : key === 'wipeCauser'
+            ? m.awardWipesCriterion
+            : key === 'fewestMechErrors' || key === 'mostMechErrors'
+              ? m.awardMechErrorsCriterion
+              : key === 'mostTimeAlive'
+                ? m.awardTimeAliveCriterion
+                : key === 'firstToDie'
+                  ? m.awardFirstDeathCriterion
+                  : key === 'mostImproved' || key === 'mostWorsened'
+                    ? m.awardMoveCriterion
+                    : key === 'bestKillParse'
+                      ? m.awardKillParseCriterion
+                      : m.awardDeathsCriterion;
+  const rate = (v: number) => m.awardRate(v.toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }), v > 0 ? Math.round(1 / v) : null);
+  const detail = (key: ProgAwardKey, a: ProgAwardWinner) =>
+    key === 'bestScore' || key === 'leastDamage' || key === 'mostDamage' || key === 'mostTimeAlive' || key === 'bestKillParse'
+      ? m.awardPulls(a.pulls)
+      : key === 'mostImproved' || key === 'mostWorsened'
+        ? `${m.awardMove(a.from ?? 0, a.to ?? 0)} · ${m.awardPulls(a.pulls)}`
+        : key === 'firstToDie'
+          ? `${m.awardFirstDeaths(a.count ?? 0)} · ${rate(a.value)}`
+          : key === 'wipeCauser'
+            ? `${m.awardWipes(a.wipes ?? 0)} · ${rate(a.value)}`
+            : rate(a.value);
   return (
     <section className="panel">
       <h3>
@@ -565,22 +606,36 @@ function ProgAwardsPanel({ awards }: { awards: ProgAwards }) {
       </h3>
       <div className="prog-awards-grid">
         {shown.map(({ key, tone }) => {
-          const a = awards[key]!;
+          const list = awards[key]!;
           const Icon = tone === 'good' ? Trophy : TriangleAlert;
           return (
             <article key={key} className={`prog-award ${tone}`}>
               <span className="prog-award-label">
                 <Icon size={14} strokeWidth={1.75} aria-hidden /> {m.awardLabels[key]}
               </span>
-              <span className="prog-award-line">
-                <PlayerName name={a.name} guid={a.guid} cls={a.class} />
-                {key === 'bestScore' ? (
-                  <span className={`score-pill ${scoreTier(a.value)}`}>{Math.round(a.value)}</span>
-                ) : (
-                  <strong className="tabular">{key === 'leastDamage' || key === 'mostDamage' ? num(a.value) : a.value.toFixed(2)}</strong>
-                )}
-              </span>
-              <span className="muted small">{criterion(key, a.pulls, a.wipes)}</span>
+              <ol className="prog-award-top">
+                {list.map((a, i) => (
+                  <li key={a.guid} className={i === 0 ? 'first' : undefined}>
+                    <span className="prog-award-rank" aria-label={m.awardRank(i + 1)}>
+                      {m.awardRank(i + 1)}
+                    </span>
+                    <span className="prog-award-who">
+                      <PlayerName name={a.name} guid={a.guid} cls={a.class} />
+                      <span className="muted small">{detail(key, a)}</span>
+                    </span>
+                    {key === 'bestScore' ? (
+                      <span className={`score-pill ${scoreTier(a.value)}`}>{Math.round(a.value)}</span>
+                    ) : key === 'leastDamage' || key === 'mostDamage' ? (
+                      <strong className="tabular">{num(a.value)}</strong>
+                    ) : key === 'mostTimeAlive' ? (
+                      <strong className="tabular">{Math.round(a.value * 100)}%</strong>
+                    ) : key === 'bestKillParse' ? (
+                      <span className={`score-pill ${scoreTier(a.value)}`}>{Math.round(a.value)}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ol>
+              <span className="muted small">{criterion(key)}</span>
             </article>
           );
         })}

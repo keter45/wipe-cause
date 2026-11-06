@@ -152,6 +152,38 @@ describe('mortes sem pot/defensivo', () => {
     expect(items).toContainEqual(['defensive', 'Shield Wall', 1]);
     expect(items).not.toContainEqual(['defensive', 'Last Stand', 1]);
     expect(items.filter((i) => i[0] === 'potion' || i[0] === 'healthstone')).toHaveLength(2);
+    // as somas são de mortes: uma morte com defensivo e outra com pot/healthstone
+    expect([m.players[0].potDeaths, m.players[0].defensiveDeaths]).toEqual([1, 1]);
+    // quem morreu sem nada livre (usou tudo) entra nos ajudantes
+    expect(m.helpers.map((p) => [p.guid, p.count, p.pulls])).toEqual([['B', 1, 1]]);
+  });
+
+  it('quem morreu usando tudo aparece em verde, uma vez por morte e por pull', () => {
+    const m = metricNight(
+      [
+        pull(0, 0, 60_000, { players: [player('A')], deaths: [dth('A', 10_000), dth('A', 20_000), dth('B', 30_000, { usedHealthPotion: false })] }),
+        pull(1, 100_000, 60_000, { players: [player('A')], deaths: [dth('A', 10_000)] }),
+      ],
+      NO_DEFENSIVE,
+    )!;
+    expect(m.helpers.map((p) => [p.guid, p.count, p.pulls, p.class])).toEqual([['A', 3, 2, 'Mage']]);
+    expect(m.players.map((p) => p.guid)).toEqual(['B']);
+  });
+
+  it('conta mortes com pot e com defensivo, não a soma dos itens', () => {
+    const m = metricNight(
+      night([
+        dth('A', 10_000, {
+          defensivesAvailable: [avail(1, 'Shield Wall'), avail(2, 'Last Stand')],
+          usedHealthPotion: false,
+          usedHealthstone: false,
+        }),
+      ]),
+      NO_DEFENSIVE,
+    )!;
+    const p = m.players[0];
+    expect(p.items!.filter((i) => i.kind === 'defensive')).toHaveLength(2);
+    expect([p.potDeaths, p.defensiveDeaths]).toEqual([1, 1]);
   });
 
   it('ignora mortes depois da call de wipe e em wipe geral', () => {
@@ -171,5 +203,6 @@ describe('mortes sem pot/defensivo', () => {
     const trend = metricTrend([{ label: 'n1', pulls: n1 }, { label: 'n2', pulls: n2 }], NO_DEFENSIVE)!;
     expect(trend.players[0].count).toBe(2);
     expect(trend.players[0].items!.find((i) => i.kind === 'potion')!.count).toBe(2);
+    expect([trend.players[0].potDeaths, trend.players[0].defensiveDeaths]).toEqual([2, undefined]);
   });
 });

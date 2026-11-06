@@ -3544,14 +3544,45 @@ td.warn {
 .prog-award.bad .prog-award-label {
   color: var(--wipe);
 }
-.prog-award-line {
+.prog-award-top {
+  list-style: none;
+  margin: 2px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prog-award-top li {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
+  opacity: 0.85;
 }
-.prog-award-line strong {
+.prog-award-top li.first {
+  font-size: 15px;
+  font-weight: 600;
+  opacity: 1;
+}
+.prog-award-rank {
+  min-width: 26px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.prog-award-top li.first .prog-award-rank {
+  color: var(--text);
+}
+.prog-award-who {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.prog-award-who .muted {
+  font-weight: 400;
+}
+.prog-award-top strong {
   font-variant-numeric: tabular-nums;
 }
 .moves h3 {
@@ -8763,15 +8794,15 @@ button.kpi:hover {
   gap: 8px;
 }
 
-/* mortes sem pot/defensivo: o que ficou livre, uma linha de chips abaixo do player */
-.metric-people ul.metric-items {
+/* mortes sem pot/defensivo: um ícone de pot e um de defensivo abaixo do player */
+.metric-people .metric-items {
   grid-column: 1 / -1;
-  flex-direction: row;
+  display: flex;
   flex-wrap: wrap;
   gap: 2px 12px;
   padding-left: 4px;
 }
-.metric-people ul.metric-items li {
+.metric-people .metric-item {
   display: inline-flex;
   gap: 4px;
   align-items: center;
