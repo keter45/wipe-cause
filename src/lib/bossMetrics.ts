@@ -4,7 +4,8 @@
 // de cada um andou na noite (`<mecânica>:yards`).
 
 import type { Death, MechanicResult, MechanicSeverity, Pull } from '../types';
-import { tr, type Loc } from '../i18n';
+import { messagesOf, type Loc } from '../i18n';
+import { bossMetricsMsg } from './bossMetrics.i18n';
 import { mechanicMistakes, mistakes } from './blame';
 import { deathKey, massDeathKeys } from './massDeaths';
 import { groupByBoss } from './night';
@@ -75,13 +76,7 @@ const YARDS = ':yards';
 export const NO_DEFENSIVE = ':nodef';
 const HEALTH_POTION_SPELL = 1234768;
 const HEALTHSTONE_SPELL = 6262;
-const NO_DEFENSIVE_NAME: Loc = { pt: 'Mortes sem pot/defensivo', en: 'Deaths without pot/defensive' };
-const NO_DEFENSIVE_TIP: Loc = {
-  pt: 'Mortes em que o player tinha um defensivo, poção de vida ou healthstone disponível e não usou. Mortes em wipe geral e depois da call de wipe ficam de fora.',
-  en: 'Deaths where the player had a defensive, health potion or healthstone available and did not use it. Mass-wipe deaths and deaths after the wipe call are left out.',
-};
-const POTION_NAME: Loc = { pt: 'Poção de vida', en: 'Health potion' };
-const HEALTHSTONE_NAME: Loc = { pt: 'Healthstone', en: 'Healthstone' };
+const NO_DEFENSIVE_TIP: Loc = { pt: bossMetricsMsg.pt.noDefensiveTip, en: bossMetricsMsg.en.noDefensiveTip };
 
 const itemKey = (i: MetricItem) => `${i.kind}:${i.spellId ?? i.name}`;
 
@@ -95,8 +90,8 @@ function unusedAtDeath(d: Death): MetricItem[] {
     seen.add(a.spellId);
     out.push({ spellId: a.spellId, name: a.name, count: 1, kind: 'defensive' });
   }
-  if (!d.usedHealthPotion) out.push({ spellId: HEALTH_POTION_SPELL, name: tr(POTION_NAME), count: 1, kind: 'potion' });
-  if (d.healthstoneKnown && !d.usedHealthstone) out.push({ spellId: HEALTHSTONE_SPELL, name: tr(HEALTHSTONE_NAME), count: 1, kind: 'healthstone' });
+  if (!d.usedHealthPotion) out.push({ spellId: HEALTH_POTION_SPELL, name: messagesOf(bossMetricsMsg).potionName, count: 1, kind: 'potion' });
+  if (d.healthstoneKnown && !d.usedHealthstone) out.push({ spellId: HEALTHSTONE_SPELL, name: messagesOf(bossMetricsMsg).healthstoneName, count: 1, kind: 'healthstone' });
   return out;
 }
 
@@ -145,7 +140,7 @@ function noDefensiveNight(pulls: Pull[], key: string): MetricNight | null {
   if (!evaluated) return null;
 
   const out: MetricNight = {
-    key, name: tr(NO_DEFENSIVE_NAME), spellId: null, kind: 'no_defensive', severity: 'major', tip: NO_DEFENSIVE_TIP,
+    key, name: messagesOf(bossMetricsMsg).noDefensiveName, spellId: null, kind: 'no_defensive', severity: 'major', tip: NO_DEFENSIVE_TIP,
     collective: false, perPull: [], total: 0, pullsWithFailure: 0, players: [], helpers: [],
   };
   const by = new Map<string, { player: MetricPlayer; items: Map<string, MetricItem> }>();
