@@ -135,7 +135,7 @@ Fontes: [Sidebar](../src/components/Sidebar.tsx), [history.rs](../src-tauri/src/
 
 ### 3.4 Resumo da noite — Guilda
 
-`NightOverview` é a visão ampla da sessão. Mostra número de bosses, pulls e kills; tempo de raid; tempo em combate; downtime; intervalos médios/medianos e maiores pausas. O card **Tempo da noite** agrupa esses números. Cards de boss apresentam resultado, melhor progresso e principal causa dos wipes. A linha do tempo reúne pulls e intervalos. Todos os cards do resumo da noite recolhem e expandem, e o estado fica salvo (ver 3.5).
+`NightOverview` é a visão ampla da sessão. Mostra número de bosses, pulls e kills; tempo de raid; tempo em combate; downtime; intervalos médios/medianos e maiores pausas. O card **Tempo da noite** agrupa esses números. Cards de boss apresentam resultado, melhor progresso e principal causa dos wipes. A linha do tempo reúne pulls e intervalos. O card **Gravidade das mortes: DPS** mostra o que cada DPS ainda tinha livre ao morrer. Todos os cards do resumo da noite recolhem e expandem, e o estado fica salvo (ver 3.5).
 
 **Entradas:** pulls do relatório, com filtro de conteúdo de raid. Masmorras podem existir nos dados, mas não entram nas métricas de tempo e nos cards de raid.
 
@@ -359,7 +359,7 @@ O insumo é o conjunto de análises salvas, obtido por `historyTrends`; abrir um
 | --- | --- |
 | Seleção por boss/dificuldade, agrupamento da guilda e opção de incluir pug | Seleção de personagem e bosses em que ele participou |
 | Melhor progresso por noite, gatilhos de wipe, evolução das notas e problemas recorrentes | Melhor produção, mediana de rotação, mortes e erros por pull entre noites |
-| Tabela de jogadores com médias (nota ponderada pelos pulls, mortes por pull, parse nas kills, potencial; valores por noite no tooltip), painel Destaques da prog (top 3 de melhores e piores em cada categoria, de quem jogou ≥30% dos pulls) e botão Reanalisar as noites deste boss (só desktop); painel Métricas do grupo com a escolha por boss do resumo (total das noites, players somados nas noites com quantas repetiram) | Gráficos e tabela da trajetória individual |
+| Tabela de jogadores ordenável (nota média, mortes por pull; quem jogou menos de 30% das trys recolhido), painel Destaques da prog (Quem menos/mais morre, Quem mais causou wipes e cards de top 3 com barra, de quem jogou ≥30% dos pulls), cards Gravidade das mortes: DPS e Mortes que viraram wipe, e botão Reanalisar as noites deste boss (só desktop); painel Métricas do grupo com a escolha por boss do resumo (total das noites, players somados nas noites com quantas repetiram) | Gráficos e tabela da trajetória individual |
 | Pode apresentar parses e potencial já salvos quando disponíveis | Depende dos campos de análise individual presentes nos relatórios |
 
 A unificação de GUIDs ocorre antes de comparar análises locais e WCL. Sem isso, a mesma pessoa poderia aparecer como identidades separadas. Sem histórico ou sem participação do personagem, há estados vazios. Uma única noite permite leitura parcial, mas não estabelece evolução entre sessões.
