@@ -3,8 +3,10 @@
 // Boss com fantasmas que andam quando o alvo dá as costas (gaze): também as jardas que o fantasma
 // de cada um andou na noite (`<mecânica>:yards`).
 
-import type { MechanicResult, MechanicSeverity, Pull } from '../types';
+import type { Death, MechanicResult, MechanicSeverity, Pull } from '../types';
+import { tr, type Loc } from '../i18n';
 import { mechanicMistakes, mistakes } from './blame';
+import { deathKey, massDeathKeys } from './massDeaths';
 import { groupByBoss } from './night';
 
 export interface MetricOption {
@@ -21,6 +23,14 @@ export interface MetricOption {
   amount?: number;
 }
 
+export interface MetricItem {
+  spellId: number | null;
+  name: string;
+  /** quantas vezes ficou livre sem uso */
+  count: number;
+  kind: 'defensive' | 'potion' | 'healthstone';
+}
+
 export interface MetricPlayer {
   guid: string;
   name: string;
@@ -33,6 +43,8 @@ export interface MetricPlayer {
   max: number;
   /** dano tomado (avoidable_damage, tank_range, positioning) */
   damage?: number;
+  /** mortes sem pot/defensivo: o que estava livre e não foi usado */
+  items?: MetricItem[];
 }
 
 export interface MetricNight {
@@ -59,12 +71,40 @@ export interface MetricNight {
 }
 
 const YARDS = ':yards';
+/** Mortes com defensivo, poção de vida ou healthstone livres sem uso. */
+export const NO_DEFENSIVE = ':nodef';
+const HEALTH_POTION_SPELL = 1234768;
+const HEALTHSTONE_SPELL = 6262;
+const NO_DEFENSIVE_NAME: Loc = { pt: 'Mortes sem pot/defensivo', en: 'Deaths without pot/defensive' };
+const NO_DEFENSIVE_TIP: Loc = {
+  pt: 'Mortes em que o player tinha um defensivo, poção de vida ou healthstone disponível e não usou. Mortes em wipe geral e depois da call de wipe ficam de fora.',
+  en: 'Deaths where the player had a defensive, health potion or healthstone available and did not use it. Mass-wipe deaths and deaths after the wipe call are left out.',
+};
+const POTION_NAME: Loc = { pt: 'Poção de vida', en: 'Health potion' };
+const HEALTHSTONE_NAME: Loc = { pt: 'Healthstone', en: 'Healthstone' };
+
+const itemKey = (i: MetricItem) => `${i.kind}:${i.spellId ?? i.name}`;
+
+/** O que cada morte deixou livre sem usar: defensivos, poção de vida e healthstone. */
+function unusedAtDeath(d: Death): MetricItem[] {
+  const used = new Set(d.defensivesRecent.map((x) => x.spellId));
+  const seen = new Set<number>();
+  const out: MetricItem[] = [];
+  for (const a of d.defensivesAvailable) {
+    if (used.has(a.spellId) || seen.has(a.spellId)) continue;
+    seen.add(a.spellId);
+    out.push({ spellId: a.spellId, name: a.name, count: 1, kind: 'defensive' });
+  }
+  if (!d.usedHealthPotion) out.push({ spellId: HEALTH_POTION_SPELL, name: tr(POTION_NAME), count: 1, kind: 'potion' });
+  if (d.healthstoneKnown && !d.usedHealthstone) out.push({ spellId: HEALTHSTONE_SPELL, name: tr(HEALTHSTONE_NAME), count: 1, kind: 'healthstone' });
+  return out;
+}
 
 /** Tipos que já têm painel próprio no resumo ou não são avaliados. */
 const SKIP = new Set(['phase_duration', 'unavoidable', 'info']);
 const COLLECTIVE = new Set(['soak', 'tank_soak', 'interrupt', 'enrage', 'hp_balance', 'failure_event', 'dispel']);
 /** Kinds em que cada hit é erro de quem tomou: `MechanicPlayer.amount` é o dano tomado. */
-const DAMAGE = new Set(['avoidable_damage', 'tank_range', 'positioning']);
+export const DAMAGE_KINDS = new Set(['avoidable_damage', 'tank_range', 'positioning']);
 const RANK: Record<string, number> = { wipe: 0, major: 1, minor: 2, none: 3 };
 
 const eligible = (m: MechanicResult) => m.evaluated && !SKIP.has(m.kind);
@@ -82,11 +122,66 @@ export function metricOptions(pulls: Pull[]): MetricOption[] {
       if (m.failures > 0) o.pullsWithFailure++;
     }
   }
-  const out = [...byKey.values()].sort((a, b) => b.failures - a.failures || (RANK[a.severity] ?? 9) - (RANK[b.severity] ?? 9) || a.name.localeCompare(b.name));
+  const noDef = noDefensiveNight(pulls, NO_DEFENSIVE);
+  const out = [...byKey.values(), ...(noDef ? [{ key: noDef.key, name: noDef.name, spellId: noDef.spellId, kind: noDef.kind, severity: noDef.severity, failures: noDef.total, pullsWithFailure: noDef.pullsWithFailure }] : [])].sort(
+    (a, b) => b.failures - a.failures || (RANK[a.severity] ?? 9) - (RANK[b.severity] ?? 9) || a.name.localeCompare(b.name),
+  );
   // as jardas dos fantasmas logo depois das que falharam (não no fim, entre as que nunca falharam)
   const clean = out.findIndex((o) => o.failures === 0);
   const at = clean < 0 ? out.length : clean;
   return [...out.slice(0, at), ...yardOptions(pulls), ...out.slice(at)];
+}
+
+/** Mortes com algo livre sem uso: total da noite, pulls com morte assim e o detalhe por player. */
+function noDefensiveNight(pulls: Pull[], key: string): MetricNight | null {
+  let evaluated = false;
+  for (const pull of pulls) {
+    const mass = massDeathKeys(pull.deaths);
+    if (pull.deaths.some((d) => !d.ignored && !mass.has(deathKey(d)))) {
+      evaluated = true;
+      break;
+    }
+  }
+  if (!evaluated) return null;
+
+  const out: MetricNight = {
+    key, name: tr(NO_DEFENSIVE_NAME), spellId: null, kind: 'no_defensive', severity: 'major', tip: NO_DEFENSIVE_TIP,
+    collective: false, perPull: [], total: 0, pullsWithFailure: 0, players: [], helpers: [],
+  };
+  const by = new Map<string, { player: MetricPlayer; items: Map<string, MetricItem> }>();
+  for (const pull of pulls) {
+    const mass = massDeathKeys(pull.deaths);
+    const seen = new Set<string>();
+    let failures = 0;
+    for (const d of pull.deaths) {
+      if (d.ignored || mass.has(deathKey(d))) continue;
+      const items = unusedAtDeath(d);
+      if (!items.length) continue;
+      failures++;
+      const e = by.get(d.guid) ?? by.set(d.guid, { player: { guid: d.guid, name: d.name, class: null, count: 0, pulls: 0, max: 0 }, items: new Map() }).get(d.guid)!;
+      e.player.name = d.name;
+      e.player.class ??= d.class;
+      e.player.count++;
+      if (!seen.has(d.guid)) {
+        e.player.pulls++;
+        seen.add(d.guid);
+      }
+      e.player.max = Math.max(e.player.max, items.length);
+      for (const item of items) {
+        const k = itemKey(item);
+        const cur = e.items.get(k);
+        if (cur) cur.count++;
+        else e.items.set(k, { ...item });
+      }
+    }
+    out.perPull.push({ pull, failures });
+    out.total += failures;
+    if (failures > 0) out.pullsWithFailure++;
+  }
+  out.players = [...by.values()]
+    .map(({ player, items }) => ({ ...player, items: [...items.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)) }))
+    .sort((a, b) => b.count - a.count || b.pulls - a.pulls || a.name.localeCompare(b.name));
+  return out;
 }
 
 /** As jardas que os fantasmas andaram (uma opção por mecânica com fantasmas). */
@@ -141,6 +236,7 @@ function yardsNight(pulls: Pull[], key: string): MetricNight | null {
 
 /** Uma mecânica somada na noite do boss; null se ela não aparece em nenhum pull. */
 export function metricNight(pulls: Pull[], key: string): MetricNight | null {
+  if (key === NO_DEFENSIVE) return noDefensiveNight(pulls, key);
   if (key.endsWith(YARDS)) return yardsNight(pulls, key);
   let out: MetricNight | null = null;
   const errs = new Map<string, MetricPlayer>();
@@ -149,7 +245,7 @@ export function metricNight(pulls: Pull[], key: string): MetricNight | null {
   for (const pull of pulls) {
     const m = pull.mechanics.find((x) => x.key === key);
     if (!m) continue;
-    dmg = DAMAGE.has(m.kind);
+    dmg = DAMAGE_KINDS.has(m.kind);
     const hitDamage = dmg ? m.players.reduce((s, mp) => s + (mp.credit ? 0 : mp.amount), 0) : 0;
     out ??= {
       key: m.key, name: m.name, spellId: m.spellId, kind: m.kind, severity: m.severity, tip: m.tip,
@@ -225,6 +321,15 @@ export function metricTrend(nights: { label: string; pulls: Pull[] }[], key: str
       a.max = Math.max(a.max, p.max);
       a.nights++;
       if (p.damage != null) a.damage = (a.damage ?? 0) + p.damage;
+      if (p.items) {
+        const merged = new Map((a.items ?? []).map((i) => [itemKey(i), i]));
+        for (const i of p.items) {
+          const cur = merged.get(itemKey(i));
+          if (cur) merged.set(itemKey(i), { ...cur, count: cur.count + i.count });
+          else merged.set(itemKey(i), { ...i });
+        }
+        a.items = [...merged.values()].sort((x, y) => y.count - x.count || x.name.localeCompare(y.name));
+      }
       by.set(p.guid, a);
     }
   }

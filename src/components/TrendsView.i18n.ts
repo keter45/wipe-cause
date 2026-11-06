@@ -1,6 +1,7 @@
 import { defineMessages } from '../i18n';
 
 const s = (n: number, one: string, many: string) => (n === 1 ? one : many);
+const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
 
 export const trendsViewMsg = defineMessages(
   {
@@ -9,11 +10,19 @@ export const trendsViewMsg = defineMessages(
     withPugTitle: 'Pulls em que a maioria dos players não é do núcleo da sua raid (outros personagens com gente aleatória). Ficam de fora para não misturar com a progressão da guilda.',
     title: 'Evolução',
     subtitle: 'Compara as noites salvas no histórico',
+    reanalyzeAll: 'Reanalisar todas as noites',
+    reanalyzeAllTitle: 'Analisa de novo cada noite salva no histórico e atualiza a Evolução. Pode demorar e gastar pontos da API do Warcraft Logs nas noites do WCL.',
+    reanalyzeConfirm: (n: number, skipped: number) => {
+      const base = `Reanalisar ${n} ${s(n, 'noite', 'noites')}? Pode demorar; as noites do Warcraft Logs gastam pontos da API.`;
+      return skipped
+        ? `${base} ${skipped} ${s(skipped, 'noite', 'noites')} ${s(skipped, 'foi pulada', 'foram puladas')} porque o log local não existe mais.`
+        : base;
+    },
+    reanalyzeAllConfirm: 'Reanalisar agora',
+    cancel: 'Cancelar',
     metricsHint: 'As mecânicas que importam para o grupo, noite a noite. Fica salvo para este boss.',
-    metricAria: (name: string) => `Evolução de ${name} entre as noites`,
-    metricNightTitle: (label: string, total: string, failed: number, pulls: number) => `${label}: ${total} · ${failed} de ${pulls} pulls`,
-    metricNightGone: (label: string) => `${label}: a mecânica não aparece`,
-    metricNightPulls: (failed: number, pulls: number) => `${failed}/${pulls} pulls`,
+    metricSummary: (value: string, withNights: number, allNights: number) => `${value} em ${withNights} de ${allNights} ${s(allNights, 'noite', 'noites')}`,
+    metricSummaryFailures: (k: number) => `${k} ${s(k, 'erro', 'erros')}`,
     metricNights: (k: number) => `em ${k} ${s(k, 'noite', 'noites')}`,
     metricMore: (k: number) => `+ ${k}`,
     error: (e: string) => `Erro: ${e}`,
@@ -37,6 +46,14 @@ export const trendsViewMsg = defineMessages(
     players: 'Jogadores',
     player: 'Jogador',
     perNightTitle: 'A nota de cada noite; embaixo, o % do potencial do robô do SimulationCraft (noites simuladas) e o parse do Warcraft Logs (só noites com kill)',
+    avgScoreCol: 'Nota média',
+    avgScoreTitle: 'Média das notas das noites em que jogou, ponderada pelos pulls de cada noite',
+    deathsPerPull: 'Mortes/pull',
+    deathsPerPullTitle: 'Mortes (sem call de wipe nem wipe geral) por pull',
+    avgParseCol: 'Parse médio',
+    avgParseTitle: 'Média dos parses do Warcraft Logs nas noites com kill',
+    avgPotentialCol: 'Potencial médio',
+    avgPotentialTitle: 'Média do % do potencial do robô nas noites simuladas',
     deaths: 'Mortes',
     deathsTitle: 'Mortes por pull em cada noite (antes do corte) e o total: mortes/pulls',
     mistakes: 'Erros',
@@ -57,6 +74,20 @@ export const trendsViewMsg = defineMessages(
     worstPerf: 'Pior parse na kill',
     avgScore: (s: number, pulls: number) => `nota média ${s} em ${pulls} pulls`,
     killParse: (p: number) => `parse ${p} no Warcraft Logs`,
+    progAwards: 'Destaques da prog',
+    progAwardsHint: 'Pulls antes da 1ª kill (sem kill ainda: todos). Entra quem jogou ao menos 30% dos pulls da prog. Mortes depois da call de wipe e em wipe geral não contam.',
+    awardLabels: {
+      bestScore: 'Melhor nota',
+      leastDamage: 'Menos dano tomado',
+      fewestDeaths: 'Menos mortes',
+      mostDamage: 'Mais dano tomado',
+      wipeCauser: 'Maior causador de wipes',
+      mostDeaths: 'Mais mortes',
+    } as Record<string, string>,
+    awardScoreCriterion: (pulls: number) => `nota média em ${n(pulls, 'pull', 'pulls')}`,
+    awardDamageCriterion: 'dano evitável por pull',
+    awardDeathsCriterion: 'mortes por pull',
+    awardWipesCriterion: (wipes: number) => `${n(wipes, 'wipe', 'wipes')} com morte decisiva`,
     improving: 'Melhorando',
     worsening: 'Piorando',
     movesHint: 'Começo x fim: a média da primeira metade das noites em que cada um jogou contra a da segunda.',
@@ -75,11 +106,19 @@ export const trendsViewMsg = defineMessages(
     withPugTitle: "Pulls where most players aren't part of your raid's core (other characters with random people). They're left out so they don't mix with the guild's progression.",
     title: 'Progress',
     subtitle: 'Compares the nights saved in the history',
+    reanalyzeAll: 'Reanalyze all nights',
+    reanalyzeAllTitle: 'Analyzes each night saved in the history again and refreshes Progress. It can take a while and spend Warcraft Logs API points on WCL nights.',
+    reanalyzeConfirm: (n: number, skipped: number) => {
+      const base = `Reanalyze ${n} ${s(n, 'night', 'nights')}? It can take a while; Warcraft Logs nights spend API points.`;
+      return skipped
+        ? `${base} ${skipped} ${s(skipped, 'night was', 'nights were')} skipped because the local log no longer exists.`
+        : base;
+    },
+    reanalyzeAllConfirm: 'Reanalyze now',
+    cancel: 'Cancel',
     metricsHint: 'The mechanics that matter to the group, night by night. Saved for this boss.',
-    metricAria: (name: string) => `${name} trend across nights`,
-    metricNightTitle: (label: string, total: string, failed: number, pulls: number) => `${label}: ${total} · ${failed} of ${pulls} pulls`,
-    metricNightGone: (label: string) => `${label}: the mechanic doesn't show up`,
-    metricNightPulls: (failed: number, pulls: number) => `${failed}/${pulls} pulls`,
+    metricSummary: (value: string, withNights: number, allNights: number) => `${value} across ${withNights} of ${allNights} ${s(allNights, 'night', 'nights')}`,
+    metricSummaryFailures: (k: number) => `${k} ${s(k, 'error', 'errors')}`,
     metricNights: (k: number) => `in ${k} ${s(k, 'night', 'nights')}`,
     metricMore: (k: number) => `+ ${k}`,
     error: (e: string) => `Error: ${e}`,
@@ -103,6 +142,14 @@ export const trendsViewMsg = defineMessages(
     players: 'Players',
     player: 'Player',
     perNightTitle: "Each night's score; underneath, the % of the SimulationCraft bot's potential (simulated nights) and the Warcraft Logs parse (nights with a kill only)",
+    avgScoreCol: 'Average score',
+    avgScoreTitle: 'Average of the scores from the nights played, weighted by each night\'s pulls',
+    deathsPerPull: 'Deaths/pull',
+    deathsPerPullTitle: 'Deaths (excluding wipe calls and mass wipes) per pull',
+    avgParseCol: 'Average parse',
+    avgParseTitle: 'Average Warcraft Logs parse across nights with a kill',
+    avgPotentialCol: 'Average potential',
+    avgPotentialTitle: "Average % of the bot's potential across simulated nights",
     deaths: 'Deaths',
     deathsTitle: 'Deaths per pull each night (before the cutoff) and the total: deaths/pulls',
     mistakes: 'Mistakes',
@@ -123,6 +170,20 @@ export const trendsViewMsg = defineMessages(
     worstPerf: 'Worst parse on the kill',
     avgScore: (s: number, pulls: number) => `average score ${s} over ${pulls} pulls`,
     killParse: (p: number) => `Warcraft Logs parse ${p}`,
+    progAwards: 'Progress highlights',
+    progAwardsHint: "Pulls before the first kill (no kill yet: all of them). Counts whoever played at least 30% of the prog pulls. Deaths after the wipe call and in mass wipes don't count.",
+    awardLabels: {
+      bestScore: 'Best score',
+      leastDamage: 'Least damage taken',
+      fewestDeaths: 'Fewest deaths',
+      mostDamage: 'Most damage taken',
+      wipeCauser: 'Biggest wipe causer',
+      mostDeaths: 'Most deaths',
+    } as Record<string, string>,
+    awardScoreCriterion: (pulls: number) => `average score over ${n(pulls, 'pull', 'pulls')}`,
+    awardDamageCriterion: 'avoidable damage per pull',
+    awardDeathsCriterion: 'deaths per pull',
+    awardWipesCriterion: (wipes: number) => `${n(wipes, 'wipe', 'wipes')} with a decisive death`,
     improving: 'Improving',
     worsening: 'Getting worse',
     movesHint: 'Start vs end: the average of the first half of the nights each one played against the second half.',

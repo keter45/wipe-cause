@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, Plus, X } from 'lucide-react';
 import type { Pull } from '../types';
-import { metricNight, metricOptions, moveMetric, saveBossMetrics, savedBossMetrics, type MetricNight, type MetricOption, type MetricPlayer } from '../lib/bossMetrics';
+import { metricNight, metricOptions, moveMetric, saveBossMetrics, savedBossMetrics, type MetricItem, type MetricNight, type MetricOption, type MetricPlayer } from '../lib/bossMetrics';
 import { num } from '../lib/format';
 import { PlayerName } from './Names';
 import { Popover } from './Popover';
@@ -169,7 +169,12 @@ export function MetricCard({
   const peak = Math.max(1, ...m.perPull.map((x) => x.failures));
   const stack = m.kind === 'stack_limit';
   const yd = m.unit === 'yd';
-  const baseStats = yd
+  const noDef = m.kind === 'no_defensive';
+  const baseStats = noDef
+    ? m.total === 0
+      ? t.cleanNoDefensive
+      : t.statsNoDefensive(m.total, m.pullsWithFailure, m.perPull.length)
+    : yd
     ? m.total === 0
       ? t.cleanYards
       : t.statsYards(m.total, m.pullsWithFailure, m.perPull.length)
@@ -220,11 +225,26 @@ export function MetricCard({
 
       {/* nas falhas do raid a lista é de quem foi atingido; em failure_event, de quem causou */}
       {m.players.length > 0 && (
-        <PeopleList title={yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} damage={m.damage != null} tone="bad" full={full} />
+        <PeopleList title={noDef ? t.whoNoDefensive : yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} damage={m.damage != null} tone="bad" full={full} />
       )}
       {m.helpers.length > 0 && <PeopleList title={t.helpers} people={m.helpers} tone="good" full={full} />}
       {tr(m.tip) && <p className="muted small metric-tip">{full ? tr(m.tip) : <Clamp>{tr(m.tip)}</Clamp>}</p>}
     </article>
+  );
+}
+
+/** O que o player tinha livre e não usou, cada item com ícone + nome e quantas vezes. */
+export function UnusedItems({ items }: { items: MetricItem[] }) {
+  const t = useMessages(bossMetricsMsg);
+  return (
+    <ul className="plain metric-items">
+      {items.map((i) => (
+        <li key={`${i.kind}:${i.spellId ?? i.name}`} title={t.unusedItem(i.name, i.count)}>
+          <SpellName spellId={i.spellId} name={i.name} size={14} />
+          <span className="tabular muted">{i.count}×</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -242,6 +262,7 @@ function PeopleList({ title, people, stack = false, yards = false, damage = fals
             <strong className={`tabular ${tone}`}>{yards ? t.yards(p.count) : stack ? t.inPulls(p.count) : t.times(p.count)}</strong>
             <span className="muted small">{yards ? t.ghosts(p.max, p.count) : stack ? t.maxStacks(p.max) : t.inPulls(p.pulls)}</span>
             {damage && <span className="muted small tabular">{t.playerDamage(num(p.damage ?? 0))}</span>}
+            {p.items && p.items.length > 0 && <UnusedItems items={p.items} />}
           </li>
         ))}
       </ul>

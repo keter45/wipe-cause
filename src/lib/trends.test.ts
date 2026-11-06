@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildTrends, byGroup, dedupeNights, playerMoves, trendBosses, type NightInput, type PlayerTrend } from './trends';
+import { buildTrends, byGroup, progAwards, dedupeNights, playerMoves, trendBosses, type NightInput, type PlayerTrend } from './trends';
 import * as fx from './test-fixtures';
 import { death, player, pull } from './test-fixtures';
 
@@ -84,8 +84,8 @@ describe('histórico enxuto', () => {
 
 describe('quem melhora e quem piora', () => {
   const trend = (guid: string, scores: (number | null)[], perfs: (number | null)[]): PlayerTrend => ({
-    guid, name: `${guid}-Realm`, class: null, deathsPerPull: [], scorePerNight: scores, perfPerNight: perfs, pulls: 10, deaths: 0,
-    deathsNoDefensive: 0, topKiller: null, topKillerSpellId: null, topKillerNights: 0, topKillerNoDefensive: 0, mechanicErrors: 0,
+    guid, name: `${guid}-Realm`, class: null, deathsPerPull: [], scorePerNight: scores, perfPerNight: perfs, avgScore: 0, avgDeathsPerPull: 0, avgParse: null,
+    pulls: 10, deaths: 0, deathsNoDefensive: 0, topKiller: null, topKillerSpellId: null, topKillerNights: 0, topKillerNoDefensive: 0, mechanicErrors: 0,
   });
   const m = playerMoves([
     trend('A', [60, 70, 80, 90], [40, 50, 60, 70]), // nota 65 -> 85, parse 45 -> 65
@@ -123,6 +123,48 @@ describe('progressão: melhor e pior nos wipes antes da kill', () => {
   });
 });
 
+describe('médias compactas dos jogadores', () => {
+  const store = new Map<string, string>();
+  vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
+  const bad = {
+    key: 'bad', name: 'Bad', spellId: 1, kind: 'avoidable_damage', severity: 'major' as const, tip: { pt: '', en: '' }, evaluated: true, failures: 1,
+    summary: { pt: '', en: '' }, events: [],
+    players: [{ guid: 'A', name: 'A-Realm', count: 1, amount: 100, firstT: 0, credit: false, message: { pt: '', en: '' } }],
+  };
+  const players = [player('A'), player('B')];
+  const clean = pull(0, 1_000_000, 60_000, { players });
+  const error = (id: number) => pull(id, 1_000_000 + id * 100_000, 60_000, { players, mechanics: [bad], deaths: [death('A', 10_000)] });
+  const kill = pull(3, 1_400_000, 60_000, { players, mechanics: [bad], success: true });
+  store.set(`wipe-cause:parses:${kill.encounterId}:${kill.startMs}`, JSON.stringify({ 'A-Realm': { metric: 'dps', kind: 'kill', percent: 80 } }));
+  const t = buildTrends(
+    [
+      { id: 'n1', title: '01/10 · Boss Mythic', raidStartMs: 1_000_000, pulls: [clean] },
+      { id: 'n2', title: '02/10 · Boss Mythic', raidStartMs: 1_100_000, pulls: [error(1), error(2), kill] },
+    ],
+    'Boss · Mythic',
+  );
+
+  it('pondera a nota média pelos pulls de cada noite', () => {
+    const a = t.players.find((p) => p.guid === 'A')!;
+    expect(a.scorePerNight[0]).toBe(100);
+    expect(a.scorePerNight[1]!).toBeLessThan(100);
+    // 1 pull na 1ª noite e 3 na 2ª: a média puxa para a noite em que jogou mais
+    expect(a.avgScore).toBe(Math.round((a.scorePerNight[0]! * 1 + a.scorePerNight[1]! * 3) / 4));
+    expect(a.avgScore).toBeLessThan(Math.round((a.scorePerNight[0]! + a.scorePerNight[1]!) / 2));
+    // ordena pela nota média (B não errou nem morreu)
+    expect(t.players[0].guid).toBe('B');
+  });
+
+  it('dá a morte por pull e o parse médio', () => {
+    const a = t.players.find((p) => p.guid === 'A')!;
+    expect(a.deaths).toBe(2);
+    expect(a.pulls).toBe(4);
+    expect(a.avgDeathsPerPull).toBe(0.5);
+    expect(a.avgParse).toBe(80);
+    expect(t.players.find((p) => p.guid === 'B')!.avgParse).toBeNull();
+  });
+});
+
 describe('mass wipe na Evolução', () => {
   it('mortes de mass wipe não contam nas mortes nem no "mais morre para" de ninguém', () => {
     const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -150,5 +192,57 @@ describe('noite salva duas vezes', () => {
     const c = { id: 'c', title: '27/09 · Boss Mythic', raidStartMs: 0, pulls: pulls(90_000_000) };
     expect(dedupeNights([a, b, c]).map((n) => n.id)).toEqual(['a', 'c']);
     expect(trendBosses(byGroup([a, b, c], 'all').nights)[0].nights).toBe(2);
+  });
+});
+
+describe('destaques da prog', () => {
+  const hit = (amounts: Record<string, number>) => ({
+    key: 'hit', name: 'Hit', spellId: 1, kind: 'avoidable_damage', severity: 'major' as const, tip: { pt: '', en: '' }, evaluated: true, failures: 1,
+    summary: { pt: '', en: '' }, events: [],
+    players: Object.entries(amounts).map(([guid, amount]) => ({ guid, name: `${guid}-Realm`, count: 1, amount, firstT: 0, credit: false, message: { pt: '', en: '' } })),
+  });
+  const nightOf = (pulls: ReturnType<typeof pull>[]) => buildTrends([{ id: 'n', title: '01/10 · Boss Mythic', raidStartMs: 0, pulls }], 'Boss · Mythic');
+
+  it('dano evitável por pull, mortes e quem causa o wipe; mortes após a call não contam', () => {
+    const players = [player('A'), player('B'), player('C')];
+    const wipe = (i: number) =>
+      pull(i, i * 300_000, 100_000, {
+        players,
+        mechanics: [hit({ A: 100, B: 500, C: 300 })],
+        // A morre cedo (decisiva); B só depois da call de wipe (ignorada)
+        deaths: [death('A', 10_000), { ...death('B', 60_000), ignored: true }],
+      });
+    const aw = nightOf(Array.from({ length: 4 }, (_, i) => wipe(i))).progAwards;
+    expect(aw.leastDamage).toMatchObject({ guid: 'A', value: 100, pulls: 4 });
+    expect(aw.mostDamage).toMatchObject({ guid: 'B', value: 500 });
+    expect(aw.mostDeaths).toMatchObject({ guid: 'A', value: 1 });
+    expect(aw.wipeCauser).toMatchObject({ guid: 'A', wipes: 4 });
+    // B só teve morte ignorada: é um dos que menos morrem
+    expect(['B', 'C']).toContain(aw.fewestDeaths?.guid);
+    // quem tem o menos dano não é o de mais dano
+    expect(aw.mostDamage?.guid).not.toBe(aw.leastDamage?.guid);
+  });
+
+  it('mortes de wipe geral não contam', () => {
+    const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    const blast = { key: 'boom', name: 'Detonation', amount: 1, pct: 100, failT: 90_000 };
+    const wipe = (i: number) =>
+      pull(i, i * 300_000, 95_000, { players: names.map((n) => player(n)), deaths: names.map((n, k) => death(n, 90_000 + k * 50, { causedBy: blast })) });
+    const aw = progAwards(nightOf([wipe(0), wipe(1)]).nights);
+    expect(aw.mostDeaths).toBeUndefined();
+    expect(aw.wipeCauser).toBeUndefined();
+  });
+
+  it('só entra quem jogou ao menos 30% dos pulls e a kill fecha a prog', () => {
+    const wipe = (i: number, guids: string[]) => pull(i, i * 300_000, 100_000, { players: guids.map((g) => player(g)), mechanics: [hit({ A: 400, Z: 0 })], deaths: [] });
+    // 10 wipes: Z só em 2 (20%) com dano zero, não pode ganhar; depois a kill, que não entra
+    const pulls = [...Array.from({ length: 10 }, (_, i) => wipe(i, i < 2 ? ['A', 'B', 'Z'] : ['A', 'B'])), pull(10, 4_000_000, 100_000, { success: true, players: [player('A'), player('B')], mechanics: [hit({ A: 9999 })] })];
+    const aw = progAwards(nightOf(pulls).nights);
+    expect(aw.leastDamage?.guid).toBe('B');
+    expect(aw.mostDamage).toMatchObject({ guid: 'A', value: 400, pulls: 10 });
+  });
+
+  it('sem candidatos, sem prêmios', () => {
+    expect(progAwards([])).toEqual({});
   });
 });

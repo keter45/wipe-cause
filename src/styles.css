@@ -3517,6 +3517,43 @@ td.warn {
 .progression-card.bad > span:first-child {
   color: var(--wipe);
 }
+.prog-awards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 8px 0;
+}
+.prog-award {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+}
+.prog-award-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.prog-award.good .prog-award-label {
+  color: var(--kill);
+}
+.prog-award.bad .prog-award-label {
+  color: var(--wipe);
+}
+.prog-award-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+.prog-award-line strong {
+  font-variant-numeric: tabular-nums;
+}
 .moves h3 {
   margin-top: 0;
 }
@@ -3531,48 +3568,23 @@ td.warn {
 .score-trail {
   white-space: nowrap;
 }
-/* Evolução: uma caixa por noite (nota em cima; potencial e parse embaixo, quando há) */
-.trend-players {
-  --night-w: 52px;
+/* Evolução: as médias compactas de cada player, com o detalhe por noite no tooltip */
+.trend-players td {
+  white-space: nowrap;
 }
-.night-grid {
-  display: grid;
+.trend-avg {
+  display: inline-flex;
+  align-items: baseline;
   gap: 4px;
-  align-items: start;
-  justify-items: center;
-}
-.night-date {
-  font-size: 11px;
-  font-weight: 400;
-}
-.night-cell {
-  display: grid;
-  align-content: start;
-  justify-items: center;
-  gap: 1px;
-}
-.night-cell.night-none {
-  color: var(--muted);
-}
-.night-sub {
-  display: grid;
-  justify-items: center;
-  font-size: 10.5px;
-  line-height: 1.25;
   font-variant-numeric: tabular-nums;
 }
-.night-sub > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-.night-sub .tone-good {
+.trend-avg.tone-good {
   color: var(--kill);
 }
-.night-sub .tone-mid {
+.trend-avg.tone-mid {
   color: var(--minor);
 }
-.night-sub .tone-bad {
+.trend-avg.tone-bad {
   color: var(--wipe);
 }
 .deaths-cell,
@@ -7125,17 +7137,6 @@ button.kpi:hover {
 .metric-people-damage li .small {
   white-space: nowrap;
 }
-/* evolução das métricas: uma coluna por noite dentro do cartão */
-.trend-metric .night-cols {
-  gap: 12px;
-  padding-bottom: 4px;
-}
-.trend-metric .night-col-track {
-  height: 72px;
-}
-.trend-metric .night-col-value {
-  font-size: 13px;
-}
 .metric-options {
   display: flex;
   flex-direction: column;
@@ -8760,4 +8761,19 @@ button.kpi:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+/* mortes sem pot/defensivo: o que ficou livre, uma linha de chips abaixo do player */
+.metric-people ul.metric-items {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  padding-left: 4px;
+}
+.metric-people ul.metric-items li {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 12px;
 }
