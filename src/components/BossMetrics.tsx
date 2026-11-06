@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, Plus, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, FlaskConical, Plus, Shield, X } from 'lucide-react';
 import type { Pull } from '../types';
 import { metricNight, metricOptions, moveMetric, saveBossMetrics, savedBossMetrics, type MetricItem, type MetricNight, type MetricOption, type MetricPlayer } from '../lib/bossMetrics';
 import { num } from '../lib/format';
@@ -227,24 +227,36 @@ export function MetricCard({
       {m.players.length > 0 && (
         <PeopleList title={noDef ? t.whoNoDefensive : yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} damage={m.damage != null} tone="bad" full={full} />
       )}
-      {m.helpers.length > 0 && <PeopleList title={t.helpers} people={m.helpers} tone="good" full={full} />}
+      {m.helpers.length > 0 && <PeopleList title={noDef ? t.helpersNoDefensive : t.helpers} people={m.helpers} tone="good" full={full} />}
       {tr(m.tip) && <p className="muted small metric-tip">{full ? tr(m.tip) : <Clamp>{tr(m.tip)}</Clamp>}</p>}
     </article>
   );
 }
 
-/** O que o player tinha livre e não usou, cada item com ícone + nome e quantas vezes. */
-export function UnusedItems({ items }: { items: MetricItem[] }) {
+/** O que o player tinha livre e não usou: um ícone de pot e um de defensivo, com o detalhe no tooltip. */
+export function UnusedItems({ player }: { player: MetricPlayer }) {
   const t = useMessages(bossMetricsMsg);
+  const items = player.items ?? [];
+  const pot = items.filter((i) => i.kind === 'potion' || i.kind === 'healthstone');
+  const defensive = items.filter((i) => i.kind === 'defensive');
+  const detail = (xs: MetricItem[]) => xs.map((i) => t.unusedItem(i.name, i.count)).join(' · ');
+  const pots = player.potDeaths ?? 0;
+  const defensives = player.defensiveDeaths ?? 0;
   return (
-    <ul className="plain metric-items">
-      {items.map((i) => (
-        <li key={`${i.kind}:${i.spellId ?? i.name}`} title={t.unusedItem(i.name, i.count)}>
-          <SpellName spellId={i.spellId} name={i.name} size={14} />
-          <span className="tabular muted">{i.count}×</span>
-        </li>
-      ))}
-    </ul>
+    <span className="metric-items">
+      {pots > 0 && (
+        <span className="metric-item" role="img" title={t.unusedPot(detail(pot))} aria-label={t.unusedPot(detail(pot))}>
+          <FlaskConical size={14} strokeWidth={1.75} aria-hidden />
+          <span className="tabular">{pots}×</span>
+        </span>
+      )}
+      {defensives > 0 && (
+        <span className="metric-item" role="img" title={t.unusedDefensives(detail(defensive))} aria-label={t.unusedDefensives(detail(defensive))}>
+          <Shield size={14} strokeWidth={1.75} aria-hidden />
+          <span className="tabular">{defensives}×</span>
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -262,7 +274,7 @@ function PeopleList({ title, people, stack = false, yards = false, damage = fals
             <strong className={`tabular ${tone}`}>{yards ? t.yards(p.count) : stack ? t.inPulls(p.count) : t.times(p.count)}</strong>
             <span className="muted small">{yards ? t.ghosts(p.max, p.count) : stack ? t.maxStacks(p.max) : t.inPulls(p.pulls)}</span>
             {damage && <span className="muted small tabular">{t.playerDamage(num(p.damage ?? 0))}</span>}
-            {p.items && p.items.length > 0 && <UnusedItems items={p.items} />}
+            {p.items && p.items.length > 0 && <UnusedItems player={p} />}
           </li>
         ))}
       </ul>

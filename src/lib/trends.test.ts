@@ -204,23 +204,42 @@ describe('destaques da prog', () => {
   const nightOf = (pulls: ReturnType<typeof pull>[]) => buildTrends([{ id: 'n', title: '01/10 · Boss Mythic', raidStartMs: 0, pulls }], 'Boss · Mythic');
 
   it('dano evitável por pull, mortes e quem causa o wipe; mortes após a call não contam', () => {
-    const players = [player('A'), player('B'), player('C')];
+    const players = ['A', 'B', 'C', 'D', 'E', 'F'].map((g) => player(g));
     const wipe = (i: number) =>
       pull(i, i * 300_000, 100_000, {
         players,
-        mechanics: [hit({ A: 100, B: 500, C: 300 })],
+        mechanics: [hit({ A: 100, B: 500, C: 300, D: 150, E: 200, F: 250 })],
         // A morre cedo (decisiva); B só depois da call de wipe (ignorada)
         deaths: [death('A', 10_000), { ...death('B', 60_000), ignored: true }],
       });
     const aw = nightOf(Array.from({ length: 4 }, (_, i) => wipe(i))).progAwards;
-    expect(aw.leastDamage).toMatchObject({ guid: 'A', value: 100, pulls: 4 });
-    expect(aw.mostDamage).toMatchObject({ guid: 'B', value: 500 });
-    expect(aw.mostDeaths).toMatchObject({ guid: 'A', value: 1 });
-    expect(aw.wipeCauser).toMatchObject({ guid: 'A', wipes: 4 });
+    expect(aw.leastDamage![0]).toMatchObject({ guid: 'A', value: 100, pulls: 4 });
+    expect(aw.mostDamage![0]).toMatchObject({ guid: 'B', value: 500 });
+    expect(aw.mostDeaths![0]).toMatchObject({ guid: 'A', value: 1 });
+    expect(aw.wipeCauser![0]).toMatchObject({ guid: 'A', wipes: 4 });
     // B só teve morte ignorada: é um dos que menos morrem
-    expect(['B', 'C']).toContain(aw.fewestDeaths?.guid);
-    // quem tem o menos dano não é o de mais dano
-    expect(aw.mostDamage?.guid).not.toBe(aw.leastDamage?.guid);
+    expect(['B', 'C']).toContain(aw.fewestDeaths![0].guid);
+    // quem está no top do menos dano não está no de mais dano
+    const least = aw.leastDamage!.map((x) => x.guid);
+    expect(aw.mostDamage!.every((x) => !least.includes(x.guid))).toBe(true);
+  });
+
+  it('dano tomado deixa os tanks de fora; healers concorrem com os DPS', () => {
+    const players = [player('T', { role: 'tank' }), player('H', { role: 'healer' }), player('A'), player('B'), player('C'), player('D')];
+    const wipe = (i: number) =>
+      pull(i, i * 300_000, 100_000, {
+        players,
+        mechanics: [hit({ T: 5000, H: 400, A: 300, B: 500, C: 200, D: 250 })],
+        deaths: [],
+      });
+    const aw = progAwards(nightOf(Array.from({ length: 4 }, (_, i) => wipe(i))).nights);
+    // o tank tomou muito mais dano, mas não entra em nenhum dos dois lados
+    expect(aw.mostDamage!.some((x) => x.guid === 'T')).toBe(false);
+    expect(aw.leastDamage!.some((x) => x.guid === 'T')).toBe(false);
+    expect(aw.leastDamage![0]).toMatchObject({ guid: 'C', value: 200 });
+    // healer concorre junto com os DPS (fica atrás de B, que tomou mais)
+    expect(aw.mostDamage![0]).toMatchObject({ guid: 'B', value: 500 });
+    expect(aw.mostDamage![1]).toMatchObject({ guid: 'H', value: 400 });
   });
 
   it('mortes de wipe geral não contam', () => {
@@ -233,16 +252,139 @@ describe('destaques da prog', () => {
     expect(aw.wipeCauser).toBeUndefined();
   });
 
+  it('melhor e pior uso de pot/defensivo; empate por pot/healthstone por pull', () => {
+    const players = [
+      player('A'),
+      // B e C usaram tudo (sem mortes com algo livre); B usa mais pot/healthstone por pull
+      player('B', { healthPotions: 1, healthstones: 1 }),
+      player('C', { healthPotions: 1 }),
+    ];
+    const usedAll = { usedHealthPotion: true, usedHealthstone: true, healthstoneKnown: true };
+    const wipe = (i: number) =>
+      pull(i, i * 300_000, 100_000, {
+        players,
+        // A morre com pot livre em todo pull; a morte ignorada não conta
+        deaths: [
+          death('A', 10_000, { usedHealthPotion: false }),
+          ...(i === 0 ? [{ ...death('A', 20_000, { usedHealthPotion: false }), ignored: true }] : []),
+          death('B', 30_000, usedAll),
+          death('C', 40_000, usedAll),
+        ],
+      });
+    const aw = progAwards(nightOf(Array.from({ length: 4 }, (_, i) => wipe(i))).nights);
+    expect(aw.bestPotUse![0]).toMatchObject({ guid: 'B', value: 0, pulls: 4 });
+    expect(aw.bestPotUse!.map((x) => x.guid)).toEqual(['B', 'C', 'A']);
+    // A é o único com mortes livres, mas já está no top 3 positivo: não aparece no negativo
+    expect(aw.mostFreeDeaths).toBeUndefined();
+  });
+
   it('só entra quem jogou ao menos 30% dos pulls e a kill fecha a prog', () => {
     const wipe = (i: number, guids: string[]) => pull(i, i * 300_000, 100_000, { players: guids.map((g) => player(g)), mechanics: [hit({ A: 400, Z: 0 })], deaths: [] });
     // 10 wipes: Z só em 2 (20%) com dano zero, não pode ganhar; depois a kill, que não entra
     const pulls = [...Array.from({ length: 10 }, (_, i) => wipe(i, i < 2 ? ['A', 'B', 'Z'] : ['A', 'B'])), pull(10, 4_000_000, 100_000, { success: true, players: [player('A'), player('B')], mechanics: [hit({ A: 9999 })] })];
     const aw = progAwards(nightOf(pulls).nights);
-    expect(aw.leastDamage?.guid).toBe('B');
-    expect(aw.mostDamage).toMatchObject({ guid: 'A', value: 400, pulls: 10 });
+    expect(aw.leastDamage![0].guid).toBe('B');
+    expect(aw.leastDamage!.map((x) => x.guid)).not.toContain('Z');
+    expect(aw.mostDamage).toBeUndefined(); // só A e B jogaram 30%: os dois já estão no top positivo
   });
 
   it('sem candidatos, sem prêmios', () => {
     expect(progAwards([])).toEqual({});
+  });
+
+  it('top 3 por categoria, ordenado, sem repetir entre o top bom e o ruim e sem valor 0 no ruim', () => {
+    const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    // A..H morrem em 0..7 dos 8 pulls
+    const wipe = (i: number) =>
+      pull(i, i * 300_000, 100_000, {
+        players: names.map((n) => player(n)),
+        deaths: names.filter((_, k) => i < k).map((n, j) => death(n, 10_000 + j * 20_000)),
+      });
+    const aw = progAwards(nightOf(Array.from({ length: 8 }, (_, i) => wipe(i))).nights);
+    expect(aw.fewestDeaths!.map((x) => x.guid)).toEqual(['A', 'B', 'C']);
+    expect(aw.fewestDeaths![0].value).toBe(0);
+    expect(aw.mostDeaths!.map((x) => x.guid)).toEqual(['H', 'G', 'F']);
+    expect(aw.mostDeaths![0].value).toBeCloseTo(7 / 8);
+    const good = aw.fewestDeaths!.map((x) => x.guid);
+    expect(aw.mostDeaths!.some((x) => good.includes(x.guid))).toBe(false);
+  });
+  it('erros de mecânica por pull: menos e mais, sem créditos', () => {
+    const players = ['A', 'B', 'C', 'D'].map((g) => player(g));
+    const err = (counts: Record<string, number>) => ({
+      ...hit({}),
+      key: 'err',
+      kind: 'avoidable_damage',
+      players: Object.entries(counts).map(([guid, count]) => ({ guid, name: `${guid}-Realm`, count, amount: 1, firstT: 0, credit: false, message: { pt: '', en: '' } })),
+    });
+    const wipe = (i: number) => pull(i, i * 300_000, 100_000, { players, mechanics: [err({ A: 0, B: 1, C: 3, D: 2 })], deaths: [] });
+    const aw = progAwards(nightOf(Array.from({ length: 4 }, (_, i) => wipe(i))).nights);
+    expect(aw.fewestMechErrors![0].guid).toBe('A');
+    expect(aw.mostMechErrors![0].guid).toBe('C');
+    expect(aw.mostMechErrors!.some((x) => aw.fewestMechErrors!.some((y) => y.guid === x.guid))).toBe(false);
+  });
+
+  it('tempo vivo: morte ignorada e de wipe geral contam como vivo; fim é a call de wipe', () => {
+    const players = ['A', 'B', 'C'].map((g) => player(g));
+    const wipe = (i: number) =>
+      pull(i, i * 300_000, 100_000, {
+        players,
+        // A morre aos 25% do pull; B só depois da call (ignorada); C vivo
+        deaths: [death('A', 25_000), { ...death('B', 90_000), ignored: true }],
+      });
+    const aw = progAwards(nightOf(Array.from({ length: 4 }, (_, i) => wipe(i))).nights);
+    expect(aw.mostTimeAlive!.map((x) => x.guid).slice(-1)).toEqual(['A']);
+    expect(aw.mostTimeAlive!.find((x) => x.guid === 'A')!.value).toBeCloseTo(0.25);
+    expect(aw.mostTimeAlive!.find((x) => x.guid === 'B')!.value).toBe(1);
+    // com call de wipe aos 50s, a morte de A aos 25s vale 50%
+    const called = (i: number) => pull(i, i * 300_000, 100_000, { players, wipeCall: { t: 50_000 } as never, deaths: [death('A', 25_000)] });
+    const aw2 = progAwards(nightOf(Array.from({ length: 4 }, (_, i) => called(i))).nights);
+    expect(aw2.mostTimeAlive!.find((x) => x.guid === 'A')!.value).toBeCloseTo(0.5);
+  });
+
+  it('primeiro a morrer: conta a primeira morte válida do pull, por pull e no total', () => {
+    const players = ['A', 'B', 'C'].map((g) => player(g));
+    const wipe = (i: number) =>
+      pull(i, i * 300_000, 100_000, {
+        players,
+        // A morre primeiro em 3 de 4 pulls; B no outro; a morte ignorada de C não conta
+        deaths: i < 3 ? [{ ...death('C', 1_000), ignored: true }, death('A', 10_000), death('B', 20_000)] : [death('B', 10_000), death('A', 20_000)],
+      });
+    const aw = progAwards(nightOf(Array.from({ length: 4 }, (_, i) => wipe(i))).nights);
+    expect(aw.firstToDie![0]).toMatchObject({ guid: 'A', count: 3, value: 0.75 });
+    expect(aw.firstToDie![1]).toMatchObject({ guid: 'B', count: 1 });
+    expect(aw.firstToDie!.some((x) => x.guid === 'C')).toBe(false);
+  });
+
+  it('mais evoluiu e mais piorou: nota do começo contra o fim da prog; parse na kill', () => {
+    const players = ['A', 'B', 'C'].map((g) => player(g));
+    // A morre nos 4 primeiros pulls (nota baixa) e depois não; B ao contrário; C estável
+    const wipe = (i: number) =>
+      pull(i, i * 300_000, 100_000, {
+        players,
+        deaths: [...(i < 4 ? [death('A', 10_000)] : [death('B', 10_000)])],
+      });
+    const aw = progAwards(nightOf(Array.from({ length: 8 }, (_, i) => wipe(i))).nights);
+    expect(aw.mostImproved![0].guid).toBe('A');
+    expect(aw.mostImproved![0].to! - aw.mostImproved![0].from!).toBe(aw.mostImproved![0].value);
+    expect(aw.mostImproved![0].value).toBeGreaterThanOrEqual(5);
+    expect(aw.mostWorsened![0].guid).toBe('B');
+    expect(aw.mostWorsened![0].value).toBeLessThanOrEqual(-5);
+    expect(aw.mostImproved!.some((x) => x.guid === 'C')).toBe(false);
+    // sem kill, não há parse
+    expect(aw.bestKillParse).toBeUndefined();
+  });
+
+  it('melhor parse na kill: top 3 pelos parses salvos, só de quem jogou 30% da prog', () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) });
+    const players = ['A', 'B', 'C', 'D'].map((g) => player(g));
+    const wipes = Array.from({ length: 4 }, (_, i) => pull(i, i * 300_000, 100_000, { players, deaths: [] }));
+    const kill = pull(4, 2_000_000, 100_000, { success: true, players });
+    const parse = (percent: number) => ({ metric: 'dps', kind: 'kill', percent });
+    store.set(`wipe-cause:parses:${kill.encounterId}:${kill.startMs}`, JSON.stringify({ 'A-Realm': parse(40), 'B-Realm': parse(95), 'C-Realm': parse(70), 'D-Realm': parse(12) }));
+    const aw = progAwards(nightOf([...wipes, kill]).nights);
+    expect(aw.bestKillParse!.map((x) => [x.guid, x.value])).toEqual([['B', 95], ['C', 70], ['A', 40]]);
+    // sem kill a categoria some
+    expect(progAwards(nightOf(wipes).nights).bestKillParse).toBeUndefined();
   });
 });
