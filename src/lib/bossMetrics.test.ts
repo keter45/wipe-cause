@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { MechanicResult } from '../types';
-import { metricNight, metricOptions, moveMetric } from './bossMetrics';
+import { metricNight, metricOptions, metricTrend, moveMetric } from './bossMetrics';
 import { player, pull } from './test-fixtures';
 
 const mech = (over: Partial<MechanicResult>): MechanicResult => ({
   key: 'm', name: 'M', spellId: 1, kind: 'avoidable_damage', severity: 'minor', tip: '', evaluated: true, failures: 0,
   summary: '', players: [], events: [], ...over,
 });
-const mp = (guid: string, count: number, credit = false) => ({ guid, name: `${guid}-Realm`, count, amount: 0, firstT: 0, credit, message: '' });
+const mp = (guid: string, count: number, credit = false, amount = 0) => ({ guid, name: `${guid}-Realm`, count, amount, firstT: 0, credit, message: '' });
 
 describe('métricas do resumo do boss', () => {
   const pulls = [
@@ -56,6 +56,51 @@ describe('métricas do resumo do boss', () => {
     // stack_limit: conta pulls acima do limite e guarda o máximo de stacks
     expect(metricNight(pulls, 'venom')!.players.map((p) => [p.guid, p.count, p.max])).toEqual([['B', 2, 10]]);
     expect(metricNight(pulls, 'nada')).toBeNull();
+  });
+
+  it('soma o dano tomado nas mecânicas de hit (só nos kinds de dano por hit)', () => {
+    const night = [
+      pull(0, 0, 60_000, {
+        players: [player('A'), player('B')],
+        mechanics: [mech({ key: 'bad', name: 'Bad', kind: 'avoidable_damage', failures: 2, players: [mp('A', 2, false, 1_200_000), mp('B', 1, false, 340_000)] })],
+      }),
+      pull(1, 100_000, 60_000, {
+        players: [player('A'), player('B')],
+        mechanics: [mech({ key: 'bad', name: 'Bad', kind: 'avoidable_damage', failures: 0 })],
+      }),
+      pull(2, 200_000, 60_000, {
+        players: [player('A'), player('B')],
+        mechanics: [mech({ key: 'bad', name: 'Bad', kind: 'avoidable_damage', failures: 1, players: [mp('B', 2, false, 500_000)] })],
+      }),
+    ];
+    const m = metricNight(night, 'bad')!;
+    expect(m.damage).toBe(2_040_000);
+    expect(m.perPull.map((x) => x.damage)).toEqual([1_540_000, 0, 500_000]);
+    expect(m.players.map((p) => [p.guid, p.damage])).toEqual([
+      ['B', 840_000],
+      ['A', 1_200_000],
+    ]);
+    // kinds que não são dano por hit não ganham o campo
+    expect(metricNight(pulls, 'soak')!.damage).toBeUndefined();
+    expect(metricNight(pulls, 'venom')!.damage).toBeUndefined();
+    expect(metricNight(pulls, 'wave')!.damage).toBe(0);
+  });
+
+  it('evolui a métrica entre noites: total por noite e players somados com as noites em que repetiram', () => {
+    const wave = (failures: number, players: ReturnType<typeof mp>[]) => mech({ key: 'wave', name: 'Wave', severity: 'wipe', failures, players });
+    const night1 = [pull(0, 0, 60_000, { players: [player('A'), player('B')], mechanics: [wave(3, [mp('A', 2), mp('B', 1)])] })];
+    const night2 = [
+      pull(1, 100_000, 60_000, { players: [player('A'), player('C')], mechanics: [wave(2, [mp('A', 1), mp('C', 1)])] }),
+      pull(2, 200_000, 60_000, { players: [player('A')], mechanics: [wave(1, [mp('A', 1)])] }),
+    ];
+    const trend = metricTrend([{ label: 'n1', pulls: night1 }, { label: 'n2', pulls: night2 }, { label: 'n3', pulls: [] }], 'wave')!;
+    expect(trend.nights.map((n) => [n.label, n.night?.total ?? null])).toEqual([['n1', 3], ['n2', 3], ['n3', null]]);
+    expect(trend.players.map((p) => [p.guid, p.count, p.pulls, p.nights])).toEqual([
+      ['A', 4, 3, 2],
+      ['B', 1, 1, 1],
+      ['C', 1, 1, 1],
+    ]);
+    expect(metricTrend([{ label: 'n1', pulls: night1 }], 'nada')).toBeNull();
   });
 
   it('jardas que o fantasma de cada um andou na noite', () => {

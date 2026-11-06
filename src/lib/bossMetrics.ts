@@ -31,6 +31,8 @@ export interface MetricPlayer {
   pulls: number;
   /** stack_limit: mais stacks que chegou a ter; jardas: quantos fantasmas teve */
   max: number;
+  /** dano tomado (avoidable_damage, tank_range, positioning) */
+  damage?: number;
 }
 
 export interface MetricNight {
@@ -43,9 +45,11 @@ export interface MetricNight {
   /** falha do raid (soak, interrupt, enrage...) em vez de erro de cada um */
   collective: boolean;
   /** cada pull em que a mecânica foi avaliada, em ordem */
-  perPull: { pull: Pull; failures: number }[];
+  perPull: { pull: Pull; failures: number; damage?: number }[];
   total: number;
   pullsWithFailure: number;
+  /** dano tomado na noite (avoidable_damage, tank_range, positioning) */
+  damage?: number;
   /** quem errou, quem mais errou primeiro */
   players: MetricPlayer[];
   /** quem ajudou (soak, interrupt, dispel), quem mais ajudou primeiro */
@@ -59,6 +63,8 @@ const YARDS = ':yards';
 /** Tipos que já têm painel próprio no resumo ou não são avaliados. */
 const SKIP = new Set(['phase_duration', 'unavoidable', 'info']);
 const COLLECTIVE = new Set(['soak', 'tank_soak', 'interrupt', 'enrage', 'hp_balance', 'failure_event', 'dispel']);
+/** Kinds em que cada hit é erro de quem tomou: `MechanicPlayer.amount` é o dano tomado. */
+const DAMAGE = new Set(['avoidable_damage', 'tank_range', 'positioning']);
 const RANK: Record<string, number> = { wipe: 0, major: 1, minor: 2, none: 3 };
 
 const eligible = (m: MechanicResult) => m.evaluated && !SKIP.has(m.kind);
@@ -139,15 +145,20 @@ export function metricNight(pulls: Pull[], key: string): MetricNight | null {
   let out: MetricNight | null = null;
   const errs = new Map<string, MetricPlayer>();
   const helps = new Map<string, MetricPlayer>();
+  let dmg = false;
   for (const pull of pulls) {
     const m = pull.mechanics.find((x) => x.key === key);
     if (!m) continue;
+    dmg = DAMAGE.has(m.kind);
+    const hitDamage = dmg ? m.players.reduce((s, mp) => s + (mp.credit ? 0 : mp.amount), 0) : 0;
     out ??= {
       key: m.key, name: m.name, spellId: m.spellId, kind: m.kind, severity: m.severity, tip: m.tip,
       collective: COLLECTIVE.has(m.kind), perPull: [], total: 0, pullsWithFailure: 0, players: [], helpers: [],
+      ...(dmg ? { damage: 0 } : {}),
     };
-    out.perPull.push({ pull, failures: mechanicMistakes(m) });
+    out.perPull.push(dmg ? { pull, failures: mechanicMistakes(m), damage: hitDamage } : { pull, failures: mechanicMistakes(m) });
     out.total += mechanicMistakes(m);
+    if (dmg) out.damage! += hitDamage;
     if (m.failures > 0) out.pullsWithFailure++;
     const cls = new Map(pull.players.map((x) => [x.guid, x.class]));
     for (const mp of m.players) {
@@ -157,6 +168,7 @@ export function metricNight(pulls: Pull[], key: string): MetricNight | null {
       p.count += m.kind === 'stack_limit' && !mp.credit ? 1 : mp.credit ? mp.count : mistakes(mp);
       p.pulls++;
       p.max = Math.max(p.max, mp.count);
+      if (dmg) p.damage = (p.damage ?? 0) + (mp.credit ? 0 : mp.amount);
     }
   }
   if (!out) return null;
@@ -164,6 +176,71 @@ export function metricNight(pulls: Pull[], key: string): MetricNight | null {
   out.players = [...errs.values()].sort(order);
   out.helpers = [...helps.values()].sort(order);
   return out;
+}
+
+/** Uma noite da evolução: `night` é null quando a mecânica não aparece nela. */
+export interface MetricTrendNight {
+  label: string;
+  night: MetricNight | null;
+}
+
+export interface MetricTrendPlayer extends MetricPlayer {
+  /** em quantas noites apareceu */
+  nights: number;
+}
+
+/** Uma métrica escolhida somada noite a noite, com os players somados em todas elas. */
+export interface MetricTrend {
+  key: string;
+  name: string;
+  spellId: number | null;
+  kind: string;
+  severity: MechanicSeverity;
+  collective: boolean;
+  unit?: 'yd';
+  /** na mesma ordem das noites recebidas */
+  nights: MetricTrendNight[];
+  /** quem errou, quem mais errou primeiro; `nights` = noites em que apareceu */
+  players: MetricTrendPlayer[];
+  /** dano tomado somado nas noites (avoidable_damage, tank_range, positioning) */
+  damage?: number;
+}
+
+/** Evolução de uma métrica entre noites: reusa `metricNight` em cada uma. */
+export function metricTrend(nights: { label: string; pulls: Pull[] }[], key: string): MetricTrend | null {
+  const perNight: MetricTrendNight[] = nights.map((n) => ({ label: n.label, night: metricNight(n.pulls, key) }));
+  const found = perNight.filter((n): n is MetricTrendNight & { night: MetricNight } => n.night != null);
+  const first = found[0]?.night;
+  if (!first) return null;
+  const by = new Map<string, MetricTrendPlayer>();
+  let damage: number | undefined;
+  for (const { night } of found) {
+    if (night.damage != null) damage = (damage ?? 0) + night.damage;
+    for (const p of night.players) {
+      const a: MetricTrendPlayer = by.get(p.guid) ?? { guid: p.guid, name: p.name, class: p.class, count: 0, pulls: 0, max: 0, nights: 0 };
+      a.name = p.name;
+      a.class ??= p.class;
+      a.count += p.count;
+      a.pulls += p.pulls;
+      a.max = Math.max(a.max, p.max);
+      a.nights++;
+      if (p.damage != null) a.damage = (a.damage ?? 0) + p.damage;
+      by.set(p.guid, a);
+    }
+  }
+  const players = [...by.values()].sort((a, b) => b.count - a.count || b.nights - a.nights || a.name.localeCompare(b.name));
+  return {
+    key: first.key,
+    name: first.name,
+    spellId: first.spellId,
+    kind: first.kind,
+    severity: first.severity,
+    collective: first.collective,
+    ...(first.unit ? { unit: first.unit } : {}),
+    ...(damage != null ? { damage } : {}),
+    nights: perNight,
+    players,
+  };
 }
 
 const KEY = 'wipe-cause:boss-metrics:';

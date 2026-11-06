@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Check, Plus, X } from 'lucide-react';
 import type { Pull } from '../types';
 import { metricNight, metricOptions, moveMetric, saveBossMetrics, savedBossMetrics, type MetricNight, type MetricOption, type MetricPlayer } from '../lib/bossMetrics';
+import { num } from '../lib/format';
 import { PlayerName } from './Names';
 import { Popover } from './Popover';
 import { SpellIcon, SpellName } from './SpellIcon';
@@ -102,7 +103,7 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
   );
 }
 
-function AddMetric({ options, chosen, onToggle }: { options: MetricOption[]; chosen: string[]; onToggle: (key: string) => void }) {
+export function AddMetric({ options, chosen, onToggle }: { options: MetricOption[]; chosen: string[]; onToggle: (key: string) => void }) {
   const t = useMessages(bossMetricsMsg);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -168,7 +169,7 @@ export function MetricCard({
   const peak = Math.max(1, ...m.perPull.map((x) => x.failures));
   const stack = m.kind === 'stack_limit';
   const yd = m.unit === 'yd';
-  const stats = yd
+  const baseStats = yd
     ? m.total === 0
       ? t.cleanYards
       : t.statsYards(m.total, m.pullsWithFailure, m.perPull.length)
@@ -177,6 +178,7 @@ export function MetricCard({
       : stack
         ? t.statsStack(m.players.length, m.pullsWithFailure, m.perPull.length)
         : t.stats(m.total, m.pullsWithFailure, m.perPull.length);
+  const stats = m.damage ? `${baseStats} · ${t.damageTaken(num(m.damage))}` : baseStats;
   return (
     <article className={`metric-card ${m.severity}`}>
       <header className="metric-head">
@@ -205,8 +207,12 @@ export function MetricCard({
       </p>
 
       <div className="metric-bars" role="img" aria-label={yd ? t.perPullYardsAria(m.name) : t.perPullAria(m.name)}>
-        {m.perPull.map(({ pull, failures }) => {
-          const label = yd ? t.barYards(pull.pullNumber, failures) : t.barTitle(pull.pullNumber, failures);
+        {m.perPull.map(({ pull, failures, damage }) => {
+          const label = yd
+            ? t.barYards(pull.pullNumber, failures)
+            : damage != null
+              ? t.barDamage(pull.pullNumber, failures, num(damage))
+              : t.barTitle(pull.pullNumber, failures);
           const bar = { className: `metric-bar ${failures ? 'hit' : ''} ${pull.success ? 'kill' : ''}`, style: { height: `${failures ? 18 + (failures / peak) * 82 : 6}%` }, title: label };
           return onSelectPull ? <button key={pull.id} {...bar} aria-label={label} onClick={() => onSelectPull(pull.id)} /> : <span key={pull.id} {...bar} />;
         })}
@@ -214,7 +220,7 @@ export function MetricCard({
 
       {/* nas falhas do raid a lista é de quem foi atingido; em failure_event, de quem causou */}
       {m.players.length > 0 && (
-        <PeopleList title={yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} tone="bad" full={full} />
+        <PeopleList title={yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} damage={m.damage != null} tone="bad" full={full} />
       )}
       {m.helpers.length > 0 && <PeopleList title={t.helpers} people={m.helpers} tone="good" full={full} />}
       {tr(m.tip) && <p className="muted small metric-tip">{full ? tr(m.tip) : <Clamp>{tr(m.tip)}</Clamp>}</p>}
@@ -222,12 +228,12 @@ export function MetricCard({
   );
 }
 
-function PeopleList({ title, people, stack = false, yards = false, tone, full = false }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; tone: 'bad' | 'good'; full?: boolean }) {
+function PeopleList({ title, people, stack = false, yards = false, damage = false, tone, full = false }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; damage?: boolean; tone: 'bad' | 'good'; full?: boolean }) {
   const t = useMessages(bossMetricsMsg);
   const [all, setAll] = useState(full);
   const shown = all ? people : people.slice(0, TOP);
   return (
-    <div className={`metric-people ${yards ? 'metric-people-yards' : ''}`}>
+    <div className={`metric-people ${yards ? 'metric-people-yards' : ''} ${damage ? 'metric-people-damage' : ''}`}>
       <span className="tile-label">{title}</span>
       <ul className="plain">
         {shown.map((p) => (
@@ -235,6 +241,7 @@ function PeopleList({ title, people, stack = false, yards = false, tone, full = 
             <PlayerName name={p.name} guid={p.guid} cls={p.class} />
             <strong className={`tabular ${tone}`}>{yards ? t.yards(p.count) : stack ? t.inPulls(p.count) : t.times(p.count)}</strong>
             <span className="muted small">{yards ? t.ghosts(p.max, p.count) : stack ? t.maxStacks(p.max) : t.inPulls(p.pulls)}</span>
+            {damage && <span className="muted small tabular">{t.playerDamage(num(p.damage ?? 0))}</span>}
           </li>
         ))}
       </ul>

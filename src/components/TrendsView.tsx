@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bot, ShieldOff, TrendingDown, TrendingUp, TriangleAlert, Trophy } from 'lucide-react';
+import { ArrowDown, ArrowUp, Bot, Plus, ShieldOff, TrendingDown, TrendingUp, TriangleAlert, Trophy, X } from 'lucide-react';
 import { historyTrends } from '../lib/api';
-import { classColor, pct, shortName } from '../lib/format';
+import { classColor, num, pct, shortName } from '../lib/format';
 import { buildTrends, byGroup, trendBosses, type NightInput, type PlayerMove, type Progression, type ProgressionPlayer, type Trends } from '../lib/trends';
+import { metricOptions, metricTrend, moveMetric, saveBossMetrics, savedBossMetrics, type MetricTrend, type MetricTrendPlayer } from '../lib/bossMetrics';
+import { AddMetric } from './BossMetrics';
+import { bossMetricsMsg } from './BossMetrics.i18n';
 import { scoreTier } from '../lib/score';
 import { phaseCountOf, pullProgress } from '../lib/phases';
 import { SpellName } from './SpellIcon';
 import { Markdown } from './AskView';
 import { withErrorBoundary } from './ErrorBoundary';
 import { spellIndex } from '../lib/spells';
-import { BossName } from './Names';
+import { BossName, PlayerName } from './Names';
 import { messagesOf, useMessages } from '../i18n';
 import { trendsViewMsg } from './TrendsView.i18n';
 import { Hint } from './ui/Hint';
@@ -145,6 +148,8 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
           })}
         </div>
       </section>
+
+      <MetricsPanel tr={t} />
 
       <section className="panel">
         <h3>{m.triggers} <Hint>{m.triggersHint}</Hint></h3>
@@ -285,6 +290,176 @@ function TrendsBody({ tr: t }: { tr: Trends }) {
         </div>
       </section>
     </>
+  );
+}
+
+/** Quantas pessoas cada lista mostra antes do "+ N". */
+const TREND_TOP = 5;
+
+/** Métricas escolhidas do boss, com a evolução noite a noite (a mesma escolha salva do resumo). */
+function MetricsPanel({ tr }: { tr: Trends }) {
+  const bm = useMessages(bossMetricsMsg);
+  const m = useMessages(trendsViewMsg);
+  const pulls = useMemo(() => tr.nights.flatMap((n) => n.summary.pulls), [tr]);
+  const encounterId = pulls[0]?.encounterId ?? 0;
+  const [keys, setKeysState] = useState<string[]>(() => savedBossMetrics(encounterId));
+  const [loadedFor, setLoadedFor] = useState(encounterId);
+  if (loadedFor !== encounterId) {
+    setLoadedFor(encounterId);
+    setKeysState(savedBossMetrics(encounterId));
+  }
+  const setKeys = (k: string[]) => {
+    setKeysState(k);
+    saveBossMetrics(encounterId, k);
+  };
+  const options = useMemo(() => metricOptions(pulls), [pulls]);
+  const trends = useMemo(
+    () => keys.map((k) => ({ key: k, trend: metricTrend(tr.nights.map((n) => ({ label: n.label, pulls: n.summary.pulls })), k) })),
+    [tr, keys],
+  );
+  const toggleKey = (k: string) => setKeys(keys.includes(k) ? keys.filter((x) => x !== k) : [...keys, k]);
+  if (!options.length) return null;
+  const suggestions = [
+    ...options.filter((o) => !o.unit && o.failures > 0 && !keys.includes(o.key)).slice(0, 3),
+    ...options.filter((o) => o.unit && o.amount && !keys.includes(o.key)),
+  ];
+  return (
+    <section className="panel boss-metrics trends-metrics">
+      <header className="boss-metrics-head">
+        <div>
+          <h3>{bm.title} <Hint>{m.metricsHint}</Hint></h3>
+        </div>
+        <span className="panel-head-actions">
+          <AddMetric options={options} chosen={keys} onToggle={toggleKey} />
+        </span>
+      </header>
+      {keys.length === 0 && suggestions.length > 0 && (
+        <div className="metric-suggest">
+          <span className="muted small">{bm.empty}</span>
+          <div className="chips">
+            {suggestions.map((o) => (
+              <button key={o.key} onClick={() => toggleKey(o.key)}>
+                <Plus size={12} strokeWidth={2} aria-hidden /> <SpellName spellId={o.spellId} name={o.name} size={14} />
+                {o.unit && <span className="muted">· {bm.walked}</span>}
+                <span className="muted tabular">{o.unit ? bm.yards(o.amount ?? 0) : o.failures}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {trends.length > 0 && (
+        <div className="metric-grid">
+          {trends.map(({ key, trend }, i) =>
+            trend ? (
+              <TrendMetricCard
+                key={key}
+                trend={trend}
+                edit={{
+                  onRemove: () => toggleKey(key),
+                  onMove: (dir) => setKeys(moveMetric(keys, key, dir)),
+                  first: i === 0,
+                  last: i === trends.length - 1,
+                }}
+              />
+            ) : (
+              <article key={key} className="metric-card gone">
+                <span className="muted small">{bm.gone(key)}</span>
+                <button className="icon-btn" onClick={() => toggleKey(key)} title={bm.remove(key)} aria-label={bm.remove(key)}>
+                  <X size={14} strokeWidth={1.5} aria-hidden />
+                </button>
+              </article>
+            ),
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TrendMetricCard({ trend: m, edit }: { trend: MetricTrend; edit: { onRemove: () => void; onMove: (dir: -1 | 1) => void; first: boolean; last: boolean } }) {
+  const t = useMessages(trendsViewMsg);
+  const b = useMessages(bossMetricsMsg);
+  const yd = m.unit === 'yd';
+  const stack = m.kind === 'stack_limit';
+  const peak = Math.max(1, ...m.nights.map((n) => n.night?.total ?? 0));
+  return (
+    <article className="metric-card trend-metric">
+      <header className="metric-head">
+        <strong className="metric-name">
+          <SpellName spellId={m.spellId} name={m.name} size={18} />
+          {yd && <span className="muted small"> · {b.walked}</span>}
+        </strong>
+        <span className="metric-tools">
+          <button className="icon-btn" disabled={edit.first} onClick={() => edit.onMove(-1)} title={b.moveUp} aria-label={b.moveUp}>
+            <ArrowUp size={14} strokeWidth={1.5} aria-hidden />
+          </button>
+          <button className="icon-btn" disabled={edit.last} onClick={() => edit.onMove(1)} title={b.moveDown} aria-label={b.moveDown}>
+            <ArrowDown size={14} strokeWidth={1.5} aria-hidden />
+          </button>
+          <button className="icon-btn" onClick={edit.onRemove} title={b.remove(m.name)} aria-label={b.remove(m.name)}>
+            <X size={14} strokeWidth={1.5} aria-hidden />
+          </button>
+        </span>
+      </header>
+
+      <div className="night-cols trend-metric-nights" role="img" aria-label={t.metricAria(m.name)}>
+        {m.nights.map(({ label, night }) => {
+          const total = night?.total ?? 0;
+          const pulls = night?.perPull.length ?? 0;
+          const failed = night?.pullsWithFailure ?? 0;
+          const value = yd ? b.yards(total) : b.failuresShort(total);
+          const title = night ? t.metricNightTitle(label, value, failed, pulls) : t.metricNightGone(label);
+          return (
+            <div key={label} className="night-col" title={night?.damage != null ? `${title} · ${b.playerDamage(num(night.damage))}` : title}>
+              <span className="night-col-value">{night ? (yd ? b.yards(total) : total) : '—'}</span>
+              <span className="night-col-track" aria-hidden>
+                <span className={night ? '' : 'none'} style={{ transform: `scaleY(${night ? Math.max(0.04, total / peak) : 0})` }} />
+              </span>
+              <strong>{label}</strong>
+              <span className="muted small">{night ? t.metricNightPulls(failed, pulls) : '—'}</span>
+              {night?.damage != null && <span className="muted small tabular">{b.playerDamage(num(night.damage))}</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      {m.players.length > 0 && (
+        <TrendPeople
+          title={yd ? b.whoYards : m.collective && m.kind !== 'failure_event' ? b.hit : b.who}
+          people={m.players}
+          stack={stack}
+          yards={yd}
+          damage={m.damage != null}
+        />
+      )}
+    </article>
+  );
+}
+
+function TrendPeople({ title, people, stack = false, yards = false, damage = false }: { title: string; people: MetricTrendPlayer[]; stack?: boolean; yards?: boolean; damage?: boolean }) {
+  const t = useMessages(trendsViewMsg);
+  const b = useMessages(bossMetricsMsg);
+  const [all, setAll] = useState(false);
+  const shown = all ? people : people.slice(0, TREND_TOP);
+  return (
+    <div className={`metric-people ${yards ? 'metric-people-yards' : ''} ${damage ? 'metric-people-damage' : ''}`}>
+      <span className="tile-label">{title}</span>
+      <ul className="plain">
+        {shown.map((p) => (
+          <li key={p.guid}>
+            <PlayerName name={p.name} guid={p.guid} cls={p.class} />
+            <strong className="tabular bad">{yards ? b.yards(p.count) : stack ? b.inPulls(p.count) : b.times(p.count)}</strong>
+            <span className="muted small">{t.metricNights(p.nights)}</span>
+            {damage && <span className="muted small tabular">{b.playerDamage(num(p.damage ?? 0))}</span>}
+          </li>
+        ))}
+      </ul>
+      {people.length > TREND_TOP && (
+        <button className="btn ghost sm" onClick={() => setAll(!all)} aria-expanded={all}>
+          {all ? '−' : t.metricMore(people.length - TREND_TOP)}
+        </button>
+      )}
+    </div>
   );
 }
 
