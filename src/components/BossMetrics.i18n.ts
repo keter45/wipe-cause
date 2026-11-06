@@ -38,6 +38,9 @@ export const bossMetricsMsg = defineMessages(
     barYards: (pull: number, k: number) => `Pull ${pull}: ${k.toLocaleString('pt-BR')} jd`,
     whoYards: 'Quem deixou o fantasma andar',
     ghosts: (k: number, yards: number) => `${n(k, 'fantasma', 'fantasmas')} · ${Math.round(yards / Math.max(1, k))} jd cada`,
+    damageTaken: (damage: string) => `${damage} de dano tomado`,
+    playerDamage: (damage: string) => `${damage} de dano`,
+    barDamage: (pull: number, k: number, damage: string) => `Pull ${pull}: ${n(k, 'falha', 'falhas')} · ${damage} de dano`,
   },
   {
     title: 'Group metrics',
@@ -74,5 +77,8 @@ export const bossMetricsMsg = defineMessages(
     barYards: (pull: number, k: number) => `Pull ${pull}: ${k.toLocaleString('en-US')} yd`,
     whoYards: 'Who let their ghost walk',
     ghosts: (k: number, yards: number) => `${n(k, 'ghost', 'ghosts')} · ${Math.round(yards / Math.max(1, k))} yd each`,
+    damageTaken: (damage: string) => `${damage} damage taken`,
+    playerDamage: (damage: string) => `${damage} damage`,
+    barDamage: (pull: number, k: number, damage: string) => `Pull ${pull}: ${n(k, 'failure', 'failures')} · ${damage} damage`,
   },
 );

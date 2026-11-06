@@ -7118,6 +7118,24 @@ button.kpi:hover {
 .metric-people-yards li .small {
   white-space: nowrap;
 }
+/* dano tomado por hit: nome, erros, pulls e dano */
+.metric-people-damage li {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+.metric-people-damage li .small {
+  white-space: nowrap;
+}
+/* evolução das métricas: uma coluna por noite dentro do cartão */
+.trend-metric .night-cols {
+  gap: 12px;
+  padding-bottom: 4px;
+}
+.trend-metric .night-col-track {
+  height: 72px;
+}
+.trend-metric .night-col-value {
+  font-size: 13px;
+}
 .metric-options {
   display: flex;
   flex-direction: column;
