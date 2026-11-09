@@ -39,7 +39,7 @@ Cada análise fica salva na barra lateral, em **Noites**, com a data: **Fixar** 
 
 ### 2. Veja por que deu wipe
 
-O topo do pull é o **veredito**: o boss em quanto ficou, o **gatilho** do wipe (a falha de mecânica que puxou as mortes) e os erros de mecânica que causaram o wipe, com quem errou (os outros erros e avisos abrem em **Mostrar N outros erros e avisos**) (veja o [print do pull](screenshots/pt/pull.webp)). Abaixo, as abas.
+O topo do pull é o **veredito**: o boss em quanto ficou, o **gatilho** do wipe (a falha de mecânica que puxou as mortes do colapso: as dos 30 s até a call de wipe ou a N-ésima morte; mortes isoladas minutos antes não contam) e os erros de mecânica que causaram o wipe, com quem errou (os outros erros e avisos abrem em **Mostrar N outros erros e avisos**) (veja o [print do pull](screenshots/pt/pull.webp)). Abaixo, as abas.
 
 Quando a raid desiste (depois de um desastre, vários players param de castar ao mesmo tempo e morrem), o pull mostra **Call de wipe** (ou **Possível call**, quando o sinal é mais fraco). Com a call certa, o que vem depois conta como o corte de mortes: ninguém leva culpa por morrer de propósito.
 

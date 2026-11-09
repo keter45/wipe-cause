@@ -2160,8 +2160,6 @@ impl PullBuilder {
         let ranges: HashMap<String, String> =
             players.iter().filter_map(|p| Some((p.guid.clone(), data.specs.get(&p.spec_id?)?.range.clone()))).collect();
         let rules_file = self.rules.as_ref().and_then(|r| r.files.first().cloned());
-        let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).filter(|d| !d.ignored).collect();
-        let trigger = pull_trigger(&deaths_view);
         let mut ghosts = None;
         let phase_marks = self.rules.as_ref().map(|r| r.phase_marks()).unwrap_or_default();
         // replay completo: orbs e áreas das habilidades
@@ -2227,6 +2225,10 @@ impl PullBuilder {
                 .collect();
             crate::wipecall::detect(&infos, players.len(), &rezzes, &failures)
         };
+        // o que derrubou a raide: no wipe, as mortes do colapso (até a call de wipe); no kill, o pull todo
+        let deaths_view: Vec<&Death> = pending.iter().map(|d| &d.death).filter(|d| !d.ignored).collect();
+        let collapse_end = (!success).then(|| collapse_end(&deaths_view, wipe_call.as_ref().map(|c| c.t))).flatten();
+        let trigger = pull_trigger(&deaths_view, collapse_end);
 
         // replays: os segundos antes de cada morte (antes do corte) e de cada falha de mecânica
         for d in pending.iter_mut().filter(|d| !d.death.ignored) {
@@ -2712,11 +2714,28 @@ fn build_soaks(hits: &[(i64, f32, f32, usize, String)], meta: &HashMap<usize, So
     out
 }
 
-/// Mecânica que puxou as mortes: a mais cedo entre as que causaram 2+ mortes;
-/// senão, a causa da primeira morte.
-fn pull_trigger(deaths: &[&Death]) -> Option<PullTrigger> {
+/// O colapso do wipe vai de COLLAPSE_BEFORE_MS antes do fim até COLLAPSE_AFTER_MS depois (quem morre parado
+/// logo depois da call ainda é do colapso: o wipe em massa do Serpent's Bite mata 18 em 5 s).
+const COLLAPSE_BEFORE_MS: i64 = 30_000;
+const COLLAPSE_AFTER_MS: i64 = 5_000;
+
+/// Fim do wipe para achar o colapso: a call de wipe (quando o grupo parou de jogar), mas nunca depois da
+/// última morte contada (com o corte de N mortes, o colapso é o das mortes que contam).
+fn collapse_end(deaths: &[&Death], call: Option<i64>) -> Option<i64> {
+    let last = deaths.iter().map(|d| d.t).max()?;
+    Some(call.map_or(last, |c| c.min(last)))
+}
+
+/// Mecânica que puxou as mortes: a mais cedo entre as que causaram 2+ mortes; senão, a causa da primeira
+/// morte. No wipe (`collapse_end`), só contam as mortes do colapso: duas mortes por uma onda aos 2 min não
+/// são o gatilho de um wipe aos 9 min (sem causa conhecida no colapso, não há gatilho).
+fn pull_trigger(deaths: &[&Death], collapse_end: Option<i64>) -> Option<PullTrigger> {
+    let deaths: Vec<&Death> = match collapse_end {
+        Some(end) => deaths.iter().copied().filter(|d| d.t >= end - COLLAPSE_BEFORE_MS && d.t <= end + COLLAPSE_AFTER_MS).collect(),
+        None => deaths.to_vec(),
+    };
     let mut groups: Vec<PullTrigger> = Vec::new();
-    for d in deaths {
+    for d in &deaths {
         let Some(c) = &d.caused_by else { continue };
         let t = c.fail_t.unwrap_or(d.t);
         match groups.iter_mut().find(|g| g.key == c.key) {
@@ -2889,6 +2908,32 @@ mod tests {
         let out2 = match_aura_clears(&a, &guids, &[(5_200, 9, 1.0, 0.0), (5_000, 9, 1.0, 0.0), (5_400, 9, 1.0, 0.0)], &last2, &trails);
         assert_eq!(out2.len(), 2);
         assert_eq!((out2.get("Egg-A"), out2.get("Egg-B")), (Some(&5_000), Some(&5_200)));
+    }
+
+    #[test]
+    fn gatilho_do_wipe_vem_das_mortes_do_colapso() {
+        let death = |t: i64, key: Option<&str>| Death {
+            order: 0, guid: format!("Player-{t}"), name: "P".into(), class: None, role: None, t, ignored: false,
+            killing_blow: None, killing_blow_mechanic: None, death_kind: String::new(), stats: Default::default(),
+            debuffs: vec![], mechanic_damage: vec![],
+            caused_by: key.map(|k| crate::report::MechanicShare { key: k.into(), name: k.into(), amount: 1, pct: 100.0, fail_t: None }),
+            recap: vec![], defensives_recent: vec![], defensives_available: vec![], used_health_potion: false,
+            used_healthstone: false, healthstone_known: false, positions: None, idle_ms: None, replay: None,
+        };
+        // duas mortes pela onda aos 2 min; aos 9:45, o soak falha e mata 3 em 2 s; a call vem em 9:46
+        let ds = [death(130_000, Some("waves")), death(137_000, Some("waves")), death(585_000, Some("bite")), death(586_000, Some("bite")), death(587_000, Some("bite"))];
+        let view: Vec<&Death> = ds.iter().collect();
+        assert_eq!(collapse_end(&view, Some(586_000)), Some(586_000));
+        let wipe = pull_trigger(&view, collapse_end(&view, Some(586_000))).unwrap();
+        assert_eq!((wipe.key.as_str(), wipe.deaths, wipe.t), ("bite", 3, 585_000));
+        // no kill (sem colapso), vale o pull todo: a onda veio antes
+        assert_eq!(pull_trigger(&view, None).unwrap().key, "waves");
+        // colapso sem causa conhecida: sem gatilho, mesmo com a onda antes
+        let ds2 = [death(130_000, Some("waves")), death(137_000, Some("waves")), death(400_000, None)];
+        let view2: Vec<&Death> = ds2.iter().collect();
+        assert!(pull_trigger(&view2, collapse_end(&view2, None)).is_none());
+        // a call nunca passa da última morte contada (corte de N mortes)
+        assert_eq!(collapse_end(&view2, Some(500_000)), Some(400_000));
     }
 
     #[test]
