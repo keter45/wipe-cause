@@ -9,7 +9,7 @@
 //
 // O log é analisado pelo wipe-cli (target/release; `cargo build --release -p wipe-core --bin wipe-cli`),
 // sem corte de mortes (o replay mostra o pull inteiro). O relatório fica em
-// samples/replay/<data>-<boss>.md (e .json).
+// samples/replay/<data>-<boss>-<dificuldade>.md (e .json).
 
 import fs from 'node:fs';
 import os from 'node:os';

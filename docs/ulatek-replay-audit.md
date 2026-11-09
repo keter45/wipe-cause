@@ -42,6 +42,20 @@ forma: outros ids das mesmas habilidades, Writhing Gestation, Shadow Molt e Boil
 | Ovos com casca (mítico) | Blightscale Spawn 265644 e 268121, sem `UNIT_DIED`, vida de 0 a 82 s, até 22 s sem linha com o ovo ainda no chão. Saem do log de quatro jeitos: pego (Noxious Shell 1307612 num player; vem da Ula'tek, não do ovo; o player está a 2,3-4,8 jd no log local e até 15 jd no WCL, e os DoTs batem no ovo por mais 1,6-2,7 s), quebrado (vira Rawling 1-3 s depois da última linha), Writhing Gestation (vira Blightscale Clutch 263535: 6 ovos somem em 226,7 s e 6 Clutches nascem em 227,9 s, DVYR fight 40) e choca (vira Viper). No log local, os 8 ovos saem do mapa na Shell certa (design [replay-unit-exit.md](designs/replay-unit-exit.md)) | `units` com `replay`, `until_last_line: true` e `cleared_by_aura: { aura: 1307612, radius: 15, within_s: 3 }` |
 | Mephitic Thrash | todo mundo toma o mesmo dano (595-625k sem mitigação) de 35 a 60 jd da cauda: o dano não cai com a distância | sem forma (premissa 10) |
 
+## Saída dos ovos do mapa (`replay:check`, 09/11)
+
+Quantos ovos o mapa mostra, quantos saíram pela Noxious Shell (`cleared_by_aura`) e quantos ficaram no mapa mais de 1 s depois de sair do log:
+
+| Log | Ovos no mapa | Saíram pela Shell | Atrasados |
+|---|---|---|---|
+| Local, mítico de 05/11 | 8 | 8 | 0 |
+| WCL DVYR + pRJD | 150 | 106 | 0 |
+| WCL BPR9 | 149 | 135 | 0 |
+
+- **Log local:** pelo replay completo do `wipe-cli fight`, cada ovo sai entre 0,05 e 0,2 s antes da Shell, por causa do passo de 250 ms. A Shell foi ligada ao ovo a 2,3–4,8 jd do player.
+- **BPR9:** nenhum dos 135 ovos tirados pela aura levou golpe direto depois dela. Só aparecem ticks de DoT e o dano de suporte do Augmentation (Ebon Might, Shifting Sands, Prescience). Da aura até a última linha do ovo: mediana de 1,8 s e máximo de 2,94 s.
+- **Contagem à mão:** antes do `replay:check`, uma conta à mão comparou o fim da trilha com as Shells e deu 78 de 150. A janela do replay cortava parte das trilhas antes.
+
 ## Fora, e por quê
 
 - **Ovos sem posição.** No heroico os ovos nem são unidades do log. No mítico, quem não toma dano não

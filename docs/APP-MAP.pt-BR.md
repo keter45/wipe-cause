@@ -135,7 +135,7 @@ Fontes: [Sidebar](../src/components/Sidebar.tsx), [history.rs](../src-tauri/src/
 
 ### 3.4 Resumo da noite — Guilda
 
-`NightOverview` é a visão ampla da sessão. Mostra número de bosses, pulls e kills; tempo de raid; tempo em combate; downtime; intervalos médios/medianos e maiores pausas. O card **Tempo da noite** agrupa esses números. Cards de boss apresentam resultado, melhor progresso e principal causa dos wipes. A linha do tempo reúne pulls e intervalos. O card **Gravidade das mortes: DPS** mostra o que cada DPS ainda tinha livre ao morrer. Todos os cards do resumo da noite recolhem e expandem, e o estado fica salvo (ver 3.5).
+`NightOverview` é a visão ampla da sessão. Mostra número de bosses, pulls e kills; tempo de raid; tempo em combate; downtime; intervalos médios/medianos e maiores pausas. O card **Tempo da noite** agrupa esses números. Cards de boss apresentam resultado, melhor progresso e principal causa dos wipes. A linha do tempo reúne pulls e intervalos. O card **Gravidade das mortes: DPS** mostra o que cada DPS ainda tinha livre ao morrer. Recolhem e expandem, com o estado salvo (ver 3.5), os painéis Tempo da noite, Linha do tempo e Gravidade das mortes; os cards de boss ficam sempre à mostra.
 
 **Entradas:** pulls do relatório, com filtro de conteúdo de raid. Masmorras podem existir nos dados, mas não entram nas métricas de tempo e nos cards de raid.
 
@@ -162,7 +162,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [night](../src/lib/n
 | Robô para a raide | Simula DPS e tanks elegíveis em fila e mostra potencial dos resultados salvos |
 | Placar | Consolida nota, mortes, erros, recursos e produção por jogador |
 
-Todos os cards do resumo do boss e da noite usam `CollapsiblePanel`/`useCollapsed`: recolhem e expandem, e o estado fica no localStorage (chaves `wipe-cause:summary.*`). Métricas escolhidas são preferências por encontro; não são novas regras de detecção. Escolher uma métrica muda o acompanhamento exibido. Alterar uma regra muda a análise e exige reprocessamento.
+Os cards do resumo do boss e da noite usam `CollapsiblePanel`/`useCollapsed`: recolhem e expandem, e o estado fica no localStorage (chaves `wipe-cause:summary.*`; o card CDs de cura usa `wipe-cause:heal-note-open`). Não recolhem o bloco Resumo do boss (`StatGrid`) e os cards de boss da noite. Métricas escolhidas são preferências por encontro; não são novas regras de detecção. Escolher uma métrica muda o acompanhamento exibido. Alterar uma regra muda a análise e exige reprocessamento.
 
 Fontes: [NightSummary](../src/components/NightSummary.tsx), [HealNotePanel](../src/components/HealNotePanel.tsx), [BossMetrics](../src/components/BossMetrics.tsx), [PhaseTimes](../src/components/PhaseTimes.tsx), [StackOrigins](../src/components/StackOrigins.tsx), [RaidBot](../src/components/perf/RaidBot.tsx).
 
@@ -271,7 +271,7 @@ O robô aparece no comparador individual e no resumo do boss para a raide. O flu
 
 O modelo considera aspectos como duração, movimento, alvos/adds, disponibilidade de alvo, fases/vida e buffs temporários. Desde a v0.40.0 ([notas](releases/v0.40.0.md)), o robô fica na fase de execute (abaixo de 20% e de 35%) pelo mesmo tempo que a luta, medido pela vida do boss em cada fase (`bossEndPct` em `simProfile.ts`); análises antigas, sem essa linha de vida, usam a vida do boss no corte. As suposições e o detalhamento pertencem ao resultado da simulação: a porcentagem de potencial depende desse modelo.
 
-`RaidBot` coloca DPS e tanks com setup/spec em fila, reaproveita os resultados salvos e permite simular os que faltam. `usePotentials` leva esses resultados aos jogadores do pull, `useNightPotentials` à Evolução, e o próprio `RaidBot` os lê no resumo do boss (`loadPotentials`). Consultar a Evolução não dispara uma simulação nova.
+`RaidBot` coloca DPS e tanks com setup/spec em fila, reaproveita os resultados salvos e permite simular os que faltam. `usePotentials` leva esses resultados aos jogadores do pull (`useNightPotentials` existe em `botRaid.ts`, mas a Evolução ainda não o usa), e o próprio `RaidBot` os lê no resumo do boss (`loadPotentials`). Consultar a Evolução não dispara uma simulação nova.
 
 **Disponibilidade:** a execução exige o desktop; há uma ponte opcional de desenvolvimento em `vite.config.ts` (`POST /__simc`), que roda o SimulationCraft de `WIPE_DEV_SIMC_EXE` e guarda os resultados em localStorage. O backend web comum declara o recurso indisponível.
 
@@ -360,7 +360,7 @@ O insumo é o conjunto de análises salvas, obtido por `historyTrends`; abrir um
 | Seleção por boss/dificuldade, agrupamento da guilda e opção de incluir pug | Seleção de personagem e bosses em que ele participou |
 | Melhor progresso por noite, gatilhos de wipe, evolução das notas e problemas recorrentes | Melhor produção, mediana de rotação, mortes e erros por pull entre noites |
 | Tabela de jogadores ordenável (nota média, mortes por pull; quem jogou menos de 30% das trys recolhido), painel Destaques da prog (Quem menos/mais morre, Quem mais causou wipes e cards de top 3 com barra, de quem jogou ≥30% dos pulls), cards Gravidade das mortes: DPS e Mortes que viraram wipe, e botão Reanalisar as noites deste boss (só desktop); painel Métricas do grupo com a escolha por boss do resumo (total das noites, players somados nas noites com quantas repetiram) | Gráficos e tabela da trajetória individual |
-| Pode apresentar parses e potencial já salvos quando disponíveis | Depende dos campos de análise individual presentes nos relatórios |
+| Pode apresentar os parses de kill já salvos | Depende dos campos de análise individual presentes nos relatórios |
 
 A unificação de GUIDs ocorre antes de comparar análises locais e WCL. Sem isso, a mesma pessoa poderia aparecer como identidades separadas. Sem histórico ou sem participação do personagem, há estados vazios. Uma única noite permite leitura parcial, mas não estabelece evolução entre sessões.
 
@@ -474,7 +474,7 @@ O contrato TypeScript de [types.ts](../src/types.ts) espelha a serialização Ru
 | `FightData` e tracks | Eventos e trajetórias para a luta completa ou trechos | Replay, clipes e detalhe temporal |
 | `WipeCall`, `cutoffT`, `analyzedMs` | Limite interpretativo/estatístico do pull | Contagens, médias, mortes consideradas e apresentação |
 
-Campos opcionais são relevantes à compatibilidade: relatórios antigos podem não ter casts, setup, dados completos de replay ou origem para releitura. O frontend contém mensagens para vários desses casos. A versão compacta do histórico, que alimenta a Evolução, vem sem `events` e `snapshots` nas mecânicas e sem recap, casts e setup dos jogadores; o código da Evolução precisa aceitar esses campos ausentes (a falha descrita adiante veio daí).
+Campos opcionais são relevantes à compatibilidade: relatórios antigos podem não ter casts, setup, dados completos de replay ou origem para releitura. O frontend contém mensagens para vários desses casos. A versão compacta do histórico, que alimenta a Evolução, vem sem `raidSeries` e `enemyHits` no pull, sem `recap`, `debuffs`, `mechanicDamage` e `positions` nas mortes, sem `events` e `snapshots` nas mecânicas e sem `takenByAbility`, `interruptLog`, `casts`, `damageBySpell`, `healingBySpell`, `setup` e `cdHeals` nos jogadores (`compact()` em `history.rs` e `src/web/history.ts`); o código da Evolução precisa aceitar esses campos ausentes (a falha descrita adiante veio daí).
 
 ### Responsabilidades por camada
 
@@ -600,7 +600,7 @@ Não foram concluídos login externo, envio ao Discord, chamadas a provedor real
 1. **Evolução Solo com histórico de amostra:** ao abrir `?demoTrends=history` no desenvolvimento, aguardar a evolução Guilda e trocar para Solo com um personagem previamente escolhido, apareceu o ErrorBoundary “Algo deu errado na sua evolução” com `Cannot read properties of undefined (reading 'filter')`. O stack aponta para `myMechanicFailures`, em [solo.ts](../src/lib/solo.ts), ao filtrar os eventos de uma mecânica, chamado por `losses → soloPull → soloEvolution`. O restante do app continuou acessível. Na conferência da `0.42.0`, a origem apareceu no código: a versão compacta do histórico, que alimenta a Evolução, tira `events` das mecânicas ([history.rs](../src-tauri/src/history.rs) e [web/history](../src/web/history.ts)), e `myMechanicFailures` lê `m.events` sem proteção. A amostra usa o mesmo formato compacto, então um histórico real em que o personagem falhou numa mecânica pessoal avaliada tinha a mesma falha, no desktop e no site. **Corrigido:** `myMechanicFailures` aceita a mecânica sem `events` e usa o primeiro instante do player (teste em [solo.test.ts](../src/lib/solo.test.ts)).
 2. **Replay sem origem:** o relatório WCL de amostra sem `fight`/origem suficiente exibiu a orientação de reabrir o log para obter replay completo. O replay curto da morte funcionou. A amostra específica não determina a capacidade atual do backend WCL, que implementa carregamento por report/fight.
 3. **Discord no site:** o formulário compartilhado exibe opções de envio automático, mas o backend web não implementa ao vivo. O envio manual e a configuração existem; os checkboxes não habilitam monitoramento automático no navegador.
-4. **Indicadores no desenvolvimento:** sem backend, pasta detectada e IA “demo” são sempre os dados de exemplo de `setup.ts`; não comprovam configuração real do usuário.
+4. **Indicadores no desenvolvimento:** sem backend, pasta detectada e IA “demo” são por padrão os dados de exemplo de `setup.ts` (com `?demoAiSetup=1`, o exemplo fica sem provedor de IA); não comprovam configuração real do usuário.
 
 Esses pontos são registros da inspeção; o item 1 foi corrigido depois, no #73.
 

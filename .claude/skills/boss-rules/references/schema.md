@@ -20,7 +20,7 @@ updated: 2026-09-28
 difficulties: [normal, heroic, mythic]
 
 units:                          # bosses e adds relevantes (nome em inglês → npc_id)
-  - { key: vexhul, name: "Vexhul", npc_id: null, boss: true }
+  - { key: vexhul, name: "Vexhul", npc_id: null, boss: true }   # `boss` é só anotação: o app não lê
   - { key: broodling, name: "Broodling of Ithraz", npc_id: null }
 
 phases:                         # opcional; luta de fase única pode omitir
@@ -39,14 +39,14 @@ mechanics: [ ... ]              # lista de regras (abaixo)
 | `key` | sim | slug único no arquivo (`caustic_globule`) — outras regras referenciam por ele |
 | `name` | sim | nome em inglês da habilidade |
 | `type` | sim | um dos tipos abaixo |
-| `source_unit` | não | `key` de `units` |
-| `severity` | sim | `wipe` \| `major` \| `minor` \| `none` |
+| `source_unit` | não | `key` de `units` (só anotação: o app não lê) |
+| `severity` | não (padrão `minor`) | `wipe` \| `major` \| `minor` \| `none` |
 | `roles` | não | `[tank, healer, dps]` — quem pode ser culpado; default todos |
 | `tank_full_weight` | não | `true` = dano evitável pesa inteiro para tank na nota (o padrão é metade, porque tank costuma tomar de propósito) |
 | `difficulty` | não | lista; vazia = todas as dificuldades (o `difficulties` do cabeçalho é só informativo) |
 | `overrides` | não | mapa dificuldade → campos que mudam (`mythic: { severity: wipe }`) |
-| `tip` | sim | o que fazer, 1 frase, palavras próprias, nas duas línguas: `{ pt: "...", en: "..." }` |
-| `message` | sim | texto do relatório quando dispara (placeholders `{player}` `{count}` `{stacks}` `{lethal_stacks}`), nas duas línguas: `{ pt: "...", en: "..." }` |
+| `tip` | não (padrão vazio; escreva sempre) | o que fazer, 1 frase, palavras próprias, nas duas línguas: `{ pt: "...", en: "..." }` |
+| `message` | não (padrão vazio; escreva sempre) | texto do relatório quando dispara (placeholders `{player}` `{count}` `{stacks}` `{lethal_stacks}`), nas duas línguas: `{ pt: "...", en: "..." }` |
 | `needs_id` | não | `true` enquanto algum ID estiver `null`; só anotação, o app não lê |
 | `notes` | não | observações de calibração |
 
@@ -57,13 +57,13 @@ Opções extras:
 | campo | descrição |
 |---|---|
 | `ground` | replay: cada acerto de `damage_ids` marca o chão onde a vítima estava (o log não registra poças/gotas). Padrão: ligado (2s) em `avoidable_damage`, `soak`, `positioning` e `spread`, desligado no resto e em mecânica só de tank. `ground: { lingers_s: 6 }` para poça que fica; `ground: false` para desligar (dano que pega o raid inteiro, DoT que segue o player). |
-| `priority` | importância da mecânica dentro do boss (número, padrão 0): com falha, a maior aparece antes das outras na aba Mecânicas e no veredito (o foco marcado pelo usuário ainda vem antes). Ex.: `helical_toxins` em `entombed-sentinels.yaml`. |
+| `priority` | importância da mecânica dentro do boss (número, padrão 0): com falha, a maior aparece antes das outras na aba Mecânicas (o foco marcado pelo usuário ainda vem antes); no veredito, só desempata mecânicas da mesma gravidade. Ex.: `helical_toxins` em `entombed-sentinels.yaml`. |
 | `ignore_first_hit_in_burst` | `avoidable_damage`: o 1º hit de cada rajada (hits a <1,5s um do outro) é o alvo da mecânica e não conta como erro. Ex.: linha mirada em um player. |
 | `detect.requires_aura` | o dano só conta se o player **já** tinha a aura há 0,5s+ (a vulnerabilidade aplicada pelo próprio hit não conta). Ex.: soak duplo. |
 | `detect.excludes_aura` | o dano não conta em quem tem a aura ou a perdeu há <0,5s: é o portador. Ex.: bomba/orb que machuca quem está perto. |
 | `detect.min_amount` | hits abaixo do valor não contam (nem para culpa no recap). Ex.: separar a explosão do tick normal do mesmo spell. |
 | `detect.culprit_auras` | falha coletiva: culpa quem perdeu uma destas auras entre 0,5s antes e 50ms depois do 1º hit da falha (quem carregava o orb que explodiu). |
-| `detect.orbs` | `failure_event` de orbs que os players carregam e largam (ex.: `the-coiled-altar.yaml`): culpa quem levou um orb até outro **parado no chão** (ou largou um em cima) nos instantes antes da falha. Campos: `kinds` (`npc_id` da unidade no chão, `carry_aura` de quem carrega, `volatile: true` no que explode, `name` pt/en), `contact_yd` (9), `window_ms` (500), `breaker` (`cast_id`, `half_angle`, `range`: frontal que quebra orbs parados; `cast_ids`: outros frontais que também quebram; `count_aura`: debuff que o raid ganha por orb quebrado, e o salto de stacks no frontal diz quantos quebraram, escolhendo os mais alinhados com o cone pela direção do log ou do alvo do boss), `cleared_by` (casts do boss que explodem os orbs que sobraram no chão, ex.: orbs novos; `cleared_on_zero`: npc ids de bosses que explodem o que sobrou ao chegar a 0 de vida, ex.: o fim de uma fase; a explosão ali vira "sobrou orb no chão" em vez de "sem culpado"). Substitui `culprit_auras`. Precisa de advanced logging. |
+| `detect.orbs` | `failure_event` de orbs que os players carregam e largam (ex.: `the-coiled-altar.yaml`): culpa quem levou um orb até outro **parado no chão** (ou largou um em cima) nos instantes antes da falha. Campos: `kinds` (`npc_id` da unidade no chão, `carry_aura` de quem carrega, `volatile: true` no que explode, `name` pt/en), `contact_yd` (9), `window_ms` (500), `breaker` (`cast_id`, `half_angle`, `range`: frontal que quebra orbs parados; `cast_ids`: outros frontais que também quebram; `count_aura`: debuff que o raid ganha por orb quebrado, e o salto de stacks no frontal diz quantos quebraram, escolhendo os mais alinhados com o cone pela direção do log ou do alvo do boss), `cleared_by` (casts do boss que explodem os orbs voláteis que sobraram no chão, ex.: orbs novos; os outros continuam; `cleared_on_zero`: npc ids de bosses que explodem todos os orbs que sobraram ao chegar a 0 de vida, ex.: o fim de uma fase; a explosão ali vira "sobrou orb no chão" em vez de "sem culpado"). Substitui `culprit_auras`. Precisa de advanced logging. |
 | `detect.pairing` | `failure_event` de debuff que os players somam encostando um no outro (ex.: Helical Toxins em `entombed-sentinels.yaml`): cada um recebe 1 a `max_initial` stacks e a soma `target` limpa os dois; outra soma fica nos dois. Campos: `aura_id` (a aura com os stacks), `tick_id` (tick de dano do debuff: o dano base, sem mitigação, dá os stacks de cada um, já que a aplicação não mostra o número), `target` (4), `max_initial` (3). Falha = soma acima de `target` ou abaixo dele deixando a rodada sem solução; culpado = quem fez 65%+ da aproximação nos 5s antes. Guarda replay das posições (15s antes do encontro, mas nunca antes de 2s antes do começo da rodada). Precisa de advanced logging. |
 | `detect.assign` | `failure_event` de atribuição por posição: alvos que nascem em lugares fixos da sala e grupos de players que vão cada um num alvo por uma prioridade combinada (ex.: Gloombomb no Spirit Shield em `the-coiled-altar.yaml`). Campos: `carrier_aura` (aura dos portadores; a explosão é quando ela sai), `target_npc` (os alvos, que nascem por `SPELL_SUMMON`), `target_aura` (aura no alvo: ainda nele 300 ms depois da explosão = falha), `reach` (jardas do portador ao alvo na explosão), `spots` (`key`, `at: [x, y]` nas coordenadas do log, `name` pt/en: o lugar de cada alvo é o da regra a até 5 jd de onde ele apareceu), `groups` (em ordem; `range: melee`/`ranged` da spec, `name` pt/en, `priority`: keys dos lugares; cada grupo pega o primeiro lugar da prioridade com alvo livre), `target_name` (pt/en, como o texto chama o alvo; padrão alvo/target). A leva são as aplicações da `carrier_aura` a menos de 1 s; os alvos, os do último summon antes dela. Leva não julgada (sem culpa, contada no `replay:check`): alvo longe de todos os lugares, portador sem spec ou de um `range` sem grupo, grupos com números diferentes de portadores. Culpado = portador do grupo cujo alvo ficou com a aura, vivo e a mais de `reach` dele; quem morreu antes da explosão aparece na linha do tempo sem culpa. O `range` de cada spec está em `data/defensives.json` (tanks, Holy Paladin e Mistweaver são melee). Precisa de advanced logging. |
 | `detect.hit_aura_id` | `avoidable_damage`/`tank_range`/`positioning`: o acerto é a aplicação desta aura no player (para mecânica que quase não loga dano, só a aura de "dentro da onda"). |
@@ -82,7 +82,7 @@ Opções extras:
 Qualquer dano do spell em player é erro.
 ```yaml
 detect: { damage_ids: [..] }
-tolerance: 0          # hits permitidos por player por ocorrência da mecânica
+tolerance: 0          # hits permitidos por player no pull inteiro
 ```
 Log: `SPELL_DAMAGE`/`SPELL_PERIODIC_DAMAGE` com destino player e spellId em `damage_ids`.
 
@@ -90,8 +90,8 @@ Log: `SPELL_DAMAGE`/`SPELL_PERIODIC_DAMAGE` com destino player e spellId em `dam
 Debuff acumulativo com limite letal.
 ```yaml
 detect: { aura_id: .. }
-lethal_stacks: 9
-warn_stacks: 7
+lethal_stacks: 11
+warn_stacks: 8
 sources: [stir_the_depths_wave, corrosive_spit, venomous_emergence]   # keys das mecânicas que dão stack; evitáveis primeiro
 removed_by: [ravenous_feast]                  # keys que removem stack
 ```

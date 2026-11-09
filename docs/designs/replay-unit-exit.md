@@ -120,7 +120,7 @@ O usuário pulou o `/egm:egm-draft` e pediu a implementação a partir deste RFC
   - Teste novo: `ulatek_eggs_leave_on_last_line_or_on_the_shell`.
 - `crates/wipe-core/src/analysis.rs`, no `PullBuilder`:
   - **Última linha.** Guarda a última linha (rel ms) de cada unidade desses npcs, como source ou dest. Não conta
-    `SPELL_AURA_REMOVED`. Vale também no `analyze`, sem `capture_fight`.
+    `SPELL_AURA_REMOVED`. Vale mesmo sem `capture_fight` (o `analyze_file` e o `wipe-cli analyze`, não só o replay completo).
   - **Aura.** Guarda onde estava cada player que ganhou a aura, com a posição de até 3 s
     (`AURA_CLEAR_POS_MAX_AGE_MS`).
   - **Ligação aura → ovo.** `match_aura_clears` percorre as auras por ordem de tempo. Cada uma tira a unidade
@@ -132,18 +132,11 @@ O usuário pulou o `/egm:egm-draft` e pediu a implementação a partir deste RFC
 - Docs: `docs/replay-methods.md`, `docs/ulatek-replay-audit.md` e as skills `replay-build` e `boss-rules`
   (`references/schema.md`).
 
-**Conferido:**
-
-- **Log local de 05/11:** os 8 ovos saem do mapa entre 0,05 e 0,2 s antes da Shell, por causa do arredondamento
-  do passo de 250 ms. Cada Shell ficou ligada ao ovo que estava a 2,3-4,8 jd do player.
-- **WCL:** saíram na Shell 9 de 25 ovos no mapa no pRJD e 69 de 125 no DVYR. O resto sai na última linha ou no
-  fim da janela do replay.
+**Conferido:** os números estão em [ulatek-replay-audit.md](../ulatek-replay-audit.md#saída-dos-ovos-do-mapa-replaycheck-0911), seção "Saída dos ovos do mapa".
 
 **`replay:check`:**
 
 - `UnitTrack` ganhou `lastLine` e `pickedAt`, opcionais, em `report.rs` e em `src/types.ts`.
 - O `scripts/replay-check.mjs` dá REVISAR quando uma unidade fica no mapa mais de 1 s (`EXIT_SLACK_MS`) depois
   da primeira dessas horas. Em "Unidades no mapa", ele mostra quantas foram tiradas pela aura.
-- Resultado:
-  - log local: 8 ovos, 8 tirados pela aura, 0 atrasados;
-  - WCL DVYR e pRJD: 150 ovos, 106 tirados pela aura, 0 atrasados.
+- Resultado: nenhum ovo atrasado nos logs do Ula'tek mítico (tabela na auditoria).

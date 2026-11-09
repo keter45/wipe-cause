@@ -83,7 +83,7 @@ errou (13,4 px/jd): os Burning Venom não nasciam na fonte de fogo. O que acerto
    cada fonte a até 5 jd. Giro que não é múltiplo de 90° é o sinal de sala girada no mundo; as ondas da
    Plague Froth (nos eixos do mundo) aparecem na diagonal da sala, como no Hexweaver.
 3. **Refino pelas paredes:** escala, giro e posição para os pisões ficarem dentro do contorno da sala,
-   com as fontes perto: 98,9% dentro, cada fonte a até ~7 jd (os adds nascem na frente dela).
+   com as fontes perto: 98,9% dentro, cada fonte a até 6 jd (os adds nascem na frente dela).
 4. **Confira:** `arena-check` (players fora: 1,66% → 0,24%; boss e adds: 0%) e o desenho dele.
 
 A transformação vai fixa no `arena-fit.mjs` (`fixed: { rotation, s, u, v, cx, cy }`, com o contorno da
@@ -244,9 +244,10 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
 
 ## Ferramentas
 
-- Recorte de um pull para medir: `tail -c +<logOffset+1>` do log até o `ENCOUNTER_END`, com a
-  primeira linha do log (`COMBAT_LOG_VERSION ... ADVANCED_LOG_ENABLED,1`) na frente, senão o
-  `wipe-cli` lê sem posições. `wipe-cli fight <recorte> --pull 0` gera o replay completo.
+- Recorte de um pull para medir: `tail -c +<logOffset+1>` do log até o `ENCOUNTER_END`. As posições vêm
+  do bloco advanced de cada linha, então o recorte funciona sem a primeira linha do log; sem ela, o
+  relatório só marca `advancedLogging: false` (e o app avisa que o Advanced Combat Logging está desligado).
+  Conferido em 09/11 com o pull do Ula'tek de 05/11. `wipe-cli fight <recorte> --pull 0` gera o replay completo.
 - Recorte das lutas de um boss (só mítico) de vários logs, para medir rápido: um script que copia as
   linhas entre `ENCOUNTER_START,<id>,...,16` e `ENCOUNTER_END`, com a primeira linha do primeiro log.
   `wipe-cli analyze <recorte> --json` lista os pulls (o `id` de cada um vai no `fight --pull`).

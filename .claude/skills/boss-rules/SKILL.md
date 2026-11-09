@@ -24,7 +24,7 @@ Leia `references/schema.md` antes de escrever qualquer arquivo. `encounters/veno
    - "desvie das linhas/ondas/poças" → `avoidable_damage` (dano do spell em player = erro).
    - "soak os orbs senão explodem" → `soak` (o evento de explosão acontecer = falha).
    - "interrompa todos" → `interrupt` (cast do inimigo com sucesso = falha).
-   - "saia para a borda com o debuff" → `spread` (dano do spell em player *sem* o debuff = erro de quem tinha).
+   - "saia para a borda com o debuff" → `spread` só mostra a dica (não culpa ninguém); para culpar quem tinha o debuff pelo dano em quem não tinha, use `avoidable_damage` com `detect.excludes_aura`.
    - "morre com N stacks" → `stack_limit`.
    - "se o orb encostar em outro, explode e wipa" → `failure_event` (a explosão é a falha; `culprit_auras` culpa quem carregava; `min_amount` se o mesmo spell tem tick normal).
    - "mate os dois juntos" → `hp_balance`.
@@ -52,7 +52,7 @@ Uma habilidade pode ter vários IDs (cast, dano, debuff, explosão). Coloque cad
 
 - **O log dá contagens: use antes da geometria.** Quando o jogo marca quantas vezes algo aconteceu (stacks que o raid inteiro ganha, número de alvos), isso é mais confiável que reconstruir pela posição. Ex.: o raid ganha 1 stack de Venom Rupture por orb quebrado; o app quebra os N orbs mais alinhados com o frontal (`breaker.count_aura`). Antes, pelo ângulo do log, errava Severs inteiros.
 - **A direção do boss no log pode estar errada** (90° fora num Sever). Para frontal, use também a direção do alvo do boss (`cone`, `target_spells`).
-- **Falha sem culpado quase sempre tem uma causa:** procure o que o boss faz no mesmo instante. As explosões "sem culpado" do Coiled Altar caíam todas no cast de orbs novos (Toxic Deluge) ou no fim da P1: o boss explode o que sobrou no chão (`cleared_by`, `cleared_on_zero`), e a falha passa a dizer quais orbs sobraram.
+- **Falha sem culpado quase sempre tem uma causa:** procure o que o boss faz no mesmo instante. As explosões "sem culpado" do Coiled Altar caíam todas no cast de orbs novos (Toxic Deluge) ou no fim da P1: o boss explode o que sobrou no chão (`cleared_by` só os voláteis; `cleared_on_zero` todos), e a falha passa a dizer quais orbs sobraram.
 - **Troca de fase sem morte:** o boss da fase anterior fica com 1 ponto de vida (imune), não morre no log. Use "vida abaixo de 0,1%" como o fim dele.
 - **Unidades que o log quase não mostra** (machados): a posição entre uma aparição e outra é estimada. Quem passa por dentro sem levar dano desmente (o replay apaga), e o que para de acertar some (`vanish`). Antes de dizer que algo "some" numa fase, confira no log: alguns machados ainda aplicavam DoT na P2.
 - **Confirme o que o usuário conta no log, e o que o log mostra com o usuário:** os dois pegaram erros um do outro (o raio pós-nerf, os orbs que o boss explode, os machados na P2).

@@ -140,7 +140,7 @@ graça, acelerado, normal) e Prayer of Healing com e sem buff.
 
 - % dos casts da habilidade feitos com o buff que a deixa melhor, contra a referência (ainda não
   medido; ver o item 8 do protótipo).
-- Procs perdidos (expirados sem uso), mesmo motor dos DPS (`proc perdido`).
+- Procs perdidos (expirados sem uso), mesmo motor dos DPS (checagem `kind: proc`, `Check::Proc` em `rotation.rs`).
 
 ### 3.6 Buffs e HoTs que a spec mantém
 
@@ -281,7 +281,7 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
 
 - 2026-10-11: protótipo com Discipline Priest, Restoration Druid e Holy Paladin.
 - 2026-10-11: não filtrar pelo nº do kill da guilda.
-- 2026-10-11: análise de healer só no mítico.
+- 2026-10-11: referências de healer só do mítico (`heal-refs.mjs` baixa só a dificuldade 5); o app compara pulls de qualquer dificuldade com elas.
 - 2026-10-11: os logs da nossa raid nunca são referência (nem colega no mesmo pull, nem kill anterior).
 - 2026-10-27: golpe e raide baixa da note de CDs de cura são parâmetros da luta, não do healer, e
   podem ser calibrados nos nossos logs ([heal-cd-note.md](heal-cd-note.md)).
