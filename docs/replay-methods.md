@@ -3,7 +3,8 @@
 O replay é um motor para todos os bosses, os de hoje e os que vierem. O Coiled Altar (21/10/2026) foi
 o primeiro boss a passar por ele inteiro; os números dele estão em
 [coiled-altar-replay-audit.md](coiled-altar-replay-audit.md). O Twin Fangs e o Vashnik vieram depois,
-com o mesmo método ([twin-fangs-vashnik-replay-audit.md](twin-fangs-vashnik-replay-audit.md)). Aqui
+com o mesmo método ([twin-fangs-vashnik-replay-audit.md](twin-fangs-vashnik-replay-audit.md)), e o
+Ula'tek em 09/11 ([ulatek-replay-audit.md](ulatek-replay-audit.md)). Aqui
 ficam as regras e o método, que valem para qualquer boss.
 
 ## Princípios do motor
@@ -56,6 +57,15 @@ lado e tem 100,8.
   desenho antes de mexer no chão: no Twin Fangs os dois bosses ficam 100% fora, mas é o certo (eles
   nadam no ácido em volta da plataforma, e os Spawns saem do poço do meio). Esses vão em `offFloor`
   (ids de npc) na arena, e a conferência passa a dizer FORA OK.
+
+### Arena com uma fase fora da sala principal: a sala inteira
+
+Quando uma fase leva a raide para fora da imagem (a P2 do Ula'tek, nas bordas dos lados), troque pela
+imagem da sala inteira do raidplan (o seletor "Map" do editor tem as variantes; "Full Room") em vez de
+ignorar quem sai (`core`). A escala e a posição vêm da imagem que já encaixava: meça a mesma peça (o
+octógono do meio) nas duas imagens e grave como `fixed`. O que não é chão (veneno, água) vira `holes`,
+e quem vive nele vai em `offFloor`. A nota do `arena-fit` cai (o F1 conta o chão que a raide não
+usa), então a arena ganha `anchored: true`.
 
 ### Arena com a raide numa parte da sala: lugares que o log fixa
 
@@ -113,6 +123,14 @@ debuff para ver se a área cresce.
 Antes de desenhar uma área de "afaste-se do marcado", confira se o dano cai mesmo com a distância:
 dano bruto (o `baseAmount`, antes da mitigação) por faixa de 5 jd. A Caustic Explosion do Vashnik dá
 ~222k de 0 a 55 jd: o guia fala em queda, o log não mostra, e o mapa fica sem círculo.
+
+### Soak que acerta o raid inteiro: pela aura de quem soakou
+
+Quando o soak só reduz o dano e todo mundo toma (Spectral Coils do Ula'tek), quem tomou não diz quem
+estava no círculo. Use a aura que cai só nos soakers (Soul Constrictor) no mesmo ms do dano: o dano no
+raid traz a posição exata de todos naquele instante. Por impacto, o meio é a média dos soakers; o raio
+é onde os soakers acabam e os outros começam. Se o círculo fica a uma distância fixa de quem lança,
+confira a direção dele no fim do cast e use `soak.ahead`.
 
 ### Golpe na frente do boss (soak `ahead`)
 
@@ -174,6 +192,15 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
   até o fim. `units` com `cleared_by: <mecânica>` tira a unidade no primeiro acerto daquela mecânica
   a até o raio dela + 3 jd (o soak que limpou o orb: quem pegou estava a 4,5 jd na mediana, 99% até
   8 jd de um orb de 5 jd), e `lifetime_s` põe um teto.
+  Quando a vida varia muito (o ovo do Ula'tek vive de 0 a 82 s) e o log fica até 22 s sem citar a
+  unidade ainda viva, "N s sem linha" não serve: `until_last_line: true` tira a unidade na última linha
+  que a cita (como source ou dest; `SPELL_AURA_REMOVED` não conta, porque os debuffs dos players caem
+  depois). Isso serve para todo jeito de sair (pego, quebrado, virou outro add), porque a última linha
+  vem antes do add que nasce. Quando alguém pega a unidade e ganha uma aura, mas os DoTs ainda batem nela
+  por uns 2 s, `cleared_by_aura: { aura, radius, within_s }` a tira antes, na hora da aura. A aura não diz
+  qual unidade foi pega (vem do boss), então vale a mais perto do player, até `radius`, cuja última linha
+  vem até `within_s` depois. Cada aura tira uma só. Vale o que vier antes entre `cleared_by`, `lifetime_s`,
+  `until_last_line` e `cleared_by_aura`.
 - **Unidade que só tem posição no fim** (os tumores do Vashnik: nascem por `SPELL_SUMMON`, começam um
   cast de 85 s e só o fim do cast traz o bloco advanced): `units` com `from_first_line: true` desenha a
   unidade desde a primeira linha que a cita, no lugar que o log der depois. Os que morrem antes (a onda os
@@ -224,6 +251,11 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
   linhas entre `ENCOUNTER_START,<id>,...,16` e `ENCOUNTER_END`, com a primeira linha do primeiro log.
   `wipe-cli analyze <recorte> --json` lista os pulls (o `id` de cada um vai no `fight --pull`).
 - `node scripts/arena-check.mjs <log> <encounter> [--draw saída.svg]`: unidades fora do chão, por tipo.
+- Sem log local (ou para usar os logs de outras guildas depois de um hotfix), meça nos eventos do
+  Warcraft Logs (`scripts/wcl-fetch.mjs`): cada evento com advanced logging traz `x`/`y` em
+  centésimos de jarda, do `resourceActor` (1 = quem lançou, 2 = o alvo), com os eixos girados em
+  relação ao log, (x, y) = (−y do log, x do log) ÷ 100, e o `facing` em centésimos de radiano no
+  sentido horário. `wipe-cli wcl <pasta> --spells` lista as spells do boss.
 - Posição numa linha com advanced logging: os dois decimais seguidos de um inteiro (o uiMapID) e de
   outro decimal (a direção) são x e y, em qualquer tipo de evento. O bloco é de quem lançou, menos no
   dano (`SPELL_DAMAGE`, `SPELL_PERIODIC_DAMAGE`), em que é do alvo. `SPELL_CAST_START`, `SPELL_SUMMON`,

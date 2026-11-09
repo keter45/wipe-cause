@@ -192,7 +192,7 @@ impl Trails {
             .filter_map(|(guid, u)| {
                 let segs: Vec<TrackSeg> = windows.iter().flat_map(|&(a, b)| sample(u, a, b)).collect();
                 let seen = seen_for.contains(guid).then(|| seen_steps(u, &windows));
-                (!segs.is_empty()).then(|| UnitTrack { guid: guid.clone(), name: u.name.clone(), kind: if u.enemy { "enemy" } else { "player" }.into(), segs, owner: None, estimated_from: None, seen })
+                (!segs.is_empty()).then(|| UnitTrack { guid: guid.clone(), name: u.name.clone(), kind: if u.enemy { "enemy" } else { "player" }.into(), segs, owner: None, estimated_from: None, seen, last_line: None, picked_at: None })
             })
             .collect();
         if units.iter().all(|u| u.kind == "enemy") {
@@ -231,6 +231,8 @@ pub fn ghost_tracks(paths: &[GhostPath], replays: &[&ReplayRef], name: &str) -> 
                 owner: Some(p.owner.clone()),
                 estimated_from: p.estimated_from,
                 seen: None,
+                last_line: None,
+                picked_at: None,
             }
         })
         .collect()

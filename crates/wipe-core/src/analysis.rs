@@ -6,7 +6,7 @@ use crate::fight::{self, FightCapture};
 use crate::report::*;
 use crate::replay::{self, Trails};
 use crate::rotation::{RotationBook, RotationTracker};
-use crate::rules::{RuleBook, RuleTracker, SoakInfo};
+use crate::rules::{AuraClear, RuleBook, RuleTracker, SoakInfo};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Janela do death recap.
@@ -439,6 +439,14 @@ pub(crate) struct PullBuilder {
     /// unidades acompanhadas pelas linhas (`units` com `from_first_line` / `count`): npc, primeira linha, morte
     seen: HashMap<String, (u32, i64, Option<i64>)>,
     seen_npcs: HashSet<u32>,
+    /// unidades que saem na última linha que as cita (`until_last_line` / `cleared_by_aura`): a última
+    /// linha de cada uma (sem contar SPELL_AURA_REMOVED: os debuffs dos players caem depois que ela some)
+    last_line: HashMap<String, i64>,
+    last_line_npcs: HashSet<u32>,
+    /// auras que tiram unidades do mapa (`cleared_by_aura`) e onde estava cada player que ganhou uma:
+    /// (t, aura, x, y)
+    clear_auras: HashSet<u32>,
+    aura_gains: Vec<(i64, u32, f32, f32)>,
 }
 
 /// Resultado de um pull antes do pós-processamento global.
@@ -459,6 +467,9 @@ impl PullBuilder {
         let sets = book.for_encounter(encounter_id, &encounter_name);
         let rules = if sets.is_empty() { None } else { RuleTracker::new(&sets, difficulty_id).ok().map(|r| r.started_at(t)) };
         let seen_npcs = rules.as_ref().map(|r| r.seen_units().iter().map(|u| u.npc).collect()).unwrap_or_default();
+        let clears = rules.as_ref().map(|r| r.unit_clears().to_vec()).unwrap_or_default();
+        let last_line_npcs = clears.iter().filter(|c| c.until_last_line || c.by_aura.is_some()).map(|c| c.npc).collect();
+        let clear_auras = clears.iter().filter_map(|c| c.by_aura.map(|a| a.aura)).collect();
         PullBuilder {
             owner: None,
             encounter_id,
@@ -507,6 +518,10 @@ impl PullBuilder {
             waves: Vec::new(),
             seen: HashMap::new(),
             seen_npcs,
+            last_line: HashMap::new(),
+            last_line_npcs,
+            clear_auras,
+            aura_gains: Vec::new(),
             cast_slows: HashMap::new(),
             fight: None,
         }
@@ -794,6 +809,20 @@ impl PullBuilder {
                 }
             }
         }
+        // última linha que cita cada unidade que sai por ela
+        if !self.last_line_npcs.is_empty() && event != "SPELL_AURA_REMOVED" {
+            let rel = self.rel(t);
+            for g in [f[1], f[5]] {
+                if npc_id(g).is_some_and(|n| self.last_line_npcs.contains(&n)) {
+                    match self.last_line.get_mut(g) {
+                        Some(last) => *last = rel,
+                        None => {
+                            self.last_line.insert(g.to_string(), rel);
+                        }
+                    }
+                }
+            }
+        }
         if self.owner.is_none() && f[1].starts_with("Player-") && f[3].starts_with("0x") && hex(f[3]) & AFFILIATION_MINE != 0 {
             self.owner = Some(f[1].to_string());
         }
@@ -984,6 +1013,12 @@ impl PullBuilder {
                 if let Some((x, y, _)) = self.players.get(dst_guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= GROUND_POS_MAX_AGE_MS) {
                     self.soak_hits.push((rel, x, y, i, dst_guid.to_string()));
                 }
+            }
+        }
+        // aura que tira uma unidade do mapa (`cleared_by_aura`, quem pegou o ovo): onde o player estava
+        if is_player && f[0] == "SPELL_AURA_APPLIED" && self.clear_auras.contains(&spell_id) {
+            if let Some((x, y, _)) = self.players.get(dst_guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= AURA_CLEAR_POS_MAX_AGE_MS) {
+                self.aura_gains.push((rel, spell_id, x, y));
             }
         }
         // linha (regra com `line.target_aura`): o lançador marca o alvo logo depois de começar o cast
@@ -2252,20 +2287,36 @@ impl PullBuilder {
                 Some(UnitCount { npc: u.npc, name: u.name.clone(), series })
             })
             .collect();
-        // unidades que o log nunca mata (o orb no chão): somem quando o soak as limpa ou no fim da vida
+        // unidades que o log nunca mata (o orb no chão, o ovo): somem no que vier antes: o soak que as limpa,
+        // o fim da vida, a última linha que as cita ou a aura de quem as pegou
+        let mut exits: HashMap<String, (Option<i64>, Option<i64>)> = HashMap::new();
         for c in &unit_clears {
-            let guids: Vec<String> = self.trails.guids().filter(|g| npc_id(g) == Some(c.npc)).cloned().collect();
+            let mut guids: Vec<String> = self.trails.guids().filter(|g| npc_id(g) == Some(c.npc)).cloned().collect();
+            guids.sort();
+            let picked = c.by_aura.map(|a| match_aura_clears(&a, &guids, &self.aura_gains, &self.last_line, &self.trails)).unwrap_or_default();
             for g in guids {
                 let Some((t0, x, y)) = self.trails.first(&g) else { continue };
                 let cleared = c.cleared_by.and_then(|(i, r)| {
                     self.soak_hits.iter().filter(|h| h.3 == i && h.0 >= t0 && (h.1 - x).hypot(h.2 - y) <= r + UNIT_CLEAR_SLACK_YD).map(|h| h.0).min()
                 });
-                if let Some(end) = cleared.into_iter().chain(c.lifetime_ms.map(|ms| t0 + ms)).min() {
+                let last = c.until_last_line.then(|| self.last_line.get(&g).copied()).flatten();
+                let ends = [cleared, c.lifetime_ms.map(|ms| t0 + ms), last, picked.get(&g).copied()];
+                if let Some(end) = ends.into_iter().flatten().min() {
                     self.trails.on_enemy_died(&g, end);
+                }
+                if c.until_last_line || c.by_aura.is_some() {
+                    exits.insert(g.clone(), (self.last_line.get(&g).copied(), picked.get(&g).copied()));
                 }
             }
         }
         let mut tracks = self.trails.build(&refs, &cone_casters, &area_units);
+        if let Some(t) = tracks.as_mut() {
+            for u in &mut t.units {
+                if let Some(&(last, picked)) = exits.get(&u.guid) {
+                    (u.last_line, u.picked_at) = (last, picked);
+                }
+            }
+        }
         if let (Some(t), Some((name, paths))) = (tracks.as_mut(), &ghosts) {
             t.units.extend(replay::ghost_tracks(paths, &refs, name));
         }
@@ -2559,6 +2610,31 @@ const UNIT_BACKFILL_MAX_MS: i64 = 10_000;
 /// Unidade limpa por um soak (`cleared_by`): quem pegou estava a até o raio do soak mais isto dela (o
 /// player encosta na borda do orb; 99% a até 8 jd de um orb de 5 jd no Twin Fangs).
 const UNIT_CLEAR_SLACK_YD: f32 = 3.0;
+
+/// Idade máxima da posição do player que ganhou a aura de `cleared_by_aura` (no WCL a posição é esparsa).
+const AURA_CLEAR_POS_MAX_AGE_MS: i64 = 3_000;
+
+/// Quem cada aura de `cleared_by_aura` tirou do mapa: a aura não diz qual unidade foi pega, então vale a
+/// unidade mais perto do player (até `radius`) cuja última linha vem até `within_ms` depois da aura. As
+/// auras vão por ordem de tempo e cada uma tira uma unidade só; uma unidade sai por uma aura só.
+fn match_aura_clears(a: &AuraClear, guids: &[String], gains: &[(i64, u32, f32, f32)], last_line: &HashMap<String, i64>, trails: &Trails) -> HashMap<String, i64> {
+    let mut out: HashMap<String, i64> = HashMap::new();
+    let mut gains: Vec<&(i64, u32, f32, f32)> = gains.iter().filter(|g| g.1 == a.aura).collect();
+    gains.sort_by_key(|g| g.0);
+    for &&(t, _, px, py) in &gains {
+        let best = guids
+            .iter()
+            .filter(|g| !out.contains_key(*g))
+            .filter(|g| last_line.get(*g).is_some_and(|&l| l >= t && l - t <= a.within_ms))
+            .filter_map(|g| trails.position_at(g, t, i64::MAX).map(|(x, y)| (g, (x - px).hypot(y - py))))
+            .filter(|&(_, d)| d <= a.radius)
+            .min_by(|x, y| x.1.total_cmp(&y.1));
+        if let Some((g, _)) = best {
+            out.insert(g.clone(), t);
+        }
+    }
+    out
+}
 /// O cast que anuncia o soak vem até isto antes dele cair (o Malignant Catalyst: 5s de cast e os
 /// círculos ~7s depois do fim).
 const SOAK_CAST_MAX_MS: i64 = 15_000;
@@ -2790,6 +2866,29 @@ mod tests {
         assert_eq!((soaks[0].x, soaks[0].y, soaks[0].radius), (51.0, 0.0, 9.0));
         let fallback = build_soaks(&hits, &meta, &[], &[&reference], &trails);
         assert_eq!((fallback[0].from, fallback[0].x, fallback[0].hit), (5_000, 56.0, 2));
+    }
+
+    #[test]
+    fn aura_de_quem_pegou_tira_um_ovo_so_e_so_se_ele_some_logo_depois() {
+        let mut trails = Trails::default();
+        // três ovos parados: A e B lado a lado, C longe
+        trails.on_pos("Egg-A", "Blightscale Spawn", true, 100, 0.0, 0.0, 1_000);
+        trails.on_pos("Egg-B", "Blightscale Spawn", true, 100, 2.0, 0.0, 1_000);
+        trails.on_pos("Egg-C", "Blightscale Spawn", true, 100, 40.0, 0.0, 1_000);
+        let a = AuraClear { aura: 9, radius: 15.0, within_ms: 3_000 };
+        let guids: Vec<String> = ["Egg-A", "Egg-B", "Egg-C"].iter().map(|g| g.to_string()).collect();
+        // B some 2 s depois da aura; A fica no chão (última linha 20 s depois); C está longe demais
+        let last = HashMap::from([("Egg-A".to_string(), 25_000), ("Egg-B".to_string(), 7_000), ("Egg-C".to_string(), 6_000)]);
+        // a aura do player perto de A e B, e outra aura sem relação (id 8)
+        let gains = vec![(5_000, 9, 0.5, 0.0), (5_000, 8, 0.5, 0.0)];
+        let out = match_aura_clears(&a, &guids, &gains, &last, &trails);
+        // A é o mais perto, mas não some até 3 s depois: sai o B, na hora da aura
+        assert_eq!(out, HashMap::from([("Egg-B".to_string(), 5_000)]));
+        // duas auras no mesmo lugar: cada uma tira um ovo; uma terceira não acha mais nenhum
+        let last2 = HashMap::from([("Egg-A".to_string(), 6_000), ("Egg-B".to_string(), 6_500), ("Egg-C".to_string(), 6_000)]);
+        let out2 = match_aura_clears(&a, &guids, &[(5_200, 9, 1.0, 0.0), (5_000, 9, 1.0, 0.0), (5_400, 9, 1.0, 0.0)], &last2, &trails);
+        assert_eq!(out2.len(), 2);
+        assert_eq!((out2.get("Egg-A"), out2.get("Egg-B")), (Some(&5_000), Some(&5_200)));
     }
 
     #[test]

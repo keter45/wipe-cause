@@ -13,6 +13,7 @@ Quando usar o fluxo: seção "Fluxo de feature" do
 | [gloombomb-assignment.md](gloombomb-assignment.md) | Implemented | 2026-10-27 | @keter45 | `crates/wipe-core`, `encounters/`, `data/defensives.json`, `scripts/replay-check.mjs` | Atribuição por posição: quem da Gloombomb não chegou ao add |
 | [heal-cd-note.md](heal-cd-note.md) | Implemented | 2026-10-27 | @keter45 | `src/`, `data/heal-cooldowns.json`, `crates/wipe-core` | Note de CDs de cura: timing, uso, momentos sem CD e note sugerida |
 | [heal-cd-timeline.md](heal-cd-timeline.md) | Implemented | 2026-11-03 | @keter45 | `src/` | Timeline dos CDs de cura: buracos na cura e CDs que renderam pouco |
+| [replay-unit-exit.md](replay-unit-exit.md) | Implemented | 2026-11-09 | @keter45 | `crates/wipe-core`, `encounters/`, `scripts/replay-check.mjs`, `docs/replay-methods.md` | Saída do replay para unidade sem UNIT_DIED: última linha do log ou aura de quem pegou (ovos do Ula'tek) |
 
 Status: Proposed → Approved → Implemented → Superseded by `<design>`.
 

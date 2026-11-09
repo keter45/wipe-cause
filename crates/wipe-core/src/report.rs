@@ -591,6 +591,13 @@ pub struct UnitTrack {
     /// outro a posição é estimada
     #[serde(skip_serializing_if = "Option::is_none")]
     pub seen: Option<Vec<u32>>,
+    /// unidade que sai na última linha (`until_last_line` / `cleared_by_aura`): a última linha do log que a
+    /// cita (ms do pull), para o `replay:check` conferir que ela não ficou no mapa depois
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_line: Option<i64>,
+    /// unidade tirada pela aura de quem a pegou (`cleared_by_aura`): a hora da aura (ms do pull)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub picked_at: Option<i64>,
 }
 
 /// Trecho contínuo: posições a cada `step_ms` a partir de `t0`, em décimos de jarda (x, y, x, y...).

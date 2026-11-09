@@ -378,6 +378,10 @@ export interface UnitTrack {
   estimatedFrom?: number;
   /** unidade de área (machado): passos (t / stepMs) em que o log mostrou onde ela estava; entre um e outro, estimada */
   seen?: number[];
+  /** unidade que sai na última linha (`until_last_line` / `cleared_by_aura`): a última linha do log que a cita (ms do pull) */
+  lastLine?: number;
+  /** unidade tirada pela aura de quem a pegou (`cleared_by_aura`): a hora da aura (ms do pull) */
+  pickedAt?: number;
   /** trechos contínuos: posições a cada `stepMs` a partir de `t0`, em décimos de jarda (x, y, x, y...) */
   segs: { t0: number; xy: number[] }[];
 }
