@@ -140,6 +140,7 @@ mechanics:
     source_unit: ulatek
     severity: major
     detect: { fail_ids: [1301122] }
+    ground: false   # dano no raid inteiro: sem forma no chão
     tip: { pt: "O alvo do Mother's Wrath tem que ficar no alcance da mordida; fora dele, o raid inteiro toma as mordidas e o Stone Venom.", en: "The Mother's Wrath target must stay within reach of the bite; outside it, the whole raid takes the bites and the Stone Venom." }
     message: { pt: "Mother's Wrath pegou o raid ({count}x) — o tank saiu do alcance", en: "Mother's Wrath hit the raid ({count}x) — the tank left its reach" }
 
@@ -157,10 +158,11 @@ mechanics:
     type: failure_event
     source_unit: ulatek
     severity: major
-    detect: { fail_ids: [1286945] }
+    detect: { fail_ids: [1301007, 1286945] }   # 1301007 é o do log; 1286945, o do Journal, nunca apareceu
+    ground: false   # dano físico no raid inteiro: sem forma no chão
     tip: { pt: "Sempre ter alguém em melee da Ula'tek, senão ela bate no raid inteiro.", en: "Always keep someone in Ula'tek's melee range, or she hits the whole raid." }
     message: { pt: "Unchecked Rage ({count}x) — ninguém em melee da Ula'tek", en: "Unchecked Rage ({count}x) — nobody in Ula'tek's melee range" }
-    notes: "ID do Journal; não apareceu nos pulls de calibração (ninguém errou). Confirmar no log quando acontecer."
+    notes: "Confirmado no WCL BPR9 (09/11, mítico) com o id 1301007: 3 de 6 wipes; sai a cada ~2,4 s depois que o tank morre (fights 1 e 3) ou no pull sem tank em melee (fight 6, desde 5,9 s). Nenhum nos 2 kills nem nos 6 wipes do DVYR."
 
   - key: deadly_venom
     name: "Deadly Venom"

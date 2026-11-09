@@ -6,7 +6,8 @@ para medir forma.
 
 Logs:
 - Warcraft Logs, pós-nerf: `DVYRKLqg3zw6tC8c` (kill heroico de 07/11 e 6 wipes míticos),
-  `JwC1GWMzmjZD72Yv` (kill heroico de 08/11) e `pRJDTa1j7qc9tAx8` (kill mítico de 08/11).
+  `JwC1GWMzmjZD72Yv` (kill heroico de 08/11), `pRJDTa1j7qc9tAx8` (kill mítico de 08/11) e
+  `BPR9KFWZYnwy7T4f` (kill mítico e 6 wipes de 09/11, guilda Rancour: o teste dos ovos e das falhas no raid).
 - Locais, antes do nerf: heroico de 06/10 (3 pulls, 1 kill) e de 01/10, mítico de 05/11 (1 pull de 72 s).
 
 Conferência final: `npm run replay:check` sem REVISAR no heroico e no mítico. Sobram só os casts sem
@@ -57,4 +58,14 @@ forma: outros ids das mesmas habilidades, Writhing Gestation, Shadow Molt e Boil
   depois dele.
 - **Casts sem forma:** Caustic Waves 1311807/1319282 (outros ids da onda, cujo dano já marca o chão),
   Spectral Coils 1308927 (o cast da cauda que chama os Coils), Writhing Gestation, Shadow Molt,
-  Boiling Venom 1313758 (o timer de quando o add nasce).
+  Boiling Venom 1313758 (o timer de quando o add nasce). No BPR9 apareceram mais quatro, também sem forma:
+  - Hardened 1299650: o escudo do ovo, que não pode ser levado enquanto está duro;
+  - Venomous Heart 1299526: o canal do coração, que já está no mapa como add;
+  - Defect: Weakened 1303410: estado do Ravenous Doomscale;
+  - Call of the Serpent 1304012: o cast dos ovos que caem, cujo dano (1290409) já marca o chão.
+- **Falhas no raid inteiro, sem forma (`ground: false`):**
+  - **Mother's Wrath 1301122:** o alvo saiu do alcance da mordida.
+  - **Unchecked Rage:** ninguém no corpo a corpo da Ula'tek. O log usa o id 1301007. O id do Journal, 1286945, que
+    estava na regra, nunca apareceu.
+  - No BPR9, o Unchecked Rage saiu em 3 de 6 wipes, a cada ~2,4 s depois que o tank morreu (fights 1 e 3) ou desde
+    5,9 s num pull sem tank no corpo a corpo (fight 6). Nenhum nos 2 kills nem nos 6 wipes do DVYR.
