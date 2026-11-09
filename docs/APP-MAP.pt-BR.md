@@ -3,8 +3,8 @@
 Documentação funcional e técnica das telas, componentes e conexões entre funcionalidades.
 
 **Referência:** navegação na versão `0.37.0` em **21/10/2026**, com as alterações locais da
-árvore de trabalho daquela data; texto conferido contra o código da versão `0.45.0` em
-**03/11/2026**, só pelo código, sem abrir as telas.
+árvore de trabalho daquela data; texto conferido contra o código da versão `0.50.0` em
+**09/11/2026**, só pelo código, sem abrir as telas.
 
 ## Como ler
 
@@ -606,7 +606,7 @@ Esses pontos são registros da inspeção; o item 1 foi corrigido depois, no #73
 
 ### Conferência contra o código (v0.42.0)
 
-Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026**.
+Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026** e da `0.50.0` em **09/11/2026**.
 
 ### Como reproduzir a navegação local
 
