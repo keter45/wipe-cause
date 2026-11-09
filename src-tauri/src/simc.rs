@@ -21,7 +21,7 @@ const MANIFEST_URL: &str = "https://github.com/keter45/wipe-cause/releases/downl
 const CHECK_EVERY: Duration = Duration::from_secs(6 * 3600);
 /// Uma sim de raid com muitas iterações leva segundos; isso só pega um simc travado.
 const RUN_TIMEOUT: Duration = Duration::from_secs(15 * 60);
-/// Teto do download (o .gz tem dezenas de MB): protege contra um manifesto errado.
+/// Teto do download (o .gz tem ~15 MB; 15,7 MB em 11/2026): protege contra um manifesto errado.
 const MAX_DOWNLOAD: u64 = 300 * 1024 * 1024;
 
 /// Uma simulação por vez: o simc já usa todos os núcleos.

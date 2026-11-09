@@ -9,7 +9,7 @@
 //
 // O log é analisado pelo wipe-cli (target/release; `cargo build --release -p wipe-core --bin wipe-cli`),
 // sem corte de mortes (o replay mostra o pull inteiro). O relatório fica em
-// samples/replay/<data>-<boss>.md (e .json).
+// samples/replay/<data>-<boss>-<dificuldade>.md (e .json).
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -28,6 +28,8 @@ const MIN_DAMAGE_SHARE = 0.005;
 const MIN_HITS = 30;
 /** Sem regra e acima disto do dano: REVISAR (abaixo, ATENÇÃO). */
 const NO_RULE_REVISAR = 0.02;
+/** Unidade que sai na última linha do log (ou na aura de quem pegou) pode ficar no mapa até isto depois. */
+const EXIT_SLACK_MS = 1000;
 /** Unidade inimiga que causa esta parte do dano e não aparece no mapa: ATENÇÃO. */
 const UNIT_SHARE = 0.01;
 /** Cast do boss sem regra visto tantas vezes por pull (em média): candidato a frontal, linha, área. */
@@ -155,6 +157,26 @@ const bySource = new Map();
 for (const s of spells.values()) for (const src of s.sources) if (!SKIP_SOURCES.has(src)) bySource.set(src, (bySource.get(src) ?? 0) + s.damage / s.sources.size);
 const hiddenUnits = [...bySource.entries()].filter(([name, dmg]) => dmg / total >= UNIT_SHARE && !drawn.has(name)).map(([name, dmg]) => ({ name, share: dmg / total }));
 for (const u of hiddenUnits) add('ATENÇÃO', `${u.name} faz ${(u.share * 100).toFixed(1)}% do dano nos players e não aparece no mapa: \`units\` com \`replay: true\` (ou \`area: { npc }\` se o perigo é em volta dela).`);
+// unidade que o log nunca mata e sai na última linha / na aura de quem pegou (`until_last_line`,
+// `cleared_by_aura`): ficou no mapa mais de EXIT_SLACK_MS depois de sair do log?
+const lateExits = new Map();
+for (const p of pulls) {
+  const step = p.tracks?.stepMs ?? 250;
+  for (const u of p.tracks?.units ?? []) {
+    const out = Math.min(u.lastLine ?? Infinity, u.pickedAt ?? Infinity);
+    const seg = u.segs.at(-1);
+    if (out === Infinity || !seg) continue;
+    const end = seg.t0 + (seg.xy.length / 2 - 1) * step;
+    const k = lateExits.get(u.name) ?? { units: 0, picked: 0, late: [] };
+    k.units++;
+    if (u.pickedAt != null) k.picked++;
+    if (end > out + EXIT_SLACK_MS) k.late.push(`pull ${p.pullNumber} ${mmss(out)} → ${mmss(end)}`);
+    lateExits.set(u.name, k);
+  }
+}
+for (const [name, k] of lateExits) {
+  if (k.late.length) add('REVISAR', `${name}: ${k.late.length} de ${k.units} ficaram no mapa mais de ${EXIT_SLACK_MS / 1000} s depois de sair do log (${k.late.slice(0, 5).join('; ')}): confira \`until_last_line\` / \`cleared_by_aura\` em \`units\` (skill replay-build).`);
+}
 const ghosts = (rule?.mechanics ?? []).filter((m) => m.detect?.gaze);
 
 // atribuição por posição (`detect.assign`): soma o resumo de cada pull
@@ -192,6 +214,7 @@ if (unknownCasts.length) {
   for (const c of unknownCasts) md.push(`| ${c.name} (${c.spellId}) | ${c.n} (${(c.n / pulls.length).toFixed(1)} por pull) | ${c.hit ? 'sim (mesmo id)' : 'não com este id'} |`);
 }
 md.push('', '## Unidades no mapa', '', `- **Desenhadas:** ${[...drawn].join(', ') || '—'}`);
+for (const [name, k] of lateExits) md.push(`- **${name}** (sem \`UNIT_DIED\`): ${k.units} no mapa, ${k.picked} tirados pela aura de quem pegou, ${k.late.length} ficaram mais de ${EXIT_SLACK_MS / 1000} s depois de sair do log`);
 if (hiddenUnits.length) md.push(`- **Fazem dano e não aparecem:** ${hiddenUnits.map((u) => `${u.name} (${pct(u.share)})`).join(', ')}`);
 for (const a of assigns) {
   const skipped = Object.entries(a.skipped).map(([why, n]) => `${why} ${n}`).join(', ') || 'nenhuma';
@@ -201,5 +224,5 @@ for (const a of assigns) {
 if (ghosts.length) md.push(`- **Fantasmas** (${ghosts.map((m) => m.key).join(', ')}): o caminho é simulado; calibre com \`WIPE_GAZE_DUMP\` + \`scripts/ghost-calibrate.mjs\` (skill replay-build).`);
 const longest = [...pulls].sort((a, b) => b.durationMs - a.durationMs)[0];
 md.push('', `Para olhar no app: pull ${longest.pullNumber} (${mmss(longest.durationMs)}), aba Replay, com o replay completo da luta.`, '');
-const file = writeReport(OUT, title, md.join('\n'), { title, night, status, items, rule: rule?.file ?? null, arena: arena ? { name: arena.name, fit: arena.fit } : null, rows, unknownCasts, hiddenUnits, assigns });
+const file = writeReport(OUT, title, md.join('\n'), { title, night, status, items, rule: rule?.file ?? null, arena: arena ? { name: arena.name, fit: arena.fit } : null, rows, unknownCasts, hiddenUnits, assigns, lateExits: Object.fromEntries(lateExits) });
 console.log(`${status} · ${rows.length} spells · ${unknownCasts.length} casts sem regra · ${file}.md`);

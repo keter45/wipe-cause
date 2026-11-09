@@ -449,7 +449,8 @@ pub struct RuleSet {
     phases: Vec<PhaseDef>,
     /// npcs das unidades com `replay: true` (adds que importam: entram no replay mesmo sem HP de boss)
     replay_npcs: Vec<u32>,
-    /// unidades que somem sem UNIT_DIED (o orb que alguém pegou): `cleared_by` e `lifetime_s`
+    /// unidades que somem sem UNIT_DIED (o orb que alguém pegou): `cleared_by`, `lifetime_s`,
+    /// `until_last_line` e `cleared_by_aura`
     unit_clears: Vec<UnitClearDef>,
     /// unidades vistas desde a primeira linha (`from_first_line`) e contadas vivas (`count`)
     seen_units: Vec<SeenUnit>,
@@ -468,13 +469,28 @@ pub struct SeenUnit {
     pub count: bool,
 }
 
-/// Unidade que o log nunca mata (o orb no chão): sai do mapa quando a mecânica `cleared_by` acerta
-/// alguém perto dela (o soak que a limpou) ou `lifetime_s` depois de aparecer, o que vier antes.
+/// Unidade que o log nunca mata (o orb no chão, o ovo que alguém pega): sai do mapa no que vier antes:
+/// a mecânica `cleared_by` acerta alguém perto dela (o soak que a limpou), `lifetime_s` depois de
+/// aparecer, a última linha do log que a cita (`until_last_line`) ou um player perto ganha uma aura
+/// (`cleared_by_aura`, quem pegou o ovo).
 #[derive(Debug, Clone)]
 struct UnitClearDef {
     npc: u32,
     cleared_by: Option<String>,
     lifetime_s: Option<f64>,
+    until_last_line: bool,
+    by_aura: Option<AuraClear>,
+}
+
+/// `cleared_by_aura: { aura, radius, within_s }`: a unidade sai quando um player a até `radius` jd dela
+/// ganha `aura`, se a última linha do log que cita a unidade vem até `within_ms` depois (a aura não diz
+/// qual unidade foi pega: a trava evita tirar do mapa um vizinho que ainda está no chão). Cada aura tira
+/// uma unidade só, a mais perto.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AuraClear {
+    pub aura: u32,
+    pub radius: f32,
+    pub within_ms: i64,
 }
 
 /// `UnitClearDef` do pull: a mecânica já como índice e o raio do soak/área dela.
@@ -484,6 +500,8 @@ pub struct UnitClear {
     /// (índice da mecânica, raio em jardas)
     pub cleared_by: Option<(usize, f32)>,
     pub lifetime_ms: Option<i64>,
+    pub until_last_line: bool,
+    pub by_aura: Option<AuraClear>,
 }
 
 /// Fase da regra: (key, nome, cast que abre, npcs cuja vida é o progresso da fase, npc que abre a
@@ -544,7 +562,16 @@ impl RuleSet {
                         let npc = u.get("npc_id").and_then(Value::as_u64)? as u32;
                         let cleared_by = u.get("cleared_by").and_then(Value::as_str).map(str::to_string);
                         let lifetime_s = u.get("lifetime_s").and_then(Value::as_f64);
-                        (cleared_by.is_some() || lifetime_s.is_some()).then_some(UnitClearDef { npc, cleared_by, lifetime_s })
+                        let until_last_line = u.get("until_last_line").and_then(Value::as_bool) == Some(true);
+                        let by_aura = u.get("cleared_by_aura").and_then(|a| {
+                            Some(AuraClear {
+                                aura: a.get("aura").and_then(Value::as_u64)? as u32,
+                                radius: a.get("radius").and_then(Value::as_f64)? as f32,
+                                within_ms: (a.get("within_s").and_then(Value::as_f64)? * 1000.0) as i64,
+                            })
+                        });
+                        (cleared_by.is_some() || lifetime_s.is_some() || until_last_line || by_aura.is_some())
+                            .then_some(UnitClearDef { npc, cleared_by, lifetime_s, until_last_line, by_aura })
                     })
                     .collect()
             })
@@ -1005,6 +1032,8 @@ impl RuleTracker {
                             Some((i, r))
                         }),
                         lifetime_ms: c.lifetime_s.map(|s| (s * 1000.0) as i64),
+                        until_last_line: c.until_last_line,
+                        by_aura: c.by_aura,
                     })
                     .collect()
             })
@@ -1483,7 +1512,8 @@ impl RuleTracker {
         &self.seen_units
     }
 
-    /// Unidades que somem sem UNIT_DIED (`units` com `cleared_by` / `lifetime_s`).
+    /// Unidades que somem sem UNIT_DIED (`units` com `cleared_by` / `lifetime_s` / `until_last_line` /
+    /// `cleared_by_aura`).
     pub fn unit_clears(&self) -> &[UnitClear] {
         &self.unit_clears
     }
@@ -3002,6 +3032,18 @@ mechanics:
         let globule = tracker.soak_for(1289201).unwrap();
         assert_eq!((clears[0].npc, clears[0].cleared_by, clears[0].lifetime_ms), (269194, Some((globule, 5.0)), Some(15_000)));
         assert_eq!(tracker.unit_aura_for(1303378).map(|a| (a.2, a.3)), Some((true, false)));
+    }
+
+    #[test]
+    fn ulatek_eggs_leave_on_last_line_or_on_the_shell() {
+        let book = RuleBook::embedded();
+        let sets = book.for_encounter(3492, "Ula'tek");
+        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        let mut eggs: Vec<(u32, bool, Option<AuraClear>, Option<i64>)> =
+            tracker.unit_clears().iter().map(|c| (c.npc, c.until_last_line, c.by_aura, c.lifetime_ms)).collect();
+        eggs.sort_by_key(|e| e.0);
+        let shell = Some(AuraClear { aura: 1307612, radius: 15.0, within_ms: 3_000 });
+        assert_eq!(eggs, vec![(265644, true, shell, None), (268121, true, shell, None)]);
     }
 
     #[test]

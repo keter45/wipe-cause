@@ -164,7 +164,7 @@ tempo sem alvo, movimento da luta, vida do boss) e consumíveis/buffs da raide/p
 1000 lutas. As decisões viram cartões você × robô, e as 3 de maior custo estimado ficam em "O que
 mudar primeiro" (`fixes`: casts trocados × diferença de dano por cast; procs perdidos × dano de quem
 gasta; usos perdidos de cooldown × dano dele). "Robô para a raide" no resumo do boss simula todos em
-fila (`botRaid.ts`); a aba Jogadores e a Evolução mostram o % de quem tem simulação salva. O pull
+fila (`botRaid.ts`); a aba Jogadores mostra o % de quem tem simulação salva (a Evolução ainda não). O pull
 simulado é achado pelo começo (até 10s de diferença: o log local e o Warcraft Logs diferem em ms).
 
 **Robô × tops:** nesta seção o robô é o certo. Quando os tops (ou a nossa rotação em YAML) fazem
@@ -182,7 +182,7 @@ binário sem como conferir:
 - Um workflow do GitHub Actions compila o SimC (só a linha de comando) a partir do branch padrão
   do projeto, toda segunda-feira (cron `0 6 * * 1`) e quando chamado à mão, e publica num release próprio
   com o SHA-256 e o commit de origem. O release guarda os 3 builds mais recentes (`KEEP: 3`).
-- O app baixa o SimC **na primeira simulação** (com aviso do tamanho: ~15 MB compactado), confere o SHA-256 e guarda na pasta de dados (`<dados>/simc/`). Antes de uma simulação, no máximo a cada 6 h, confere o manifesto e baixa o build novo; sem internet, ou se o download falha, segue com o SimC instalado.
+- O app baixa o SimC **na primeira simulação** (com aviso do tamanho: ~15 MB compactado, 15,7 MB nos builds de 11/2026 da release `simc`), confere o SHA-256 e guarda na pasta de dados (`<dados>/simc/`). Antes de uma simulação, no máximo a cada 6 h, confere o manifesto e baixa o build novo; sem internet, ou se o download falha, segue com o SimC instalado.
   O instalador não cresce e o SimC acompanha o patch sem release nosso.
 - O SimC é GPL-3; ele roda como programa separado. Mostramos a versão e o link do código-fonte do
   commit usado na tela da simulação.
@@ -197,4 +197,4 @@ binário sem como conferir:
 
 - O robô não erra mecânica e anda só o que a luta pediu; a diferença de DPS nunca é só rotação.
 - O SimC às vezes está atrasado em relação a um patch novo, e a spec pode estar sem rotação boa
-  nele. Nesse caso mostramos o aviso do próprio SimC sobre a spec.
+  nele. O app ainda não mostra os avisos do SimC sobre a spec: o resultado sai como se a rotação estivesse em dia.

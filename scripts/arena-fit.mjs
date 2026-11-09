@@ -36,7 +36,20 @@ const ARENAS = [
     poly: [[548, 35], [690, 35], [965, 560], [905, 658], [318, 658], [260, 555]],
     holes: [[[580, 262], [650, 262], [740, 440], [700, 515], [525, 515], [485, 440]]],
   },
-  { id: 3492, img: '08.ulatek-ort-platform-v85', url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/08.ulatek-ort-platform-v85.jpg', poly: [[487, 38], [737, 38], [915, 215], [915, 465], [737, 645], [487, 645], [305, 465], [305, 215]], core: 45 },
+  // Ula'tek: a sala inteira (Full Room), porque na P2 a raide se divide nas bordas dos lados (y ±110-127). A
+  // transformação é a da plataforma do meio, que já encaixava a 0,984 com a imagem só dela: o octógono tem 78 jd
+  // no log e 280 px aqui (09/11). O veneno em volta são dois buracos (em cima e embaixo), separados pelas pontes.
+  {
+    id: 3492,
+    img: '08.ulatek-ort-full-v185',
+    url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/08.ulatek-ort-full-v185.jpg',
+    poly: [[100, 0], [1124, 0], [1124, 686], [100, 686]],
+    holes: [
+      [[472, 285], [472, 300], [330, 300], [330, 230], [468, 30], [756, 30], [894, 230], [894, 300], [752, 300], [752, 285], [670, 203], [555, 203]],
+      [[472, 401], [472, 386], [330, 386], [330, 456], [468, 656], [756, 656], [894, 456], [894, 386], [752, 386], [752, 401], [670, 483], [555, 483]],
+    ],
+    fixed: { rotation: 0, s: 3.575, u: 612, v: 343, cx: 1553.55, cy: 0.25 },
+  },
   { id: 3497, img: '04.lostexplorers-ort-v112', url: 'https://cdn.raidplan.io/raid/wow.venomabyss/map/04.lostexplorers-ort-v112.jpg', poly: [[380, 5], [845, 5], [950, 195], [950, 500], [845, 680], [380, 680], [270, 500], [270, 195]] },
   {
     id: 3445,

@@ -8,20 +8,36 @@ source:
   - https://warcraft.wiki.gg/wiki/Ula'tek
   - "mítico: https://www.youtube.com/watch?v=khgd47t-ONQ (Tactyks, guia do kill mítico) + Wowhead para os IDs"
   - "log: WoWCombatLog-100126_164410 (5 pulls heroicos) — IDs de dano calibrados"
-updated: 2026-10-06
+  - https://www.method.gg/guides/the-venomous-abyss/ulatek
+  - "pós-nerf (07/11/2026): WCL DVYRKLqg3zw6tC8c (kill heroico + 6 wipes míticos), JwC1GWMzmjZD72Yv (kill heroico), pRJDTa1j7qc9tAx8 (kill mítico)"
+# Nerf de 07/11/2026: dano de Unchecked Rage, Caustic Waves, Malice, Virulent Spit, Falling Debris,
+# Viscous Echoes e Noxious Splash menor; menos ovos e alvos no N/H; Putrid Membrane 20s no mítico;
+# no heroico a cauda espectral da P3 não solta mais Caustic Waves extras.
+updated: 2026-11-09
 difficulties: [normal, heroic, mythic]
 
 units:
-  - { key: ulatek, name: "Ula'tek", npc_id: null, boss: true }
-  - { key: gore_rattle, name: "Gore Rattle", npc_id: null }
-  - { key: spectral_coil, name: "Spectral Coil", npc_id: null }
-  - { key: venomous_heart, name: "Venomous Heart", npc_id: 267460, replay: true }   # janela de dano: todo mundo nele
-  - { key: blightscale_viper, name: "Blightscale Viper", npc_id: 261915, replay: true }   # matar rápido
-  - { key: blightscale_rawling, name: "Blightscale Rawling", npc_id: null }
-  - { key: doomscale_warden, name: "Doomscale Warden", npc_id: null }
-  - { key: weakened_doomscale, name: "Weakened Doomscale", npc_id: null }
-  - { key: blightscale_shrieker, name: "Blightscale Shrieker", npc_id: null }
-  - { key: blightscale_wretch, name: "Blightscale Wretch", npc_id: null }
+  - { key: ulatek, name: "Ula'tek", npc_id: 257758, boss: true }
+  - { key: gore_rattle, name: "Gore Rattle", npc_id: null }   # dois npc ids no log: 259555 e 267418
+  # cor e ícone no mapa (`color`, `icon`): verdes para o que sai dos ovos, quentes para os Doomscales
+  - { key: spectral_coil, name: "Spectral Coil", npc_id: 267679, replay: true, color: "#94a3b8", icon: 1287265 }   # fica no veneno; o círculo do soak sai 22 jd na frente dele
+  - { key: venomous_heart, name: "Venomous Heart", npc_id: 267460, replay: true, color: "#22c55e", icon: 1299526 }   # janela de dano: todo mundo nele
+  - { key: blightscale_viper, name: "Blightscale Viper", npc_id: 261915, replay: true, color: "#2dd4bf", icon: 1301800 }   # matar rápido
+  - { key: blightscale_rawling, name: "Blightscale Rawling", npc_id: 261874, replay: true, color: "#84cc16", icon: 1287032 }   # matar antes de ferver
+  - { key: doomscale_warden, name: "Doomscale Warden", npc_id: 264045, replay: true, color: "#a78bfa", icon: 1290779 }   # matar antes do Writhing Gestation
+  - { key: weakened_doomscale, name: "Weakened Doomscale", npc_id: 269200, color: "#f97316", icon: 1305650 }
+  - { key: ravenous_doomscale, name: "Ravenous Doomscale", npc_id: 263900, replay: true, color: "#f43f5e", icon: 1305775 }   # ovo grande que chocou
+  - { key: blightscale_shrieker, name: "Blightscale Shrieker", npc_id: 273577, color: "#facc15", icon: 1310764 }
+  - { key: blightscale_wretch, name: "Blightscale Wretch", npc_id: 263942, color: "#c084fc", icon: 1310763 }
+  # ovos com casca (mítico): o log nunca os mata. Saem na última linha que os cita (quebrado vira Rawling,
+  # Writhing Gestation vira Blightscale Clutch, choca vira Viper) ou antes, na Noxious Shell de quem pegou:
+  # a Shell vem da Ula'tek, não do ovo, então vale o ovo mais perto (até 15 jd: máximo medido no WCL, posição
+  # esparsa; 2,3-4,8 jd no log local) cuja última linha vem até 3 s depois (log local: 1,6-2,7 s de ticks de
+  # DoT depois de pego). Medido em 09/11 no log local de 05/11, WCL pRJD e DVYR (352 ovos): docs/ulatek-replay-audit.md
+  - { key: blightscale_spawn, name: "Blightscale Spawn", npc_id: 265644, replay: true, color: "#d9f99d", icon: 1307612, until_last_line: true, cleared_by_aura: { aura: 1307612, radius: 15, within_s: 3 } }
+  - { key: blightscale_spawn_2, name: "Blightscale Spawn", npc_id: 268121, replay: true, color: "#d9f99d", icon: 1307612, until_last_line: true, cleared_by_aura: { aura: 1307612, radius: 15, within_s: 3 } }
+  - { key: spectral_ulatek, name: "Ula'tek (spectral)", npc_id: 268029 }   # mítico: o raio do Toxic Incubation
+  - { key: toxin_cloud_stalker, name: "Toxin Cloud Stalker", npc_id: 265946 }
 
 phases:
   - { key: p1, name: "Fury of the Serpent Mother", start: pull }
@@ -39,9 +55,10 @@ mechanics:
       mythic: { severity: wipe }
     detect:
       fail_ids: [1308275]       # Putrid Membrane: o raid todo toma quando um ovo vira Viper
+    ground: false               # dano no raid inteiro
     tip: { pt: "Pegar os ovos e manter longe das ondas e do veneno; ovo quebrado cedo vira filhote fraco, ovo que choca vira Viper.", en: "Pick up the eggs and keep them away from waves and venom; an egg broken early becomes a weak hatchling, one that hatches becomes a Viper." }
     message: { pt: "{count} Viper chocada — Putrid Membrane no raid", en: "{count} Viper hatched — Putrid Membrane on the raid" }
-    notes: "Aura 1301268 no raid inteiro no momento em que a Viper nasce; o dano 1308275 pulsa ~19s. Duas Vipers a menos de 1,5s contam uma vez."
+    notes: "Aura 1301268 no raid inteiro no momento em que a Viper nasce; o dano 1308275 pulsa ~19s (20s no mítico desde o nerf de 07/11; era 30s). Duas Vipers a menos de 1,5s contam uma vez."
 
   - key: malignant_shell
     name: "Malignant Shell"
@@ -101,11 +118,11 @@ mechanics:
     severity: minor
     overrides:
       mythic: { severity: major }   # no mítico a onda quase mata sozinha
-    detect: { damage_ids: [1292403], min_amount: 150000 }   # só o impacto (~530k); o DoT tica ~20-40k
+    detect: { damage_ids: [1292403], min_amount: 230000 }   # só o impacto (pós-nerf ~350-550k); o DoT tica até ~220k no mítico
     tolerance: 0
     tip: { pt: "Desviar das ondas de veneno (da Ula'tek e da cauda) e não deixar ovo no caminho delas.", en: "Dodge the venom waves (from Ula'tek and from the tail) and keep eggs out of their path." }
     message: { pt: "{player} tomou Caustic Waves ({count}x)", en: "{player} was hit by Caustic Waves ({count}x)" }
-    notes: "Casts: 1292211 (Ula'tek) e 1298570/1311807 (Gore Rattle); o dano é o mesmo 1292403."
+    notes: "Casts: 1292211 e 1319282 (Ula'tek) e 1298570/1311807 (Gore Rattle); o dano é o mesmo 1292403. Pós-nerf (07/11): impacto 350-550k; o DoT tica até 50k no heroico e até ~220k no mítico, por isso o corte em 230k."
 
   - key: mothers_wrath
     name: "Mother's Wrath"
@@ -123,6 +140,7 @@ mechanics:
     source_unit: ulatek
     severity: major
     detect: { fail_ids: [1301122] }
+    ground: false   # dano no raid inteiro: sem forma no chão
     tip: { pt: "O alvo do Mother's Wrath tem que ficar no alcance da mordida; fora dele, o raid inteiro toma as mordidas e o Stone Venom.", en: "The Mother's Wrath target must stay within reach of the bite; outside it, the whole raid takes the bites and the Stone Venom." }
     message: { pt: "Mother's Wrath pegou o raid ({count}x) — o tank saiu do alcance", en: "Mother's Wrath hit the raid ({count}x) — the tank left its reach" }
 
@@ -140,10 +158,11 @@ mechanics:
     type: failure_event
     source_unit: ulatek
     severity: major
-    detect: { fail_ids: [1286945] }
+    detect: { fail_ids: [1301007, 1286945] }   # 1301007 é o do log; 1286945, o do Journal, nunca apareceu
+    ground: false   # dano físico no raid inteiro: sem forma no chão
     tip: { pt: "Sempre ter alguém em melee da Ula'tek, senão ela bate no raid inteiro.", en: "Always keep someone in Ula'tek's melee range, or she hits the whole raid." }
     message: { pt: "Unchecked Rage ({count}x) — ninguém em melee da Ula'tek", en: "Unchecked Rage ({count}x) — nobody in Ula'tek's melee range" }
-    notes: "ID do Journal; não apareceu nos pulls de calibração (ninguém errou). Confirmar no log quando acontecer."
+    notes: "Confirmado no WCL BPR9 (09/11, mítico) com o id 1301007: 3 de 6 wipes; sai a cada ~2,4 s depois que o tank morre (fights 1 e 3) ou no pull sem tank em melee (fight 6, desde 5,9 s). Nenhum nos 2 kills nem nos 6 wipes do DVYR."
 
   - key: deadly_venom
     name: "Deadly Venom"
@@ -211,6 +230,10 @@ mechanics:
     source_unit: spectral_coil
     severity: none
     detect: { damage_ids: [1287265], cast_id: 1299010 }
+    # um círculo por Spectral Coil, 22 jd na frente dele no fim do cast. 55 impactos (4 kills e 6 wipes
+    # pós-nerf, 07-08/11): quem ganhou Soul Constrictor ficou a até 8-9 jd do meio deles e quem não
+    # ganhou quase sempre além de 8; o meio fica a 21-22 jd do Coil (15-25), na direção dele (±10°).
+    soak: { radius: 8, ahead: 22 }
     tip: { pt: "Cada grupo no seu círculo ao lado da cauda: quanto mais gente dentro, menos o raid toma.", en: "Each group in its circle next to the tail: the more people inside, the less the raid takes." }
     message: { pt: "Spectral Coils", en: "Spectral Coils" }
     notes: "Acerta o raid todo; o soak só reduz o dano. Soul Constrictor (1300685) cai em quem soakou e impede soakar o próximo."
@@ -315,19 +338,21 @@ mechanics:
     type: unavoidable
     source_unit: blightscale_shrieker
     severity: none
+    difficulty: [normal, heroic]   # no mítico só sai de add que ferveu: ver boiled_adds
+    ground: false                  # dano no raid inteiro
     detect: { damage_ids: [1313531], cast_id: 1313531 }
     tip: { pt: "Trocar para o Shrieker e matar antes do segundo DoT no raid.", en: "Swap to the Shrieker and kill it before its second raid DoT." }
     message: { pt: "Acidic Expulsion", en: "Acidic Expulsion" }
 
   - key: vicious_echoes
-    name: "Vicious Echoes"
+    name: "Viscous Echoes"
     type: interrupt
     source_unit: blightscale_shrieker
     severity: wipe
     detect: { cast_id: 1310764 }
     accept: [interrupt, cc, kill]
-    tip: { pt: "Cortar sempre o Vicious Echoes do Shrieker: atordoa e machuca o raid inteiro.", en: "Always interrupt the Shrieker's Vicious Echoes: it stuns and hurts the whole raid." }
-    message: { pt: "{count} Vicious Echoes passaram", en: "{count} Vicious Echoes went through" }
+    tip: { pt: "Cortar sempre o Viscous Echoes do Shrieker: atordoa e machuca o raid inteiro.", en: "Always interrupt the Shrieker's Viscous Echoes: it stuns and hurts the whole raid." }
+    message: { pt: "{count} Viscous Echoes passaram", en: "{count} Viscous Echoes went through" }
 
   - key: serpents_bite
     name: "Serpent's Bite"
@@ -363,7 +388,7 @@ mechanics:
     tip: { pt: "Com ovo na mão, nunca chegar a 3 jardas de outro portador: andar em faixas e posições combinadas.", en: "While carrying an egg, never get within 3 yards of another carrier: move in agreed lanes and spots." }
     message: { pt: "{count} Noxious Splash — portadores de ovo se encostaram", en: "{count} Noxious Splash — egg carriers touched" }
     blame_message: { pt: "{player} encostou em outro portador de ovo", en: "{player} touched another egg carrier" }
-    notes: "IDs do Wowhead, ainda sem log mítico para confirmar. O ovo choca uma Viper (conta também em viper_hatched)."
+    notes: "Confirmado no log mítico pós-nerf (WCL DVYR, 07/11): 1307612 é a aura de quem carrega, 1307635 o dano (3 Splashes em 6 wipes). O ovo choca uma Viper (conta também em viper_hatched)."
 
   - key: egg_pickup_with_yolk
     name: "Noxious Shell (picked up with Rancid Yolk)"
@@ -372,12 +397,13 @@ mechanics:
     difficulty: [mythic]
     roles: [healer, dps]
     detect:
-      damage_ids: [1307612]     # dano de quem carrega o ovo
+      damage_ids: [1307617]     # dano de quem carrega o ovo (a aura do portador é 1307612)
       requires_aura: 1312150    # Rancid Yolk: o ovo anterior ainda triplica esse dano
+    ground: false               # DoT que segue o portador; o círculo dele vem do area do noxious_splash
     tolerance: 0
     tip: { pt: "Depois de largar ou quebrar um ovo, esperar o Rancid Yolk (debuff amarelo, 20s) acabar antes de pegar outro; com ele, o ovo mata.", en: "After dropping or breaking an egg, wait for Rancid Yolk (yellow debuff, 20s) to expire before picking up another; with it, the egg kills you." }
     message: { pt: "{player} pegou ovo com Rancid Yolk ({count} ticks)", en: "{player} picked up an egg with Rancid Yolk ({count} ticks)" }
-    notes: "Tanks aguentam e ficam de fora (roles). O dano de carregar no mítico pode ter outro ID além de 1307612: confirmar no log."
+    notes: "Tanks aguentam e ficam de fora (roles). Log mítico (07-08/11): o dano de carregar é 1307617 (~105-125k por tick sem Yolk); ninguém pegou ovo com Rancid Yolk nos 7 pulls, então o valor com Yolk ainda não foi visto."
 
   - key: mothers_boon
     name: "Mother's Boon"
@@ -388,7 +414,7 @@ mechanics:
     detect: { enrage_aura_id: 1299764 }
     tip: { pt: "O tank livre fica no caminho do raio da Ula'tek espectral até o Wretch e atira as ondas para longe dos ovos.", en: "The free tank stands in the spectral Ula'tek's beam on its way to the Wretch and aims the waves away from the eggs." }
     message: { pt: "Wretch ganhou {count} Mother's Boon — raio sem tank no caminho", en: "Wretch gained {count} Mother's Boon — nobody tanking the beam" }
-    notes: "Toxic Incubation (1299757) é o raio; cada impacto que chega no Wretch aplica Mother's Boon."
+    notes: "Toxic Incubation é o raio (cast 1299759 da Ula'tek espectral, npc 268029); cada impacto que chega no Wretch aplica Mother's Boon. Nos 7 pulls míticos pós-nerf o Wretch nunca ganhou Mother's Boon (sempre bloquearam), então o ID 1299764 ainda não foi visto no log."
 
   - key: fester_burst
     name: "Fester Burst"
@@ -397,10 +423,11 @@ mechanics:
     severity: major
     difficulty: [mythic]
     detect: { damage_ids: [1310763], min_amount: 300000 }   # só o impacto (~540k); o DoT tica ~100k
+    area: { npc: 263942, radius: 10, keep_unit: true }   # a bolha: fora dela o Fester Burst acerta
     tolerance: 0
     tip: { pt: "Entrar na bolha de 10 jardas do Wretch antes de estourar; com o Wretch enfurecido o cast é bem mais rápido, então se posicionar antes.", en: "Get inside the Wretch's 10-yard bubble before it bursts; once the Wretch enrages the cast is much faster, so pre-position." }
     message: { pt: "{player} ficou fora da bolha do Fester Burst ({count}x)", en: "{player} was outside the Fester Burst bubble ({count}x)" }
-    notes: "ID e valores do Wowhead; confirmar no log mítico se impacto e DoT usam o mesmo ID. Meta do raid: matar o Wretch antes da 3ª bolha."
+    notes: "Impacto e DoT usam o mesmo 1310763 (log mítico 07-08/11): impacto 350-900k, DoT até ~200k. O Wretch acorda 20s depois do Toxic Womb e ferve (Boiling Venom 1315343) 30s depois; isso acontece em todo pull, inclusive no kill, então não é falha. Meta do raid: matar o Wretch antes da 3ª bolha."
 
   - key: revenge
     name: "Revenge"
@@ -418,7 +445,7 @@ mechanics:
     type: unavoidable
     severity: none
     difficulty: [mythic]
-    detect: { damage_ids: [1307612], aura_id: 1307612 }
+    detect: { damage_ids: [1307617], aura_id: 1307612 }
     tip: { pt: "No mítico o ovo tem escudo (quebrar antes de pegar) e o dano de carregar é bem maior; morrer com o ovo choca uma Viper.", en: "On Mythic the egg has a shield (break it before picking it up) and carrying it hurts much more; dying with the egg hatches a Viper." }
     message: { pt: "Noxious Shell", en: "Noxious Shell" }
 
@@ -442,3 +469,51 @@ mechanics:
     tip: { pt: "Soakar com o mínimo de gente, de cargos combinados, com defensivo grande para a explosão do fim; quem soakou solta ondas: mirar longe do raid. Soaker que morre durante o soak wipa o raid.", en: "Soak with the minimum number of people, from agreed roles, with a big defensive for the final explosion; soakers release waves: aim them away from the raid. A soaker dying mid-soak wipes the raid." }
     message: { pt: "Serpent's Bite", en: "Serpent's Bite" }
     notes: "No mítico, quem soakou solta Caustic Waves ao fim do Volatile Purge; as ondas que acertam o raid já contam em caustic_waves."
+
+  # ---------- Pós-nerf (07/11): o que apareceu nos logs e não tinha regra ----------
+  - key: boiled_adds
+    name: "Boiling Venom (Acidic Expulsion)"
+    type: failure_event
+    source_unit: blightscale_rawling
+    severity: major
+    difficulty: [mythic]
+    ground: false               # dano no raid inteiro
+    detect:
+      fail_ids: [1313531]       # Acidic Expulsion: no mítico só sai de Rawling/Shrieker que ferveu
+      # sem confirm_aura: o debuff entra 1 ms depois do dano. Os ticks (1/s) emendam no mesmo
+      # episódio, porque a falha junta acertos a menos de 1,5s.
+    tip: { pt: "Matar cada Rawling antes de ferver (25s depois de nascer) e cada Shrieker antes de 30s; Rawling fervido tem que levar stun para não soltar o Acidic Expulsion.", en: "Kill each Rawling before it boils (25s after spawning) and each Shrieker before 30s; a boiled Rawling must be stunned so it doesn't cast Acidic Expulsion." }
+    message: { pt: "{count} Acidic Expulsion — add ferveu e não morreu nem levou stun", en: "{count} Acidic Expulsion — an add boiled and was neither killed nor stunned" }
+    notes: "Log mítico 07-08/11: Rawling ganha 1313758 ao nascer (timer) e 1313757 aos 25s (ferveu); 47 de 147 ferveram, a maioria morreu em 1-4s, e 14 soltaram Acidic Expulsion (~10s depois). Shrieker: 1315342 ao nascer. Por isso a falha é o Expulsion, não a fervura. Nos 6 wipes os Expulsions de Rawling vieram só nos últimos ~10s (raide já caindo); no kill, 2 do Shrieker na P3. Sem culpado individual: quem devia matar ou dar stun não sai do log."
+
+  - key: doomscale_hatched
+    name: "Hatching Doom (Ravenous Doomscale)"
+    type: failure_event
+    source_unit: ravenous_doomscale
+    severity: major
+    detect:
+      fail_ids: [1305775]       # Dread Roar: só existe quando o ovo grande chocou um Ravenous Doomscale
+    tip: { pt: "Pegar o Doomscale Egg antes do timer zerar e levar ao caldeirão; se ele choca, vira um Ravenous Doomscale com Dread Roar no raid.", en: "Pick up the Doomscale Egg before its timer runs out and take it to the cauldron; if it hatches, it becomes a Ravenous Doomscale that Dread Roars the raid." }
+    message: { pt: "Doomscale Egg chocou — Ravenous Doomscale ({count} Dread Roar)", en: "Doomscale Egg hatched — Ravenous Doomscale ({count} Dread Roar)" }
+    notes: "Log mítico 07/11 (WCL DVYR): Hatching Doom 1306862 é o cast do ovo (npc 268164); o Ravenous Doomscale (263900) só apareceu em 2 wipes, nos últimos 2s (raide já morta), com Dread Roar 1305775 em players (dano + debuff); o motor não contou nenhum porque veio depois do fim. Falta ver um caso no meio da P2 para confirmar."
+
+  - key: toxic_incubation_block
+    name: "Toxic Incubation (blocking the beam)"
+    type: unavoidable
+    source_unit: spectral_ulatek
+    severity: none
+    difficulty: [mythic]
+    detect: { damage_ids: [1299919, 1312262] }
+    tip: { pt: "Quem bloqueia o raio leva Toxic Incubation e Toxic Burn acumulando: defensivo e cura em cima dele.", en: "Whoever blocks the beam takes Toxic Incubation and stacking Toxic Burn: defensive and healing on them." }
+    message: { pt: "Toxic Incubation", en: "Toxic Incubation" }
+    notes: "1299919 é o raio no player (150-540k) e 1312262 o Toxic Burn (100-830k, sem origem no log). É o custo de bloquear; deixar passar já conta em mothers_boon."
+
+  - key: toxin_cloud
+    name: "Toxin Cloud"
+    type: unavoidable
+    source_unit: toxin_cloud_stalker
+    severity: none
+    detect: { damage_ids: [1295995] }
+    tip: { pt: "Debuff de nuvem tóxica em players aleatórios; só curar.", en: "Toxic cloud debuff on random players; just heal it." }
+    message: { pt: "Toxin Cloud", en: "Toxin Cloud" }
+    notes: "Não está nos guias. Log 07-08/11: o Toxin Cloud Stalker (265946) lança em um player e aplica o debuff; o dano quase nunca aparece (2 hits de ~350k no heroico, 2 pequenos no mítico). Se aparecer um padrão de erro (ex.: ficar na nuvem), virar avoidable_damage."
