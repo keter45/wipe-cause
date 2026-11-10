@@ -444,7 +444,9 @@ Com o link ligado, o app sobe um servidor em `127.0.0.1` que serve a própria in
 
 No navegador de quem abre, o build do app fora do Tauri entra no modo de visualização ([viewer](../src/lib/viewer.ts), `inViewer` em [backend](../src/lib/backend.ts)): o selo “Só para ver” no topo, a noite mais recente aberta, e nada que analise, salve, configure ou envie (nova análise, reanalisar, corte, fixar/apagar, Configurações, Warcraft Logs, ajuste e criação de regras, IA, anotação, marcas e Discord). O histórico é relido a cada 5 s com o ao vivo de quem compartilha ligado (20 s sem); a noite aberta salva de novo atualiza a tela, quem está no último pull ou no resumo vai para o pull novo com o aviso no canto, e o topo mostra o estado do ao vivo de quem compartilha. No `tauri dev`, `WIPE_DEV_SHARE=1` liga o link só neste PC (com `=tunnel`, também o túnel) e escreve o endereço no terminal; no Vite, o modo exige `?viewer=1`.
 
-Fontes: [share.rs](../src-tauri/src/share.rs), [viewer](../src/lib/viewer.ts), [ShareForm](../src/components/settings/ShareForm.tsx), [App](../src/App.tsx).
+**Link fixo:** com um token do GitHub (permissão `gist`, no cofre do sistema), a cada vez que o túnel abre o app grava `{url, key}` num Gist secreto ([share_gist.rs](../src-tauri/src/share_gist.rs)); desligar grava `url: null`, e fechar o app tenta o mesmo em até 3 s. O link é `keter45.github.io/wipe-cause/?v=<id do Gist>`: o site (build web) com `?v=` entra no modo de visualização, lê o Gist pela API do GitHub (de novo no máximo a cada 60 s) e chama `/api/invoke` do túnel; o servidor só libera CORS para a origem do site. Sem resposta (app desligado, túnel caído), o site mostra que o app está desligado e segue tentando; Gist apagado, que o link não existe mais. A chave fica a mesma entre um dia e outro (`share_key`); **Gerar link novo** troca a chave e apaga o Gist. O link que estava ligado liga sozinho quando o app abre (`share_on`).
+
+Fontes: [share.rs](../src-tauri/src/share.rs), [share_gist.rs](../src-tauri/src/share_gist.rs), [viewer](../src/lib/viewer.ts), [ShareForm](../src/components/settings/ShareForm.tsx), [App](../src/App.tsx).
 
 ## 4. Como os dados percorrem o app
 
@@ -526,7 +528,7 @@ O corte por N mortes é aplicado a wipes; kills preservam a luta completa. O rep
 | Dado | Desktop | Site |
 | --- | --- | --- |
 | Análises e índice do histórico | Diretório de dados do app, `history/`, relatórios comprimidos e versões compactas para evolução | IndexedDB |
-| Configurações gerais | `settings.json` no diretório de configuração (inclui `experimental`, que destrava o link de visualização), mais preferências da UI em localStorage | localStorage e módulos web |
+| Configurações gerais | `settings.json` no diretório de configuração (inclui `experimental`, que destrava o link de visualização, e do link: `share_key`, `share_gist`, `share_github_user` e `share_on`; o token do GitHub fica no cofre do sistema), mais preferências da UI em localStorage | localStorage e módulos web |
 | `cloudflared` do link de visualização | `cloudflared/` no diretório de dados do app, baixado na primeira vez que o link é ligado | Não se aplica |
 | Ajustes de regras | `rule-tuning/<encounter_id>.json` | IndexedDB |
 | Notas e marcas | localStorage por encontro e início do pull | Mesmo mecanismo |
@@ -557,6 +559,7 @@ Fontes: [history.rs](../src-tauri/src/history.rs), [settings.rs](../src-tauri/sr
 | Provedor de IA | Dossiê, nomes, notas, pergunta e mensagens recentes | Perguntar à IA |
 | Distribuição de SimC | Download/atualização do executável; simulação executada localmente | Robô |
 | Atualizador do app | Metadados e instalador da release | Versão, Sobre e banner |
+| GitHub (Gists) | Token com permissão `gist`; o Gist secreto guarda o endereço atual do túnel e a chave do link, e qualquer um com o id do Gist (o link fixo) lê os dois | Experimentais → Link de visualização e o site em `?v=` |
 | Cloudflare (túnel rápido) | Download do `cloudflared` no GitHub; o túnel repassa ao servidor local a interface e as respostas da API de leitura (histórico com nomes de players e caminhos dos logs) para quem tem o link | Experimentais → Link de visualização |
 | Assets/documentação de jogo | Ícones, detalhes de habilidades e imagens de arena conforme o caminho | Tooltips e replay |
 
@@ -580,7 +583,7 @@ A análise de um arquivo local usa o núcleo local. Integrações opcionais acre
 | Configuração de boss | [encounters](../encounters), [rules.rs](../crates/wipe-core/src/rules.rs), [RuleTuning](../src/components/RuleTuning.tsx) |
 | Rotação e dados de jogo | [rotations](../rotations), [rotation.rs](../crates/wipe-core/src/rotation.rs), [data](../data) |
 | Exportação e ao vivo | [share](../src/lib/share.ts), [replayClip](../src/lib/replayClip.tsx), [live](../src/lib/live.ts), [discordLive](../src/lib/discordLive.tsx) |
-| Link de visualização | [share.rs](../src-tauri/src/share.rs), [viewer](../src/lib/viewer.ts), [backend](../src/lib/backend.ts), [ShareForm](../src/components/settings/ShareForm.tsx) |
+| Link de visualização | [share.rs](../src-tauri/src/share.rs), [share_gist.rs](../src-tauri/src/share_gist.rs), [viewer](../src/lib/viewer.ts), [backend](../src/lib/backend.ts), [ShareForm](../src/components/settings/ShareForm.tsx) |
 | Idiomas | [i18n](../src/i18n/index.ts), dicionários `*.i18n.*` junto dos componentes/módulos, [core/i18n.rs](../crates/wipe-core/src/i18n.rs) |
 
 Os scripts npm, os subcomandos do `wipe-cli`, o `simulate-live.mjs` e as conferências por boss (`replay:check`, `sim:check`) estão descritos em [Desenvolvimento](CONTRIBUTING.pt-BR.md#desenvolvimento) e [Processos padrão](CONTRIBUTING.pt-BR.md#processos-padrão), no guia de contribuição; as peças comuns desses scripts ficam em [scripts/lib/checks.mjs](../scripts/lib/checks.mjs).

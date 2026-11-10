@@ -50,6 +50,18 @@ pub struct Settings {
     /// recursos experimentais (link de visualização): escondidos até destravar em Configurações → Sobre
     #[serde(default)]
     pub experimental: bool,
+    /// link de visualização: a chave fica a mesma entre um dia e outro ("Gerar link novo" troca)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub share_key: Option<String>,
+    /// Gist secreto com o endereço atual do túnel (o link fixo é `<site>?v=<id>`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub share_gist: Option<String>,
+    /// conta do GitHub do token (o token fica no cofre)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub share_github_user: Option<String>,
+    /// o link estava ligado: o app liga de novo ao abrir
+    #[serde(default)]
+    pub share_on: bool,
 }
 
 pub(crate) fn yes() -> bool {
@@ -58,7 +70,7 @@ pub(crate) fn yes() -> bool {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, discord_on_night: true, discord_auto: true, discord_clip: true, ai_provider: None, ai_base_url: None, ai_model: None, wcr_cloud_user: None, wcr_cloud_guild: None, open_with_wow: false, locale: None, experimental: false }
+        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, discord_on_night: true, discord_auto: true, discord_clip: true, ai_provider: None, ai_base_url: None, ai_model: None, wcr_cloud_user: None, wcr_cloud_guild: None, open_with_wow: false, locale: None, experimental: false, share_key: None, share_gist: None, share_github_user: None, share_on: false }
     }
 }
 

@@ -110,7 +110,11 @@ The pull, the boss, the night, a player's performance and solo mode have **Share
 
 ### 👁️ Viewing link (experimental)
 
-It's an experimental feature and stays hidden: in **Settings → About**, tap the version 7 times to show the **Experimental** group (the "Turn off experimental features" button hides it again). In **Experimental → Viewing link**, turn the switch on to get a link that opens this app in someone else's browser, **view only**: nights, pulls, replay and Progress, with no way to analyze, delete, tune rules or send anything. New analyses show up on their own: with live mode on, within 5 s, and whoever is on the last pull jumps to the new one, with the corner notice; the top bar shows the sharer's live status. The link works while the app is open: it goes through a free Cloudflare tunnel (the first time, the app downloads `cloudflared`, ~60 MB). Anyone with the link sees the whole history, including player names; turning the switch off kills the link, and turning it on again makes a new one.
+It's an experimental feature and stays hidden: in **Settings → About**, tap the version 7 times to show the **Experimental** group (the "Turn off experimental features" button hides it again). In **Experimental → Viewing link**, turn the switch on to get a link that opens this app in someone else's browser, **view only**: nights, pulls, replay and Progress, with no way to analyze, delete, tune rules or send anything. New analyses show up on their own: with live mode on, within 5 s, and whoever is on the last pull jumps to the new one, with the corner notice; the top bar shows the sharer's live status. The link works while the app is open, and turns on by itself when the app opens if you left it on. The data goes through a free Cloudflare tunnel (the first time, the app downloads `cloudflared`, ~60 MB).
+
+**Fixed link:** connect GitHub on the same card (a token with the `gist` scope; the "Create a token on GitHub" button opens the page with it already checked). The app keeps the current tunnel address in a secret Gist on your account, and the link becomes `keter45.github.io/wipe-cause/?v=…`, on the Wipe Cause site, the same every day. With the app off, whoever opens it sees "the sharer's app is off", and the page keeps trying on its own. Without GitHub, the link is the tunnel's (`….trycloudflare.com`) and changes every time it opens.
+
+Anyone with the link sees the whole history, including player names. **Make a new link** changes the key and deletes the fixed link: anyone with the old one loses access.
 
 ### 🧮 Player score
 

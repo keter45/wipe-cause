@@ -523,8 +523,19 @@ export interface ShareStatus {
   url: string | null;
   /** o mesmo link, neste PC */
   localUrl: string | null;
+  /** link fixo no site do projeto (com o GitHub conectado): o que vai para os outros */
+  fixedUrl: string | null;
   error: string | null;
 }
+/** Conta do GitHub que guarda o link fixo (num Gist secreto). */
+export interface GithubStatus {
+  connected: boolean;
+  user: string | null;
+}
+export const shareGithubGet = () => invoke<GithubStatus>('share_github_get');
+export const shareGithubSet = (token: string | null) => invoke<GithubStatus>('share_github_set', { token });
+/** Troca a chave e apaga o Gist: o link antigo para de funcionar. */
+export const shareNewLink = () => invoke<ShareStatus>('share_new_link');
 export const shareStatus = () => invoke<ShareStatus>('share_status');
 export const shareStart = () => invoke<ShareStatus>('share_start');
 export const shareStop = () => invoke<void>('share_stop');

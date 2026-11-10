@@ -18,7 +18,7 @@ use tauri::{AppHandle, Manager};
 use tiny_http::{Header, Request, Response, Server};
 use wipe_core::i18n::pick;
 
-use crate::{history, rule_tuning, simc, talents, wcl_source};
+use crate::{history, rule_tuning, settings, share_gist, simc, talents, wcl_source};
 
 /// Comandos que o visitante pode chamar: todos só leem.
 const READ_ONLY: &[&str] = &["live_status", "history_list", "history_load", "history_trends", "fight_replay", "rules_get", "talent_tree", "simc_saved_get", "fetch_image"];
@@ -29,6 +29,8 @@ struct Running {
     key: String,
     tunnel: Option<Child>,
     url: Option<String>,
+    /// link fixo no site do projeto (com o GitHub conectado)
+    fixed: Option<String>,
     error: Option<String>,
 }
 
@@ -42,12 +44,14 @@ pub struct ShareStatus {
     url: Option<String>,
     /// o mesmo link neste PC (funciona mesmo se o túnel cair)
     local_url: Option<String>,
+    /// link fixo (`<site>?v=<gist>`): o que vai para os outros, igual todo dia
+    fixed_url: Option<String>,
     error: Option<String>,
 }
 
 fn status_of(state: &mut Option<Running>) -> ShareStatus {
     let Some(r) = state.as_mut() else {
-        return ShareStatus { active: false, url: None, local_url: None, error: None };
+        return ShareStatus { active: false, url: None, local_url: None, fixed_url: None, error: None };
     };
     // o túnel caiu: o link público para de funcionar
     if let Some(child) = r.tunnel.as_mut() {
@@ -61,6 +65,7 @@ fn status_of(state: &mut Option<Running>) -> ShareStatus {
         active: true,
         url: r.url.as_ref().map(|u| format!("{u}/?k={}", r.key)),
         local_url: Some(format!("http://127.0.0.1:{}/?k={}", r.port, r.key)),
+        fixed_url: r.fixed.clone(),
         error: r.error.clone(),
     }
 }
@@ -76,7 +81,27 @@ pub async fn share_start(app: AppHandle) -> Result<ShareStatus, String> {
     if !crate::settings::load(&app).experimental {
         return Err(pick(String::from("o link de visualização é experimental: destrave em Configurações → Sobre"), String::from("the viewing link is experimental: unlock it in Settings → About")));
     }
+    settings::update(&app, |s| s.share_on = true)?;
     tauri::async_runtime::spawn_blocking(move || start(&app, true)).await.map_err(|e| e.to_string())?
+}
+
+/// "Gerar link novo": troca a chave e apaga o Gist; o link antigo (fixo ou não) para de funcionar.
+#[tauri::command]
+pub async fn share_new_link(app: AppHandle) -> Result<ShareStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let was_on = STATE.lock().unwrap_or_else(|e| e.into_inner()).is_some();
+        stop();
+        share_gist::delete(&app);
+        let key = random_key()?;
+        settings::update(&app, |s| s.share_key = Some(key))?;
+        if was_on {
+            start(&app, true)
+        } else {
+            Ok(share_status())
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// Recursos experimentais ligados neste PC?
@@ -90,14 +115,56 @@ pub fn experimental_get(app: AppHandle) -> bool {
 pub fn experimental_set(app: AppHandle, enabled: bool) -> Result<(), String> {
     crate::settings::update(&app, |s| s.experimental = enabled)?;
     if !enabled {
-        stop();
+        turn_off(&app);
     }
     Ok(())
 }
 
 #[tauri::command]
-pub fn share_stop() {
+pub fn share_stop(app: AppHandle) {
+    turn_off(&app);
+}
+
+/// Desligado pelo usuário: não liga sozinho na próxima vez e o site passa a mostrar "offline".
+fn turn_off(app: &AppHandle) {
+    let _ = settings::update(app, |s| s.share_on = false);
+    let key = STATE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().filter(|r| r.fixed.is_some()).map(|r| r.key.clone());
     stop();
+    if let Some(key) = key {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let _ = share_gist::publish(&app, None, &key);
+        });
+    }
+}
+
+/// O app abriu: liga o link de novo se ele estava ligado (e os experimentais estão destravados).
+pub fn autostart(app: &AppHandle) {
+    let s = settings::load(app);
+    if !(s.experimental && s.share_on) {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        if let Err(e) = start(&app, true) {
+            eprintln!("share autostart: {e}"); // i18n-ignore: só no terminal
+        }
+    });
+}
+
+/// O app vai fechar: derruba o túnel e avisa o site (offline), com pouco tempo de espera.
+pub fn on_exit(app: &AppHandle) {
+    let key = STATE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().filter(|r| r.fixed.is_some()).map(|r| r.key.clone());
+    stop();
+    if let Some(key) = key {
+        let app = app.clone();
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = share_gist::publish(&app, None, &key);
+            let _ = tx.send(());
+        });
+        let _ = rx.recv_timeout(Duration::from_secs(3));
+    }
 }
 
 /// Desenvolvimento: `WIPE_DEV_SHARE=1` liga o link ao abrir o app, só neste PC (sem túnel; com
@@ -137,7 +204,7 @@ fn start(app: &AppHandle, tunnel: bool) -> Result<ShareStatus, String> {
     stop();
     let server = Arc::new(Server::http("127.0.0.1:0").map_err(|e| e.to_string())?);
     let port = server.server_addr().to_ip().map(|a| a.port()).ok_or("no port")?; // i18n-ignore: não é texto para o usuário
-    let key = random_key()?;
+    let key = persistent_key(app)?;
     {
         let (server, app, key) = (server.clone(), app.clone(), key.clone());
         std::thread::spawn(move || {
@@ -147,12 +214,17 @@ fn start(app: &AppHandle, tunnel: bool) -> Result<ShareStatus, String> {
             }
         });
     }
-    *STATE.lock().unwrap_or_else(|e| e.into_inner()) = Some(Running { server, port, key, tunnel: None, url: None, error: None });
+    *STATE.lock().unwrap_or_else(|e| e.into_inner()) = Some(Running { server, port, key: key.clone(), tunnel: None, url: None, fixed: None, error: None });
 
     if !tunnel {
         return Ok(share_status());
     }
     let tunnel = cloudflared(app).and_then(|exe| open_tunnel(&exe, port));
+    // endereço novo do túnel no Gist: o link fixo continua o mesmo
+    let fixed = match &tunnel {
+        Ok((_, url)) => Some(share_gist::publish(app, Some(url), &key)),
+        Err(_) => None,
+    };
     let mut st = STATE.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(r) = st.as_mut() {
         match tunnel {
@@ -163,8 +235,40 @@ fn start(app: &AppHandle, tunnel: bool) -> Result<ShareStatus, String> {
             // sem túnel o link deste PC continua valendo
             Err(e) => r.error = Some(e),
         }
+        match fixed {
+            Some(Ok(Some(id))) => r.fixed = Some(share_gist::fixed_url(&id)),
+            // sem GitHub: só o link do túnel
+            Some(Ok(None)) | None => {}
+            Some(Err(e)) => r.error = Some(e),
+        }
     }
     Ok(status_of(&mut st))
+}
+
+/// O GitHub foi conectado (ou desconectado) com o link ligado: grava o endereço atual no Gist já.
+pub fn republish(app: &AppHandle) {
+    let current = STATE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|r| r.url.clone().map(|u| (u, r.key.clone())));
+    let Some((url, key)) = current else { return };
+    let fixed = share_gist::publish(app, Some(&url), &key);
+    if let Some(r) = STATE.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        match fixed {
+            Ok(id) => {
+                r.fixed = id.map(|id| share_gist::fixed_url(&id));
+                r.error = None;
+            }
+            Err(e) => r.error = Some(e),
+        }
+    }
+}
+
+/// A chave do link: a mesma de antes, ou uma nova na primeira vez.
+fn persistent_key(app: &AppHandle) -> Result<String, String> {
+    if let Some(k) = settings::load(app).share_key.filter(|k| k.len() >= 12) {
+        return Ok(k);
+    }
+    let k = random_key()?;
+    settings::update(app, |s| s.share_key = Some(k.clone()))?;
+    Ok(k)
 }
 
 /// Chave curta do link: 12 letras e números (~71 bits), o bastante para ninguém adivinhar.
@@ -286,10 +390,20 @@ fn header(k: &str, v: &str) -> Header {
 fn handle(app: &AppHandle, key: &str, mut req: Request) {
     let url = req.url().split('?').next().unwrap_or("/").to_string();
     if url == "/api/invoke" {
+        // o site do projeto (link fixo) chama de outro domínio: só ele pode (CORS)
+        let site = share_gist::site_origin();
+        let cors = req.headers().iter().any(|h| h.field.equiv("origin") && h.value.as_str() == site);
+        let with_cors = |r: Response<std::io::Cursor<Vec<u8>>>| if cors { r.with_header(header("Access-Control-Allow-Origin", &site)).with_header(header("Vary", "Origin")) } else { r };
+        if req.method() == &tiny_http::Method::Options {
+            let r = Response::from_data(Vec::new()).with_status_code(if cors { 204 } else { 403 });
+            let r = if cors { with_cors(r).with_header(header("Access-Control-Allow-Methods", "POST")).with_header(header("Access-Control-Allow-Headers", "content-type, x-wipe-key")).with_header(header("Access-Control-Max-Age", "600")) } else { r };
+            let _ = req.respond(r);
+            return;
+        }
         let ok = req.headers().iter().any(|h| h.field.equiv("x-wipe-key") && h.value.as_str() == key);
         let gzip = req.headers().iter().any(|h| h.field.equiv("accept-encoding") && h.value.as_str().contains("gzip"));
         if !ok || req.method() != &tiny_http::Method::Post {
-            let _ = req.respond(Response::from_string("forbidden").with_status_code(403));
+            let _ = req.respond(with_cors(Response::from_data(b"forbidden".to_vec()).with_status_code(403)));
             return;
         }
         let mut body = String::new();
@@ -298,8 +412,8 @@ fn handle(app: &AppHandle, key: &str, mut req: Request) {
         // a Evolução: centenas de MB de JSON; vai comprimida e guardada até o histórico mudar
         if gzip && parsed.as_ref().is_ok_and(|v| v.get("cmd").and_then(Value::as_str) == Some("history_trends")) {
             let _ = match trends_gz(app) {
-                Ok(gz) => req.respond(bytes_response(gz.to_vec(), "application/json", 200, false).with_header(header("Content-Encoding", "gzip"))),
-                Err(e) => req.respond(bytes_response(Value::String(e).to_string().into_bytes(), "application/json", 400, false)),
+                Ok(gz) => req.respond(with_cors(bytes_response(gz.to_vec(), "application/json", 200, false).with_header(header("Content-Encoding", "gzip")))),
+                Err(e) => req.respond(with_cors(bytes_response(Value::String(e).to_string().into_bytes(), "application/json", 400, false))),
             };
             return;
         }
@@ -307,7 +421,7 @@ fn handle(app: &AppHandle, key: &str, mut req: Request) {
             Ok(v) => (200, v.to_string()),
             Err(e) => (400, Value::String(e).to_string()),
         };
-        let _ = req.respond(bytes_response(text.into_bytes(), "application/json", status, gzip));
+        let _ = req.respond(with_cors(bytes_response(text.into_bytes(), "application/json", status, gzip)));
         return;
     }
     let full = req.url().to_string();
