@@ -60,10 +60,8 @@ export function ViewerHome({ pulls: all, live, onOpenPull }: Props) {
   const replayRef = useRef<HTMLElement>(null);
   useEffect(() => setSeek(null), [viewed?.id]);
   const play = (t: number, guid?: string) => {
+    // o card rola até ele mesmo ao receber o pedido (ReplayCard)
     setSeek((s) => ({ t: Math.max(0, t - REPLAY_LEAD_MS), n: (s?.n ?? 0) + 1, guid }));
-    // no próximo quadro (o card já trocou o aviso pelo replay); o card guarda a altura do replay
-    // desde o começo, então a rolagem chega nele mesmo antes de o replay terminar de carregar
-    requestAnimationFrame(() => replayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
   // o boss do try visto: a faixa de tries e o resumo são dele
   const bossPulls = useMemo(() => (viewed ? pulls.filter((p) => bossKey(p) === bossKey(viewed)) : []), [pulls, viewed]);
@@ -162,9 +160,15 @@ const REPLAY_LEAD_MS = 3000;
 function ReplayCard({ pull, seek, cardRef }: { pull: Pull; seek: ReplaySeek | null; cardRef: React.RefObject<HTMLElement | null> }) {
   const t = useMessages(viewerHomeMsg);
   const [active, setActive] = useState(false);
+  // cada ▶ (pedido novo): carrega o replay e traz o card ao topo. Depois de o React atualizar o card,
+  // sem requestAnimationFrame (não roda em aba sem quadros) e sem animação (com o replay tocando, a
+  // rolagem suave é cancelada). O card guarda a altura do replay desde o começo, então a rolagem chega
+  // nele mesmo antes de o replay terminar de carregar.
   useEffect(() => {
-    if (seek) setActive(true);
-  }, [seek]);
+    if (!seek) return;
+    setActive(true);
+    cardRef.current?.scrollIntoView({ block: 'start' });
+  }, [seek?.n]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const el = cardRef.current;
     if (!el || active) return;
