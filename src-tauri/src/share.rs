@@ -294,7 +294,16 @@ fn handle(app: &AppHandle, key: &str, mut req: Request) {
         }
         let mut body = String::new();
         let _ = req.as_reader().take(1024 * 1024).read_to_string(&mut body);
-        let (status, text) = match serde_json::from_str::<Value>(&body).map_err(|e| e.to_string()).and_then(|v| invoke(app, &v)) {
+        let parsed = serde_json::from_str::<Value>(&body).map_err(|e| e.to_string());
+        // a Evolução: centenas de MB de JSON; vai comprimida e guardada até o histórico mudar
+        if gzip && parsed.as_ref().is_ok_and(|v| v.get("cmd").and_then(Value::as_str) == Some("history_trends")) {
+            let _ = match trends_gz(app) {
+                Ok(gz) => req.respond(bytes_response(gz.to_vec(), "application/json", 200, false).with_header(header("Content-Encoding", "gzip"))),
+                Err(e) => req.respond(bytes_response(Value::String(e).to_string().into_bytes(), "application/json", 400, false)),
+            };
+            return;
+        }
+        let (status, text) = match parsed.and_then(|v| invoke(app, &v)) {
             Ok(v) => (200, v.to_string()),
             Err(e) => (400, Value::String(e).to_string()),
         };
@@ -306,6 +315,29 @@ fn handle(app: &AppHandle, key: &str, mut req: Request) {
         Some((bytes, mime)) => req.respond(bytes_response(bytes, &mime, 200, false)),
         None => req.respond(Response::from_string("not found").with_status_code(404)),
     };
+}
+
+/// A Evolução comprimida, guardada pela lista de noites (id + quando cada uma foi salva).
+fn trends_gz(app: &AppHandle) -> Result<Arc<Vec<u8>>, String> {
+    static CACHE: Mutex<Option<(String, Arc<Vec<u8>>)>> = Mutex::new(None);
+    // um visitante por vez monta a resposta; os outros esperam e levam a pronta
+    static BUILDING: Mutex<()> = Mutex::new(());
+    let _one = BUILDING.lock().unwrap_or_else(|e| e.into_inner());
+    let key: String = history::history_list(app.clone())?.iter().map(|e| format!("{}:{};", e.id, e.saved_at)).collect();
+    if let Some((k, gz)) = CACHE.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+        if *k == key {
+            return Ok(gz.clone());
+        }
+    }
+    use flate2::{write::GzEncoder, Compression};
+    use std::io::Write;
+    let json = history::trends_json(app)?;
+    // nível padrão: ~15% menor que o rápido; o custo fica só na primeira montagem (vai para o cache)
+    let mut enc = GzEncoder::new(Vec::new(), Compression::default());
+    enc.write_all(json.as_bytes()).map_err(|e| e.to_string())?;
+    let gz = Arc::new(enc.finish().map_err(|e| e.to_string())?);
+    *CACHE.lock().unwrap_or_else(|e| e.into_inner()) = Some((key, gz.clone()));
+    Ok(gz)
 }
 
 fn bytes_response(bytes: Vec<u8>, mime: &str, status: u16, gzip: bool) -> Response<std::io::Cursor<Vec<u8>>> {
