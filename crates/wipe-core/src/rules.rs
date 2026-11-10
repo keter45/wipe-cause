@@ -34,6 +34,9 @@ const DISPEL_AFTER_REMOVAL_MS: i64 = 250;
 /// "já estava com a aura"; e aura removida logo antes do hit (a explosão consome o debuff do
 /// portador ~20ms antes do dano) ainda conta como "tinha a aura".
 const AURA_GRACE_MS: i64 = 500;
+/// `requires_aura`: a aura que caiu até isto antes do golpe ainda conta. O log tira a aura antes do golpe
+/// que a consome, no mesmo ms (a Caustic Waves no portador do ovo do Ula'tek tira o Noxious Shell).
+const AURA_SAME_HIT_MS: i64 = 50;
 /// Janela em volta do 1º hit de uma falha em que perder uma `culprit_auras` culpa o player.
 /// Depois disso a remoção costuma ser pela morte na própria explosão.
 const CULPRIT_BEFORE_MS: i64 = 500;
@@ -1072,11 +1075,13 @@ impl RuleTracker {
         })
     }
 
-    /// O player já estava com a aura antes de `t` (aplicada há pelo menos AURA_GRACE_MS)?
-    fn had_aura_before(&self, guid: &str, aura: u32, t: i64) -> bool {
-        self.auras
-            .get(&(guid.to_string(), aura))
-            .is_some_and(|&(applied, removed)| removed.is_none() && t - applied >= AURA_GRACE_MS)
+    /// `requires_aura`: tinha a aura (há AURA_GRACE_MS) quando o golpe veio, ou ela caiu junto com o golpe
+    /// (até AURA_SAME_HIT_MS antes), depois de ficar AURA_GRACE_MS nele.
+    fn had_aura_at_hit(&self, guid: &str, aura: u32, t: i64) -> bool {
+        self.auras.get(&(guid.to_string(), aura)).is_some_and(|&(applied, removed)| match removed {
+            None => t - applied >= AURA_GRACE_MS,
+            Some(r) => (0..=AURA_SAME_HIT_MS).contains(&(t - r)) && r - applied >= AURA_GRACE_MS,
+        })
     }
 
     /// O player está com a aura ou a perdeu há menos de AURA_GRACE_MS?
@@ -1215,7 +1220,7 @@ impl RuleTracker {
             }
             if hook == Hook::Damage {
                 if let Some(aura) = m.detect.requires_aura {
-                    if !self.had_aura_before(guid, aura, t) {
+                    if !self.had_aura_at_hit(guid, aura, t) {
                         continue;
                     }
                 }
@@ -1283,7 +1288,7 @@ impl RuleTracker {
             let d = &self.mechs[i].detect;
             if d.min_amount.is_some()
                 || d.excludes_aura.is_some_and(|a| self.has_or_just_lost(guid, a, t))
-                || (hook == Hook::Damage && d.requires_aura.is_some_and(|a| !self.had_aura_before(guid, a, t)))
+                || (hook == Hook::Damage && d.requires_aura.is_some_and(|a| !self.had_aura_at_hit(guid, a, t)))
             {
                 continue;
             }
@@ -2801,6 +2806,14 @@ mechanics:
         tr.on_aura(71, "P1", "Um-R", 1, true, 20_000);
         tr.on_damage(70, "P1", "Um-R", 500, 20_000);
         tr.on_damage(70, "P1", "Um-R", 500, 60_000);
+        // a aura que cai junto com o golpe (até 50ms antes, o log tira antes do dano) ainda conta;
+        // a que caiu 200ms antes, não
+        tr.on_aura(71, "P2", "Dois-R", 1, true, 61_000);
+        tr.on_aura(71, "P2", "Dois-R", 0, true, 62_000);
+        tr.on_damage(70, "P2", "Dois-R", 500, 62_000);
+        tr.on_aura(71, "P3", "Tres-R", 1, true, 61_000);
+        tr.on_aura(71, "P3", "Tres-R", 0, true, 62_000);
+        tr.on_damage(70, "P3", "Tres-R", 500, 62_200);
 
         let res = tr.finish(&HashMap::new(), &HashMap::new());
         let get = |k: &str| res.iter().find(|r| r.key == k).unwrap();
@@ -2810,7 +2823,8 @@ mechanics:
         assert_eq!(det.players.iter().map(|p| p.message.pt.as_str()).collect::<Vec<_>>(), ["Carrier carregava o orb"]);
         let bomb = get("bomb");
         assert_eq!(bomb.players.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Um-R"]);
-        assert_eq!(get("double").players[0].count, 1);
+        let double = get("double");
+        assert_eq!(double.players.iter().map(|p| (p.name.as_str(), p.count)).collect::<Vec<_>>(), [("Dois-R", 1), ("Um-R", 1)]);
     }
 
     #[test]
