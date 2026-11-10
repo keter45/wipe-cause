@@ -29,7 +29,6 @@ export function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<
   // antes do site: no link fixo os dados vêm do PC de quem compartilhou, não do WASM
   if (inViewer) return import('./viewer').then((m) => m.viewerInvoke<T>(cmd, args ?? {}));
   if (import.meta.env.VITE_TARGET === 'web') return import('../web/commands').then((m) => m.webInvoke<T>(cmd, args ?? {}));
-  return import('./viewer').then((m) => m.viewerInvoke<T>(cmd, args ?? {}));
   return tauriInvoke<T>(cmd, args);
 }
 
