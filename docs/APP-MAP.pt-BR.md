@@ -427,7 +427,8 @@ Fontes: [live](../src/lib/live.ts), [autoLive](../src/lib/autoLive.ts), [live.rs
 | Vídeos do Warcraft Recorder | Pasta de vídeos e conta/nuvem da guilda, no desktop | POVs e atalhos temporais |
 | Discord | Webhook, envios (cada wipe, cada kill, resumo da noite), clipe e teste | Compartilhar no canal e autoenvio ao vivo |
 | IA | Provedor, URL, modelo, chave e teste | Dossiê e perguntas |
-| Sobre | Versão, atualizações e diretório de regras quando disponível | Manutenção desktop e regras do usuário |
+| Sobre | Versão, atualizações e diretório de regras quando disponível; 7 toques na versão destravam os recursos experimentais | Manutenção desktop, regras do usuário e grupo Experimentais |
+| Experimentais → Link de visualização | Só no desktop e só depois de destravar (opção `experimental` do `settings.json`): liga e desliga o link, mostra o endereço para copiar e desliga os recursos experimentais | Link de visualização (3.24) |
 
 No site não aparecem os cartões Pasta de logs do WoW, Abrir com o WoW e Vídeos do Warcraft Recorder. No desenvolvimento sem backend, Abrir com o WoW, Warcraft Logs, Discord e IA mostram que só existem no app instalado.
 
@@ -435,7 +436,15 @@ O idioma pode seguir o sistema ou ser escolhido entre português e inglês. A tr
 
 `UpdateBanner` e o indicador de versão apresentam checagem, versão disponível, download, erro e instalação no desktop. O site não executa o instalador do app.
 
-Fontes: [SettingsView](../src/components/settings/SettingsView.tsx), [WclApiForm](../src/components/settings/WclApiForm.tsx), [DiscordForm](../src/components/settings/DiscordForm.tsx), [AiForm](../src/components/settings/AiForm.tsx), [updater](../src/lib/updater.ts), [i18n](../src/i18n/index.ts).
+Fontes: [SettingsView](../src/components/settings/SettingsView.tsx), [ShareForm](../src/components/settings/ShareForm.tsx), [WclApiForm](../src/components/settings/WclApiForm.tsx), [DiscordForm](../src/components/settings/DiscordForm.tsx), [AiForm](../src/components/settings/AiForm.tsx), [updater](../src/lib/updater.ts), [i18n](../src/i18n/index.ts).
+
+### 3.24 Link de visualização (experimental)
+
+Com o link ligado, o app sobe um servidor em `127.0.0.1` que serve a própria interface e `/api/invoke`, que só aceita comandos de leitura (`live_status`, `history_list`, `history_load`, `history_trends`, `fight_replay`, `rules_get`, `talent_tree`, `simc_saved_get`, `fetch_image`) com a chave do link (`?k=`, 12 caracteres). O `fight_replay` só relê `WoWCombatLog*.txt` ou reports do WCL que já estão no histórico. Um túnel rápido do Cloudflare (`cloudflared`, baixado na primeira vez e preso ao processo do app por um Job Object) dá o endereço público `https://….trycloudflare.com`, que muda a cada vez que o link é ligado.
+
+No navegador de quem abre, o build do app fora do Tauri entra no modo de visualização ([viewer](../src/lib/viewer.ts), `inViewer` em [backend](../src/lib/backend.ts)): o selo “Só para ver” no topo, a noite mais recente aberta, e nada que analise, salve, configure ou envie (nova análise, reanalisar, corte, fixar/apagar, Configurações, Warcraft Logs, ajuste e criação de regras, IA, anotação, marcas e Discord). O histórico é relido a cada 5 s com o ao vivo de quem compartilha ligado (20 s sem); a noite aberta salva de novo atualiza a tela, quem está no último pull ou no resumo vai para o pull novo com o aviso no canto, e o topo mostra o estado do ao vivo de quem compartilha. No `tauri dev`, `WIPE_DEV_SHARE=1` liga o link só neste PC (com `=tunnel`, também o túnel) e escreve o endereço no terminal; no Vite, o modo exige `?viewer=1`.
+
+Fontes: [share.rs](../src-tauri/src/share.rs), [viewer](../src/lib/viewer.ts), [ShareForm](../src/components/settings/ShareForm.tsx), [App](../src/App.tsx).
 
 ## 4. Como os dados percorrem o app
 
@@ -517,7 +526,8 @@ O corte por N mortes é aplicado a wipes; kills preservam a luta completa. O rep
 | Dado | Desktop | Site |
 | --- | --- | --- |
 | Análises e índice do histórico | Diretório de dados do app, `history/`, relatórios comprimidos e versões compactas para evolução | IndexedDB |
-| Configurações gerais | `settings.json` no diretório de configuração, mais preferências da UI em localStorage | localStorage e módulos web |
+| Configurações gerais | `settings.json` no diretório de configuração (inclui `experimental`, que destrava o link de visualização), mais preferências da UI em localStorage | localStorage e módulos web |
+| `cloudflared` do link de visualização | `cloudflared/` no diretório de dados do app, baixado na primeira vez que o link é ligado | Não se aplica |
 | Ajustes de regras | `rule-tuning/<encounter_id>.json` | IndexedDB |
 | Notas e marcas | localStorage por encontro e início do pull | Mesmo mecanismo |
 | Escala e métricas escolhidas | Preferências locais | Preferências locais |
@@ -547,6 +557,7 @@ Fontes: [history.rs](../src-tauri/src/history.rs), [settings.rs](../src-tauri/sr
 | Provedor de IA | Dossiê, nomes, notas, pergunta e mensagens recentes | Perguntar à IA |
 | Distribuição de SimC | Download/atualização do executável; simulação executada localmente | Robô |
 | Atualizador do app | Metadados e instalador da release | Versão, Sobre e banner |
+| Cloudflare (túnel rápido) | Download do `cloudflared` no GitHub; o túnel repassa ao servidor local a interface e as respostas da API de leitura (histórico com nomes de players e caminhos dos logs) para quem tem o link | Experimentais → Link de visualização |
 | Assets/documentação de jogo | Ícones, detalhes de habilidades e imagens de arena conforme o caminho | Tooltips e replay |
 
 A análise de um arquivo local usa o núcleo local. Integrações opcionais acrescentam suas próprias comunicações; a frase “log analisado localmente” não significa que perguntas à IA ou envios ao Discord permaneçam no dispositivo.
@@ -569,11 +580,12 @@ A análise de um arquivo local usa o núcleo local. Integrações opcionais acre
 | Configuração de boss | [encounters](../encounters), [rules.rs](../crates/wipe-core/src/rules.rs), [RuleTuning](../src/components/RuleTuning.tsx) |
 | Rotação e dados de jogo | [rotations](../rotations), [rotation.rs](../crates/wipe-core/src/rotation.rs), [data](../data) |
 | Exportação e ao vivo | [share](../src/lib/share.ts), [replayClip](../src/lib/replayClip.tsx), [live](../src/lib/live.ts), [discordLive](../src/lib/discordLive.tsx) |
+| Link de visualização | [share.rs](../src-tauri/src/share.rs), [viewer](../src/lib/viewer.ts), [backend](../src/lib/backend.ts), [ShareForm](../src/components/settings/ShareForm.tsx) |
 | Idiomas | [i18n](../src/i18n/index.ts), dicionários `*.i18n.*` junto dos componentes/módulos, [core/i18n.rs](../crates/wipe-core/src/i18n.rs) |
 
 Os scripts npm, os subcomandos do `wipe-cli`, o `simulate-live.mjs` e as conferências por boss (`replay:check`, `sim:check`) estão descritos em [Desenvolvimento](CONTRIBUTING.pt-BR.md#desenvolvimento) e [Processos padrão](CONTRIBUTING.pt-BR.md#processos-padrão), no guia de contribuição; as peças comuns desses scripts ficam em [scripts/lib/checks.mjs](../scripts/lib/checks.mjs).
 
-Uma nova propriedade do relatório exige conferir os contratos Rust/TypeScript e o caminho WASM. Uma nova operação de backend deve considerar o registro de comandos Tauri e o despacho web, inclusive uma resposta de indisponibilidade quando depender do PC. Uma mudança na interpretação de falhas merece revisão dos consumidores derivados da seção 5.
+Uma nova propriedade do relatório exige conferir os contratos Rust/TypeScript e o caminho WASM. Uma nova operação de backend deve considerar o registro de comandos Tauri e o despacho web, inclusive uma resposta de indisponibilidade quando depender do PC, e o link de visualização: só entra na lista de leitura de [share.rs](../src-tauri/src/share.rs) se não muda nada nem usa credenciais de quem compartilha; senão o [viewer](../src/lib/viewer.ts) responde como não configurada ou o servidor recusa. Uma mudança na interpretação de falhas merece revisão dos consumidores derivados da seção 5.
 
 ## 8. Cobertura da inspeção
 

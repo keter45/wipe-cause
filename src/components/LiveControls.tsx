@@ -10,6 +10,19 @@ const ICON = { size: 16, strokeWidth: 1.5, 'aria-hidden': true } as const;
 // ---------------------------------------------------------------------------
 // Ao vivo
 
+/** Link de visualização: o ao vivo de quem compartilhou, só como aviso (sem ligar nem desligar). */
+export function LiveBadge({ status }: { status: LiveStatus }) {
+  const t = useMessages(liveControlsMsg);
+  if (!status.active) return null;
+  const label = status.state === 'in_combat' && status.encounter ? t.inCombatWith(status.encounter) : t.state[status.state];
+  return (
+    <span className={`btn ghost live-on ${status.state}`} role="status" aria-label={`${t.live}: ${label}`}>
+      <span className="live-dot" aria-hidden />
+      <span className="topbar-label">{t.live}</span> <span className="small muted live-state">{label}</span>
+    </span>
+  );
+}
+
 export function LiveButton({ status, error, onStart, onStop }: { status: LiveStatus; error: string | null; onStart: () => void; onStop: () => void }) {
   const [open, setOpen] = useState(false);
   const t = useMessages(liveControlsMsg);

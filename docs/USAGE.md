@@ -108,6 +108,10 @@ The pull, the boss, the night, a player's performance and solo mode have **Share
 - **Summary** (default, and what goes out automatically in live mode): the essentials at a glance. For a pull, the verdict, the top 3 findings, the decisive deaths, who scored below 80 and the failure map; for a boss, each pull's HP, the top causes, who scored below 80 and the highlights; for solo, your numbers against the reference and the 3 most costly mistakes.
 - **Full**: everything open, wider. Every death in order, the mechanics with who failed them, the interrupts that went through and the player table (pull); pull by pull and the scoreboard (boss and night); the stretches where the reference pulled ahead, cooldowns and extra damage taken (solo); rotation, potions and setup (performance).
 
+### 👁️ Viewing link (experimental)
+
+It's an experimental feature and stays hidden: in **Settings → About**, tap the version 7 times to show the **Experimental** group (the "Turn off experimental features" button hides it again). In **Experimental → Viewing link**, turn the switch on to get a link that opens this app in someone else's browser, **view only**: nights, pulls, replay and Progress, with no way to analyze, delete, tune rules or send anything. New analyses show up on their own: with live mode on, within 5 s, and whoever is on the last pull jumps to the new one, with the corner notice; the top bar shows the sharer's live status. The link works while the app is open: it goes through a free Cloudflare tunnel (the first time, the app downloads `cloudflared`, ~60 MB). Anyone with the link sees the whole history, including player names; turning the switch off kills the link, and turning it on again makes a new one.
+
 ### 🧮 Player score
 
 Each player gets a 0–100 score per pull: it starts at 100 and loses points for:

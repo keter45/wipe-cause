@@ -5733,6 +5733,27 @@ td.warn {
   cursor: pointer;
 }
 
+/* link de visualização: o link para copiar (Configurações) e o selo "Só para ver" no topo */
+.share-link {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+.share-link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.share-link-row .text-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+.set-chip.view-only {
+  flex: none;
+  white-space: nowrap;
+}
+
 /* nova análise: uma linha por noite (log do PC + Warcraft Logs) */
 .night-row {
   display: grid;
