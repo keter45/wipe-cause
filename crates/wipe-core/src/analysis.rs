@@ -1015,6 +1015,18 @@ impl PullBuilder {
                 }
             }
         }
+        // aura que marca a falha de uma mecânica (`fail_aura_ids`): como o dano de `fail_ids`
+        if is_player && f[0] == "SPELL_AURA_APPLIED" && self.counting() {
+            let failed = self.rules.as_mut().map(|r| r.on_fail_aura(spell_id, dst_guid, dst_name, rel)).unwrap_or_default();
+            if !failed.is_empty() {
+                let snap = self.snapshot(rel);
+                if let Some(r) = self.rules.as_mut() {
+                    for i in failed {
+                        r.add_snapshot(i, snap.clone());
+                    }
+                }
+            }
+        }
         // aura que tira uma unidade do mapa (`cleared_by_aura`, quem pegou o ovo): onde o player estava
         if is_player && f[0] == "SPELL_AURA_APPLIED" && self.clear_auras.contains(&spell_id) {
             if let Some((x, y, _)) = self.players.get(dst_guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= AURA_CLEAR_POS_MAX_AGE_MS) {

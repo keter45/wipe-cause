@@ -134,6 +134,11 @@ pub struct Detect {
     pub cast_id: Option<u32>,
     #[serde(default)]
     pub fail_ids: Vec<Option<u32>>,
+    /// falha quando uma destas auras cai num player (a aura que a falha põe no raid, quando o dano dela
+    /// vem tarde demais para achar o culpado: a Putrid Membrane cai no instante em que a Viper nasce, o
+    /// dano 1 s depois)
+    #[serde(default)]
+    pub fail_aura_ids: Vec<u32>,
     pub soak_aura_id: Option<u32>,
     pub enrage_aura_id: Option<u32>,
     /// dano só conta se o player já estava com esta aura antes do hit (ex.: soak com Feasted)
@@ -924,6 +929,8 @@ pub struct RuleTracker {
     hooks: HashMap<u32, Vec<(usize, Hook)>>,
     /// auras que alguma regra precisa acompanhar (requires_aura, excludes_aura, culprit_auras)
     watched_auras: HashSet<u32>,
+    /// auras que marcam falha ao cair num player (`fail_aura_ids`)
+    fail_auras: HashSet<u32>,
     /// (guid, aura) -> (aplicada em, removida em)
     auras: HashMap<(String, u32), (i64, Option<i64>)>,
     /// remoções de auras acompanhadas: (t, aura, guid, nome) — para achar culpados depois
@@ -971,6 +978,7 @@ impl RuleTracker {
         }
         let mut hooks: HashMap<u32, Vec<(usize, Hook)>> = HashMap::new();
         let mut watched_auras = HashSet::new();
+        let mut fail_auras = HashSet::new();
         for (i, m) in mechs.iter().enumerate() {
             let d = &m.detect;
             let mut add = |id: Option<u32>, h: Hook| {
@@ -980,6 +988,8 @@ impl RuleTracker {
             };
             d.damage_ids.iter().for_each(|id| add(*id, Hook::Damage));
             d.fail_ids.iter().for_each(|id| add(*id, Hook::Fail));
+            d.fail_aura_ids.iter().for_each(|&id| add(Some(id), Hook::Fail));
+            fail_auras.extend(d.fail_aura_ids.iter().copied());
             add(d.aura_id, Hook::Aura);
             add(d.soak_aura_id, Hook::SoakAura);
             add(d.cast_id, Hook::Cast);
@@ -1066,6 +1076,7 @@ impl RuleTracker {
             state,
             hooks,
             watched_auras,
+            fail_auras,
             auras: HashMap::new(),
             removals: Vec::new(),
             confirm_auras,
@@ -1106,7 +1117,7 @@ impl RuleTracker {
         let mut out = std::collections::BTreeMap::new();
         for m in self.mechs.iter().filter(|m| m.kind != MechanicType::Unavoidable) {
             let d = &m.detect;
-            let ids = d.damage_ids.iter().chain(&d.fail_ids).flatten().copied().chain(d.aura_id).chain(d.aura_ids.iter().copied()).chain(d.soak_aura_id).chain(d.hit_aura_id).chain(d.confirm_aura);
+            let ids = d.damage_ids.iter().chain(&d.fail_ids).flatten().copied().chain(d.fail_aura_ids.iter().copied()).chain(d.aura_id).chain(d.aura_ids.iter().copied()).chain(d.soak_aura_id).chain(d.hit_aura_id).chain(d.confirm_aura);
             for id in ids {
                 out.entry(id).or_insert_with(|| m.key.clone());
             }
@@ -1275,6 +1286,15 @@ impl RuleTracker {
             }
         }
         failed
+    }
+
+    /// A aura caiu num player: é a falha de alguma mecânica (`fail_aura_ids`)? Mesmo caminho do dano em
+    /// `fail_ids`, sem valor.
+    pub fn on_fail_aura(&mut self, spell_id: u32, guid: &str, name: &str, t: i64) -> Vec<usize> {
+        if !self.fail_auras.contains(&spell_id) {
+            return Vec::new();
+        }
+        self.on_damage(spell_id, guid, name, 0, t)
     }
 
     /// Hit que não causou dano (absorvido inteiro, imune): não conta como erro nas regras, mas
@@ -2029,6 +2049,7 @@ impl RuleTracker {
                 .or(d.assign.as_ref().map(|a| a.target_aura))
                 .or(d.cast_id)
                 .or_else(|| d.fail_ids.iter().flatten().next().copied())
+                .or_else(|| d.fail_aura_ids.first().copied())
                 .or(d.soak_aura_id)
                 .or(d.enrage_aura_id);
             let summary = if m.kind == MechanicType::Dispel {
@@ -3046,6 +3067,37 @@ mechanics:
         let globule = tracker.soak_for(1289201).unwrap();
         assert_eq!((clears[0].npc, clears[0].cleared_by, clears[0].lifetime_ms), (269194, Some((globule, 5.0)), Some(15_000)));
         assert_eq!(tracker.unit_aura_for(1303378).map(|a| (a.2, a.3)), Some((true, false)));
+    }
+
+    #[test]
+    fn falha_pela_aura_culpa_quem_perdeu_o_ovo() {
+        let yaml = r#"
+encounter_id: 1
+name: T
+mechanics:
+  - key: hatch
+    name: Hatch
+    type: failure_event
+    detect: { fail_ids: [80], fail_aura_ids: [81], culprit_auras: [82] }
+    message: "{count} chocou"
+    blame_message: "{player} perdeu o ovo"
+"#;
+        let set = RuleSet::parse("t.yaml", yaml).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        tr.on_aura(82, "C", "Carrier-R", 1, true, 1_000);
+        tr.on_aura(82, "D", "Other-R", 1, true, 1_000);
+        // aura que não é de falha: nada
+        assert!(tr.on_fail_aura(99, "P1", "Um-R", 4_000).is_empty());
+        // o portador perde o ovo; a aura cai no raid 50ms depois e o dano 1s depois (mesma falha)
+        tr.on_aura(82, "C", "Carrier-R", 0, true, 5_000);
+        assert_eq!(tr.on_fail_aura(81, "P1", "Um-R", 5_050).len(), 1);
+        assert!(tr.on_fail_aura(81, "P2", "Dois-R", 5_050).is_empty());
+        tr.on_damage(80, "P1", "Um-R", 100_000, 6_050);
+        tr.on_aura(82, "D", "Other-R", 0, true, 9_000); // perdeu depois: não é culpado
+        let res = tr.finish(&HashMap::new(), &HashMap::new());
+        let hatch = res.iter().find(|r| r.key == "hatch").unwrap();
+        assert_eq!(hatch.failures, 1);
+        assert_eq!(hatch.players.iter().map(|p| p.message.pt.as_str()).collect::<Vec<_>>(), ["Carrier perdeu o ovo"]);
     }
 
     #[test]

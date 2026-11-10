@@ -54,11 +54,14 @@ mechanics:
     overrides:
       mythic: { severity: wipe }
     detect:
-      fail_ids: [1308275]       # Putrid Membrane: o raid todo toma quando um ovo vira Viper
+      fail_ids: [1308275]       # Putrid Membrane: o raid todo toma quando um ovo vira Viper (o dano vem ~1 s depois)
+      fail_aura_ids: [1301268]  # a aura da Putrid Membrane cai no raid no instante em que a Viper nasce (0-0,09 s depois do ovo cair)
+      culprit_auras: [1307612]  # Noxious Shell: quem perdeu o ovo que chocou (sem portador = ovo no chão que encostou no veneno)
     ground: false               # dano no raid inteiro
     tip: { pt: "Pegar os ovos e manter longe das ondas e do veneno; ovo quebrado cedo vira filhote fraco, ovo que choca vira Viper.", en: "Pick up the eggs and keep them away from waves and venom; an egg broken early becomes a weak hatchling, one that hatches becomes a Viper." }
     message: { pt: "{count} Viper chocada — Putrid Membrane no raid", en: "{count} Viper hatched — Putrid Membrane on the raid" }
-    notes: "Aura 1301268 no raid inteiro no momento em que a Viper nasce; o dano 1308275 pulsa ~19s (20s no mítico desde o nerf de 07/11; era 30s). Duas Vipers a menos de 1,5s contam uma vez."
+    blame_message: { pt: "{player} perdeu o ovo e ele chocou uma Viper (Caustic Waves, encostou em outro portador ou morreu carregando)", en: "{player} lost the egg and it hatched a Viper (Caustic Waves, touched another carrier or died carrying it)" }
+    notes: "Aura 1301268 no raid inteiro no momento em que a Viper nasce; o dano 1308275 pulsa ~19s (20s no mítico desde o nerf de 07/11; era 30s). Duas Vipers a menos de 1,5s contam uma vez. Culpado (10/11, reports kW7y, BPR9, DVYR, pRJD): quem perdeu o Noxious Shell até 0,5 s antes da aura 1301268; em 30 Vipers, 1 portador em 19, 2 em 2 (Noxious Splash) e nenhum em 9 (ovo no chão)."
 
   - key: malignant_shell
     name: "Malignant Shell"
