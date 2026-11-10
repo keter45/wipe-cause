@@ -25,8 +25,13 @@ base64 = "0.23.1"
 keyring = { version = "3", features = ["windows-native"] }
 sha2 = "0.10"
 getrandom = "0.3"
+tiny_http = "0.12"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-notification = "2.5.0"
 tauri-plugin-process = "2.4.0"
 tauri-plugin-updater = "2.13.0"
+
+# o túnel do link de visualização morre junto com o app (Job Object)
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }

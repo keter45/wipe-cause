@@ -1,13 +1,17 @@
-import { inDesktop, inWeb, invoke, listen } from './backend';
+import { inDesktop, inViewer, inWeb, invoke, listen } from './backend';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { LogReport, Pull } from '../types';
 
-export { inDesktop, inWeb };
+export { inDesktop, inViewer, inWeb };
 /**
- * Há backend para analisar: o app (Tauri) ou o site (o núcleo em WASM no navegador). Sem ele é
- * o desenvolvimento da UI no navegador, com dados de exemplo.
+ * Há backend: o app (Tauri), o site (o núcleo em WASM no navegador) ou o app de quem compartilhou
+ * (link de visualização). Sem ele é o desenvolvimento da UI no navegador, com dados de exemplo.
  */
-export const hasBackend = inDesktop || inWeb;
+export const hasBackend = inDesktop || inWeb || inViewer;
+/** Link de visualização: dá para ver tudo, mas nada que analise, salve ou envie. */
+export const readOnly = inViewer;
+/** Pode analisar, salvar e configurar (o app ou o site). */
+export const canEdit = hasBackend && !readOnly;
 
 /** Escolhe um combat log. No site o "caminho" é o nome do arquivo (o navegador guarda o arquivo). */
 export async function pickLogFile(): Promise<string | null> {
@@ -511,3 +515,19 @@ export async function revealInExplorer(path: string) {
 /** Idioma da UI para o backend (mensagens de erro, menu da bandeja, avisos do Windows). */
 /** `chosen`: escolha do usuário (fica salva); sem ela o backend segue o idioma do sistema ao abrir. */
 export const setBackendLocale = (locale: string, chosen: boolean) => (hasBackend ? invoke<void>('set_locale', { locale, chosen }).catch(() => {}) : Promise.resolve());
+
+/** Link de visualização (src-tauri/src/share.rs): a interface deste app, só para ver, por um túnel. */
+export interface ShareStatus {
+  active: boolean;
+  /** link público, com a chave */
+  url: string | null;
+  /** o mesmo link, neste PC */
+  localUrl: string | null;
+  error: string | null;
+}
+export const shareStatus = () => invoke<ShareStatus>('share_status');
+export const shareStart = () => invoke<ShareStatus>('share_start');
+export const shareStop = () => invoke<void>('share_stop');
+/** Recursos experimentais (o link de visualização): destravados neste PC em Configurações → Sobre. */
+export const experimentalGet = () => (inDesktop ? invoke<boolean>('experimental_get') : Promise.resolve(false));
+export const experimentalSet = (enabled: boolean) => invoke<void>('experimental_set', { enabled });

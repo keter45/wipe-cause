@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronLeft, FileX, PanelLeftOpen, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { hasBackend, historyLoad, readReportFile, sameLog, type HistoryEntry, inDesktop } from '../lib/api';
+import { canEdit, hasBackend, historyLoad, readOnly, readReportFile, sameLog, type HistoryEntry, inDesktop } from '../lib/api';
 import { logTitle, mainEncounterId, pct } from '../lib/format';
 import { BossIcon, BossName } from './Names';
 import type { UpdateState } from '../lib/updater';
@@ -111,7 +111,7 @@ export function Sidebar(props: Props) {
   return (
     <aside className="sidebar" aria-label={t.aria}>
       <div className="sidebar-top">
-        {hasBackend ? (
+        {readOnly ? null : hasBackend ? (
           <button className={`side-pill primary ${props.page === 'browse' ? 'active' : ''}`} onClick={props.onNew} aria-current={props.page === 'browse' ? 'page' : undefined}>
             {t.newAnalysis}
           </button>
@@ -142,7 +142,7 @@ export function Sidebar(props: Props) {
           <Section
             title={t.nights}
             action={
-              recent.length === 0 ? null : confirmAll ? (
+              recent.length === 0 || readOnly ? null : confirmAll ? (
                 <span className="confirm-inline">
                   <button
                     className="confirm-yes"
@@ -188,7 +188,7 @@ export function Sidebar(props: Props) {
       </div>
 
       <div className="sidebar-foot">
-        <SettingsItem active={props.page === 'settings'} onClick={props.onSettings} />
+        {!readOnly && <SettingsItem active={props.page === 'settings'} onClick={props.onSettings} />}
         {inDesktop && <VersionChip version={props.appVersion} state={props.updateState} onCheck={props.onCheckUpdates} />}
       </div>
     </aside>
@@ -264,6 +264,7 @@ function EntryRow({
         )
       }
       actions={
+        readOnly ? undefined : (
         <>
           <button className="icon-btn sm" onClick={() => props.onTogglePin(e)} title={e.pinned ? t.unpin : t.pinKeep} aria-label={e.pinned ? t.unpin : t.pin}>
             {e.pinned ? <PinOff size={14} strokeWidth={1.5} aria-hidden /> : <Pin size={14} strokeWidth={1.5} aria-hidden />}
@@ -272,6 +273,7 @@ function EntryRow({
             <Trash size={14} strokeWidth={1.5} aria-hidden />
           </button>
         </>
+        )
       }
     >
       {children}
@@ -405,7 +407,7 @@ export function SidebarRail({ history, report, page, onNew, onTrends, onSettings
   return (
     <nav className="sidebar-rail" aria-label={t.aria}>
       {item(t.expand, false, onExpand, <PanelLeftOpen size={16} strokeWidth={1.5} aria-hidden />)}
-      {hasBackend && item(t.newAnalysis, page === 'browse', onNew, <Plus size={16} strokeWidth={2} aria-hidden />, 'new')}
+      {canEdit && item(t.newAnalysis, page === 'browse', onNew, <Plus size={16} strokeWidth={2} aria-hidden />, 'new')}
       {item(t.trends, page === 'trends', onTrends, <TrendingUp size={16} strokeWidth={1.5} aria-hidden />)}
       <span className="rail-sep" aria-hidden />
       <div className="rail-entries">
@@ -415,7 +417,7 @@ export function SidebarRail({ history, report, page, onNew, onTrends, onSettings
           <span key={e.id}>{item(e.title, isOpen(e) && page === 'analysis', () => onOpenEntry(e), <BossIcon encounterId={e.encounterId ?? null} size={20} />)}</span>
         ))}
       </div>
-      {item(
+      {!readOnly && item(
         missingRequired(status) ? t.settingsMissing : t.settings,
         page === 'settings',
         onSettings,

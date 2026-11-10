@@ -7,7 +7,7 @@ import { discordGetConfig, hasBackend, inWeb, logsDetectDir, logsGetDir, wcrDete
 import { aiGetConfig, type AiConfig } from './ai';
 import { wclGetConfig, type WclConfig } from './wclApi';
 
-export type SettingsSection = 'logs' | 'game' | 'analysis' | 'startup' | 'wcl' | 'videos' | 'discord' | 'ai' | 'about';
+export type SettingsSection = 'logs' | 'game' | 'analysis' | 'startup' | 'wcl' | 'videos' | 'discord' | 'ai' | 'share' | 'about';
 
 export interface SetupStatus {
   /** pasta Logs do WoW em uso (cadastrada ou detectada) */

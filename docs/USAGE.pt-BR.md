@@ -108,6 +108,10 @@ O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compart
 - **Resumo** (padrão, e o que vai sozinho no ao vivo): o principal para uma olhada. No pull, o veredito, os 3 achados principais, as mortes decisivas, quem ficou abaixo de 80 e o mapa da falha; no boss, o HP de cada pull, as maiores causas, quem ficou abaixo de 80 e os destaques; no solo, os seus números contra a referência e os 3 erros que mais custaram.
 - **Completo**: tudo aberto, mais largo. Cada morte em ordem, as mecânicas com quem errou, os interrupts que passaram e a tabela dos jogadores (pull); o pull a pull e o placar (boss e noite); os trechos em que a referência abriu vantagem, os cooldowns e o dano tomado a mais (solo); rotação, poções e setup (desempenho).
 
+### 👁️ Link de visualização (experimental)
+
+É um recurso experimental e fica escondido: em **Configurações → Sobre**, toque 7 vezes na versão para aparecer o grupo **Experimentais** (o botão "Desligar recursos experimentais" esconde de novo). Em **Experimentais → Link de visualização**, ligue a chave para gerar um link que abre este app no navegador de outra pessoa, **só para ver**: noites, pulls, replay e Evolução, sem poder analisar, apagar, ajustar regras ou enviar nada. As análises novas aparecem sozinhas: com o ao vivo ligado, em até 5 s, e quem está no último pull vai para o pull novo, com o aviso no canto; o topo mostra o ao vivo de quem compartilhou. O link funciona enquanto o app estiver aberto: ele passa por um túnel gratuito do Cloudflare (na primeira vez o app baixa o `cloudflared`, ~60 MB). Quem tiver o link vê todo o histórico, inclusive nomes dos players; desligar a chave invalida o link e, ao ligar de novo, sai um link novo.
+
 ### 🧮 Nota por player
 
 Cada player recebe uma nota de 0 a 100 por pull: parte de 100 e perde pontos por:

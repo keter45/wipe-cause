@@ -4,6 +4,7 @@ import type { Pull } from '../types';
 import { lowestBossHp } from '../lib/verdict';
 import { mechanicSpellId } from '../lib/spells';
 import { useNote } from '../lib/notes';
+import { readOnly } from '../lib/api';
 import { SpellName } from './SpellIcon';
 import { BossName } from './Names';
 import { useMessages } from '../i18n';
@@ -54,7 +55,8 @@ export function LiveToast({ pull: p, discord, onOpen, onClose }: { pull: Pull; d
           <X size={14} strokeWidth={1.5} aria-hidden />
         </button>
       </div>
-      <input
+      {/* anotação fica no navegador de quem usa: fora do link de visualização */}
+      {!readOnly && <input
         className="text-input live-note"
         value={note}
         placeholder={p.success ? t.noteKill : t.noteWipe}
@@ -68,7 +70,7 @@ export function LiveToast({ pull: p, discord, onOpen, onClose }: { pull: Pull; d
           if (e.key === 'Enter') onClose(); // já está salva; Enter só fecha
           if (e.key === 'Escape') onClose();
         }}
-      />
+      />}
     </div>
   );
 }

@@ -47,6 +47,9 @@ pub struct Settings {
     /// idioma do app ("pt" | "en"): mensagens do backend, menu da bandeja e avisos do Windows
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub locale: Option<String>,
+    /// recursos experimentais (link de visualização): escondidos até destravar em Configurações → Sobre
+    #[serde(default)]
+    pub experimental: bool,
 }
 
 pub(crate) fn yes() -> bool {
@@ -55,7 +58,7 @@ pub(crate) fn yes() -> bool {
 
 impl Default for Settings {
     fn default() -> Self {
-        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, discord_on_night: true, discord_auto: true, discord_clip: true, ai_provider: None, ai_base_url: None, ai_model: None, wcr_cloud_user: None, wcr_cloud_guild: None, open_with_wow: false, locale: None }
+        Settings { wcr_dir: None, logs_dir: None, discord_webhook: None, discord_on_wipe: true, discord_on_kill: true, discord_on_night: true, discord_auto: true, discord_clip: true, ai_provider: None, ai_base_url: None, ai_model: None, wcr_cloud_user: None, wcr_cloud_guild: None, open_with_wow: false, locale: None, experimental: false }
     }
 }
 

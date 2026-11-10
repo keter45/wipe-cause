@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Bot, Check, ChevronDown, CircleAlert, FolderOpen, Gamepad2, Info, MessageSquare, Power, RefreshCw, Skull, Trophy, Video, type LucideIcon } from 'lucide-react';
+import { Bot, Check, ChevronDown, CircleAlert, Eye, FolderOpen, Gamepad2, Info, MessageSquare, Power, RefreshCw, Skull, Trophy, Video, type LucideIcon } from 'lucide-react';
 import type { LogReport } from '../../types';
-import { hasBackend, logsDetectDir, logsGetDir, logsList, logsSetDir, migrateWcrDir, revealInExplorer, rulesDir, wcrDetectDir, wcrGetDir, wcrSetDir, wcrVideos, inDesktop, inWeb } from '../../lib/api';
+import { experimentalGet, experimentalSet, hasBackend, logsDetectDir, logsGetDir, logsList, logsSetDir, migrateWcrDir, revealInExplorer, rulesDir, wcrDetectDir, wcrGetDir, wcrSetDir, wcrVideos, inDesktop, inWeb } from '../../lib/api';
 import { PRESETS } from '../../lib/ai';
 import { savedDeathCutoff, saveDeathCutoff } from '../../lib/cutoff';
 import { missingRequired, optionalDone, useSetup, type SettingsSection } from '../../lib/setup';
@@ -14,6 +14,8 @@ import { WclApiForm } from './WclApiForm';
 import { FirstSteps } from './FirstSteps';
 import { StartupForm } from './StartupForm';
 import { WcrCloudForm } from './WcrCloudForm';
+import { ShareForm } from './ShareForm';
+import { shareFormMsg } from './ShareForm.i18n';
 import { LOCALES, messagesOf, setLocale, systemLocale, useLocaleChoice, useMessages, type LocaleChoice } from '../../i18n';
 import { settingsMsg } from './SettingsView.i18n';
 
@@ -92,6 +94,18 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
   }, [logsMissing]);
 
   const [cutoff, setCutoff] = useState(savedDeathCutoff);
+  const ts = useMessages(shareFormMsg);
+  const [sharing, setSharing] = useState(false);
+  // recursos experimentais: escondidos até destravar (7 toques na versão, em Sobre)
+  const [experimental, setExperimental] = useState(false);
+  useEffect(() => {
+    experimentalGet().then(setExperimental).catch(() => {});
+  }, []);
+  async function changeExperimental(next: boolean) {
+    await experimentalSet(next);
+    setExperimental(next);
+    if (!next) setSharing(false);
+  }
   const optional = optionalDone(status);
   const aiPreset = PRESETS.find((p) => p.id === status?.ai?.provider);
   const acl = report ? (report.advancedLogging ? 'on' : 'off') : 'unknown';
@@ -224,6 +238,27 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
         )}
       </SettingsGroup>
 
+      {inDesktop && experimental && (
+        <SettingsGroup title={ts.group} hint={ts.groupHint}>
+          {card(
+            'share',
+            Eye,
+            ts.title,
+            ts.desc,
+            sharing ? 'ok' : 'off',
+            sharing ? ts.on : ts.tag,
+            <>
+              <ShareForm onChange={(s) => setSharing(s.active)} />
+              <div className="set-actions left">
+                <button className="btn ghost sm" onClick={() => void changeExperimental(false)}>
+                  {ts.turnOff}
+                </button>
+              </div>
+            </>,
+          )}
+        </SettingsGroup>
+      )}
+
       <SettingsGroup title={t.groups.about}>
         {card(
           'about',
@@ -232,7 +267,7 @@ export function SettingsView({ focus, report, appVersion, updateState, onCheckUp
           t.about.desc,
           updateState.kind === 'available' ? 'todo' : 'info',
           updateState.kind === 'available' ? t.about.available(updateState.version) : appVersion ? `v${appVersion}` : t.about.browser,
-          <About version={appVersion} state={updateState} onCheck={onCheckUpdates} />,
+          <About version={appVersion} state={updateState} onCheck={onCheckUpdates} experimental={experimental} onUnlock={() => void changeExperimental(true)} />,
         )}
       </SettingsGroup>
     </div>
@@ -322,8 +357,22 @@ function LanguageSelect({ label }: { label: string }) {
   );
 }
 
-function About({ version, state, onCheck }: { version: string | null; state: UpdateState; onCheck: () => void }) {
+function About({ version, state, onCheck, experimental, onUnlock }: { version: string | null; state: UpdateState; onCheck: () => void; experimental: boolean; onUnlock: () => void }) {
   const t = useMessages(settingsMsg).about;
+  const ts = useMessages(shareFormMsg);
+  // 7 toques na versão destravam os recursos experimentais (como as opções de desenvolvedor do Android)
+  const [taps, setTaps] = useState(0);
+  const UNLOCK_TAPS = 7;
+  // desligou: a contagem recomeça
+  useEffect(() => {
+    if (!experimental) setTaps(0);
+  }, [experimental]);
+  function tap() {
+    if (!inDesktop || experimental) return;
+    const n = taps + 1;
+    setTaps(n);
+    if (n >= UNLOCK_TAPS) onUnlock();
+  }
   const [rules, setRules] = useState<string | null>(null);
   useEffect(() => {
     rulesDir().then(setRules).catch(() => {});
@@ -344,8 +393,15 @@ function About({ version, state, onCheck }: { version: string | null; state: Upd
     <>
       <div className="set-kv">
         <span className="muted">{t.version}</span>
-        <span className="tabular">{version ? `v${version}` : t.browserDev}</span>
+        <span className="tabular version-tap" onClick={tap}>
+          {version ? `v${version}` : t.browserDev}
+        </span>
       </div>
+      {taps >= 3 && (
+        <p className="muted small" role="status">
+          {experimental ? ts.unlocked : ts.unlockLeft(UNLOCK_TAPS - taps)}
+        </p>
+      )}
       {inDesktop && (
         <div className="set-actions left">
           <button className="btn" onClick={onCheck} disabled={state.kind === 'checking' || state.kind === 'downloading'}>

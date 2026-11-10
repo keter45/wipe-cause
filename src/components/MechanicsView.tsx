@@ -18,6 +18,7 @@ import { mechMsg } from './MechanicsView.i18n';
 import { Hint } from './ui/Hint';
 import { Clamp } from './ui/Clamp';
 import { mechanicMistakes } from '../lib/blame';
+import { readOnly } from '../lib/api';
 
 /** `onRulesChanged`: os ajustes foram salvos; reanalisar o log aberto. */
 export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesChanged?: () => void }) {
@@ -28,7 +29,8 @@ export function MechanicsView({ pull, onRulesChanged }: { pull: Pull; onRulesCha
   const [openKeys, setOpenKeys] = useState<Set<string>>(() => new Set());
   useEffect(() => setOpenKeys(new Set()), [pull]);
   if (tuning) return <RuleTuning pull={pull} onSaved={() => onRulesChanged?.()} onClose={() => setTuning(false)} />;
-  const tuneButton = (
+  // link de visualização: as regras são de quem compartilhou
+  const tuneButton = readOnly ? null : (
     <button className="btn sm" onClick={() => setTuning(true)}>
       <SlidersHorizontal size={14} strokeWidth={1.5} aria-hidden /> {t.tune}
     </button>

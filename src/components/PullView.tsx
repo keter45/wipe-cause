@@ -18,7 +18,7 @@ import { EnemySpellsTable } from './EnemySpellsTable';
 import { MechanicsView } from './MechanicsView';
 import { InterruptsView } from './InterruptsView';
 import { HealNotePanel } from './HealNotePanel';
-import { openExternal, type WcrVideo } from '../lib/api';
+import { openExternal, readOnly, type WcrVideo } from '../lib/api';
 import { SeekContext } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
@@ -225,8 +225,9 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
       </div>
 
       <div className="pull-toolbar">
-        <PullNote pull={pull} />
-        <PullMarks pull={pull} />
+        {/* anotações e marcas ficam no navegador de quem usa: fora do link de visualização */}
+        {!readOnly && <PullNote pull={pull} />}
+        {!readOnly && <PullMarks pull={pull} />}
         <span className="pull-actions">
           {video && (
             <button className="btn sm" onClick={() => (videoOpen ? setVideoOpen(false) : seek?.(0))}>
@@ -315,9 +316,12 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
           </div>
         ))}
         <span className="topbar-spacer" />
-        <button role="tab" aria-selected={tab === 'ask'} className={`tab-ask ${tab === 'ask' ? 'active' : ''}`} onClick={() => setTab('ask')}>
-          <Sparkles size={14} strokeWidth={1.5} aria-hidden /> {t.tabs.ask}
-        </button>
+        {/* a IA usa a chave de quem compartilhou: fora do link de visualização */}
+        {!readOnly && (
+          <button role="tab" aria-selected={tab === 'ask'} className={`tab-ask ${tab === 'ask' ? 'active' : ''}`} onClick={() => setTab('ask')}>
+            <Sparkles size={14} strokeWidth={1.5} aria-hidden /> {t.tabs.ask}
+          </button>
+        )}
       </div>
 
       {/* erro numa aba fica na aba: as outras e o resto do pull continuam */}

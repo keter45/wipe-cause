@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, CircleAlert, Crosshair, ExternalLink, Link2, MessageSquare, MessageSquareOff, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
+import { ChevronDown, CircleAlert, Crosshair, Eye, ExternalLink, Link2, MessageSquare, MessageSquareOff, RotateCw, Unlink, User, Users, Video } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
-import { discordSetConfig, hasBackend, migrateWcrDir, openExternal, sameLog, savedWclAuto, savedWclLink, saveWclAuto, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type HistoryEntry, type LiveStatus, type WcrScan, type WcrVideo, inDesktop } from '../lib/api';
+import { discordSetConfig, hasBackend, migrateWcrDir, openExternal, sameLog, savedWclAuto, savedWclLink, saveWclAuto, saveWclLink, sourceName, wcrCloudVideos, wcrVideos, type HistoryEntry, type LiveStatus, type WcrScan, type WcrVideo, inDesktop, readOnly } from '../lib/api';
+import { viewerMsg } from '../lib/viewer.i18n';
 import { reportCode } from '../lib/wcl';
 import { findNightReport } from '../lib/guildNights';
 import { logTitle, mainEncounterId } from '../lib/format';
 import { BossName } from './Names';
 import { matchVideos } from '../lib/wcr';
 import { Popover } from './Popover';
-import { LiveButton } from './LiveControls';
+import { LiveBadge, LiveButton } from './LiveControls';
 import { CutoffStepper } from './CutoffStepper';
 import { useSetup } from '../lib/setup';
 import { setMode, useMode } from '../lib/mode';
@@ -50,6 +51,7 @@ interface Props {
 export function Header(props: Props) {
   const { report } = props;
   const t = useMessages(headerMsg);
+  const v = useMessages(viewerMsg);
   return (
     <header className="topbar">
       <div className="brand" title="Wipe Cause">
@@ -57,6 +59,7 @@ export function Header(props: Props) {
         <span className="brand-name">Wipe Cause</span>
       </div>
       <ModeSwitch />
+      {readOnly && <ViewOnlyBadge />}
 
       <LogGroup {...props} />
 
@@ -65,9 +68,11 @@ export function Header(props: Props) {
         <>
           <CutoffStepper
             value={hasBackend ? props.deathCutoff : report.deathCutoff}
-            disabled={!hasBackend || props.busy || !props.canReanalyze}
+            disabled={!hasBackend || readOnly || props.busy || !props.canReanalyze}
             title={
-              !props.canReanalyze
+              readOnly
+                ? v.cutoff
+                : !props.canReanalyze
                 ? t.cutoffMissingLog
                 : hasBackend
                   ? t.cutoffHint
@@ -79,9 +84,10 @@ export function Header(props: Props) {
         </>
       )}
       <div className="topbar-group" aria-label={t.tonight}>
+        {readOnly && <LiveBadge status={props.live} />}
         {props.showLive && <LiveButton status={props.live} error={props.liveError} onStart={props.onLiveStart} onStop={props.onLiveStop} />}
         {inDesktop && <DiscordAutoButton />}
-        {report && <WclButton logFile={report.file} pulls={report.pulls} onWcl={props.onWcl} />}
+        {report && !readOnly && <WclButton logFile={report.file} pulls={report.pulls} onWcl={props.onWcl} />}
         {report && inDesktop && <VideosButton pulls={report.pulls} onVideos={props.onVideos} />}
       </div>
     </header>
@@ -129,6 +135,16 @@ function DiscordAutoButton() {
     >
       <Icon {...ICON} /> <span className="topbar-label">Discord</span> <span className="small live-state">{error ? t.error : on ? t.automatic : t.paused}</span>
     </button>
+  );
+}
+
+/** Link de visualização: avisa que as análises são de outra pessoa e que nada muda daqui. */
+function ViewOnlyBadge() {
+  const t = useMessages(viewerMsg);
+  return (
+    <span className="set-chip view-only" title={t.badgeTitle}>
+      <Eye size={14} strokeWidth={1.5} aria-hidden /> {t.badge}
+    </span>
   );
 }
 

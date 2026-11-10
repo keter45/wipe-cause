@@ -5,6 +5,7 @@ import { num, damageSource } from '../lib/format';
 import { rulesGet } from '../lib/rules';
 import { SpellName } from './SpellIcon';
 import { CreateRule } from './CreateRule';
+import { readOnly } from '../lib/api';
 import { useMessages } from '../i18n';
 import { enemySpellsMsg } from './EnemySpellsTable.i18n';
 
@@ -68,7 +69,7 @@ export function EnemySpellsTable({ pull, onRulesChanged }: { pull: Pull; onRules
                     <span className="muted small rule-covered" title={t.coveredTitle}>
                       <Check size={13} strokeWidth={2} aria-hidden /> {t.covered}
                     </span>
-                  ) : (
+                  ) : readOnly ? null : (
                     <button className="link small" onClick={() => setCreating(creating === s.spellId ? null : s.spellId)} aria-expanded={creating === s.spellId}>
                       <Plus size={13} strokeWidth={2} aria-hidden /> {t.create}
                     </button>

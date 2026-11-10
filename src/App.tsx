@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, Crosshair, Settings } from 'lucide-react';
 import type { LogReport, Pull } from './types';
-import { analyzeLog, historyDelete, historyDeleteUnpinned, historyList, historyLoad, historySetPinned, discordGetConfig, hasBackend, parseWclCode, pickLogFile, rememberFile, sameLog, sourceName, setBackendLocale, type HistoryEntry, inDesktop, inWeb, rememberDroppedFile, WCL_SOURCE } from './lib/api';
+import { analyzeLog, historyDelete, historyDeleteUnpinned, historyList, historyLoad, historySetPinned, discordGetConfig, hasBackend, parseWclCode, pickLogFile, rememberFile, sameLog, sourceName, setBackendLocale, type HistoryEntry, inDesktop, inWeb, rememberDroppedFile, WCL_SOURCE, canEdit, readOnly } from './lib/api';
+import { viewerMsg } from './lib/viewer.i18n';
 import { BossSummary, NightOverview } from './components/NightSummary';
 import { LogBrowser } from './components/LogBrowser';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -23,7 +24,7 @@ import { SoloBossView, SoloNightView, SoloTrendsView } from './components/SoloNi
 import { useMode } from './lib/mode';
 import { Header } from './components/Header';
 import { Sidebar, SidebarRail } from './components/Sidebar';
-import type { WcrScan, WcrVideo } from './lib/api';
+import { liveStatus, type LiveStatus, type WcrScan, type WcrVideo } from './lib/api';
 import { matchVideos } from './lib/wcr';
 import { raidOnly } from './lib/content';
 import { PlayerClassesContext, playerClasses } from './lib/players';
@@ -182,6 +183,61 @@ export default function App() {
   const updateState: UpdateState = demoUpdate ? { kind: 'available', version: '0.4.0', notes: messagesOf(appMsg).demoNotes } : updater.state;
 
   const refreshHistory = () => historyList().then(setHistory).catch(() => {});
+
+  // Link de visualização: segue o que o PC de quem compartilhou está analisando. Relê o histórico a
+  // cada 5 s com o ao vivo ligado lá (20 s sem): a noite aberta foi salva de novo → atualiza a tela;
+  // quem estava no último pull (ou no resumo) vai para o pull novo, com o aviso no canto, como no
+  // app; uma noite nova (outro log) abre sozinha para quem estava acompanhando.
+  const shownSavedAt = useRef<number | null>(null);
+  const [hostLive, setHostLive] = useState<LiveStatus>(LIVE_OFF);
+  const viewerState = useRef({ report, openEntry, page, summary, selected });
+  viewerState.current = { report, openEntry, page, summary, selected };
+  useEffect(() => {
+    if (!readOnly) return;
+    let alive = true;
+    let timer: number | undefined;
+    const tick = async () => {
+      const [h, lv] = await Promise.all([historyList().catch(() => null), liveStatus().catch(() => LIVE_OFF)]);
+      if (!alive) return;
+      setHostLive(lv);
+      if (h) {
+        setHistory(h);
+        const v = viewerState.current;
+        const open = v.report;
+        const lastId = open?.pulls[open.pulls.length - 1]?.id;
+        const following = v.page !== 'trends' && (v.summary === NIGHT || v.selected === lastId || !open);
+        const newest = [...h].sort((a, b) => b.savedAt - a.savedAt)[0];
+        const current = open ? h.find((x) => sameLog(x.logPath, open.file)) : undefined;
+        if (newest && (!open || (following && newest !== current && newest.savedAt > (shownSavedAt.current ?? 0)))) {
+          await v.openEntry(newest);
+        } else if (open && current && shownSavedAt.current != null && current.savedAt > shownSavedAt.current) {
+          const r = await historyLoad(current.id).catch(() => null);
+          if (alive && r) {
+            shownSavedAt.current = current.savedAt;
+            const known = new Set(open.pulls.map((p) => p.startMs));
+            const fresh = raidOnly(r.pulls.filter((p) => !known.has(p.startMs)));
+            setReport(withUnifiedGuids(r));
+            const pull = fresh[fresh.length - 1];
+            if (pull) {
+              if (following) {
+                setSelected(pull.id);
+                setSummary(null);
+                setPage('analysis');
+              }
+              setLiveToast({ pull, discord: null });
+            }
+          }
+        }
+      }
+      if (alive) timer = window.setTimeout(tick, lv.active ? 5_000 : 20_000);
+    };
+    void tick();
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // primeira vez no app (sem nenhuma análise): abre nas Configurações, com o passo a passo
   const [firstRun, setFirstRun] = useState(false);
   useEffect(() => {
@@ -230,7 +286,7 @@ export default function App() {
   }, []);
 
   async function load(path: string, keepView = false, cutoff = deathCutoff) {
-    if (!hasBackend) {
+    if (!canEdit) {
       setStatus({ kind: 'error', message: needsApp() });
       return;
     }
@@ -280,6 +336,7 @@ export default function App() {
       setStatus({ kind: 'error', message: needsApp() });
       return;
     }
+    if (!canEdit) return;
     const cutoff = savedDeathCutoff();
     const failed: string[] = [];
     for (const [k, path] of paths.entries()) {
@@ -319,7 +376,7 @@ export default function App() {
   }, []);
 
   async function openFile() {
-    if (!hasBackend) {
+    if (!canEdit) {
       setStatus({ kind: 'error', message: needsApp() });
       return;
     }
@@ -329,8 +386,8 @@ export default function App() {
 
   /** Regras do boss ajustadas: reanalisa o log aberto (ao vivo, reinicia o acompanhamento). */
   function rulesChanged() {
-    if (hasBackend && live.status.active) live.start(deathCutoff);
-    else if (hasBackend && report) void load(report.file, true, deathCutoff);
+    if (canEdit && live.status.active) live.start(deathCutoff);
+    else if (canEdit && report) void load(report.file, true, deathCutoff);
   }
 
   /** Mudou o N: salva como preferência e reanalisa o log aberto (o corte é feito no núcleo). */
@@ -339,6 +396,7 @@ export default function App() {
     saveDeathCutoff(n);
     window.clearTimeout(cutoffTimer.current);
     // ao vivo: reinicia o acompanhamento com o corte novo (ele já reanalisa o log)
+    if (!canEdit) return;
     if (hasBackend && live.status.active) cutoffTimer.current = window.setTimeout(() => live.start(n), 600);
     else if (hasBackend && report) cutoffTimer.current = window.setTimeout(() => load(report.file, true, n), 600);
   }
@@ -352,6 +410,7 @@ export default function App() {
     if (!hasBackend) return; // navegador: o histórico de exemplo é só visual
     try {
       showReport(await historyLoad(e.id));
+      shownSavedAt.current = e.savedAt;
       setStatus({ kind: 'idle' });
     } catch (err) {
       setStatus({ kind: 'error', message: String(err) });
@@ -378,7 +437,7 @@ export default function App() {
   // o do pull no Discord ou na página da guilda). Sem `fight`, abre no resumo da noite, como qualquer report.
   const linkedFight = useRef<number | null>(null);
   useEffect(() => {
-    if (!hasBackend) return;
+    if (!canEdit) return;
     const params = new URLSearchParams(window.location.search);
     const code = parseWclCode(params.get('report') ?? '');
     if (!code) return;
@@ -420,19 +479,19 @@ export default function App() {
         report={report}
         busy={status.kind === 'loading'}
         deathCutoff={deathCutoff}
-        canReanalyze={!logMissing}
+        canReanalyze={!logMissing && !readOnly}
         onCutoff={changeCutoff}
         onReanalyze={() => report && load(report.file, true)}
         onWcl={setWclCode}
         onVideos={setVideos}
-        live={demoLive ? { active: true, state: 'in_combat', file: 'WoWCombatLog-092826_204129.txt', encounter: 'The Coiled Altar', analyzed: 3, message: null } : live.status}
+        live={readOnly ? hostLive : demoLive ? { active: true, state: 'in_combat', file: 'WoWCombatLog-092826_204129.txt', encounter: 'The Coiled Altar', analyzed: 3, message: null } : live.status}
         showLive={inDesktop || demoLive}
         liveError={live.error}
         onLiveStart={() => live.start(deathCutoff)}
         onLiveStop={live.stop}
         history={history}
         onOpenEntry={openEntry}
-        onBrowse={() => setPage('browse')}
+        onBrowse={readOnly ? undefined : () => setPage('browse')}
       />
 
       {status.kind === 'loading' && (
@@ -494,7 +553,7 @@ export default function App() {
           />
         )}
         <main className="content">
-          {page === 'settings' ? (
+          {page === 'settings' && !readOnly ? (
             <SettingsView
               focus={settingsFocus}
               report={report}
@@ -514,7 +573,9 @@ export default function App() {
               <TrendsView history={history} onReanalyzeAll={analyzeAll} busy={status.kind === 'loading'} canReanalyzeAll={inDesktop} />
             )
           ) : browsing ? (
-            hasBackend || demoLogs ? (
+            readOnly ? (
+              <ViewerEmpty hasHistory={history.length > 0} />
+            ) : hasBackend || demoLogs ? (
               <>
                 {!report && <Intro />}
                 <LogBrowser history={history} busy={status.kind === 'loading'} onAnalyze={analyzePath} onAnalyzeAll={analyzeAll} onOpenFile={openFile} />
@@ -536,7 +597,7 @@ export default function App() {
               wclCode={wclCode ?? undefined}
               povs={videos.get(pull.id)}
               nightPulls={pulls.filter((x) => bossKey(x) === bossKey(pull))}
-              onRulesChanged={rulesChanged}
+              onRulesChanged={readOnly ? undefined : rulesChanged}
               live={live.status.active}
             />
           ) : (
@@ -561,6 +622,9 @@ export default function App() {
     </SetupContext.Provider>
   );
 }
+
+/** Ao vivo desligado (link de visualização, antes da primeira leitura). */
+const LIVE_OFF: LiveStatus = { active: false, state: 'stopped', file: null, encounter: null, analyzed: 0, message: null };
 
 /** Dev no navegador: `?demoLogs=1` mostra a lista de logs de exemplo. */
 const demoLive = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demoLive');
@@ -591,6 +655,18 @@ function Intro() {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Link de visualização sem noite aberta. */
+function ViewerEmpty({ hasHistory }: { hasHistory: boolean }) {
+  const t = useMessages(viewerMsg);
+  return (
+    <div className="empty">
+      <Crosshair size={40} strokeWidth={1.5} className="empty-mark" aria-hidden />
+      <h1>Wipe Cause</h1>
+      <p className="muted small">{hasHistory ? t.pickNight : t.empty}</p>
     </div>
   );
 }
