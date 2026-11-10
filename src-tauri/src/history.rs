@@ -275,6 +275,41 @@ pub async fn history_trends(app: AppHandle) -> Result<Vec<TrendNight>, String> {
     tauri::async_runtime::spawn_blocking(move || Ok(trends_in(&dir))).await.map_err(|e| e.to_string())?
 }
 
+/// A Evolução para o link de visualização: o mesmo JSON do `history_trends`, montado direto dos
+/// arquivos compactos (sem ler e reescrever centenas de MB).
+pub fn trends_json(app: &AppHandle) -> Result<String, String> {
+    Ok(trends_json_in(&history_dir(app)?))
+}
+
+fn trends_json_in(dir: &Path) -> String {
+    let dir = dir.to_path_buf();
+    let mut index = load_index(&dir);
+    index.sort_by_key(|e| e.raid_start_ms.unwrap_or(e.saved_at));
+    // garante os compactos em dia (o mesmo que a Evolução do app faz)
+    if index.iter().any(|e| !compact_fresh(&dir, &e.id)) {
+        trends_in(&dir);
+    }
+    let mut out = String::from("[");
+    for e in &index {
+        let Ok(report) = std::fs::read_to_string(compact_path(&dir, &e.id)) else { continue };
+        if out.len() > 1 {
+            out.push(',');
+        }
+        let head = serde_json::json!({ "id": e.id, "title": e.title, "raidStartMs": e.raid_start_ms }).to_string();
+        // {"id":..,"title":..,"raidStartMs":..} + ,"report":<compacto>}
+        out.push_str(&head[..head.len() - 1]);
+        out.push_str(",\"report\":");
+        out.push_str(&report);
+        out.push('}');
+    }
+    out.push(']');
+    out
+}
+
+fn compact_fresh(dir: &Path, id: &str) -> bool {
+    matches!((modified(&compact_path(dir, id)), modified(&dir.join(format!("{id}.json.gz")))), (Some(c), Some(g)) if c >= g)
+}
+
 fn trends_in(dir: &Path) -> Vec<TrendNight> {
     let mut index = load_index(dir);
     index.sort_by_key(|e| e.raid_start_ms.unwrap_or(e.saved_at));
@@ -282,8 +317,7 @@ fn trends_in(dir: &Path) -> Vec<TrendNight> {
         .into_iter()
         .filter_map(|e| {
             let cp = compact_path(dir, &e.id);
-            let fresh = matches!((modified(&cp), modified(&dir.join(format!("{}.json.gz", e.id)))), (Some(c), Some(g)) if c >= g);
-            let report = if fresh {
+            let report = if compact_fresh(dir, &e.id) {
                 std::fs::read_to_string(&cp).ok().and_then(|s| serde_json::from_str(&s).ok())?
             } else {
                 let r = compact(load_in(dir, &e.id).ok()?);
@@ -345,6 +379,9 @@ mod tests {
         assert_eq!(pulls.len(), 3);
         assert!(pulls.iter().flat_map(|p| p["deaths"].as_array().unwrap()).all(|d| d.get("recap").is_none()));
         assert!(compact_path(&dir, &a.id).exists());
+        // a do link de visualização, montada direto dos compactos, é o mesmo JSON
+        let raw: serde_json::Value = serde_json::from_str(&trends_json_in(&dir)).unwrap();
+        assert_eq!(raw, serde_json::to_value(&trends).unwrap());
 
         // apagar não fixadas deixa só a fixada
         assert_eq!(delete_unpinned_in(&dir).unwrap(), 1);

@@ -29,6 +29,10 @@ const local: Record<string, () => unknown> = {
   wcr_get_dir: () => null,
   wcr_detect_dir: () => null,
   wcr_cloud_get_config: () => ({ configured: false, user: null, guild: null }),
+  // integrações de quem compartilhou: o visitante não as usa (e a tela já trata null como não configurada)
+  wcl_get_config: () => null,
+  discord_get_config: () => null,
+  ai_get_config: () => null,
   wcr_cloud_videos: () => [],
   startup_get: () => false,
   simc_status: () => ({ available: false, installed: null, latest: null, update: false, error: null }),
