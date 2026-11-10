@@ -56,6 +56,25 @@ Quantos ovos o mapa mostra, quantos saíram pela Noxious Shell (`cleared_by_aura
 - **BPR9:** nenhum dos 135 ovos tirados pela aura levou golpe direto depois dela. Só aparecem ticks de DoT e o dano de suporte do Augmentation (Ebon Might, Shifting Sands, Prescience). Da aura até a última linha do ovo: mediana de 1,8 s e máximo de 2,94 s.
 - **Contagem à mão:** antes do `replay:check`, uma conta à mão comparou o fim da trilha com as Shells e deu 78 de 150. A janela do replay cortava parte das trilhas antes.
 
+## O que choca o ovo em Viper (10/11)
+
+Medido nas 853 vezes em que alguém perdeu o Noxious Shell nos reports míticos kW7y, BPR9, DVYR e pRJD. Cada saída foi ligada a uma Viper (261915) ou a um Rawling (261874) que nasceu até 1,5 s depois.
+
+| O que acontece com o portador | Viper | Rawling |
+|---|---|---|
+| Toma o soak do Spectral Coils (1287265) | 0 | 647 |
+| Toma Caustic Waves (1292403) | 8 | 0 |
+| Encosta em outro portador (Noxious Splash 1307635) | 5 | 2 |
+| Morre com o ovo | 31 | 16 |
+
+- **Outros golpes não chocam o ovo.** Os portadores tomaram 1132 Mephitic Thrash e perderam o ovo só 2 vezes.
+- **Ovos no chão.** Das 93 Vipers, 43 nascem de ovos no chão que encostam no veneno, sem portador perto.
+- **Ordem no log.** A Caustic Waves tira o Noxious Shell no mesmo ms do golpe, e o log registra a perda da aura antes do dano. Por isso o `requires_aura` aceita a aura que caiu até 50 ms antes do golpe.
+- **A regra `egg_carrier_waves`** culpa o portador que tomou a onda. Contou 19 casos no log local de 09/11 e 7 no kW7y.
+- **Efeito nas outras regras com `requires_aura`.** Comparei antes e depois nos logs locais de 05/11 e 09/11, no Twin Fangs de 24/09 e nos reports BPR9, vbCJ e kW7y. Mudaram só dois double soaks que o check antigo perdia, os dois da Reidane:
+  - no `grim_guillotine_double_soak` do Coiled Altar, ela tomou 5,8M contra ~0,5M de quem não tinha a vulnerabilidade;
+  - no `feasted_double_soak` do Twin Fangs, o Feasted caiu no mesmo ms do segundo soak.
+
 ## Fora, e por quê
 
 - **Ovos sem posição.** No heroico os ovos nem são unidades do log. No mítico, quem não toma dano não

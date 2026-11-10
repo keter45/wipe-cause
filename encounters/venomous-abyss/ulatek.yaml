@@ -390,6 +390,21 @@ mechanics:
     blame_message: { pt: "{player} encostou em outro portador de ovo", en: "{player} touched another egg carrier" }
     notes: "Confirmado no log mítico pós-nerf (WCL DVYR, 07/11): 1307612 é a aura de quem carrega, 1307635 o dano (3 Splashes em 6 wipes). O ovo choca uma Viper (conta também em viper_hatched)."
 
+  - key: egg_carrier_waves
+    name: "Caustic Waves on an egg carrier"
+    type: avoidable_damage
+    severity: wipe
+    difficulty: [mythic]
+    detect:
+      damage_ids: [1292403]     # a onda (só o impacto; o DoT tica até ~220k)
+      min_amount: 230000
+      requires_aura: 1307612    # Noxious Shell: estava carregando o ovo (a onda tira a aura no mesmo ms do golpe)
+    ground: false               # o chão da onda já sai do caustic_waves
+    tolerance: 0
+    tip: { pt: "Com ovo na mão, nunca tomar Caustic Waves: a onda choca o ovo e nasce uma Viper (Putrid Membrane no raid). Levar o ovo direto ao soak do Spectral Coils.", en: "While carrying an egg, never take Caustic Waves: the wave hatches the egg into a Viper (Putrid Membrane on the raid). Take the egg straight to the Spectral Coils soak." }
+    message: { pt: "{player} tomou Caustic Waves carregando o ovo ({count}x) — nasceu uma Viper", en: "{player} took Caustic Waves while carrying the egg ({count}x) — a Viper hatched" }
+    notes: "Medido em 10/11 nos reports míticos kW7y, BPR9, DVYR e pRJD (853 saídas do Noxious Shell): Spectral Coils no portador = Rawling 647/647; Caustic Waves no portador = Viper 8/8; Noxious Splash = Viper 5/7; portador morto com o ovo = Viper 31/47. Outros golpes não chocam o ovo (1132 Mephitic Thrash em portadores, 2 ovos perdidos)."
+
   - key: egg_pickup_with_yolk
     name: "Noxious Shell (picked up with Rancid Yolk)"
     type: avoidable_damage
