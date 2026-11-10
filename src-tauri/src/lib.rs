@@ -6,6 +6,7 @@ mod logs;
 mod rule_tuning;
 mod settings;
 mod share;
+mod share_gist;
 mod simc;
 pub mod startup;
 mod talents;
@@ -186,6 +187,7 @@ pub fn run() {
             startup::repair(app.handle());
             startup::watch(app.handle().clone());
             share::dev_autostart(app.handle());
+            share::autostart(app.handle());
             Ok(())
         })
         .on_window_event(tray::on_window_event)
@@ -247,15 +249,18 @@ pub fn run() {
             share::share_start,
             share::share_stop,
             share::share_status,
+            share::share_new_link,
+            share_gist::share_github_get,
+            share_gist::share_github_set,
             share::experimental_get,
             share::experimental_set
         ])
         .build(tauri::generate_context!())
         .expect("erro ao iniciar o Wipe Cause")
-        .run(|_, event| {
+        .run(|app, event| {
             // o túnel do link de visualização não pode ficar rodando sem o app
             if let tauri::RunEvent::Exit = event {
-                share::stop();
+                share::on_exit(app);
             }
         });
 }

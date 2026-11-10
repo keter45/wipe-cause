@@ -9187,3 +9187,13 @@ button.kpi:hover {
 .pd-every .muted {
   display: block;
 }
+.share-github {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.share-github h4 {
+  margin: 0;
+}

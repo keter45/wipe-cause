@@ -182,7 +182,7 @@ export function Sidebar(props: Props) {
           </Section>
         )}
 
-        {history.length === 0 && !current && (
+        {history.length === 0 && !current && !readOnly && (
           <p className="sidebar-empty">{t.empty}</p>
         )}
       </div>

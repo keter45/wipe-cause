@@ -190,6 +190,8 @@ export default function App() {
   // app; uma noite nova (outro log) abre sozinha para quem estava acompanhando.
   const shownSavedAt = useRef<number | null>(null);
   const [hostLive, setHostLive] = useState<LiveStatus>(LIVE_OFF);
+  // o app de quem compartilhou não responde: a mensagem (a página continua tentando)
+  const [viewerDown, setViewerDown] = useState<string | null>(null);
   const viewerState = useRef({ report, openEntry, page, summary, selected });
   viewerState.current = { report, openEntry, page, summary, selected };
   useEffect(() => {
@@ -197,9 +199,17 @@ export default function App() {
     let alive = true;
     let timer: number | undefined;
     const tick = async () => {
-      const [h, lv] = await Promise.all([historyList().catch(() => null), liveStatus().catch(() => LIVE_OFF)]);
+      let down: string | null = null;
+      const [h, lv] = await Promise.all([
+        historyList().catch((e) => {
+          down = String(e);
+          return null;
+        }),
+        liveStatus().catch(() => LIVE_OFF),
+      ]);
       if (!alive) return;
       setHostLive(lv);
+      setViewerDown(h ? null : down);
       if (h) {
         setHistory(h);
         const v = viewerState.current;
@@ -356,7 +366,8 @@ export default function App() {
   const analyzeRef = useRef(analyzePath);
   analyzeRef.current = analyzePath;
   useEffect(() => {
-    if (!inWeb) return;
+    // no link de visualização (também no site) não se analisa nada
+    if (!inWeb || !canEdit) return;
     const over = (e: DragEvent) => {
       if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
     };
@@ -507,6 +518,7 @@ export default function App() {
       <UpdateBanner state={updateState} onInstall={updater.install} onDismiss={updater.dismiss} />
       <SpellHoverLayer />
       {status.kind === 'error' && <div className="error">Erro: {status.message}</div>}
+      {readOnly && viewerDown && report && <div className="error">{messagesOf(viewerMsg).offlineStale}</div>}
       {report && report.ruleErrors?.length > 0 && (
         <div className="error">Regras de boss com erro: {report.ruleErrors.join('; ')}</div>
       )}
@@ -574,7 +586,7 @@ export default function App() {
             )
           ) : browsing ? (
             readOnly ? (
-              <ViewerEmpty hasHistory={history.length > 0} />
+              <ViewerEmpty hasHistory={history.length > 0} down={viewerDown} />
             ) : hasBackend || demoLogs ? (
               <>
                 {!report && <Intro />}
@@ -660,13 +672,13 @@ function Intro() {
 }
 
 /** Link de visualização sem noite aberta. */
-function ViewerEmpty({ hasHistory }: { hasHistory: boolean }) {
+function ViewerEmpty({ hasHistory, down }: { hasHistory: boolean; down: string | null }) {
   const t = useMessages(viewerMsg);
   return (
     <div className="empty">
       <Crosshair size={40} strokeWidth={1.5} className="empty-mark" aria-hidden />
       <h1>Wipe Cause</h1>
-      <p className="muted small">{hasHistory ? t.pickNight : t.empty}</p>
+      <p className="muted small" role="status">{down ?? (hasHistory ? t.pickNight : t.empty)}</p>
     </div>
   );
 }
