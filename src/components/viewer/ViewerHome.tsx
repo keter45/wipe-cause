@@ -7,7 +7,7 @@
 // botão do try novo; voltar ao último volta a acompanhar.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, Play, Radio } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, Radio } from 'lucide-react';
 import type { Pull } from '../../types';
 import type { LiveStatus } from '../../lib/api';
 import { analyzePull, lowestBossHp } from '../../lib/verdict';
@@ -19,20 +19,21 @@ import { raidOnly } from '../../lib/content';
 import { classColor, longDuration, mmss, shortName } from '../../lib/format';
 import { BossIcon, BossName, PlayerName } from '../Names';
 import { SpellIcon, SpellName } from '../SpellIcon';
+import { FightReplay, type ReplaySeek } from '../FightReplay';
+import { findingMoment } from '../PullView';
+import { canLoadFull } from '../../lib/fullReplay';
 import { useMessages } from '../../i18n';
 import { viewerHomeMsg } from './ViewerHome.i18n';
-import { NoteCds, TryMetrics } from './ViewerPanels';
+import { NoteCds, PlayAt, TryMetrics } from './ViewerPanels';
 
 interface Props {
   pulls: Pull[];
   live: LiveStatus;
   /** abre a análise completa do try (a mesma tela do app) */
   onOpenPull: (id: number) => void;
-  /** abre o try direto na aba Replay */
-  onReplay?: (id: number) => void;
 }
 
-export function ViewerHome({ pulls: all, live, onOpenPull, onReplay }: Props) {
+export function ViewerHome({ pulls: all, live, onOpenPull }: Props) {
   const t = useMessages(viewerHomeMsg);
   const pulls = useMemo(() => {
     const raid = raidOnly(all);
@@ -53,6 +54,15 @@ export function ViewerHome({ pulls: all, live, onOpenPull, onReplay }: Props) {
   }, [last?.id, pulls.length]);
 
   const viewed = pulls.find((p) => p.id === viewedId) ?? last;
+
+  // replay do try visto, no card de baixo: cada ▶ manda um pedido (instante, quem) e rola até ele
+  const [seek, setSeek] = useState<ReplaySeek | null>(null);
+  const replayRef = useRef<HTMLElement>(null);
+  useEffect(() => setSeek(null), [viewed?.id]);
+  const play = (t: number, guid?: string) => {
+    setSeek((s) => ({ t: Math.max(0, t - REPLAY_LEAD_MS), n: (s?.n ?? 0) + 1, guid }));
+    replayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   // o boss do try visto: a faixa de tries e o resumo são dele
   const bossPulls = useMemo(() => (viewed ? pulls.filter((p) => bossKey(p) === bossKey(viewed)) : []), [pulls, viewed]);
   const bosses = useMemo(() => {
@@ -132,10 +142,39 @@ export function ViewerHome({ pulls: all, live, onOpenPull, onReplay }: Props) {
       <TryStrip pulls={bossPulls} viewedId={viewed.id} onView={view} />
 
       <div className="vh-grid">
-        <TryReport pull={viewed} bossPulls={bossPulls} onOpen={() => onOpenPull(viewed.id)} onReplay={onReplay ? () => onReplay(viewed.id) : undefined} />
+        <TryReport pull={viewed} bossPulls={bossPulls} onOpen={() => onOpenPull(viewed.id)} onPlay={canLoadFull(viewed) ? play : undefined} />
         <BossNight pulls={bossPulls} onView={view} />
       </div>
+      {canLoadFull(viewed) && <ReplayCard key={viewed.id} pull={viewed} seek={seek} cardRef={replayRef} />}
     </div>
+  );
+}
+
+/** O ▶ abre o replay um pouco antes do momento, para dar contexto. */
+const REPLAY_LEAD_MS = 3000;
+
+/**
+ * O replay completo do try visto, num card embaixo. Só carrega (relê o pull no PC de quem
+ * compartilha, ~1,5 MB pelo túnel) quando o card aparece na tela ou alguém aperta um ▶.
+ */
+function ReplayCard({ pull, seek, cardRef }: { pull: Pull; seek: ReplaySeek | null; cardRef: React.RefObject<HTMLElement | null> }) {
+  const t = useMessages(viewerHomeMsg);
+  const [active, setActive] = useState(false);
+  useEffect(() => {
+    if (seek) setActive(true);
+  }, [seek]);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || active) return;
+    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setActive(true), { rootMargin: '200px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [cardRef, active]);
+  return (
+    <section className="panel vh-replay" ref={cardRef} aria-label={t.replay}>
+      <h3 className="vh-h">{t.replay}</h3>
+      {active ? <FightReplay pull={pull} startAt={seek?.t ?? 0} seekTo={seek} /> : <p className="muted small">{t.replayHint}</p>}
+    </section>
   );
 }
 
@@ -171,7 +210,7 @@ function TryStrip({ pulls, viewedId, onView }: { pulls: Pull[]; viewedId: number
 }
 
 /** O try da vez: resultado e barra de progresso, gatilho, mortes no tempo e os erros. */
-function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPulls: Pull[]; onOpen: () => void; onReplay?: () => void }) {
+function TryReport({ pull, bossPulls, onOpen, onPlay }: { pull: Pull; bossPulls: Pull[]; onOpen: () => void; onPlay?: (t: number, guid?: string) => void }) {
   const t = useMessages(viewerHomeMsg);
   const verdict = useMemo(() => analyzePull(pull), [pull]);
   const phases = phaseCountOf([pull]);
@@ -204,7 +243,7 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
   // erros que pesaram, um por habilidade: quantos jogadores e quantas vezes
   const mistakes = useMemo(() => {
     const seen = new Set<number>();
-    const out: { spellId: number; name: string; people: number; times: number }[] = [];
+    const out: { spellId: number; name: string; people: number; times: number; at: number | null }[] = [];
     for (const f of verdict.findings) {
       if (f.spellId == null || seen.has(f.spellId) || (f.severity !== 'wipe' && f.severity !== 'major')) continue;
       seen.add(f.spellId);
@@ -213,7 +252,7 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
       const byDeath = verdict.decisiveDeaths.filter((d) => d.killingBlow?.spellId === f.spellId);
       const people = blamed.length || new Set(byDeath.map((d) => d.guid)).size;
       const times = m ? m.failures : byDeath.length;
-      out.push({ spellId: f.spellId, name: m?.name ?? byDeath[0]?.killingBlow?.spellName ?? '', people, times });
+      out.push({ spellId: f.spellId, name: m?.name ?? byDeath[0]?.killingBlow?.spellName ?? '', people, times, at: findingMoment(f, pull, verdict.decisiveDeaths) });
     }
     return out.slice(0, 5);
   }, [pull, verdict]);
@@ -238,6 +277,7 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
               <span className="vh-why-main">
                 <SpellName spellId={trigger.spellId} name={trigger.name} size={28} />
                 <span className="muted small tabular">{t.at(mmss(trigger.t))}</span>
+                {onPlay && <PlayAt onPlay={() => onPlay(trigger.t)} />}
               </span>
             </div>
           )}
@@ -248,6 +288,7 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
                 <PlayerName name={first.name} guid={first.guid} cls={first.class} />
                 {first.killingBlow && <SpellIcon spellId={first.killingBlow.spellId} size={20} title={first.killingBlow.spellName} />}
                 <span className="muted small tabular">{mmss(first.t)}</span>
+                {onPlay && <PlayAt onPlay={() => onPlay(first.t, first.guid)} />}
               </span>
             </div>
           )}
@@ -264,7 +305,10 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
               const lane = lanes[i];
               const label = `${shortName(d.name)} · ${d.killingBlow?.spellName ?? ''} · ${mmss(d.t)}`;
               return (
-                <span key={`${d.guid}:${d.t}`} role="listitem" tabIndex={0} className={`vh-death ${big ? 'big' : ''}`} style={{ left: `${(d.t / span) * 100}%`, top: `${LANE_TOP[lane]}%`, background: classColor(d.class) }} title={label} aria-label={label} />
+                <span key={`${d.guid}:${d.t}`} role="listitem" className="vh-death-slot" style={{ left: `${(d.t / span) * 100}%`, top: `${LANE_TOP[lane]}%` }}>
+                  {/* clicar na morte leva o replay de baixo até ela, com o player selecionado */}
+                  <button className={`vh-death ${big ? 'big' : ''}`} style={{ background: classColor(d.class) }} title={label} aria-label={label} disabled={!onPlay} onClick={() => onPlay?.(d.t, d.guid)} />
+                </span>
               );
             })}
           </div>
@@ -283,7 +327,7 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
           ) : (
             <ul>
               {mistakes.map((m) => (
-                <li key={m.spellId} className="vh-row">
+                <li key={m.spellId} className="vh-row play">
                   <SpellName spellId={m.spellId} name={m.name} size={22} />
                   <span className="vh-row-bar" aria-hidden>
                     <span style={{ width: `${(m.times / maxTimes) * 100}%` }} />
@@ -291,6 +335,7 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
                   <span className="tabular vh-row-n" title={t.people(m.people)}>
                     {m.times}× <span className="muted small vh-people">· {t.people(m.people)}</span>
                   </span>
+                  {onPlay && m.at != null ? <PlayAt onPlay={() => onPlay(m.at!)} /> : <span />}
                 </li>
               ))}
             </ul>
@@ -299,14 +344,9 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
       )}
 
       <TryMetrics pulls={bossPulls} pull={pull} />
-      <NoteCds pulls={bossPulls} pull={pull} />
+      <NoteCds pulls={bossPulls} pull={pull} onPlay={onPlay} />
 
       <div className="vh-actions">
-        {onReplay && (
-          <button className="btn ghost sm" onClick={onReplay}>
-            <Play size={14} strokeWidth={2} aria-hidden /> {t.replay}
-          </button>
-        )}
         <button className="btn sm" onClick={onOpen}>
           {t.open} <ExternalLink size={14} strokeWidth={1.5} aria-hidden />
         </button>

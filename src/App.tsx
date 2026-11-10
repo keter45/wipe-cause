@@ -19,7 +19,7 @@ import { NIGHT } from './components/PullList';
 import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { fetchMissingKillParses } from './lib/wclParses';
-import { PullView, openPullOnTab } from './components/PullView';
+import { PullView } from './components/PullView';
 import { SpellHoverLayer } from './components/SpellHover';
 import { SoloBossView, SoloNightView, SoloTrendsView } from './components/SoloNight';
 import { useMode } from './lib/mode';
@@ -596,15 +596,7 @@ export default function App() {
         <main className="content" key={prefsVersion}>
           {page === 'home' && readOnly ? (
             report ? (
-              <ViewerHome
-                pulls={pulls}
-                live={hostLive}
-                onOpenPull={selectPull}
-                onReplay={(id) => {
-                  openPullOnTab('replay');
-                  selectPull(id);
-                }}
-              />
+              <ViewerHome pulls={pulls} live={hostLive} onOpenPull={selectPull} />
             ) : (
               <ViewerEmpty hasHistory={history.length > 0} down={viewerDown} />
             )

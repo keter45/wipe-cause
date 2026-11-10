@@ -9657,3 +9657,38 @@ button.vh-stat:hover {
   gap: 6px;
   min-width: 0;
 }
+
+/* início do link: replay embaixo e os ▶ que mexem nele */
+.vh-replay {
+  display: grid;
+  gap: 12px;
+  padding: 16px 20px 20px;
+  scroll-margin-top: 12px;
+}
+.vh-play {
+  color: var(--accent);
+}
+.vh-row.play {
+  grid-template-columns: minmax(0, 1.2fr) minmax(60px, 1fr) auto 24px;
+}
+.vh-death-slot {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.vh-death {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+.vh-death:disabled {
+  cursor: default;
+}
+.vh-death:hover:not(:disabled) {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+.vh-cd {
+  grid-template-columns: 40px 20px minmax(0, 1fr) auto 24px;
+}

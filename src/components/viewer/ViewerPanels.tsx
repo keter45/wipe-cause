@@ -3,7 +3,7 @@
 // não usou ou usou fora de hora).
 
 import { useMemo } from 'react';
-import { ShieldOff } from 'lucide-react';
+import { Play, ShieldOff } from 'lucide-react';
 import type { Pull } from '../../types';
 import { metricNight, savedBossMetrics } from '../../lib/bossMetrics';
 import { noteFor, noteVersions, parseNote, type ParsedNote } from '../../lib/healNote';
@@ -13,6 +13,16 @@ import { PlayerName } from '../Names';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import { useMessages } from '../../i18n';
 import { viewerHomeMsg } from './ViewerHome.i18n';
+
+/** ▶ que leva o replay do card de baixo até o momento. */
+export function PlayAt({ onPlay }: { onPlay: () => void }) {
+  const t = useMessages(viewerHomeMsg);
+  return (
+    <button className="icon-btn sm vh-play" onClick={onPlay} title={t.playHere} aria-label={t.playHere}>
+      <Play size={13} strokeWidth={2} aria-hidden />
+    </button>
+  );
+}
 
 // ---------------------------------------------------------------- métricas do grupo
 
@@ -101,7 +111,7 @@ type Issue = { check: LineCheck; spellId: number | null; name: string; cls: stri
  * CDs da note no try visto: quantos saíram na hora (barra) e, um por linha, quem não usou, usou
  * antes ou depois da hora, ou estava morto. Mesma conferência da aba CDs de cura.
  */
-export function NoteCds({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
+export function NoteCds({ pulls, pull, onPlay }: { pulls: Pull[]; pull: Pull; onPlay?: (t: number, guid?: string) => void }) {
   const t = useMessages(viewerHomeMsg);
   const boss = pulls[0];
   const { note, checks } = useMemo(() => {
@@ -152,6 +162,7 @@ export function NoteCds({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
               <span className={`vh-cd-state ${c.state}`} title={c.usedMs != null ? t.usedAt(mmss(c.usedMs)) : undefined}>
                 {stateLabel(c)}
               </span>
+              {onPlay && c.expectedMs != null ? <PlayAt onPlay={() => onPlay(c.expectedMs!, guid)} /> : <span />}
             </li>
           ))}
         </ul>

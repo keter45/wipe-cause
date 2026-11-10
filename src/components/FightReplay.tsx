@@ -30,8 +30,18 @@ const ROLE_RANK: Record<string, number> = { tank: 0, healer: 1, dps: 2 };
  * Replay completo do pull: o mapa da luta inteira, o quadro do raid, a linha do tempo com os
  * pontos de interesse e o que aconteceu com o player selecionado. Relê o pull no log do PC.
  */
-/** `startAt`: ms do pull em que o replay começa (o ▶ da note de CDs de cura). */
-export function FightReplay({ pull, startAt = 0 }: { pull: Pull; startAt?: number }) {
+/** Pedido de ir a um instante (o ▶ de fora do replay): cada `n` novo vai a `t`, seleciona `guid` e toca. */
+export interface ReplaySeek {
+  t: number;
+  n: number;
+  guid?: string;
+}
+
+/**
+ * `startAt`: ms do pull em que o replay começa (o ▶ da note de CDs de cura). `seekTo`: comandos de
+ * fora (o início do link de visualização) para ir a um instante sem remontar o replay.
+ */
+export function FightReplay({ pull, startAt = 0, seekTo }: { pull: Pull; startAt?: number; seekTo?: ReplaySeek | null }) {
   const t = useMessages(fightMsg);
   const canLoad = canLoadFull(pull);
   const [full, setFull] = useState<Pull | null>(pull.fight ? pull : null);
@@ -60,10 +70,10 @@ export function FightReplay({ pull, startAt = 0 }: { pull: Pull; startAt?: numbe
       </p>
     );
   if (!full?.fight) return <p className="muted pad">{t.loading}</p>;
-  return <FightReplayInner pull={full} startAt={startAt} />;
+  return <FightReplayInner pull={full} startAt={startAt} seekTo={seekTo ?? null} />;
 }
 
-function FightReplayInner({ pull, startAt }: { pull: Pull; startAt: number }) {
+function FightReplayInner({ pull, startAt, seekTo }: { pull: Pull; startAt: number; seekTo: ReplaySeek | null }) {
   const data = useMemo(() => decodeReplay(pull), [pull]);
   const view = useMemo(() => fightView(pull)!, [pull]);
   const classes = useMemo(() => new Map(pull.players.map((p) => [p.guid, p.class] as const)), [pull]);
@@ -105,6 +115,13 @@ function FightReplayInner({ pull, startAt }: { pull: Pull; startAt: number }) {
     if (guid) setSelected(guid);
   };
   const toggle = (g: string) => setSelected((s) => (s === g ? null : g));
+  // ▶ de fora: vai ao instante, seleciona quem importa e toca
+  useEffect(() => {
+    if (!seekTo) return;
+    seek(seekTo.t, seekTo.guid);
+    pb.setPlaying(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seekTo?.n]);
 
   // medidor aberto (como no Warcraft Logs: categorias no canto; clicar na vida de um boss abre o dano nele)
   const [meter, setMeter] = useState<MeterChoice | null>(null);
