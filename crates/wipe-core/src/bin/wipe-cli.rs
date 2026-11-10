@@ -32,7 +32,7 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     let (Some(cmd), Some(path)) = (args.first(), args.get(1)) else {
-        eprintln!("uso: wipe-cli <analyze|spells|peek|fight> <WoWCombatLog.txt> [--json] [--pull <id>]");
+        eprintln!("uso: wipe-cli <analyze|spells|peek|fight> <WoWCombatLog.txt> [--json] [--pull <id>] | wipe-cli wcl <pasta>[,<pasta>] [--json|--spells]");
         return ExitCode::from(2);
     };
     let death_cutoff = args
@@ -127,6 +127,7 @@ fn main() -> ExitCode {
                 }
             }
         }
+        "wcl" if args.iter().any(|a| a == "--spells") => print_spells(&report),
         "analyze" | "wcl" if args.iter().any(|a| a == "--json") => {
             println!("{}", serde_json::to_string_pretty(&report).unwrap());
         }
