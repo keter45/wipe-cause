@@ -15,10 +15,19 @@ import { useMessages } from '../../i18n';
 import { viewerHomeMsg } from './ViewerHome.i18n';
 
 /** ▶ que leva o replay do card de baixo até o momento. */
-export function PlayAt({ onPlay }: { onPlay: () => void }) {
+export function PlayAt({ onPlay, stop = false }: { onPlay: () => void; stop?: boolean }) {
   const t = useMessages(viewerHomeMsg);
   return (
-    <button className="icon-btn sm vh-play" onClick={onPlay} title={t.playHere} aria-label={t.playHere}>
+    <button
+      className="icon-btn sm vh-play"
+      onClick={(e) => {
+        // dentro de uma linha clicável: um clique só
+        if (stop) e.stopPropagation();
+        onPlay();
+      }}
+      title={t.playHere}
+      aria-label={t.playHere}
+    >
       <Play size={13} strokeWidth={2} aria-hidden />
     </button>
   );
@@ -155,14 +164,14 @@ export function NoteCds({ pulls, pull, onPlay }: { pulls: Pull[]; pull: Pull; on
       {issues.length > 0 && (
         <ul>
           {issues.map(({ check: c, spellId, name, cls, guid }) => (
-            <li key={c.lineIndex} className="vh-cd">
+            <li key={c.lineIndex} className={`vh-cd ${onPlay && c.expectedMs != null ? 'clickable' : ''}`} onClick={onPlay && c.expectedMs != null ? () => onPlay(c.expectedMs!, guid) : undefined}>
               <span className="muted small tabular">{c.expectedMs != null ? mmss(c.expectedMs) : ''}</span>
               {spellId != null ? <SpellIcon spellId={spellId} size={20} /> : <span />}
               <PlayerName name={name} guid={guid} cls={cls} />
               <span className={`vh-cd-state ${c.state}`} title={c.usedMs != null ? t.usedAt(mmss(c.usedMs)) : undefined}>
                 {stateLabel(c)}
               </span>
-              {onPlay && c.expectedMs != null ? <PlayAt onPlay={() => onPlay(c.expectedMs!, guid)} /> : <span />}
+              {onPlay && c.expectedMs != null ? <PlayAt onPlay={() => onPlay(c.expectedMs!, guid)} stop /> : <span />}
             </li>
           ))}
         </ul>

@@ -61,7 +61,9 @@ export function ViewerHome({ pulls: all, live, onOpenPull }: Props) {
   useEffect(() => setSeek(null), [viewed?.id]);
   const play = (t: number, guid?: string) => {
     setSeek((s) => ({ t: Math.max(0, t - REPLAY_LEAD_MS), n: (s?.n ?? 0) + 1, guid }));
-    replayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // no próximo quadro (o card já trocou o aviso pelo replay); o card guarda a altura do replay
+    // desde o começo, então a rolagem chega nele mesmo antes de o replay terminar de carregar
+    requestAnimationFrame(() => replayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   };
   // o boss do try visto: a faixa de tries e o resumo são dele
   const bossPulls = useMemo(() => (viewed ? pulls.filter((p) => bossKey(p) === bossKey(viewed)) : []), [pulls, viewed]);
@@ -327,7 +329,8 @@ function TryReport({ pull, bossPulls, onOpen, onPlay }: { pull: Pull; bossPulls:
           ) : (
             <ul>
               {mistakes.map((m) => (
-                <li key={m.spellId} className="vh-row play">
+                // a linha inteira leva ao replay (o ▶ no fim fica para o teclado)
+                <li key={m.spellId} className={`vh-row play ${onPlay && m.at != null ? 'clickable' : ''}`} onClick={onPlay && m.at != null ? () => onPlay(m.at!) : undefined}>
                   <SpellName spellId={m.spellId} name={m.name} size={22} />
                   <span className="vh-row-bar" aria-hidden>
                     <span style={{ width: `${(m.times / maxTimes) * 100}%` }} />
@@ -335,7 +338,7 @@ function TryReport({ pull, bossPulls, onOpen, onPlay }: { pull: Pull; bossPulls:
                   <span className="tabular vh-row-n" title={t.people(m.people)}>
                     {m.times}× <span className="muted small vh-people">· {t.people(m.people)}</span>
                   </span>
-                  {onPlay && m.at != null ? <PlayAt onPlay={() => onPlay(m.at!)} /> : <span />}
+                  {onPlay && m.at != null ? <PlayAt onPlay={() => onPlay(m.at!)} stop /> : <span />}
                 </li>
               ))}
             </ul>
