@@ -904,26 +904,31 @@ code,
 /* recursos antes da morte: ícone + cor + rótulo acessível */
 .death-res {
   display: flex;
-  gap: 4px;
+  gap: 6px;
 }
 .res {
-  display: inline-grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex: none;
 }
 .res.ok {
-  background: rgba(76, 195, 138, 0.14);
-  color: var(--kill);
+  outline: 1.5px solid var(--kill);
 }
 .res.bad {
-  background: color-mix(in srgb, var(--wipe) 14%, transparent);
-  color: var(--wipe);
+  outline: 1.5px solid var(--wipe);
 }
 .res.na {
-  background: var(--panel-2);
-  color: #5b6272;
+  opacity: 0.45;
+  filter: saturate(0.4);
+}
+.res-empty {
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
 }
 .chev {
   color: var(--muted);
@@ -3576,15 +3581,15 @@ td.warn {
   background: var(--wipe);
 }
 /* tabela larga "Quem mais / menos morre" */
-.death-table {
+.dtab-table {
   display: flex;
   flex-direction: column;
   margin: 4px 0;
 }
-.death-row + .death-row {
+.dtab-row + .dtab-row {
   border-top: 1px solid var(--border);
 }
-.death-row {
+.dtab-row {
   display: grid;
   grid-template-columns: 26px minmax(90px, 160px) minmax(80px, 1fr) 48px 96px;
   align-items: center;
@@ -3592,35 +3597,35 @@ td.warn {
   padding: 6px 0;
   font-size: 13px;
 }
-.death-table.extra .death-row {
+.dtab-table.extra .dtab-row {
   grid-template-columns: 26px minmax(90px, 160px) minmax(80px, 1fr) 48px 96px 72px 110px;
 }
-.death-head {
+.dtab-head {
   align-items: end;
   font-size: 13px;
   line-height: 1.2;
   color: var(--muted);
 }
-.death-head span:nth-child(n + 5) {
+.dtab-head span:nth-child(n + 5) {
   text-align: right;
 }
-.death-col {
+.dtab-col {
   text-align: right;
 }
-.death-row > strong {
+.dtab-row > strong {
   text-align: right;
 }
-.death-name {
+.dtab-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
 }
-.death-bar {
+.dtab-bar {
   min-width: 0;
 }
-.death-track {
+.dtab-track {
   position: relative;
   display: block;
   height: 10px;
@@ -3628,44 +3633,44 @@ td.warn {
   background: var(--border);
   overflow: hidden;
 }
-.death-track i {
+.dtab-track i {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
 }
-.death-total {
+.dtab-total {
   opacity: 0.4;
 }
-.prog-award.good .death-total,
-.prog-award.good .death-swatch.total,
-.prog-award.good .death-free,
-.prog-award.good .death-swatch.free {
+.prog-award.good .dtab-total,
+.prog-award.good .dtab-swatch.total,
+.prog-award.good .dtab-free,
+.prog-award.good .dtab-swatch.free {
   background: var(--kill);
 }
-.prog-award.bad .death-total,
-.prog-award.bad .death-swatch.total,
-.prog-award.bad .death-free,
-.prog-award.bad .death-swatch.free {
+.prog-award.bad .dtab-total,
+.prog-award.bad .dtab-swatch.total,
+.prog-award.bad .dtab-free,
+.prog-award.bad .dtab-swatch.free {
   background: var(--wipe);
 }
-.death-legend {
+.dtab-legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
 }
-.death-swatch {
+.dtab-swatch {
   display: inline-block;
   width: 10px;
   height: 10px;
   border-radius: 2px;
 }
-.death-swatch.total {
+.dtab-swatch.total {
   opacity: 0.4;
 }
-.death-swatch + .death-swatch,
-.death-legend .death-swatch.total {
+.dtab-swatch + .dtab-swatch,
+.dtab-legend .dtab-swatch.total {
   margin-left: 8px;
 }
 .prog-award-top {

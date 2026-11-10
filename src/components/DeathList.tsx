@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ChevronRight, ExternalLink, FlaskConical, Gem, Shield } from 'lucide-react';
+import { ChevronRight, ExternalLink } from 'lucide-react';
 import type { Death, DeathAura, RecapEntry, WipeCall } from '../types';
 import { classColor, mmss, num, relSeconds, shortName, damageSource } from '../lib/format';
 import { useSpellDescription, useTooltip, wowheadUrl } from '../lib/wowhead';
@@ -14,6 +14,7 @@ import { deathReplayExtras, type ReplayData } from '../lib/replay';
 import { deathKey, massDeathKeys, MASS_DEATH_MIN } from '../lib/massDeaths';
 import { messagesOf, tr, useMessages } from '../i18n';
 import { deathMsg } from './DeathList.i18n';
+import { HEALTH_POTION_SPELL_ID, HEALTHSTONE_SPELL_ID } from '../lib/deathSeverity';
 import { Hint } from './ui/Hint';
 
 interface Props {
@@ -102,13 +103,17 @@ export function DeathList({ deaths, decisive, cutoffT, wipeCall, classes, mechan
                   )}
                 </span>
                 <span className="death-res" aria-label={t.resourcesAria}>
-                  <Res state={d.defensivesRecent.length ? 'ok' : d.defensivesAvailable.length ? 'bad' : 'na'} label={defTitle(d)} icon={Shield} />
+                  <Res
+                    state={d.defensivesRecent.length ? 'ok' : d.defensivesAvailable.length ? 'bad' : 'na'}
+                    label={defTitle(d)}
+                    spellId={(d.defensivesRecent[0] ?? d.defensivesAvailable[0])?.spellId}
+                  />
                   <Res
                     state={d.usedHealthstone ? 'ok' : d.healthstoneKnown ? 'bad' : 'na'}
                     label={d.usedHealthstone ? t.usedHealthstone : d.healthstoneKnown ? t.unusedHealthstone : t.noHealthstone}
-                    icon={Gem}
+                    spellId={HEALTHSTONE_SPELL_ID}
                   />
-                  <Res state={d.usedHealthPotion ? 'ok' : 'bad'} label={d.usedHealthPotion ? t.usedPotion : t.noPotion} icon={FlaskConical} />
+                  <Res state={d.usedHealthPotion ? 'ok' : 'bad'} label={d.usedHealthPotion ? t.usedPotion : t.noPotion} spellId={HEALTH_POTION_SPELL_ID} />
                 </span>
                 <ChevronRight size={16} strokeWidth={1.5} className="chev" aria-hidden />
               </button>
@@ -132,11 +137,11 @@ function defTitle(d: Death): string {
   return t.defNone;
 }
 
-/** Recurso usado/não usado antes da morte: ícone + cor + rótulo acessível (nunca só cor). */
-function Res({ state, label, icon: Icon }: { state: 'ok' | 'bad' | 'na'; label: string; icon: typeof Shield }) {
+/** Recurso usado/não usado antes da morte: ícone da spell (como na Gravidade das mortes) + contorno de cor + rótulo acessível (nunca só cor). */
+function Res({ state, label, spellId }: { state: 'ok' | 'bad' | 'na'; label: string; spellId?: number }) {
   return (
     <span className={`res ${state}`} title={label} aria-label={label} role="img">
-      <Icon size={14} strokeWidth={1.75} aria-hidden />
+      {spellId == null ? <span className="res-empty" aria-hidden /> : <SpellIcon spellId={spellId} size={22} title={label} />}
     </span>
   );
 }

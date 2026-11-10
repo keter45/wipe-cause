@@ -562,8 +562,8 @@ function DeathTableCard({ rows, scale, tone, title, extra }: { rows: DeathRow[];
   return (
     <article className={`prog-award wide ${tone}`}>
       <span className="prog-award-label">{title}</span>
-      <div className={`death-table${extra ? ' extra' : ''}`}>
-        <div className="death-row death-head">
+      <div className={`dtab-table${extra ? ' extra' : ''}`}>
+        <div className="dtab-row dtab-head">
           <span />
           <span />
           <span>{m.deathBarLabel}</span>
@@ -573,37 +573,37 @@ function DeathTableCard({ rows, scale, tone, title, extra }: { rows: DeathRow[];
           {extra && <span title={m.deathBestTitle}>{m.deathColBest}</span>}
         </div>
         {rows.map((r, i) => (
-          <div key={r.guid} className="death-row">
+          <div key={r.guid} className="dtab-row">
             <span className="prog-award-rank" aria-label={m.awardRank(i + 1)}>
               {m.awardRank(i + 1)}
             </span>
-            <span className="death-name">
+            <span className="dtab-name">
               <PlayerName name={r.name} guid={r.guid} cls={r.class} />
             </span>
-            <span className="death-bar">
+            <span className="dtab-bar">
               {r.deaths === 0 ? (
                 <span className="muted small">{m.awardNoDeaths}</span>
               ) : (
-                <span className="death-track">
-                  <i className="death-total" style={{ width: width(r.deaths) }} />
-                  <i className="death-free" style={{ width: width(Math.min(r.free, r.deaths)) }} />
+                <span className="dtab-track">
+                  <i className="dtab-total" style={{ width: width(r.deaths) }} />
+                  <i className="dtab-free" style={{ width: width(Math.min(r.free, r.deaths)) }} />
                 </span>
               )}
             </span>
             <strong className="tabular">{fmt2(r.deaths)}</strong>
-            <span className="tabular death-col">{fmt2(r.free)}</span>
-            {extra && <span className="tabular death-col">{fmt2(r.first)}</span>}
+            <span className="tabular dtab-col">{fmt2(r.free)}</span>
+            {extra && <span className="tabular dtab-col">{fmt2(r.first)}</span>}
             {extra && (
-              <span className="tabular death-col" title={r.bestRate == null ? m.deathBestTitle : undefined}>
+              <span className="tabular dtab-col" title={r.bestRate == null ? m.deathBestTitle : undefined}>
                 {r.bestRate == null ? '—' : fmt2(r.bestRate)}
               </span>
             )}
           </div>
         ))}
       </div>
-      <span className="death-legend muted small">
-        <i className="death-swatch free" /> {m.deathLegendFree}
-        <i className="death-swatch total" /> {m.deathLegendOther}
+      <span className="dtab-legend muted small">
+        <i className="dtab-swatch free" /> {m.deathLegendFree}
+        <i className="dtab-swatch total" /> {m.deathLegendOther}
       </span>
       <span className="muted small">{m.deathCriterion}</span>
     </article>
