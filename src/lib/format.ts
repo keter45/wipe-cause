@@ -10,6 +10,12 @@ export function mmss(ms: number): string {
 }
 
 /** Segundos relativos com uma casa, ex.: "-3.2s" */
+/** Duração longa: "2h 13min" ou "45min" (serve para as duas línguas). */
+export function longDuration(ms: number): string {
+  const min = Math.round(ms / 60_000);
+  return min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}min` : `${min}min`;
+}
+
 export function relSeconds(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }

@@ -116,6 +116,8 @@ O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compart
 
 Com o link ligado, toda mensagem que o app manda ao Discord (wipe, kill, resumo da noite, Compartilhar) leva no fim "👁️ Ver ao vivo" com o link (o fixo, se o GitHub estiver conectado).
 
+Quem abre o link cai no **Início**: o try da vez com o resultado (% do boss e barra até onde foi), o gatilho, a primeira morte, as mortes no tempo (uma bolinha por morte, na cor da classe) e os erros com barras; ao lado, o boss na noite (melhor try, tries, tempo em combate, o que mais derrubou e quem mais morreu). Uma faixa com uma barra por try passa de try em try (as setas ← → também). A página acompanha o try novo sozinha; quem volta para um try antigo vê o botão do try novo. No celular, o link abre só nessa página, em uma coluna; o logo volta para ela.
+
 O link mostra a tela como você a deixou: a note de CDs de cura, as métricas do grupo escolhidas em cada boss, os cards abertos ou recolhidos, os parses do WCL e as camadas do replay. Quando você muda algo, quem está com o link aberto vê em até meio minuto, sem poder editar. Notas dos pulls, marcas e configurações não vão.
 
 Quem tiver o link vê todo o histórico, inclusive nomes dos players. **Gerar link novo** troca a chave e apaga o link fixo: quem tinha o antigo perde o acesso.

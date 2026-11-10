@@ -2,6 +2,7 @@ import { defineMessages } from '../i18n';
 
 export const viewerMsg = defineMessages(
   {
+    home: 'Início',
     cutoff: 'O corte de mortes é o de quem compartilhou',
     offline: 'O app de quem compartilhou está desligado agora. A página tenta de novo sozinha.',
     linkGone: 'Este link não existe mais: peça o link novo a quem compartilhou.',
@@ -13,6 +14,7 @@ export const viewerMsg = defineMessages(
     pickNight: 'Escolha uma noite na barra lateral.',
   },
   {
+    home: 'Home',
     cutoff: 'The death cutoff is the one set by the person who shared',
     offline: "The sharer's app is off right now. The page keeps trying on its own.",
     linkGone: 'This link no longer exists: ask the person who shared it for the new link.',

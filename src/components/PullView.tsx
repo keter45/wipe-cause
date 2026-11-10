@@ -46,6 +46,12 @@ type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'healcds' | 'players' 
 /** Aba aberta por último em cada modo: continua nela ao trocar de pull ou voltar das Configurações. */
 const lastTab: Record<AppMode, Tab> = { guild: 'deaths', solo: 'me' };
 
+/** O próximo pull aberto começa nesta aba (ex.: o Replay, a partir do início do link de visualização). */
+export function openPullOnTab(tab: 'replay' | 'deaths') {
+  lastTab.guild = tab;
+  lastTab.solo = tab;
+}
+
 
 interface Props {
   pull: Pull;

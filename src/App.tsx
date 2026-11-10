@@ -3,6 +3,7 @@ import { ChevronRight, Crosshair, Settings } from 'lucide-react';
 import type { LogReport, Pull } from './types';
 import { analyzeLog, historyDelete, historyDeleteUnpinned, historyList, historyLoad, historySetPinned, discordGetConfig, hasBackend, parseWclCode, pickLogFile, rememberFile, sameLog, sourceName, setBackendLocale, type HistoryEntry, inDesktop, inWeb, rememberDroppedFile, WCL_SOURCE, canEdit, readOnly } from './lib/api';
 import { viewerMsg } from './lib/viewer.i18n';
+import { ViewerHome } from './components/viewer/ViewerHome';
 import { BossSummary, NightOverview } from './components/NightSummary';
 import { LogBrowser } from './components/LogBrowser';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -18,7 +19,7 @@ import { NIGHT } from './components/PullList';
 import { bossKey } from './lib/night';
 import { savedDeathCutoff, saveDeathCutoff } from './lib/cutoff';
 import { fetchMissingKillParses } from './lib/wclParses';
-import { PullView } from './components/PullView';
+import { PullView, openPullOnTab } from './components/PullView';
 import { SpellHoverLayer } from './components/SpellHover';
 import { SoloBossView, SoloNightView, SoloTrendsView } from './components/SoloNight';
 import { useMode } from './lib/mode';
@@ -36,7 +37,8 @@ import { unifyPlayerGuids } from './lib/guids';
 import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
 
 /** O que ocupa a área principal: a análise aberta, a lista de logs, a evolução ou as configurações. */
-type Page = 'analysis' | 'browse' | 'trends' | 'settings';
+/** `home`: início do link de visualização (o try da vez e o resumo do boss). */
+type Page = 'home' | 'analysis' | 'browse' | 'trends' | 'settings';
 
 type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: string; batch?: { i: number; n: number } } | { kind: 'error'; message: string };
 
@@ -82,7 +84,7 @@ export default function App() {
   const [summary, setSummary] = useState<string | null>(NIGHT);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   // sem relatório aberto, 'analysis' mostra a lista de logs (tela inicial)
-  const [page, setPage] = useState<Page>(() => (demoTrends ? 'trends' : demoSettings ? 'settings' : 'analysis'));
+  const [page, setPage] = useState<Page>(() => (readOnly ? 'home' : demoTrends ? 'trends' : demoSettings ? 'settings' : 'analysis'));
   const [settingsFocus, setSettingsFocus] = useState<{ section: SettingsSection; n: number } | null>(null);
   const setup = useSetupStatus();
   const openSettings = (section?: SettingsSection) => {
@@ -234,12 +236,13 @@ export default function App() {
             setReport(withUnifiedGuids(r));
             const pull = fresh[fresh.length - 1];
             if (pull) {
-              if (following) {
+              // no início, quem acompanha o try novo é a própria página (ViewerHome)
+              if (following && v.page !== 'home') {
                 setSelected(pull.id);
                 setSummary(null);
                 setPage('analysis');
               }
-              setLiveToast({ pull, discord: null });
+              if (v.page !== 'home') setLiveToast({ pull, discord: null });
             }
           }
         }
@@ -435,7 +438,8 @@ export default function App() {
   }
 
   async function openEntry(e: HistoryEntry) {
-    setPage('analysis');
+    // link de visualização: no início, trocar de noite continua no início
+    setPage((pg) => (pg === 'home' ? 'home' : 'analysis'));
     if (report && sameLog(e.logPath, report.file)) {
       setSummary(NIGHT);
       return;
@@ -507,7 +511,7 @@ export default function App() {
   return (
     <SetupContext.Provider value={{ status: setup.status, reload: setup.reload, openSettings }}>
     <PlayerClassesContext.Provider value={classes}>
-    <div className="app" key={locale}>
+    <div className={`app${readOnly ? ' is-viewer' : ''}`} key={locale}>
       <Header
         report={report}
         busy={status.kind === 'loading'}
@@ -525,6 +529,7 @@ export default function App() {
         history={history}
         onOpenEntry={openEntry}
         onBrowse={readOnly ? undefined : () => setPage('browse')}
+        onHome={readOnly ? () => setPage('home') : undefined}
       />
 
       {status.kind === 'loading' && (
@@ -555,6 +560,7 @@ export default function App() {
             onNew={() => setPage('browse')}
             page={browsing ? 'browse' : page}
             onTrends={() => setPage('trends')}
+            onHome={readOnly ? () => setPage('home') : undefined}
             onSettings={() => openSettings()}
             appVersion={updater.version}
             updateState={updateState}
@@ -581,13 +587,28 @@ export default function App() {
             page={browsing ? 'browse' : page}
             onNew={() => setPage('browse')}
             onTrends={() => setPage('trends')}
+            onHome={readOnly ? () => setPage('home') : undefined}
             onSettings={() => openSettings()}
             onOpenEntry={openEntry}
             onExpand={toggleSidebar}
           />
         )}
         <main className="content" key={prefsVersion}>
-          {page === 'settings' && !readOnly ? (
+          {page === 'home' && readOnly ? (
+            report ? (
+              <ViewerHome
+                pulls={pulls}
+                live={hostLive}
+                onOpenPull={selectPull}
+                onReplay={(id) => {
+                  openPullOnTab('replay');
+                  selectPull(id);
+                }}
+              />
+            ) : (
+              <ViewerEmpty hasHistory={history.length > 0} down={viewerDown} />
+            )
+          ) : page === 'settings' && !readOnly ? (
             <SettingsView
               focus={settingsFocus}
               report={report}

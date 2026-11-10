@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Award as AwardIcon, ChevronRight, EyeOff, Hand, Handshake, HeartPulse, ShieldCheck, ShieldOff, Skull, Swords, TriangleAlert, type LucideIcon } from 'lucide-react';
 import type { Pull } from '../types';
-import { classColor, mmss, num, pct, shortName } from '../lib/format';
+import { classColor, mmss, num, pct, shortName, longDuration } from '../lib/format';
 import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummary as Summary, type PlayerNight } from '../lib/night';
 import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
@@ -39,11 +39,7 @@ function endClock(s: Summary): string {
   return s.pulls.length ? new Date(s.endMs + (s.pulls[0].tzOffsetHours ?? 0) * 3_600_000).toISOString().slice(11, 16) : '';
 }
 
-function duration(ms: number): string {
-  // "2h 13min" serve para as duas línguas
-  const min = Math.round(ms / 60_000);
-  return min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}min` : `${min}min`;
-}
+const duration = longDuration;
 
 function clock(p: Pull): string {
   return p.startLocal.split(' ')[1]?.slice(0, 5) ?? '';
