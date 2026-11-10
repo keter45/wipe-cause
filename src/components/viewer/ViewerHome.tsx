@@ -21,6 +21,7 @@ import { BossIcon, BossName, PlayerName } from '../Names';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import { useMessages } from '../../i18n';
 import { viewerHomeMsg } from './ViewerHome.i18n';
+import { GroupMetrics, Highlights, NoteCds } from './ViewerPanels';
 
 interface Props {
   pulls: Pull[];
@@ -131,9 +132,11 @@ export function ViewerHome({ pulls: all, live, onOpenPull, onReplay }: Props) {
       <TryStrip pulls={bossPulls} viewedId={viewed.id} onView={view} />
 
       <div className="vh-grid">
-        <TryReport pull={viewed} onOpen={() => onOpenPull(viewed.id)} onReplay={onReplay ? () => onReplay(viewed.id) : undefined} />
+        <TryReport pull={viewed} bossPulls={bossPulls} onOpen={() => onOpenPull(viewed.id)} onReplay={onReplay ? () => onReplay(viewed.id) : undefined} />
         <BossNight pulls={bossPulls} onView={view} />
       </div>
+      <GroupMetrics pulls={bossPulls} viewedId={viewed.id} onView={view} />
+      <Highlights pulls={bossPulls} />
     </div>
   );
 }
@@ -170,7 +173,7 @@ function TryStrip({ pulls, viewedId, onView }: { pulls: Pull[]; viewedId: number
 }
 
 /** O try da vez: resultado e barra de progresso, gatilho, mortes no tempo e os erros. */
-function TryReport({ pull, onOpen, onReplay }: { pull: Pull; onOpen: () => void; onReplay?: () => void }) {
+function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPulls: Pull[]; onOpen: () => void; onReplay?: () => void }) {
   const t = useMessages(viewerHomeMsg);
   const verdict = useMemo(() => analyzePull(pull), [pull]);
   const phases = phaseCountOf([pull]);
@@ -296,6 +299,8 @@ function TryReport({ pull, onOpen, onReplay }: { pull: Pull; onOpen: () => void;
           )}
         </div>
       )}
+
+      <NoteCds pulls={bossPulls} pull={pull} />
 
       <div className="vh-actions">
         {onReplay && (
