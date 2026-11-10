@@ -3,6 +3,7 @@ import type { Pull } from '../types';
 import { editNote, newVersion, noteFor, setFromPull, type NoteVersion } from '../lib/healNote';
 import { useMessages } from '../i18n';
 import { noteBoxMsg } from './NoteBox.i18n';
+import { readOnly } from '../lib/api';
 
 interface Props {
   /** um pull do boss (a note é por boss e dificuldade) */
@@ -46,6 +47,8 @@ export function NoteBox({ pull, nightPulls, live, versions, onChange, placeholde
         value={draft}
         spellCheck={false}
         placeholder={placeholder}
+        // link de visualização: a note é a de quem compartilhou
+        readOnly={readOnly}
         onChange={(e) => {
           setDraft(e.target.value);
           onChange(editNote(pull, e.target.value, nightPulls, live));
@@ -64,7 +67,7 @@ export function NoteBox({ pull, nightPulls, live, versions, onChange, placeholde
                   {' '}
                   <label className="muted">
                     {t.fromPull}{' '}
-                    <select className="text-input sm" value={v.fromPull} onChange={(e) => onChange(setFromPull(pull, v.savedAt, Number(e.target.value)))}>
+                    <select className="text-input sm" disabled={readOnly} value={v.fromPull} onChange={(e) => onChange(setFromPull(pull, v.savedAt, Number(e.target.value)))}>
                       {[...new Set([...numbers, v.fromPull])].sort((a, b) => a - b).map((n) => (
                         <option key={n} value={n}>
                           {n}

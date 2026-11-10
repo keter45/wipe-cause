@@ -536,6 +536,8 @@ export const shareGithubGet = () => invoke<GithubStatus>('share_github_get');
 export const shareGithubSet = (token: string | null) => invoke<GithubStatus>('share_github_set', { token });
 /** Troca a chave e apaga o Gist: o link antigo para de funcionar. */
 export const shareNewLink = () => invoke<ShareStatus>('share_new_link');
+/** Escolhas da tela (JSON de chaves do localStorage) que o link de visualização mostra. */
+export const sharePrefsSet = (prefs: string) => invoke<void>('share_prefs_set', { prefs });
 export const shareStatus = () => invoke<ShareStatus>('share_status');
 export const shareStart = () => invoke<ShareStatus>('share_start');
 export const shareStop = () => invoke<void>('share_stop');

@@ -250,6 +250,7 @@ pub fn run() {
             share::share_stop,
             share::share_status,
             share::share_new_link,
+            share::share_prefs_set,
             share_gist::share_github_get,
             share_gist::share_github_set,
             share::experimental_get,

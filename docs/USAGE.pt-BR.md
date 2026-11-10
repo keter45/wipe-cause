@@ -114,6 +114,8 @@ O pull, o boss, a noite, o desempenho de um jogador e o modo solo têm **Compart
 
 **Link fixo:** conecte o GitHub no mesmo cartão (um token com a permissão `gist`; o botão "Criar token no GitHub" abre a página já com ela marcada). O app guarda o endereço atual do túnel num Gist secreto da sua conta, e o link passa a ser `keter45.github.io/wipe-cause/?v=…`, no site do Wipe Cause, o mesmo todo dia. Com o app desligado, quem abrir vê "o app de quem compartilhou está desligado", e a página tenta de novo sozinha. Sem o GitHub, o link é o do túnel (`….trycloudflare.com`) e muda a cada vez que ele abre.
 
+O link mostra a tela como você a deixou: a note de CDs de cura, as métricas do grupo escolhidas em cada boss, os cards abertos ou recolhidos, os parses do WCL e as camadas do replay. Quando você muda algo, quem está com o link aberto vê em até meio minuto, sem poder editar. Notas dos pulls, marcas e configurações não vão.
+
 Quem tiver o link vê todo o histórico, inclusive nomes dos players. **Gerar link novo** troca a chave e apaga o link fixo: quem tinha o antigo perde o acesso.
 
 ### 🧮 Nota por player
