@@ -70,6 +70,12 @@ Medido nas 853 vezes em que alguém perdeu o Noxious Shell nos reports míticos 
 - **Outros golpes não chocam o ovo.** Os portadores tomaram 1132 Mephitic Thrash e perderam o ovo só 2 vezes.
 - **Ovos no chão.** Das 93 Vipers, 43 nascem de ovos no chão que encostam no veneno, sem portador perto.
 - **Ordem no log.** A Caustic Waves tira o Noxious Shell no mesmo ms do golpe, e o log registra a perda da aura antes do dano. Por isso o `requires_aura` aceita a aura que caiu até 50 ms antes do golpe.
+- **Culpado da Viper.** O `viper_hatched` passou a disparar pela aura 1301268, que cai no raid de 0 a 0,09 s depois que o portador perde o ovo, e culpa quem perdeu o Noxious Shell (`fail_aura_ids` + `culprit_auras`). O número de falhas não mudou. Ganharam culpado:
+  - 32 falhas no log local de 09/11, com 35 culpados (Noxious Splash culpa os dois portadores);
+  - 11 das 13 na noite de prog da Rancour (kW7y);
+  - 1 das 3 no BPR9.
+
+  Ovo no chão continua sem culpado.
 - **A regra `egg_carrier_waves`** culpa o portador que tomou a onda. Contou 19 casos no log local de 09/11 e 7 no kW7y.
 - **Efeito nas outras regras com `requires_aura`.** Comparei antes e depois nos logs locais de 05/11 e 09/11, no Twin Fangs de 24/09 e nos reports BPR9, vbCJ e kW7y. Mudaram só dois double soaks que o check antigo perdia, os dois da Reidane:
   - no `grim_guillotine_double_soak` do Coiled Altar, ela tomou 5,8M contra ~0,5M de quem não tinha a vulnerabilidade;
