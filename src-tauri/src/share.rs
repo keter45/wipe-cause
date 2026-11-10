@@ -87,6 +87,12 @@ fn status_of(state: &mut Option<Running>) -> ShareStatus {
     }
 }
 
+/// O link que vai para os outros enquanto o link está ligado: o fixo, se houver; senão o do túnel.
+pub fn public_link() -> Option<String> {
+    let s = share_status();
+    s.fixed_url.or(s.url)
+}
+
 #[tauri::command]
 pub fn share_status() -> ShareStatus {
     status_of(&mut STATE.lock().unwrap_or_else(|e| e.into_inner()))

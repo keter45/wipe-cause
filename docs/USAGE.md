@@ -114,6 +114,8 @@ It's an experimental feature and stays hidden: in **Settings → About**, tap th
 
 **Fixed link:** connect GitHub on the same card (a token with the `gist` scope; the "Create a token on GitHub" button opens the page with it already checked). The app keeps the current tunnel address in a secret Gist on your account, and the link becomes `keter45.github.io/wipe-cause/?v=…`, on the Wipe Cause site, the same every day. With the app off, whoever opens it sees "the sharer's app is off", and the page keeps trying on its own. Without GitHub, the link is the tunnel's (`….trycloudflare.com`) and changes every time it opens.
 
+With the link on, every message the app sends to Discord (wipe, kill, night recap, Share) ends with "👁️ Watch live" and the link (the fixed one, if GitHub is connected).
+
 The link shows the screen the way you left it: the healing CD note, the group metrics picked for each boss, the open or collapsed cards, the WCL parses and the replay layers. When you change something, whoever has the link open sees it within half a minute, without being able to edit. Pull notes, marks and settings are not sent.
 
 Anyone with the link sees the whole history, including player names. **Make a new link** changes the key and deletes the fixed link: anyone with the old one loses access.

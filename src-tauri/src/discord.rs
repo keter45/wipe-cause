@@ -60,7 +60,8 @@ pub fn discord_set_config(app: AppHandle, config: DiscordConfig) -> Result<(), S
 /// Envia a mensagem (JSON do webhook: content/embeds). `webhook` = outro destino (ex.: testar
 /// antes de salvar); sem ele, usa o salvo.
 #[tauri::command]
-pub async fn discord_post(app: AppHandle, payload: serde_json::Value, webhook: Option<String>) -> Result<(), String> {
+pub async fn discord_post(app: AppHandle, mut payload: serde_json::Value, webhook: Option<String>) -> Result<(), String> {
+    with_share_link(&mut payload);
     let url = webhook
         .or_else(|| settings::load(&app).discord_webhook)
         .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
@@ -87,7 +88,8 @@ pub async fn discord_post(app: AppHandle, payload: serde_json::Value, webhook: O
 /// Envia uma imagem (PNG em base64) com a mensagem; o embed pode usar
 /// `attachment://<file_name>` como imagem.
 #[tauri::command]
-pub async fn discord_post_image(app: AppHandle, payload: serde_json::Value, file_name: String, data_b64: String, webhook: Option<String>) -> Result<(), String> {
+pub async fn discord_post_image(app: AppHandle, mut payload: serde_json::Value, file_name: String, data_b64: String, webhook: Option<String>) -> Result<(), String> {
+    with_share_link(&mut payload);
     let url = webhook
         .or_else(|| settings::load(&app).discord_webhook)
         .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
@@ -110,7 +112,8 @@ pub struct DiscordFile {
 /// Envia a mensagem com vários arquivos (ex.: o cartão do wipe e o clipe do erro); o embed pode usar
 /// `attachment://<nome>`.
 #[tauri::command]
-pub async fn discord_post_files(app: AppHandle, payload: serde_json::Value, files: Vec<DiscordFile>, webhook: Option<String>) -> Result<(), String> {
+pub async fn discord_post_files(app: AppHandle, mut payload: serde_json::Value, files: Vec<DiscordFile>, webhook: Option<String>) -> Result<(), String> {
+    with_share_link(&mut payload);
     let url = webhook
         .or_else(|| settings::load(&app).discord_webhook)
         .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
@@ -126,6 +129,32 @@ pub async fn discord_post_files(app: AppHandle, payload: serde_json::Value, file
         decoded.push((f.name, f.mime, data));
     }
     post_multipart(url, &payload, decoded).await
+}
+
+/// Link de visualização ligado: vai junto em toda mensagem (o fixo, se houver; senão o do túnel).
+fn with_share_link(payload: &mut serde_json::Value) {
+    if let Some(link) = crate::share::public_link() {
+        append_link(payload, &link);
+    }
+}
+
+/// Põe o link no fim do texto da mensagem, sem passar dos 2000 caracteres do Discord. Entre `< >`
+/// para o Discord não abrir uma prévia grande do site.
+fn append_link(payload: &mut serde_json::Value, link: &str) {
+    let Some(obj) = payload.as_object_mut() else { return };
+    let line = pick(format!("👁️ Ver ao vivo: <{link}>"), format!("👁️ Watch live: <{link}>"));
+    let current = obj.get("content").and_then(|c| c.as_str()).unwrap_or("").trim_end().to_string();
+    if current.contains(link) {
+        return;
+    }
+    let room = 2000usize.saturating_sub(line.chars().count() + 1);
+    let content = if current.is_empty() {
+        line
+    } else {
+        let kept: String = current.chars().take(room).collect();
+        format!("{kept}\n{line}")
+    };
+    obj.insert("content".into(), serde_json::Value::String(content));
 }
 
 /// Tipos de arquivo que vão ao Discord.
@@ -175,6 +204,24 @@ mod tests {
         assert!(valid_webhook("https://discordapp.com/api/webhooks/123/abc"));
         assert!(!valid_webhook("https://example.com/api/webhooks/123/abc"));
         assert!(!valid_webhook("http://discord.com/api/webhooks/123/abc"));
+    }
+
+    #[test]
+    fn share_link_goes_at_the_end_of_the_text() {
+        let mut p = serde_json::json!({ "content": "Wipe 3", "embeds": [] });
+        append_link(&mut p, "https://site/?v=abc");
+        let c = p["content"].as_str().unwrap();
+        assert!(c.starts_with("Wipe 3\n") && c.ends_with("<https://site/?v=abc>"), "{c}");
+        // sem texto: o link vira o texto; de novo: não duplica
+        let mut q = serde_json::json!({ "embeds": [] });
+        append_link(&mut q, "https://site/?v=abc");
+        append_link(&mut q, "https://site/?v=abc");
+        assert_eq!(q["content"].as_str().unwrap().matches("https://site").count(), 1);
+        // texto no limite: corta o texto, o link fica inteiro
+        let mut r = serde_json::json!({ "content": "x".repeat(2000) });
+        append_link(&mut r, "https://site/?v=abc");
+        let c = r["content"].as_str().unwrap();
+        assert!(c.chars().count() <= 2000 && c.ends_with("<https://site/?v=abc>"));
     }
 
     #[test]
