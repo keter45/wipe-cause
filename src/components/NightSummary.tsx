@@ -432,14 +432,14 @@ function CausesTable({ s, spellIds }: { s: Summary; spellIds: Map<string, number
 // ---------------------------------------------------------------------------
 // Vilões e mocinhos
 
-export interface Award {
+interface Award {
   icon: LucideIcon;
   label: string;
   score: (p: PlayerNight) => number;
   format: (p: PlayerNight) => string;
 }
 
-export function villainAwards(): Award[] {
+function villainAwards(): Award[] {
   const a = messagesOf(nightMsg).awards;
   return [
     { icon: Skull, label: a.decisive, score: (p) => p.decisiveDeaths, format: (p) => a.decisiveFmt(p.decisiveDeaths, p.pulls) },
@@ -449,7 +449,7 @@ export function villainAwards(): Award[] {
   ];
 }
 
-export function heroAwards(): Award[] {
+function heroAwards(): Award[] {
   const a = messagesOf(nightMsg).awards;
   return [
     { icon: Hand, label: a.interrupts, score: (p) => p.interrupts, format: (p) => a.interruptsFmt(p.interrupts) },

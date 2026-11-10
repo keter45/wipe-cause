@@ -1,139 +1,95 @@
-// Blocos do início do link de visualização, no mesmo desenho da página (ícone + nome · barra ·
-// número): as métricas do grupo que quem compartilha escolheu, os destaques da noite e os CDs da
-// note de cura do try (quem não usou ou usou fora de hora).
+// Blocos do try no início do link de visualização, no mesmo desenho da página (ícone + nome ·
+// barra · número): as métricas do grupo que quem compartilha escolheu e os CDs da note de cura (quem
+// não usou ou usou fora de hora).
 
 import { useMemo } from 'react';
 import { ShieldOff } from 'lucide-react';
 import type { Pull } from '../../types';
-import { metricNight, savedBossMetrics, type MetricNight } from '../../lib/bossMetrics';
-import { summarizeNight, topBy } from '../../lib/night';
+import { metricNight, savedBossMetrics } from '../../lib/bossMetrics';
 import { noteFor, noteVersions, parseNote, type ParsedNote } from '../../lib/healNote';
 import { matchLines, phaseOffsets, type LineCheck } from '../../lib/healNoteCheck';
 import { classColor, mmss, shortName } from '../../lib/format';
 import { PlayerName } from '../Names';
 import { SpellIcon, SpellName } from '../SpellIcon';
-import { heroAwards, villainAwards, type Award } from '../NightSummary';
 import { useMessages } from '../../i18n';
 import { viewerHomeMsg } from './ViewerHome.i18n';
 
 // ---------------------------------------------------------------- métricas do grupo
 
-/** As métricas escolhidas no resumo do boss: uma barra por try (o visto em destaque) e quem mais errou. */
-export function GroupMetrics({ pulls, viewedId, onView }: { pulls: Pull[]; viewedId: number; onView: (id: number) => void }) {
-  const t = useMessages(viewerHomeMsg);
-  const encounterId = pulls[0]?.encounterId;
-  const metrics = useMemo(
-    () => (encounterId != null ? savedBossMetrics(encounterId).map((k) => metricNight(pulls, k)).filter((m): m is MetricNight => m != null) : []),
-    [pulls, encounterId],
-  );
-  if (!metrics.length) return null;
-  return (
-    <section className="panel vh-panel" aria-label={t.metrics}>
-      <h3 className="vh-h">{t.metrics}</h3>
-      <div className="vh-metrics">
-        {metrics.map((m) => (
-          <MetricMini key={m.key} m={m} viewedId={viewedId} onView={onView} />
-        ))}
-      </div>
-    </section>
-  );
+interface TryMetric {
+  key: string;
+  name: string;
+  spellId: number | null;
+  yd: boolean;
+  /** neste try (null = a mecânica não foi avaliada nele) */
+  count: number | null;
+  /** o pior try da noite, para a barra dizer se este foi bom ou ruim */
+  worst: number;
+  people: { guid: string; name: string; class: string | null; count: number }[];
 }
 
-function MetricMini({ m, viewedId, onView }: { m: MetricNight; viewedId: number; onView: (id: number) => void }) {
+/**
+ * As métricas escolhidas no resumo do boss, só do try visto: quantas vezes neste try (barra na
+ * escala do pior try da noite) e quem errou nele.
+ */
+export function TryMetrics({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
   const t = useMessages(viewerHomeMsg);
-  const yd = m.unit === 'yd';
-  const fmt = (n: number) => (yd ? t.yards(Math.round(n)) : `${n}×`);
-  const max = Math.max(1, ...m.perPull.map((x) => x.failures));
-  const people = (m.collective ? m.helpers : m.players).slice(0, 3);
-  const viewed = m.perPull.find((x) => x.pull.id === viewedId);
+  const encounterId = pull.encounterId;
+  const rows = useMemo((): TryMetric[] => {
+    if (encounterId == null) return [];
+    return savedBossMetrics(encounterId).flatMap((key) => {
+      const night = metricNight(pulls, key);
+      if (!night) return [];
+      const here = metricNight([pull], key);
+      const who = here ? (here.collective ? here.helpers : here.players) : [];
+      return [
+        {
+          key,
+          name: night.name,
+          spellId: night.spellId,
+          yd: night.unit === 'yd',
+          count: here ? here.total : null,
+          worst: Math.max(1, ...night.perPull.map((x) => x.failures)),
+          people: who.slice(0, 4).map((p) => ({ guid: p.guid, name: p.name, class: p.class, count: p.count })),
+        },
+      ];
+    });
+  }, [pulls, pull, encounterId]);
+  if (!rows.length) return null;
+  const fmt = (m: TryMetric, n: number) => (m.yd ? t.yards(Math.round(n)) : `${n}×`);
   return (
-    <article className="vh-metric">
-      <header className="vh-metric-head">
-        {m.spellId != null ? (
-          <SpellName spellId={m.spellId} name={m.name} size={22} />
-        ) : (
-          // métrica sem habilidade (mortes sem pot/defensivo): ícone de escudo no lugar
-          <span className="vh-metric-name">
-            <ShieldOff size={20} strokeWidth={1.5} aria-hidden /> {m.name}
-          </span>
-        )}
-        <span className="tabular vh-metric-total" title={t.metricTotal}>
-          {viewed && <span className={viewed.failures ? 'bad' : 'ok-text'}>{fmt(viewed.failures)}</span>}
-          <span className="muted small"> / {fmt(m.total)}</span>
-        </span>
-      </header>
-      <div className="vh-spark" role="group" aria-label={m.name}>
-        {m.perPull.map(({ pull, failures }) => (
-          <button
-            key={pull.id}
-            className={`vh-spark-bar ${pull.id === viewedId ? 'on' : ''} ${failures ? '' : 'zero'}`}
-            onClick={() => onView(pull.id)}
-            title={`#${pull.pullNumber}: ${fmt(failures)}`}
-            aria-label={`#${pull.pullNumber}: ${fmt(failures)}`}
-          >
-            <span style={{ height: `${Math.max(failures ? 12 : 4, (failures / max) * 100)}%` }} />
-          </button>
+    <div className="vh-mistakes">
+      <span className="muted small">{t.metrics}</span>
+      <ul>
+        {rows.map((m) => (
+          <li key={m.key} className="vh-metric-row">
+            <div className="vh-row">
+              {m.spellId != null ? (
+                <SpellName spellId={m.spellId} name={m.name} size={22} />
+              ) : (
+                // métrica sem habilidade (mortes sem pot/defensivo): ícone de escudo no lugar
+                <span className="vh-metric-name">
+                  <ShieldOff size={20} strokeWidth={1.5} aria-hidden /> {m.name}
+                </span>
+              )}
+              <span className="vh-row-bar" aria-hidden>
+                <span style={{ width: `${((m.count ?? 0) / m.worst) * 100}%` }} />
+              </span>
+              <span className={`tabular vh-row-n ${m.count ? '' : 'ok-text'}`}>{m.count == null ? '—' : fmt(m, m.count)}</span>
+            </div>
+            {m.people.length > 0 && (
+              <div className="vh-metric-people">
+                {m.people.map((p) => (
+                  <span key={p.guid} className="who-chip" style={{ color: classColor(p.class) }}>
+                    {shortName(p.name)} <span className="muted">{fmt(m, p.count)}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </li>
         ))}
-      </div>
-      {people.length > 0 && (
-        <div className="vh-metric-people">
-          {people.map((p) => (
-            <span key={p.guid} className="who-chip" style={{ color: classColor(p.class) }}>
-              {shortName(p.name)} <span className="muted">{yd ? t.yards(Math.round(p.count)) : `${p.count}×`}</span>
-            </span>
-          ))}
-        </div>
-      )}
-    </article>
-  );
-}
-
-// ---------------------------------------------------------------- destaques
-
-/** Os destaques da noite (os mesmos do resumo): o melhor em cada categoria, e quem vem depois. */
-export function Highlights({ pulls }: { pulls: Pull[] }) {
-  const t = useMessages(viewerHomeMsg);
-  const s = useMemo(() => summarizeNight(pulls), [pulls]);
-  const groups: { title: string; tone: 'good' | 'bad'; awards: Award[] }[] = [
-    { title: t.heroes, tone: 'good', awards: heroAwards() },
-    { title: t.villains, tone: 'bad', awards: villainAwards() },
-  ];
-  return (
-    <section className="panel vh-panel" aria-label={t.highlights}>
-      <h3 className="vh-h">{t.highlights}</h3>
-      <div className="vh-highlights">
-        {groups.map((g) => (
-          <div key={g.title} className={`vh-award-group ${g.tone}`}>
-            <span className="small vh-award-title">{g.title}</span>
-            <ul>
-              {g.awards.map((a) => {
-                const top = topBy(s.players, a.score, 3);
-                const [first, ...rest] = top;
-                return (
-                  <li key={a.label} className="vh-award">
-                    <a.icon size={18} strokeWidth={1.5} className="vh-award-icon" aria-hidden />
-                    <span className="vh-award-label small muted">{a.label}</span>
-                    {first ? (
-                      <span className="vh-award-who">
-                        <PlayerName name={first.name} guid={first.guid} cls={first.class} />
-                        <span className="muted small tabular">{a.format(first)}</span>
-                        {rest.map((p) => (
-                          <span key={p.guid} className="small vh-award-next" style={{ color: classColor(p.class) }} title={a.format(p)}>
-                            {shortName(p.name)}
-                          </span>
-                        ))}
-                      </span>
-                    ) : (
-                      <span className="muted small">—</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </section>
+      </ul>
+    </div>
   );
 }
 

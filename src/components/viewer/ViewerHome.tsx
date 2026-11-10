@@ -21,7 +21,7 @@ import { BossIcon, BossName, PlayerName } from '../Names';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import { useMessages } from '../../i18n';
 import { viewerHomeMsg } from './ViewerHome.i18n';
-import { GroupMetrics, Highlights, NoteCds } from './ViewerPanels';
+import { NoteCds, TryMetrics } from './ViewerPanels';
 
 interface Props {
   pulls: Pull[];
@@ -135,8 +135,6 @@ export function ViewerHome({ pulls: all, live, onOpenPull, onReplay }: Props) {
         <TryReport pull={viewed} bossPulls={bossPulls} onOpen={() => onOpenPull(viewed.id)} onReplay={onReplay ? () => onReplay(viewed.id) : undefined} />
         <BossNight pulls={bossPulls} onView={view} />
       </div>
-      <GroupMetrics pulls={bossPulls} viewedId={viewed.id} onView={view} />
-      <Highlights pulls={bossPulls} />
     </div>
   );
 }
@@ -300,6 +298,7 @@ function TryReport({ pull, bossPulls, onOpen, onReplay }: { pull: Pull; bossPull
         </div>
       )}
 
+      <TryMetrics pulls={bossPulls} pull={pull} />
       <NoteCds pulls={bossPulls} pull={pull} />
 
       <div className="vh-actions">
