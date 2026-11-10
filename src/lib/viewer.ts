@@ -8,6 +8,7 @@
 import { messagesOf } from '../i18n';
 import { viewerMsg } from './viewer.i18n';
 import { viewerGist } from './backend';
+import { applySharedPrefs } from './sharedPrefs';
 
 /** O app de quem compartilhou não responde (desligado, sem internet, link desligado). */
 export class ViewerOffline extends Error {
@@ -88,6 +89,15 @@ const local: Record<string, () => unknown> = {
   share_status: () => ({ active: false, url: null, localUrl: null, fixedUrl: null, error: null }),
   share_github_get: () => ({ connected: false, user: null }),
 };
+
+/**
+ * Relê as escolhas de quem compartilhou e aplica na cópia em memória do localStorage. Devolve se
+ * algo mudou (a tela redesenha o conteúdo para pegar as novas).
+ */
+export async function refreshSharedPrefs(): Promise<boolean> {
+  const prefs = await viewerInvoke<Record<string, string> | null>('share_prefs_get', {});
+  return prefs ? applySharedPrefs(localStorage, prefs) : false;
+}
 
 export async function viewerInvoke<T>(cmd: string, args: Record<string, unknown>): Promise<T> {
   const answer = local[cmd];

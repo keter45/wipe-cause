@@ -8,6 +8,7 @@ import { Popover } from './Popover';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { tr, useMessages } from '../i18n';
 import { bossMetricsMsg } from './BossMetrics.i18n';
+import { readOnly } from '../lib/api';
 import { Hint } from './ui/Hint';
 import { Clamp } from './ui/Clamp';
 import { CollapseButton, useCollapsed } from './CollapsiblePanel';
@@ -51,13 +52,14 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
           <h3>{t.title} <Hint>{t.hint}</Hint></h3>
         </div>
         <span className="panel-head-actions">
-          <AddMetric options={options} chosen={keys} onToggle={toggleKey} />
+          {/* link de visualização: as métricas são as que quem compartilhou escolheu */}
+          {!readOnly && <AddMetric options={options} chosen={keys} onToggle={toggleKey} />}
           <CollapseButton open={open} onToggle={toggle} />
         </span>
       </header>
       {open && (
         <>
-          {keys.length === 0 && suggestions.length > 0 && (
+          {!readOnly && keys.length === 0 && suggestions.length > 0 && (
             <div className="metric-suggest">
               <span className="muted small">{t.empty}</span>
               <div className="chips">
@@ -78,20 +80,24 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
                   <MetricCard
                     key={key}
                     m={m}
-                    edit={{
-                      onRemove: () => toggleKey(key),
-                      onMove: (dir) => setKeys(moveMetric(keys, key, dir)),
-                      first: i === 0,
-                      last: i === metrics.length - 1,
-                    }}
+                    edit={
+                      readOnly
+                        ? undefined
+                        : {
+                            onRemove: () => toggleKey(key),
+                            onMove: (dir) => setKeys(moveMetric(keys, key, dir)),
+                            first: i === 0,
+                            last: i === metrics.length - 1,
+                          }
+                    }
                     onSelectPull={onSelectPull}
                   />
                 ) : (
                   <article key={key} className="metric-card gone">
                     <span className="muted small">{t.gone(key)}</span>
-                    <button className="icon-btn" onClick={() => toggleKey(key)} title={t.remove(key)} aria-label={t.remove(key)}>
+                    {!readOnly && <button className="icon-btn" onClick={() => toggleKey(key)} title={t.remove(key)} aria-label={t.remove(key)}>
                       <X size={14} strokeWidth={1.5} aria-hidden />
-                    </button>
+                    </button>}
                   </article>
                 ),
               )}

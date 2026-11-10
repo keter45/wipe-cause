@@ -21,7 +21,7 @@ use wipe_core::i18n::pick;
 use crate::{history, rule_tuning, settings, share_gist, simc, talents, wcl_source};
 
 /// Comandos que o visitante pode chamar: todos só leem.
-const READ_ONLY: &[&str] = &["live_status", "history_list", "history_load", "history_trends", "fight_replay", "rules_get", "talent_tree", "simc_saved_get", "fetch_image"];
+const READ_ONLY: &[&str] = &["share_prefs_get", "live_status", "history_list", "history_load", "history_trends", "fight_replay", "rules_get", "talent_tree", "simc_saved_get", "fetch_image"];
 
 struct Running {
     server: Arc<Server>,
@@ -35,6 +35,23 @@ struct Running {
 }
 
 static STATE: Mutex<Option<Running>> = Mutex::new(None);
+
+/// Escolhas da tela de quem compartilha (src/lib/sharedPrefs.ts): note de cura, métricas do grupo,
+/// cards recolhidos, parses. Só em memória; a tela manda de novo quando muda.
+static PREFS: Mutex<Option<Value>> = Mutex::new(None);
+
+#[tauri::command]
+pub fn share_prefs_set(prefs: String) -> Result<(), String> {
+    if prefs.len() > 8 * 1024 * 1024 {
+        return Err("prefs too large".into()); // i18n-ignore: não é texto para o usuário
+    }
+    let v: Value = serde_json::from_str(&prefs).map_err(|e| e.to_string())?;
+    if !v.is_object() {
+        return Err("prefs must be an object".into()); // i18n-ignore: não é texto para o usuário
+    }
+    *PREFS.lock().unwrap_or_else(|e| e.into_inner()) = Some(v);
+    Ok(())
+}
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -518,6 +535,7 @@ fn invoke(app: &AppHandle, body: &Value) -> Result<Value, String> {
     use tauri::async_runtime::block_on as block;
     let app = app.clone();
     match cmd {
+        "share_prefs_get" => Ok(PREFS.lock().unwrap_or_else(|e| e.into_inner()).clone().unwrap_or_else(|| serde_json::json!({}))),
         "live_status" => json(Ok(crate::live::live_status())),
         "history_list" => json(history::history_list(app)),
         "history_load" => history::history_load(app, s("id")?),

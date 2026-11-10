@@ -24,7 +24,8 @@ import { SoloBossView, SoloNightView, SoloTrendsView } from './components/SoloNi
 import { useMode } from './lib/mode';
 import { Header } from './components/Header';
 import { Sidebar, SidebarRail } from './components/Sidebar';
-import { liveStatus, type LiveStatus, type WcrScan, type WcrVideo } from './lib/api';
+import { liveStatus, sharePrefsSet, type LiveStatus, type WcrScan, type WcrVideo } from './lib/api';
+import { collectSharedPrefs } from './lib/sharedPrefs';
 import { matchVideos } from './lib/wcr';
 import { raidOnly } from './lib/content';
 import { PlayerClassesContext, playerClasses } from './lib/players';
@@ -190,6 +191,8 @@ export default function App() {
   // app; uma noite nova (outro log) abre sozinha para quem estava acompanhando.
   const shownSavedAt = useRef<number | null>(null);
   const [hostLive, setHostLive] = useState<LiveStatus>(LIVE_OFF);
+  // escolhas de quem compartilhou que mudaram: troca a chave do conteúdo para ele reler
+  const [prefsVersion, setPrefsVersion] = useState(0);
   // o app de quem compartilhou não responde: a mensagem (a página continua tentando)
   const [viewerDown, setViewerDown] = useState<string | null>(null);
   const viewerState = useRef({ report, openEntry, page, summary, selected });
@@ -209,6 +212,8 @@ export default function App() {
       ]);
       if (!alive) return;
       setHostLive(lv);
+      // escolhas de quem compartilhou (note de cura, métricas, cards): mudou, redesenha o conteúdo
+      if (h && (await import('./lib/viewer').then((m) => m.refreshSharedPrefs()).catch(() => false)) && alive) setPrefsVersion((v) => v + 1);
       setViewerDown(h ? null : down);
       if (h) {
         setHistory(h);
@@ -248,6 +253,23 @@ export default function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // App: as escolhas da tela que vão para o link de visualização (src/lib/sharedPrefs.ts), mandadas
+  // quando mudam; o servidor do link só guarda em memória e entrega a quem abre o link
+  useEffect(() => {
+    if (!inDesktop) return;
+    let last = '';
+    const push = () => {
+      const json = JSON.stringify(collectSharedPrefs(localStorage));
+      if (json === last) return;
+      sharePrefsSet(json)
+        .then(() => (last = json))
+        .catch(() => {});
+    };
+    push();
+    const id = window.setInterval(push, 10_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // primeira vez no app (sem nenhuma análise): abre nas Configurações, com o passo a passo
   const [firstRun, setFirstRun] = useState(false);
   useEffect(() => {
@@ -564,7 +586,7 @@ export default function App() {
             onExpand={toggleSidebar}
           />
         )}
-        <main className="content">
+        <main className="content" key={prefsVersion}>
           {page === 'settings' && !readOnly ? (
             <SettingsView
               focus={settingsFocus}
