@@ -10,7 +10,7 @@ export const BIG_DEFENSIVES: ReadonlySet<number> = new Set([
   22812, 61336, // Druid
   363916, // Evoker
   186265, 264735, // Hunter
-  45438, 414658, 110959, 55342, // Mage
+  45438, 414658, // Mage (Mirror Image e Greater Invisibility não reduzem mais dano)
   115203, 122783, 122278, 122470, // Monk
   642, 498, 184662, // Paladin
   47585, // Priest
