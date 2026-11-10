@@ -20,7 +20,7 @@ export interface MetricOption {
   failures: number;
   pullsWithFailure: number;
   /** métrica em jardas (fantasmas): `amount` = jardas na noite, `pullsWithFailure` = pulls com fantasma */
-  unit?: 'yd';
+  unit?: 'yd' | 'dmg';
   amount?: number;
 }
 
@@ -72,12 +72,110 @@ export interface MetricNight {
   /** quem ajudou (soak, interrupt, dispel), quem mais ajudou primeiro */
   helpers: MetricPlayer[];
   /** jardas (fantasmas): `total` e `failures` de cada pull em jardas; `count` de cada um em jardas */
-  unit?: 'yd';
+  unit?: 'yd' | 'dmg';
 }
 
 const YARDS = ':yards';
 /** Mortes com defensivo, poção de vida ou healthstone livres sem uso. */
 export const NO_DEFENSIVE = ':nodef';
+
+// ---------------------------------------------------------------- dano em X entre A e B
+
+/** Métrica "dano em um alvo numa janela": a chave guarda alvo, base e janela (s). */
+const DAMAGE_WINDOW = ':dmg|';
+const DAMAGE_WINDOW_TIP: Loc = { pt: bossMetricsMsg.pt.damageWindowTip, en: bossMetricsMsg.en.damageWindowTip };
+
+export interface DamageWindow {
+  /** nome do inimigo (adds iguais somam juntos) */
+  target: string;
+  /** 'pull' = desde o início do pull; senão a chave da fase (`PhaseMark.key`): desde o começo dela */
+  base: string;
+  /** janela em segundos a partir da base */
+  from: number;
+  to: number;
+}
+
+/** A chave da métrica (pode haver várias: cada alvo, base e janela é uma). */
+export const damageWindowKey = (w: DamageWindow) => `${DAMAGE_WINDOW}${w.target}|${w.base}|${w.from}|${w.to}`;
+
+export function parseDamageWindow(key: string): DamageWindow | null {
+  if (!key.startsWith(DAMAGE_WINDOW)) return null;
+  const [target, base, from, to] = key.slice(DAMAGE_WINDOW.length).split('|');
+  const a = Number(from);
+  const b = Number(to);
+  if (!target || !base || !Number.isFinite(a) || !Number.isFinite(b) || b <= a) return null;
+  return { target, base, from: a, to: b };
+}
+
+/** Inimigos que a raide bateu nos pulls, do mais batido ao menos (para escolher o alvo). */
+export function damageTargets(pulls: Pull[]): { target: string; total: number }[] {
+  const by = new Map<string, number>();
+  for (const p of pulls) for (const pl of p.players) for (const d of pl.damageByTarget ?? []) by.set(d.target, (by.get(d.target) ?? 0) + d.perSec.reduce((a, b) => a + b, 0));
+  return [...by.entries()].map(([target, total]) => ({ target, total })).sort((a, b) => b.total - a.total);
+}
+
+/** Fases que os pulls marcaram (para a base da janela), na ordem em que aparecem. */
+export function damagePhases(pulls: Pull[]): { key: string; name: string }[] {
+  const seen = new Map<string, string>();
+  for (const p of pulls) for (const m of p.phaseMarks ?? []) if (!seen.has(m.key)) seen.set(m.key, m.name);
+  return [...seen.entries()].map(([key, name]) => ({ key, name }));
+}
+
+/** Começo da janela no pull (s desde o início), ou null se a base não aconteceu nele. */
+function windowStart(pull: Pull, w: DamageWindow): number | null {
+  if (w.base === 'pull') return w.from;
+  const mark = (pull.phaseMarks ?? []).find((m) => m.key === w.base);
+  return mark ? Math.floor(mark.t / 1000) + w.from : null;
+}
+
+const mmssSec = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+/** Nome da métrica: "Ula'tek · P2 0:00–0:20" ou "Ula'tek · 1:30–2:00". */
+export function damageWindowName(w: DamageWindow, phases: { key: string; name: string }[]): string {
+  const base = w.base === 'pull' ? '' : `${phases.find((p) => p.key === w.base)?.name ?? w.base} `;
+  return `${w.target} · ${base}${mmssSec(w.from)}–${mmssSec(w.to)}`;
+}
+
+/**
+ * Dano da raide no alvo dentro da janela, em cada pull que chegou até ela; `failures` de cada pull
+ * e `count` de cada player guardam o dano (mais é melhor). Pulls que acabaram antes da janela, ou que
+ * não chegaram na fase da base, ficam de fora. Análises antigas (sem `damageByTarget`) também.
+ */
+function damageWindowNight(pulls: Pull[], key: string): MetricNight | null {
+  const w = parseDamageWindow(key);
+  if (!w) return null;
+  const phases = damagePhases(pulls);
+  const out: MetricNight = {
+    key, name: damageWindowName(w, phases), spellId: null, kind: 'damage_window', severity: 'none', tip: DAMAGE_WINDOW_TIP,
+    collective: false, perPull: [], total: 0, pullsWithFailure: 0, players: [], helpers: [], unit: 'dmg',
+  };
+  const by = new Map<string, MetricPlayer>();
+  for (const pull of pulls) {
+    if (!pull.players.some((pl) => pl.damageByTarget)) continue;
+    const start = windowStart(pull, w);
+    if (start == null || start * 1000 >= (pull.cutoffT ?? pull.durationMs)) continue;
+    const end = start + (w.to - w.from);
+    let total = 0;
+    for (const pl of pull.players) {
+      const d = pl.damageByTarget?.find((x) => x.target === w.target);
+      if (!d) continue;
+      let sum = 0;
+      for (let s = start; s < end && s < d.perSec.length; s++) sum += d.perSec[s] ?? 0;
+      if (sum <= 0) continue;
+      total += sum;
+      const p = by.get(pl.guid) ?? by.set(pl.guid, { guid: pl.guid, name: pl.name, class: pl.class, count: 0, pulls: 0, max: 0 }).get(pl.guid)!;
+      p.count += sum;
+      p.pulls++;
+      p.max = Math.max(p.max, sum);
+    }
+    out.perPull.push({ pull, failures: total });
+    out.total += total;
+    if (total > 0) out.pullsWithFailure++;
+  }
+  if (!out.perPull.length) return null;
+  out.players = [...by.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  return out;
+}
 const HEALTH_POTION_SPELL = 1234768;
 const HEALTHSTONE_SPELL = 6262;
 const NO_DEFENSIVE_TIP: Loc = { pt: bossMetricsMsg.pt.noDefensiveTip, en: bossMetricsMsg.en.noDefensiveTip };
@@ -251,6 +349,7 @@ function yardsNight(pulls: Pull[], key: string): MetricNight | null {
 /** Uma mecânica somada na noite do boss; null se ela não aparece em nenhum pull. */
 export function metricNight(pulls: Pull[], key: string): MetricNight | null {
   if (key === NO_DEFENSIVE) return noDefensiveNight(pulls, key);
+  if (key.startsWith(DAMAGE_WINDOW)) return damageWindowNight(pulls, key);
   if (key.endsWith(YARDS)) return yardsNight(pulls, key);
   let out: MetricNight | null = null;
   const errs = new Map<string, MetricPlayer>();
@@ -307,7 +406,7 @@ export interface MetricTrend {
   kind: string;
   severity: MechanicSeverity;
   collective: boolean;
-  unit?: 'yd';
+  unit?: 'yd' | 'dmg';
   /** na mesma ordem das noites recebidas */
   nights: MetricTrendNight[];
   /** quem errou, quem mais errou primeiro; `nights` = noites em que apareceu */

@@ -201,6 +201,9 @@ struct PlayerAcc {
     rotation: Option<RotationTracker>,
     /// dano e cura por janela de TIMELINE_MS (pets somados)
     damage_timeline: Vec<i64>,
+    /// dano em cada inimigo (pelo nome: adds iguais somam juntos), por segundo, pets somados.
+    /// Base da métrica "dano em X entre A e B" (o usuário escolhe alvo e janela na tela).
+    damage_by_target: HashMap<String, Vec<i64>>,
     healing_timeline: Vec<i64>,
     /// overheal por habilidade (pets somados ao dono)
     overheal_by_spell: HashMap<u32, (String, i64)>,
@@ -262,6 +265,24 @@ fn timeline(v: &[i64], analyzed_ms: i64) -> Vec<i64> {
     let mut out: Vec<i64> = v.iter().copied().take(n).collect();
     out.resize(n, 0);
     out
+}
+
+/// Dano por alvo até o corte: um por inimigo com dano, o mais batido primeiro; segundos em ordem,
+/// sem os zeros do fim.
+fn by_target(m: &HashMap<String, Vec<i64>>, analyzed_ms: i64) -> Vec<TargetDamage> {
+    let n = ((analyzed_ms + 999) / 1000).max(0) as usize;
+    let mut v: Vec<TargetDamage> = m
+        .iter()
+        .filter_map(|(target, secs)| {
+            let mut per_sec: Vec<i64> = secs.iter().copied().take(n).collect();
+            while per_sec.last() == Some(&0) {
+                per_sec.pop();
+            }
+            (!per_sec.is_empty()).then(|| TargetDamage { target: target.clone(), per_sec })
+        })
+        .collect();
+    v.sort_by_key(|t| std::cmp::Reverse(t.per_sec.iter().sum::<i64>()));
+    v
 }
 
 fn by_spell(m: &HashMap<(u32, bool), (String, i64)>) -> Vec<SpellAmount> {
@@ -1398,6 +1419,14 @@ impl PullBuilder {
                 }
                 p.damage_done += done;
                 add_at(&mut p.damage_timeline, rel, done);
+                if done > 0 {
+                    let per_sec = p.damage_by_target.entry(dst_name.to_string()).or_default();
+                    let sec = (rel.max(0) / 1000) as usize;
+                    if per_sec.len() <= sec {
+                        per_sec.resize(sec + 1, 0);
+                    }
+                    per_sec[sec] += done;
+                }
                 p.damage_by_spell.entry((spell_id, pet)).or_insert_with(|| (spell_name.clone(), 0)).1 += done;
             }
         }
@@ -2142,6 +2171,7 @@ impl PullBuilder {
                 // healer parado só conta com alguém da raid precisando de cura
                 rotation: rotations.remove(guid).map(|r| r.finish(analyzed_ms, if healer { &self.injured_secs } else { &self.raid_active })),
                 damage_timeline: timeline(&p.damage_timeline, analyzed_ms),
+                damage_by_target: by_target(&p.damage_by_target, analyzed_ms),
                 healing_timeline: timeline(&p.healing_timeline, analyzed_ms),
                 overheal_by_spell: if healer { overheal_list(&p.overheal_by_spell) } else { Vec::new() },
                 mana_timeline: if healer { mana_list(&p.mana_timeline, analyzed_ms) } else { Vec::new() },
@@ -2875,6 +2905,20 @@ pub(crate) fn finalize(mut finished: Vec<FinishedPull>, data: &GameData) -> (Vec
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn damage_by_target_keeps_the_cutoff_and_sorts_by_total() {
+        let mut m = HashMap::new();
+        m.insert("Add".to_string(), vec![5, 5, 0, 7, 0, 0]);
+        m.insert("Boss".to_string(), vec![100, 0, 0]);
+        m.insert("Nada".to_string(), vec![0, 0]);
+        // corte aos 3 s: o segundo 3 (7 no Add) fica de fora; zeros do fim saem; sem dano, sem alvo
+        let v = by_target(&m, 3_000);
+        assert_eq!(v.iter().map(|t| t.target.as_str()).collect::<Vec<_>>(), ["Boss", "Add"]);
+        assert_eq!(v[0].per_sec, [100]);
+        assert_eq!(v[1].per_sec, [5, 5]);
+    }
+
     use super::*;
     use crate::tokenizer::split_fields;
 

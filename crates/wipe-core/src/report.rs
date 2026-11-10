@@ -983,6 +983,9 @@ pub struct PlayerStats {
     /// dano / cura por janela de 5s (pets somados), até o corte
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub damage_timeline: Vec<i64>,
+    /// dano em cada inimigo por segundo (pets somados), até o corte: a métrica "dano em X entre A e B"
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub damage_by_target: Vec<TargetDamage>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub healing_timeline: Vec<i64>,
     /// healer: overheal por habilidade, maiores primeiro
@@ -1007,6 +1010,14 @@ pub struct SpellCasts {
     pub name: String,
     /// ms desde o início do pull
     pub times: Vec<i64>,
+}
+
+/// Dano de um player num inimigo (pelo nome), segundo a segundo desde o início do pull.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TargetDamage {
+    pub target: String,
+    pub per_sec: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
