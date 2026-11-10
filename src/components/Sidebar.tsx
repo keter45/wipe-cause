@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronLeft, FileX, PanelLeftOpen, Pin, PinOff, Plus, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronLeft, FileX, PanelLeftOpen, Pin, PinOff, Plus, Radio, RefreshCw, Settings, Trash, TrendingUp } from 'lucide-react';
 import type { LogReport, Pull } from '../types';
 import { canEdit, hasBackend, historyLoad, readOnly, readReportFile, sameLog, type HistoryEntry, inDesktop } from '../lib/api';
 import { logTitle, mainEncounterId, pct } from '../lib/format';
@@ -19,8 +19,10 @@ interface Props extends PullListProps {
   busy: boolean;
   onNew: () => void;
   /** página aberta na área principal (destaca o item da navegação) */
-  page: 'analysis' | 'browse' | 'trends' | 'settings';
+  page: 'home' | 'analysis' | 'browse' | 'trends' | 'settings';
   onTrends: () => void;
+  /** link de visualização: o início (try da vez e resumo) */
+  onHome?: () => void;
   onSettings: () => void;
   appVersion: string | null;
   updateState: UpdateState;
@@ -111,7 +113,13 @@ export function Sidebar(props: Props) {
   return (
     <aside className="sidebar" aria-label={t.aria}>
       <div className="sidebar-top">
-        {readOnly ? null : hasBackend ? (
+        {readOnly ? (
+          props.onHome && (
+            <button className={`side-pill primary ${props.page === 'home' ? 'active' : ''}`} onClick={props.onHome} aria-current={props.page === 'home' ? 'page' : undefined}>
+              {t.home}
+            </button>
+          )
+        ) : hasBackend ? (
           <button className={`side-pill primary ${props.page === 'browse' ? 'active' : ''}`} onClick={props.onNew} aria-current={props.page === 'browse' ? 'page' : undefined}>
             {t.newAnalysis}
           </button>
@@ -388,13 +396,14 @@ interface RailProps {
   page: Props['page'];
   onNew: () => void;
   onTrends: () => void;
+  onHome?: () => void;
   onSettings: () => void;
   onOpenEntry: (e: HistoryEntry) => void;
   onExpand: () => void;
 }
 
 /** Barra lateral recolhida: uma coluna de ícones (40px) com os atalhos e as análises recentes. */
-export function SidebarRail({ history, report, page, onNew, onTrends, onSettings, onOpenEntry, onExpand }: RailProps) {
+export function SidebarRail({ history, report, page, onNew, onTrends, onHome, onSettings, onOpenEntry, onExpand }: RailProps) {
   const t = useMessages(sidebarMsg);
   const { status } = useSetup();
   const isOpen = (e: HistoryEntry) => report != null && sameLog(e.logPath, report.file);
@@ -407,6 +416,7 @@ export function SidebarRail({ history, report, page, onNew, onTrends, onSettings
   return (
     <nav className="sidebar-rail" aria-label={t.aria}>
       {item(t.expand, false, onExpand, <PanelLeftOpen size={16} strokeWidth={1.5} aria-hidden />)}
+      {onHome && item(t.home, page === 'home', onHome, <Radio size={16} strokeWidth={1.5} aria-hidden />)}
       {canEdit && item(t.newAnalysis, page === 'browse', onNew, <Plus size={16} strokeWidth={2} aria-hidden />, 'new')}
       {item(t.trends, page === 'trends', onTrends, <TrendingUp size={16} strokeWidth={1.5} aria-hidden />)}
       <span className="rail-sep" aria-hidden />

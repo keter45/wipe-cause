@@ -47,6 +47,7 @@ type Tab = 'me' | 'mechanics' | 'deaths' | 'interrupts' | 'healcds' | 'players' 
 const lastTab: Record<AppMode, Tab> = { guild: 'deaths', solo: 'me' };
 
 
+
 interface Props {
   pull: Pull;
   /** código do report da noite no Warcraft Logs */

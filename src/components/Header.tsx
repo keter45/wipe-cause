@@ -21,6 +21,8 @@ import { Hint } from './ui/Hint';
 const ICON = { size: 16, strokeWidth: 1.5, 'aria-hidden': true } as const;
 
 interface Props {
+  /** link de visualização: a marca leva ao início (no celular é a única navegação) */
+  onHome?: () => void;
   report: LogReport | null;
   busy: boolean;
   deathCutoff: number;
@@ -54,10 +56,17 @@ export function Header(props: Props) {
   const v = useMessages(viewerMsg);
   return (
     <header className="topbar">
-      <div className="brand" title="Wipe Cause">
-        <Crosshair size={18} strokeWidth={2} className="brand-mark" aria-hidden />
-        <span className="brand-name">Wipe Cause</span>
-      </div>
+      {props.onHome ? (
+        <button className="brand brand-home" title={v.home} aria-label={v.home} onClick={props.onHome}>
+          <Crosshair size={18} strokeWidth={2} className="brand-mark" aria-hidden />
+          <span className="brand-name">Wipe Cause</span>
+        </button>
+      ) : (
+        <div className="brand" title="Wipe Cause">
+          <Crosshair size={18} strokeWidth={2} className="brand-mark" aria-hidden />
+          <span className="brand-name">Wipe Cause</span>
+        </div>
+      )}
       <ModeSwitch />
       {readOnly && <ViewOnlyBadge />}
 
