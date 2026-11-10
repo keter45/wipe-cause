@@ -282,7 +282,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
         {main.length > 0 && (
           <ul className="findings">
             {main.map((f, i) => (
-              <Finding key={i} f={f} pull={pull} decisive={verdict.decisiveDeaths} />
+              <Finding key={i} f={f} pull={pull} decisive={verdict.decisiveDeaths} onReplay={replayFrom} />
             ))}
           </ul>
         )}
@@ -295,7 +295,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
             {showMinor && (
               <ul className="findings minor">
                 {minor.map((f, i) => (
-                  <Finding key={i} f={f} pull={pull} decisive={verdict.decisiveDeaths} />
+                  <Finding key={i} f={f} pull={pull} decisive={verdict.decisiveDeaths} onReplay={replayFrom} />
                 ))}
               </ul>
             )}
@@ -405,10 +405,32 @@ function whoOf(f: FindingT, pull: Pull, decisive: Pull['deaths']): Who[] {
   return ds.length >= 2 ? ds.map((d) => ({ key: `${d.guid}:${d.t}`, name: shortName(d.name), cls: d.class ?? cls(d.guid), x: mmss(d.t) })) : [];
 }
 
+/** O replay abre um pouco antes do momento, para dar contexto. */
+const REPLAY_LEAD_MS = 3000;
+
+/**
+ * Quando o achado aconteceu: a primeira falha de quem foi culpado na mecânica (sem quem fez a
+ * parte), senão a primeira falha registrada, senão a primeira morte decisiva por aquela habilidade.
+ */
+export function findingMoment(f: FindingT, pull: Pull, decisive: Pull['deaths']): number | null {
+  if (f.spellId == null) return null;
+  const m = pull.mechanics.find((x) => x.spellId === f.spellId && x.failures > 0);
+  const first = (ts: (number | null | undefined)[]) => {
+    const ok = ts.filter((x): x is number => typeof x === 'number' && Number.isFinite(x));
+    return ok.length ? Math.min(...ok) : null;
+  };
+  return (
+    first(m?.players.filter((p) => !p.credit).map((p) => p.firstT) ?? []) ??
+    first(m?.events.map((e) => e.t) ?? []) ??
+    first(decisive.filter((d) => d.killingBlow?.spellId === f.spellId).map((d) => d.t))
+  );
+}
+
 /** Uma linha do que pesou: ícone, o achado, quem (cor da classe, quantas vezes) e quantos jogadores à direita. */
-function Finding({ f, pull, decisive }: { f: FindingT; pull: Pull; decisive: Pull['deaths'] }) {
+function Finding({ f, pull, decisive, onReplay }: { f: FindingT; pull: Pull; decisive: Pull['deaths']; onReplay?: (t: number) => void }) {
   const t = useMessages(pullMsg);
   const who = whoOf(f, pull, decisive);
+  const at = onReplay ? findingMoment(f, pull, decisive) : null;
   const shown = who.slice(0, 6);
   const people = new Set(who.map((w) => w.name)).size;
   return (
@@ -447,6 +469,11 @@ function Finding({ f, pull, decisive }: { f: FindingT; pull: Pull; decisive: Pul
           )
         )}
       </div>
+      {at != null && onReplay && (
+        <button className="btn ghost sm finding-replay" onClick={() => onReplay(Math.max(0, at - REPLAY_LEAD_MS))} title={t.replayAtTitle(mmss(at))}>
+          <Play size={12} strokeWidth={2} aria-hidden /> {t.replayAt(mmss(at))}
+        </button>
+      )}
       {people > 0 && (
         <div className="finding-count">
           {people}
