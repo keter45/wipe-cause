@@ -9709,3 +9709,33 @@ button.vh-stat:hover {
 .vh-cd.clickable:hover {
   background: var(--panel-2);
 }
+
+/* métrica "dano em alvo": formulário no Adicionar métrica e o cartão */
+.dmg-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.dmg-form h4 {
+  margin: 0;
+}
+.dmg-field {
+  display: grid;
+  gap: 4px;
+}
+.dmg-window {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+.metric-dmg-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.metric-bars.dmg .metric-bar.hit {
+  background: var(--kill);
+}

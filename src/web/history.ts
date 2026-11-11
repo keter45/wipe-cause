@@ -111,7 +111,7 @@ export function compact(report: LogReport): LogReport {
     strip(p, ['raidSeries', 'enemyHits']);
     for (const d of p.deaths ?? []) strip(d, ['recap', 'debuffs', 'mechanicDamage', 'positions']);
     for (const m of p.mechanics ?? []) strip(m, ['events', 'snapshots']);
-    for (const pl of p.players ?? []) strip(pl, ['takenByAbility', 'interruptLog', 'casts', 'damageBySpell', 'healingBySpell', 'setup', 'cdHeals']);
+    for (const pl of p.players ?? []) strip(pl, ['takenByAbility', 'interruptLog', 'casts', 'damageBySpell', 'healingBySpell', 'setup', 'cdHeals', 'damageByTarget']);
   }
   return r;
 }

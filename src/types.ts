@@ -418,6 +418,12 @@ export interface BossState {
 
 export type Role = 'tank' | 'healer' | 'dps';
 
+/** Dano de um player num inimigo (pelo nome), segundo a segundo. */
+export interface TargetDamage {
+  target: string;
+  perSec: number[];
+}
+
 export interface PlayerStats {
   guid: string;
   name: string;
@@ -451,6 +457,8 @@ export interface PlayerStats {
   rotation?: RotationResult;
   /** dano / cura por janela de 5s (pets somados), até o corte; análises antigas não têm */
   damageTimeline?: number[];
+  /** dano em cada inimigo (pelo nome) por segundo desde o início do pull, até o corte; análises antigas não têm */
+  damageByTarget?: TargetDamage[];
   healingTimeline?: number[];
   /** healer: overheal por habilidade e mana % por janela de 5s (análises antigas não têm) */
   overhealBySpell?: SpellAmount[];

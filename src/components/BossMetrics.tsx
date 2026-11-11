@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, Check, FlaskConical, Plus, Shield, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Check, FlaskConical, Plus, Shield, Swords, X } from 'lucide-react';
 import type { Pull } from '../types';
-import { metricNight, metricOptions, moveMetric, saveBossMetrics, savedBossMetrics, type MetricItem, type MetricNight, type MetricOption, type MetricPlayer } from '../lib/bossMetrics';
+import { damagePhases, damageTargets, damageWindowKey, metricNight, metricOptions, moveMetric, saveBossMetrics, savedBossMetrics, type MetricItem, type MetricNight, type MetricOption, type MetricPlayer } from '../lib/bossMetrics';
 import { num } from '../lib/format';
 import { PlayerName } from './Names';
 import { Popover } from './Popover';
@@ -53,7 +53,7 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
         </div>
         <span className="panel-head-actions">
           {/* link de visualização: as métricas são as que quem compartilhou escolheu */}
-          {!readOnly && <AddMetric options={options} chosen={keys} onToggle={toggleKey} />}
+          {!readOnly && <AddMetric options={options} chosen={keys} onToggle={toggleKey} pulls={pulls} />}
           <CollapseButton open={open} onToggle={toggle} />
         </span>
       </header>
@@ -109,7 +109,7 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
   );
 }
 
-export function AddMetric({ options, chosen, onToggle }: { options: MetricOption[]; chosen: string[]; onToggle: (key: string) => void }) {
+export function AddMetric({ options, chosen, onToggle, pulls }: { options: MetricOption[]; chosen: string[]; onToggle: (key: string) => void; pulls?: Pull[] }) {
   const t = useMessages(bossMetricsMsg);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -153,6 +153,7 @@ export function AddMetric({ options, chosen, onToggle }: { options: MetricOption
         })}
         {!shown.length && <li className="muted small">{t.noMatch}</li>}
       </ul>
+      {pulls && <DamageWindowForm pulls={pulls} chosen={chosen} onAdd={onToggle} />}
     </Popover>
   );
 }
@@ -176,7 +177,11 @@ export function MetricCard({
   const stack = m.kind === 'stack_limit';
   const yd = m.unit === 'yd';
   const noDef = m.kind === 'no_defensive';
-  const baseStats = noDef
+  const dmg = m.unit === 'dmg';
+  const tried = m.perPull.length;
+  const baseStats = dmg
+    ? t.dmgStats(num(tried ? m.total / tried : 0), num(Math.max(0, ...m.perPull.map((x) => x.failures))), tried)
+    : noDef
     ? m.total === 0
       ? t.cleanNoDefensive
       : t.statsNoDefensive(m.total, m.pullsWithFailure, m.perPull.length)
@@ -194,7 +199,13 @@ export function MetricCard({
     <article className={`metric-card ${m.severity}`}>
       <header className="metric-head">
         <strong className="metric-name">
-          <SpellName spellId={m.spellId} name={m.name} size={18} />
+          {dmg ? (
+            <span className="metric-dmg-name">
+              <Swords size={16} strokeWidth={1.75} aria-hidden /> {m.name}
+            </span>
+          ) : (
+            <SpellName spellId={m.spellId} name={m.name} size={18} />
+          )}
           {yd && <span className="muted small"> · {t.walked}</span>}
         </strong>
         {edit && (
@@ -212,14 +223,16 @@ export function MetricCard({
         )}
       </header>
 
-      <p className={`small metric-stats ${m.total ? '' : 'good'}`}>
-        <span className={`sev-tag ${m.severity}`}>{t.severities[m.severity] ?? m.severity}</span>
+      <p className={`small metric-stats ${m.total || dmg ? '' : 'good'}`}>
+        {!dmg && <span className={`sev-tag ${m.severity}`}>{t.severities[m.severity] ?? m.severity}</span>}
         {stats}
       </p>
 
-      <div className="metric-bars" role="img" aria-label={yd ? t.perPullYardsAria(m.name) : t.perPullAria(m.name)}>
+      <div className={`metric-bars ${dmg ? 'dmg' : ''}`} role="img" aria-label={dmg ? t.dmgAria(m.name) : yd ? t.perPullYardsAria(m.name) : t.perPullAria(m.name)}>
         {m.perPull.map(({ pull, failures, damage }) => {
-          const label = yd
+          const label = dmg
+            ? t.dmgBar(pull.pullNumber, num(failures))
+            : yd
             ? t.barYards(pull.pullNumber, failures)
             : damage != null
               ? t.barDamage(pull.pullNumber, failures, num(damage))
@@ -230,7 +243,8 @@ export function MetricCard({
       </div>
 
       {/* nas falhas do raid a lista é de quem foi atingido; em failure_event, de quem causou */}
-      {m.players.length > 0 && (
+      {dmg && m.players.length > 0 && <PeopleList title={t.dmgWho} people={m.players} damageDone tone="good" full={full} />}
+      {!dmg && m.players.length > 0 && (
         <PeopleList title={noDef ? t.whoNoDefensive : yd ? t.whoYards : m.collective && m.kind !== 'failure_event' ? t.hit : t.who} people={m.players} stack={stack} yards={yd} damage={m.damage != null} tone="bad" full={full} />
       )}
       {m.helpers.length > 0 && <PeopleList title={noDef ? t.helpersNoDefensive : t.helpers} people={m.helpers} tone="good" full={full} />}
@@ -266,7 +280,7 @@ export function UnusedItems({ player }: { player: MetricPlayer }) {
   );
 }
 
-function PeopleList({ title, people, stack = false, yards = false, damage = false, tone, full = false }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; damage?: boolean; tone: 'bad' | 'good'; full?: boolean }) {
+function PeopleList({ title, people, stack = false, yards = false, damage = false, damageDone = false, tone, full = false }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; damage?: boolean; damageDone?: boolean; tone: 'bad' | 'good'; full?: boolean }) {
   const t = useMessages(bossMetricsMsg);
   const [all, setAll] = useState(full);
   const shown = all ? people : people.slice(0, TOP);
@@ -277,8 +291,8 @@ function PeopleList({ title, people, stack = false, yards = false, damage = fals
         {shown.map((p) => (
           <li key={p.guid}>
             <PlayerName name={p.name} guid={p.guid} cls={p.class} />
-            <strong className={`tabular ${tone}`}>{yards ? t.yards(p.count) : stack ? t.inPulls(p.count) : t.times(p.count)}</strong>
-            <span className="muted small">{yards ? t.ghosts(p.max, p.count) : stack ? t.maxStacks(p.max) : t.inPulls(p.pulls)}</span>
+            <strong className={`tabular ${tone}`}>{damageDone ? num(p.count) : yards ? t.yards(p.count) : stack ? t.inPulls(p.count) : t.times(p.count)}</strong>
+            <span className="muted small">{damageDone ? t.dmgInPulls(p.pulls) : yards ? t.ghosts(p.max, p.count) : stack ? t.maxStacks(p.max) : t.inPulls(p.pulls)}</span>
             {damage && <span className="muted small tabular">{t.playerDamage(num(p.damage ?? 0))}</span>}
             {p.items && p.items.length > 0 && <UnusedItems player={p} />}
           </li>
@@ -288,6 +302,80 @@ function PeopleList({ title, people, stack = false, yards = false, damage = fals
         <button className="btn ghost sm" onClick={() => setAll(!all)} aria-expanded={all}>
           {all ? '−' : t.more(people.length - TOP)}
         </button>
+      )}
+    </div>
+  );
+}
+
+/** "m:ss" ou "ss" em segundos; null se não der. */
+function parseClock(v: string): number | null {
+  const m = v.trim().match(/^(?:(\d+):)?(\d{1,2})$/);
+  if (!m) return null;
+  return Number(m[1] ?? 0) * 60 + Number(m[2]);
+}
+
+/**
+ * "Dano em alvo": escolhe o alvo (os mais batidos primeiro), de onde contar (início do pull ou de uma
+ * fase) e a janela; cada combinação vira uma métrica (pode adicionar várias).
+ */
+function DamageWindowForm({ pulls, chosen, onAdd }: { pulls: Pull[]; chosen: string[]; onAdd: (key: string) => void }) {
+  const t = useMessages(bossMetricsMsg);
+  const targets = useMemo(() => damageTargets(pulls), [pulls]);
+  const phases = useMemo(() => damagePhases(pulls), [pulls]);
+  const [target, setTarget] = useState('');
+  const [base, setBase] = useState('pull');
+  const [from, setFrom] = useState('0:00');
+  const [to, setTo] = useState('0:30');
+  const a = parseClock(from);
+  const b = parseClock(to);
+  const valid = a != null && b != null && b > a;
+  const pick = target || targets[0]?.target || '';
+  const key = valid && pick ? damageWindowKey({ target: pick, base, from: a!, to: b! }) : null;
+  return (
+    <div className="dmg-form">
+      <h4>
+        {t.dmgTitle} <Hint>{t.dmgHint}</Hint>
+      </h4>
+      {targets.length === 0 ? (
+        <p className="muted small">{t.dmgNoData}</p>
+      ) : (
+        <>
+          <label className="dmg-field">
+            <span className="small muted">{t.dmgTarget}</span>
+            <select className="text-input sm" value={pick} onChange={(e) => setTarget(e.target.value)}>
+              {targets.slice(0, 30).map((x) => (
+                <option key={x.target} value={x.target}>
+                  {x.target}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="dmg-field">
+            <span className="small muted">{t.dmgBase}</span>
+            <select className="text-input sm" value={base} onChange={(e) => setBase(e.target.value)}>
+              <option value="pull">{t.dmgPull}</option>
+              {phases.map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="dmg-window">
+            <label className="dmg-field">
+              <span className="small muted">{t.dmgFrom}</span>
+              <input className="text-input sm tabular" inputMode="numeric" value={from} onChange={(e) => setFrom(e.target.value)} aria-invalid={a == null} />
+            </label>
+            <label className="dmg-field">
+              <span className="small muted">{t.dmgTo}</span>
+              <input className="text-input sm tabular" inputMode="numeric" value={to} onChange={(e) => setTo(e.target.value)} aria-invalid={b == null || !valid} />
+            </label>
+            <button className="btn sm" disabled={!key || chosen.includes(key)} onClick={() => key && onAdd(key)}>
+              <Plus size={14} strokeWidth={2} aria-hidden /> {t.dmgAdd}
+            </button>
+          </div>
+          {!valid && <p className="small bad">{t.dmgInvalid}</p>}
+        </>
       )}
     </div>
   );

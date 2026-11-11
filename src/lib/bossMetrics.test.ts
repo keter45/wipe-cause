@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MechanicResult } from '../types';
-import { metricNight, metricOptions, metricTrend, moveMetric, NO_DEFENSIVE } from './bossMetrics';
+import { damageTargets, damageWindowKey, metricNight, metricOptions, metricTrend, moveMetric, NO_DEFENSIVE, parseDamageWindow } from './bossMetrics';
 import { death, player, pull } from './test-fixtures';
 
 const mech = (over: Partial<MechanicResult>): MechanicResult => ({
@@ -204,5 +204,43 @@ describe('mortes sem pot/defensivo', () => {
     expect(trend.players[0].count).toBe(2);
     expect(trend.players[0].items!.find((i) => i.kind === 'potion')!.count).toBe(2);
     expect([trend.players[0].potDeaths, trend.players[0].defensiveDeaths]).toEqual([2, undefined]);
+  });
+});
+
+describe('métrica de dano em alvo numa janela', () => {
+  // dano por segundo: 100 por segundo nos 60 s do pull
+  const secs = (n: number, v = 100) => Array.from({ length: n }, () => v);
+  const a = player('A', { name: 'Ana', class: 'Mage', damageByTarget: [{ target: 'Add', perSec: secs(60) }, { target: 'Boss', perSec: secs(60, 10) }] });
+  const b = player('B', { name: 'Bia', class: 'Rogue', damageByTarget: [{ target: 'Add', perSec: secs(60, 50) }] });
+  const p1 = pull(1, 0, 60_000, { players: [a, b], phaseMarks: [{ t: 0, key: 'p1', name: 'P1' }, { t: 20_000, key: 'p2', name: 'P2' }] });
+  const p2 = pull(2, 100_000, 15_000, { pullNumber: 2, players: [a, b], phaseMarks: [{ t: 0, key: 'p1', name: 'P1' }] });
+
+  it('desde o início do pull: soma de cada um na janela, quem mais bateu primeiro', () => {
+    const m = metricNight([p1], damageWindowKey({ target: 'Add', base: 'pull', from: 10, to: 20 }))!;
+    expect(m.unit).toBe('dmg');
+    expect(m.perPull.map((x) => x.failures)).toEqual([1500]);
+    expect(m.players.map((p) => [p.name, p.count])).toEqual([
+      ['Ana', 1000],
+      ['Bia', 500],
+    ]);
+    expect(m.name).toBe('Add · 0:10–0:20');
+  });
+
+  it('desde uma fase: conta do começo dela; try que não chegou nela (ou acabou antes da janela) fica de fora', () => {
+    const m = metricNight([p1, p2], damageWindowKey({ target: 'Add', base: 'p2', from: 0, to: 5 }))!;
+    expect(m.perPull.map((x) => [x.pull.id, x.failures])).toEqual([[1, 750]]);
+    expect(m.name).toBe('Add · P2 0:00–0:05');
+    // a janela 0:20–0:30 começa depois do fim do pull 2 (15 s)
+    expect(metricNight([p2], damageWindowKey({ target: 'Add', base: 'pull', from: 20, to: 30 }))).toBeNull();
+  });
+
+  it('análise antiga sem dano por alvo: sem métrica; chave estragada: sem métrica', () => {
+    const old = pull(3, 0, 60_000, { players: [player('C')] });
+    expect(metricNight([old], damageWindowKey({ target: 'Add', base: 'pull', from: 0, to: 10 }))).toBeNull();
+    expect(parseDamageWindow(':dmg|Add|pull|20|10')).toBeNull();
+  });
+
+  it('alvos do mais batido ao menos', () => {
+    expect(damageTargets([p1]).map((x) => x.target)).toEqual(['Add', 'Boss']);
   });
 });

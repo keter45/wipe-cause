@@ -69,6 +69,8 @@ In the **boss summary**: the best pull, the top cause of the wipes, progress pul
 
 Pick the mechanics that matter to the group under **Add metric** (the ones that failed most come first). Each one becomes a card with the failures pull by pull — click a bar to open the pull —, who failed and who helped. On hit metrics (avoidable damage, tank range and positioning), the card also shows the **damage taken**: in total, per player and per pull. The **Deaths without pot/defensive** metric lists the deaths where a defensive, health potion or healthstone was available and unused (no wipe call or mass wipe): each player shows a pot icon (potion and healthstone) and a defensive icon, with each item on hover, and the **Died having used everything** list shows who died with nothing left. You can reorder and remove them; the choice is saved for that boss. The night summary (on Discord and through *Share*) also shows these metrics for each boss, with who failed most and the damage taken; on Discord, the full cards arrive right after, in a separate message.
 
+**Damage on target:** at the end of **Add metric**, pick a target (the most-hit first), where to count from (the pull start or the start of a phase) and the window (e.g. 0:30 to 1:00). It becomes a card with the raid's damage on that target within the window, try by try (average and best), and who hit it most. Add as many as you want: each target and window is a card. Tries that didn't reach the window are left out; nights saved before v0.55 need a reanalysis to have per-target damage.
+
 ![Group metrics: Stir the Depths, Visceral Burst and Eternal Venom cards with the failures per pull, who failed and who helped](screenshots/en/metrics.webp)
 
 ### Where the stacks came from

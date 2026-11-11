@@ -3,12 +3,12 @@
 // não usou ou usou fora de hora).
 
 import { useMemo } from 'react';
-import { Play, ShieldOff } from 'lucide-react';
+import { Play, ShieldOff, Swords } from 'lucide-react';
 import type { Pull } from '../../types';
 import { metricNight, savedBossMetrics } from '../../lib/bossMetrics';
 import { noteFor, noteVersions, parseNote, type ParsedNote } from '../../lib/healNote';
 import { matchLines, phaseOffsets, type LineCheck } from '../../lib/healNoteCheck';
-import { classColor, mmss, shortName } from '../../lib/format';
+import { classColor, mmss, num, shortName } from '../../lib/format';
 import { PlayerName } from '../Names';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import { useMessages } from '../../i18n';
@@ -40,6 +40,8 @@ interface TryMetric {
   name: string;
   spellId: number | null;
   yd: boolean;
+  /** dano em alvo numa janela (mais é melhor) */
+  dmg: boolean;
   /** neste try (null = a mecânica não foi avaliada nele) */
   count: number | null;
   /** o pior try da noite, para a barra dizer se este foi bom ou ruim */
@@ -67,6 +69,7 @@ export function TryMetrics({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
           name: night.name,
           spellId: night.spellId,
           yd: night.unit === 'yd',
+          dmg: night.unit === 'dmg',
           count: here ? here.total : null,
           worst: Math.max(1, ...night.perPull.map((x) => x.failures)),
           people: who.slice(0, 4).map((p) => ({ guid: p.guid, name: p.name, class: p.class, count: p.count })),
@@ -75,7 +78,7 @@ export function TryMetrics({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
     });
   }, [pulls, pull, encounterId]);
   if (!rows.length) return null;
-  const fmt = (m: TryMetric, n: number) => (m.yd ? t.yards(Math.round(n)) : `${n}×`);
+  const fmt = (m: TryMetric, n: number) => (m.dmg ? num(n) : m.yd ? t.yards(Math.round(n)) : `${n}×`);
   return (
     <div className="vh-mistakes">
       <span className="muted small">{t.metrics}</span>
@@ -83,7 +86,11 @@ export function TryMetrics({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
         {rows.map((m) => (
           <li key={m.key} className="vh-metric-row">
             <div className="vh-row">
-              {m.spellId != null ? (
+              {m.dmg ? (
+                <span className="vh-metric-name">
+                  <Swords size={18} strokeWidth={1.75} aria-hidden /> {m.name}
+                </span>
+              ) : m.spellId != null ? (
                 <SpellName spellId={m.spellId} name={m.name} size={22} />
               ) : (
                 // métrica sem habilidade (mortes sem pot/defensivo): ícone de escudo no lugar
@@ -91,10 +98,10 @@ export function TryMetrics({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
                   <ShieldOff size={20} strokeWidth={1.5} aria-hidden /> {m.name}
                 </span>
               )}
-              <span className="vh-row-bar" aria-hidden>
+              <span className={`vh-row-bar ${m.dmg ? 'ok' : ''}`} aria-hidden>
                 <span style={{ width: `${((m.count ?? 0) / m.worst) * 100}%` }} />
               </span>
-              <span className={`tabular vh-row-n ${m.count ? '' : 'ok-text'}`}>{m.count == null ? '—' : fmt(m, m.count)}</span>
+              <span className={`tabular vh-row-n ${m.count || m.dmg ? '' : 'ok-text'}`}>{m.count == null ? '—' : fmt(m, m.count)}</span>
             </div>
             {m.people.length > 0 && (
               <div className="vh-metric-people">
