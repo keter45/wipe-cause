@@ -9276,6 +9276,7 @@ button.kpi:hover {
 
 /* faixa de tries: uma barra por try, altura = quanto avançou */
 .vh-strip {
+  position: relative;
   display: flex;
   align-items: stretch;
   gap: 3px;
