@@ -55,13 +55,14 @@ export function ViewerHome({ pulls: all, live, onOpenPull }: Props) {
 
   const viewed = pulls.find((p) => p.id === viewedId) ?? last;
 
-  // replay do try visto, no card de baixo: cada ▶ manda um pedido (instante, quem) e rola até ele
-  const [seek, setSeek] = useState<ReplaySeek | null>(null);
+  // replay do try visto, no card de baixo: cada ▶ manda um pedido (instante, quem, de qual try).
+  // Só um clique num ▶ rola a página; try novo chegando (acompanhando) não mexe na rolagem.
+  const [seek, setSeek] = useState<TrySeek | null>(null);
   const replayRef = useRef<HTMLElement>(null);
-  useEffect(() => setSeek(null), [viewed?.id]);
   const play = (t: number, guid?: string) => {
+    if (!viewed) return;
     // o card rola até ele mesmo ao receber o pedido (ReplayCard)
-    setSeek((s) => ({ t: Math.max(0, t - REPLAY_LEAD_MS), n: (s?.n ?? 0) + 1, guid }));
+    setSeek((s) => ({ t: Math.max(0, t - REPLAY_LEAD_MS), n: (s?.n ?? 0) + 1, guid, pullId: viewed.id }));
   };
   // o boss do try visto: a faixa de tries e o resumo são dele
   const bossPulls = useMemo(() => (viewed ? pulls.filter((p) => bossKey(p) === bossKey(viewed)) : []), [pulls, viewed]);
@@ -145,7 +146,7 @@ export function ViewerHome({ pulls: all, live, onOpenPull }: Props) {
         <TryReport pull={viewed} bossPulls={bossPulls} onOpen={() => onOpenPull(viewed.id)} onPlay={canLoadFull(viewed) ? play : undefined} />
         <BossNight pulls={bossPulls} onView={view} />
       </div>
-      {canLoadFull(viewed) && <ReplayCard key={viewed.id} pull={viewed} seek={seek} cardRef={replayRef} />}
+      {canLoadFull(viewed) && <ReplayCard key={viewed.id} pull={viewed} seek={seek?.pullId === viewed.id ? seek : null} cardRef={replayRef} />}
     </div>
   );
 }
@@ -157,15 +158,20 @@ const REPLAY_LEAD_MS = 3000;
  * O replay completo do try visto, num card embaixo. Só carrega (relê o pull no PC de quem
  * compartilha, ~1,5 MB pelo túnel) quando o card aparece na tela ou alguém aperta um ▶.
  */
+/** Pedido de um ▶ do início: o do replay e o try em que foi feito. */
+type TrySeek = ReplaySeek & { pullId: number };
+
 function ReplayCard({ pull, seek, cardRef }: { pull: Pull; seek: ReplaySeek | null; cardRef: React.RefObject<HTMLElement | null> }) {
   const t = useMessages(viewerHomeMsg);
   const [active, setActive] = useState(false);
+  // o pedido que já existia quando o card apareceu não é um clique novo: não rola nem toca de novo
+  const seenAtMount = useRef(seek?.n ?? 0);
   // cada ▶ (pedido novo): carrega o replay e traz o card ao topo. Depois de o React atualizar o card,
   // sem requestAnimationFrame (não roda em aba sem quadros) e sem animação (com o replay tocando, a
   // rolagem suave é cancelada). O card guarda a altura do replay desde o começo, então a rolagem chega
   // nele mesmo antes de o replay terminar de carregar.
   useEffect(() => {
-    if (!seek) return;
+    if (!seek || seek.n <= seenAtMount.current) return;
     setActive(true);
     cardRef.current?.scrollIntoView({ block: 'start' });
   }, [seek?.n]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -191,10 +197,17 @@ const LANE_TOP = [50, 22, 78];
 function TryStrip({ pulls, viewedId, onView }: { pulls: Pull[]; viewedId: number; onView: (id: number) => void }) {
   const t = useMessages(viewerHomeMsg);
   const phases = phaseCountOf(pulls);
-  // o try visto fica à vista (no celular a faixa rola)
+  // o try visto fica à vista (no celular a faixa rola): só de lado, dentro da faixa. scrollIntoView
+  // também rolaria a página, e try novo chegando não pode tirar o leitor de onde ele está
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>('.vh-bar.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const strip = ref.current;
+    const bar = strip?.querySelector<HTMLElement>('.vh-bar.on');
+    if (!strip || !bar) return;
+    // a faixa é o offsetParent das barras (position: relative): offsetLeft já é dentro dela
+    const left = bar.offsetLeft;
+    if (left < strip.scrollLeft) strip.scrollLeft = left - 8;
+    else if (left + bar.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = left + bar.offsetWidth - strip.clientWidth + 8;
   }, [viewedId, pulls.length]);
   // altura relativa ao melhor try da noite: sem passar da P1, a luta toda deixaria as barras rentes
   const best = Math.max(0.0001, ...pulls.map((p) => pullProgress(p, phases)));
