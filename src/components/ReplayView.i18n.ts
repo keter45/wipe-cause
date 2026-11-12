@@ -96,7 +96,7 @@ export const replayMsg = defineMessages(
     ghostsTitle: 'Fantasmas: quanto cada um andou',
     ghostsHow: 'De onde vem o caminho',
     ghostsHint:
-      'O log registra o início, o dono e o fim da fixação; Soul Sever também confirma quando o fantasma foi limpo. O trajeto é simulado (base de 4 jardas/s), usando as amostras de posição e direção do dono. Uma colisão confirma o contato, não suas coordenadas: o ponto de encontro é inferido. Alcances só corrigem o caminho com uma posição recente do dono. O trecho tracejado é uma correção adicional da simulação, não o único trecho estimado. Andar nem sempre é erro: às vezes o dono leva o fantasma de propósito.',
+      'O log registra o início, o dono e o fim da fixação; Soul Sever também confirma quando o fantasma foi limpo. O trajeto é simulado (base de 4,5 jardas/s), usando as amostras de posição e direção do dono. Uma colisão confirma o contato, não suas coordenadas: o ponto de encontro é inferido. Alcances só corrigem o caminho com uma posição recente do dono. O trecho tracejado é uma correção adicional da simulação, não o único trecho estimado. Andar nem sempre é erro: às vezes o dono leva o fantasma de propósito.',
     ghostMoved: (now: number, total: number) => (now === total ? `${now} jd` : `${now} de ${total} jd`),
     ghostWalking: 'andando',
     ghostStill: 'parado',
@@ -193,7 +193,7 @@ export const replayMsg = defineMessages(
     ghostsTitle: 'Ghosts: how far each one walked',
     ghostsHow: 'Where the path comes from',
     ghostsHint:
-      "The log records the start, owner and end of the fixation; Soul Sever also confirms when the ghost was cleared. The path is simulated (base speed 4 yards/s), using owner position and facing samples. A collision confirms contact, not its coordinates: the meeting point is inferred. Catches only correct the path when a recent owner position is available. Dashed stretches are additional corrections, not the only estimated parts. Walking isn't always a mistake: sometimes the owner moves the ghost on purpose.",
+      "The log records the start, owner and end of the fixation; Soul Sever also confirms when the ghost was cleared. The path is simulated (base speed 4.5 yards/s), using owner position and facing samples. A collision confirms contact, not its coordinates: the meeting point is inferred. Catches only correct the path when a recent owner position is available. Dashed stretches are additional corrections, not the only estimated parts. Walking isn't always a mistake: sometimes the owner moves the ghost on purpose.",
     ghostMoved: (now: number, total: number) => (now === total ? `${now} yd` : `${now} of ${total} yd`),
     ghostWalking: 'walking',
     ghostStill: 'still',
