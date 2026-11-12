@@ -44,7 +44,7 @@ referências.
 ### Filtros para os logs de referência
 
 Obrigatórios:
-- **só mítico**, mesmo boss (do raide atual, `raidEncounters`);
+- **só mítico** (`difficulty: 5` em `scripts/rotation/heal-refs.mjs`; vale para as referências embutidas, não para a busca de rankings da rotação de DPS), mesmo boss (do raide atual, `raidEncounters`);
 - candidatos tirados de várias páginas do ranking da spec, não só da primeira: a nota (parse) do
   log não entra na escolha, porque o topo do ranking de cura é justamente onde estão os logs
   inflados;
@@ -173,8 +173,9 @@ O vídeo indica a aba Resources: como a mana desce ao longo da luta e de onde ve
 
 - Overheal % por habilidade contra a referência da mesma spec, nunca um número fixo. HoTs e escudos
   têm overheal naturalmente diferente.
-- Dica só para a habilidade que mais pesa: muito acima da referência numa skill cara = mana jogada
-  fora.
+- Dica para cada uma das habilidades que mais pesam (as 8 de maior fatia, com fatia ≥ 5%) cujo
+  overheal passa do p75 da referência + 15 pontos: muito acima da referência numa skill cara = mana
+  jogada fora (`healer.ts`, `healTips`).
 
 ### 3.10 Mecânicas do boss
 
@@ -227,7 +228,8 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
      (Lifebloom do Everbloom);
    - o tempo parado do healer só conta nos segundos com alguém vivo abaixo de 80% de vida.
    Conferido contra a tabela de cura do WCL (Nek'zali mítico, 29/09): diferença de −0,2% a +3,4% por
-   healer. Medição manual datada; nenhum script a reproduz.
+   healer. Medição manual datada, feita à mão contra a tabela do WCL; nenhum teste ou script a
+   reproduz, então o número não é conferido a cada versão.
 2. **Referência**: `node scripts/rotation.mjs refs <spec> [--per-boss N]` (`scripts/rotation/heal-refs.mjs`)
    baixa kills no mítico, US/EU, de 4 páginas do ranking de cura, sem as 10 primeiras posições e sem
    usar a nota na escolha. Cada log guarda a composição de healers, a fatia da cura e o dano tomado
@@ -249,13 +251,14 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
    - cooldown com 1 ou 2 usos possíveis na luta só é cobrado de quem não usou nenhum (segurar para a
      mecânica é estratégia);
    - a referência "cumpre" uma checagem com mediana ≥ 85%; dica só com o player 5 pontos abaixo do
-     p25 e 12 pontos (15 em proc) abaixo da mediana; no tempo parado, 2 e 5 pontos;
+     p25 e 12 pontos (15 em proc) abaixo da mediana; no tempo parado, 2 e 5 pontos; no uso de
+     cooldown, 5 pontos abaixo do p25 e 25 abaixo da mediana (30 com um log só);
    - uptime dos HoTs sem checagem no YAML saiu das dicas (varia com o estilo).
    Teto do teste de calibração: até 35% dos logs de referência com alguma dica (os de referência não são tops; parte das
    dicas entre eles é erro de verdade).
 6. **As 7 specs** (2026-10-11): Discipline Priest, Holy Priest, Holy Paladin, Restoration Druid,
    Restoration Shaman, Mistweaver Monk e Preservation Evoker, com 64 a 72 logs de referência cada (8 por
-   chefe: contagem da baixa daquela data, feita com `--per-boss 8`; o padrão do script é 4). Calibração (referência contra referência) com dica em 13% a 26% dos logs (medição datada de 2026-10-11); o resto do que
+   chefe: contagem da baixa daquela data, feita com `--per-boss 8`; o padrão do script é 4). Calibração (referência contra referência) com dica em 13% a 26% dos logs (medição manual datada de 2026-10-11; o `healer.calibration.test.ts` só impõe o teto de 35% e não grava o valor por spec); o resto do que
    aparece é erro de verdade desses players (proc gasto no spell errado, mana sobrando).
    Ajustes que saíram da calibração e das referências:
    - momento do cooldown virou informação ("Momentos dos cooldowns"), não dica;

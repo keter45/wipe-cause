@@ -130,7 +130,7 @@ média. O resultado vira um `Sample` (o mesmo pull, com um player "SimulationCra
 comparação com os tops (KPIs, diferenças principais, onde abriu vantagem, bursts, cooldowns, casts
 por habilidade, poção) comparam com ele. Fica salvo em `<dados>/simc/saved/` por player + boss +
 dificuldade + noite (`src/lib/botSim.ts`). O perfil usado aparece no fim, para conferir ou colar no
-Raidbots. Em dev no navegador: `WIPE_DEV_SIMC_EXE` (config `ui-simc`) faz o vite rodar um simc local.
+Raidbots. Em dev no navegador: `WIPE_DEV_SIMC_EXE` (`vite.config.ts`) faz o vite rodar um simc local.
 
 
 **A) Números agregados**, com várias iterações (≈1000): DPS, casts por minuto de cada skill, atraso
@@ -164,7 +164,7 @@ tempo sem alvo, movimento da luta, vida do boss) e consumíveis/buffs da raide/p
 1000 lutas. As decisões viram cartões você × robô, e as 3 de maior custo estimado ficam em "O que
 mudar primeiro" (`fixes`: casts trocados × diferença de dano por cast; procs perdidos × dano de quem
 gasta; usos perdidos de cooldown × dano dele). "Robô para a raide" no resumo do boss simula todos em
-fila (`botRaid.ts`); a aba Jogadores mostra o % de quem tem simulação salva (a Evolução ainda não). O pull
+fila (`botRaid.ts`); a aba Jogadores mostra o % de quem tem simulação salva. A Evolução ainda não mostra (o `perNightTitle` de `TrendsView.i18n.ts` já cita o %, mas nenhuma tela o usa). O pull
 simulado é achado pelo começo (até 10s de diferença: o log local e o Warcraft Logs diferem em ms).
 
 **Robô × tops:** nesta seção o robô é o certo. Quando os tops (ou a nossa rotação em YAML) fazem

@@ -240,7 +240,11 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
 - **Mapa:** a proporção da arena (sem sobra nas laterais) e a imagem recortada a 6 jd do chão.
 - **Linha do tempo por mecânica:** uma faixa por mecânica, marca cheia = deu errado, vazada =
   aconteceu e tudo bem. Faixas finas, com rolagem própria, e os controles colados no mapa: a linha
-  do tempo não pode empurrar o mapa para fora da tela.
+  do tempo não pode empurrar o mapa para fora da tela. A faixa por mecânica é opcional (desligada,
+  as falhas e os frontais ficam numa faixa só). Cada mecânica tem um peso, que o usuário troca em
+  **Pesos** (padrão: a `severity` da regra): gravíssimas e graves ficam à vista, por severidade; as
+  leves, num grupo recolhido; as escondidas somem. Os momentos principais do pull (`fightMoments` em
+  `timelineMoments.ts`) aparecem em chips em cima dos controles.
 
 ## Ferramentas
 

@@ -20,7 +20,7 @@
 
 ### Desenvolvimento
 
-Pré-requisitos: Node 22.12+ (o Vite e o Vitest pedem; o `npm run refresh` usa `--experimental-strip-types`), Rust (rustup) e MSVC Build Tools (Windows).
+Pré-requisitos: Node 22.12+ (o Vitest 5 pede `^22.12.0 || ^24.0.0 || >=26.0.0` e o Vite 8, `^20.19.0 || >=22.12.0`, no campo `engines` de cada um; o `npm run refresh` usa `--experimental-strip-types`), Rust (rustup) e MSVC Build Tools (Windows).
 
 ```bash
 npm install
@@ -35,13 +35,13 @@ cargo run -p wipe-core --bin wipe-cli -- analyze caminho/do/WoWCombatLog.txt
 
 Subcomandos do `wipe-cli` (os scripts usam o build de release, `cargo build --release -p wipe-core --bin wipe-cli`, em `target/release/`):
 
-- `analyze <arquivo> [--json] [--cutoff N] [--tuning <pasta>]`: os pulls, ou o relatório inteiro em JSON; `--cutoff N` ignora eventos depois de N mortes; `--tuning` aplica os ajustes de regra do usuário (`<encounter_id>.json`). O `--cutoff` também vale no `wcl`, no `spells` e no `fight`, e o `--tuning` no `spells` e no `fight` (no `wcl`, só nos pulls do `--local`).
+- `analyze <arquivo> [--json] [--cutoff N] [--tuning <pasta>]`: os pulls, ou o relatório inteiro em JSON; `--cutoff N` ignora eventos depois de N mortes (pull que termina em kill não é cortado); `--tuning` aplica os ajustes de regra do usuário (`<encounter_id>.json`). O `--cutoff` também vale no `wcl`, no `spells` e no `fight`, e o `--tuning` no `spells` e no `fight` (no `wcl`, só nos pulls do `--local`).
 - `spells <arquivo>`: spells inimigas por pull, em CSV (encontro, spell, casts, hits, dano), para calibrar regras de boss.
 - `rules`: as regras de boss embutidas, em JSON.
 - `peek <arquivo>`: só os encontros do log (leitura rápida).
 - `positions <arquivo>`: onde os players pisaram em cada boss, para alinhar a imagem da arena.
 - `radius <arquivo> --damage <id> (--aura <id> | --npc <id> | --soak)`: o raio de uma área.
-- `wcl <pasta>[,<pasta>] [--json] [--local <log>]`: analisa reports baixados do Warcraft Logs (`scripts/wcl-fetch.mjs`); `WIPE_TZ` define o fuso deles (padrão -3).
+- `wcl <pasta>[,<pasta>] [--json] [--local <log>] [--spells]`: analisa reports baixados do Warcraft Logs (`scripts/wcl-fetch.mjs`), ou com `--spells` imprime o CSV de spells deles; `WIPE_TZ` define o fuso deles (padrão -3).
 - `fight <arquivo> --pull <id>`: o replay completo de um pull.
 
 Versão web (o mesmo núcleo em WebAssembly, publicado no GitHub Pages):
@@ -203,6 +203,6 @@ Publicar uma versão:
 <details>
 <summary><b>Prints e clipes do README</b></summary>
 
-Os prints e clipes WebP animados saem de relatórios reais com nomes fictícios de personagens. Ficam em `docs/screenshots/pt/` e `docs/screenshots/en/`, um conjunto por idioma. Use WebP sem perdas para manter os textos da interface nítidos (alguns do guia de uso ainda são PNG); mantenha os clipes curtos e focados em uma mecânica. Não versione logs ou relatórios brutos de `samples/`.
+Os prints e clipes WebP animados saem de relatórios reais com nomes fictícios de personagens. Ficam em `docs/screenshots/pt/` e `docs/screenshots/en/`, um conjunto por idioma. Use WebP sem perdas nos prints para manter os textos da interface nítidos (alguns do guia de uso ainda são PNG); os clipes animados são WebP com perdas, curtos e focados em uma mecânica. Não versione logs ou relatórios brutos de `samples/`.
 
 </details>

@@ -3,8 +3,8 @@
 Documentação funcional e técnica das telas, componentes e conexões entre funcionalidades.
 
 **Referência:** navegação na versão `0.37.0` em **21/10/2026**, com as alterações locais da
-árvore de trabalho daquela data; texto conferido contra o código da versão `0.50.0` em
-**09/11/2026**, só pelo código, sem abrir as telas.
+árvore de trabalho daquela data; texto conferido contra o código da versão `0.56.0` em
+**12/11/2026**, só pelo código, sem abrir as telas.
 
 ## Como ler
 
@@ -57,7 +57,7 @@ A navegação principal é controlada por estado em [App.tsx](../src/App.tsx), s
 
 | Estado | Significado |
 | --- | --- |
-| `page` | `analysis`, `browse`, `trends` ou `settings` |
+| `page` | `analysis`, `browse`, `trends` ou `settings`; `home` só no modo de visualização (`ViewerHome`, seção 3.24) |
 | `report` | `LogReport` aberto; fica disponível ao visitar configurações e evolução |
 | `summary` | `NIGHT` para noite, chave de boss para resumo do boss, `null` para pull |
 | `selected` | ID do pull selecionado dentro do relatório |
@@ -309,7 +309,7 @@ Entre a v0.38.0 e a v0.42.0 (notas da [0.38.0](releases/v0.38.0.md), [0.39.0](re
 | Lugares da sala | Nomes de pontos da arena, como as fontes do Vashnik |
 | Sala girada | `rotation` em `data/arenas.json` gira a imagem quando a sala está girada no mundo (Vashnik, -58°) |
 
-O menu **Camadas** liga e desliga contagens, próximo frontal e cast, animações, CC dos players, portais do warlock, quem cortou o cast e lugares da sala; CC e portais só existem no replay completo, e lugares da sala só quando a arena tem marcas (`marks`). A escolha fica em `replayPrefs.ts`. A linha do tempo pode mostrar **uma faixa por mecânica** (marca cheia quando deu errado, vazada quando deu certo) ou juntar as falhas numa faixa só. As peças do mapa ficam em `replayLayers.tsx`.
+O menu **Camadas** liga e desliga contagens, próximo frontal e cast, animações, CC dos players, portais do warlock, quem cortou o cast e lugares da sala; CC e portais só existem no replay completo, e lugares da sala só quando a arena tem marcas (`marks`). A escolha fica em `replayPrefs.ts`. A linha do tempo pode mostrar **uma faixa por mecânica** (marca cheia quando deu errado, vazada quando deu certo) ou juntar as falhas numa faixa só. Desde a v0.56.0, a régua fica colada embaixo do slider, a agulha e a linha do mouse (com o tempo) atravessam todas as faixas, mortes coladas viram uma bolha com a contagem que aproxima ao clicar, e o trecho depois da call de wipe fica hachurado. Em cima dos controles, chips com os **momentos principais** (primeiro erro grave, primeira morte, pico de erros graves em 5 s, call de wipe ou fim da análise) vão para logo antes de cada um, com setas para o anterior e o próximo. O botão **Pesos** deixa o usuário dar a cada mecânica um peso (gravíssimo, grave, leve, esconder; o padrão é a `severity` da regra, guardado por boss em `replayPrefs.ts`): só gravíssimas e graves ficam à vista, as leves ficam num grupo recolhido e as escondidas somem; as faixas seguem a severidade. Com um player em foco, só as mortes e os erros dele ficam acesos. O cálculo fica em `timelineMoments.ts`. As peças do mapa ficam em `replayLayers.tsx`.
 
 **Dependência importante:** uma análise salva pode conter informação suficiente para um replay curto e ainda precisar do arquivo/fonte original para o replay completo. No site, recarregar a página perde o objeto `File` em memória; pode ser necessário reabrir o log.
 
@@ -440,7 +440,7 @@ Fontes: [SettingsView](../src/components/settings/SettingsView.tsx), [ShareForm]
 
 ### 3.24 Link de visualização (experimental)
 
-Com o link ligado, o app sobe um servidor em `127.0.0.1` que serve a própria interface e `/api/invoke`, que só aceita comandos de leitura (`live_status`, `history_list`, `history_load`, `history_trends`, `fight_replay`, `rules_get`, `talent_tree`, `simc_saved_get`, `fetch_image`) com a chave do link (`?k=`, 12 caracteres). O `fight_replay` só relê `WoWCombatLog*.txt` ou reports do WCL que já estão no histórico. Um túnel rápido do Cloudflare (`cloudflared`, baixado na primeira vez e preso ao processo do app por um Job Object) dá o endereço público `https://….trycloudflare.com`, que muda a cada vez que o link é ligado.
+Com o link ligado, o app sobe um servidor em `127.0.0.1` que serve a própria interface e `/api/invoke`, que só aceita comandos de leitura (`live_status`, `history_list`, `history_load`, `history_trends`, `fight_replay`, `rules_get`, `talent_tree`, `simc_saved_get`, `fetch_image`, `share_prefs_get`) com a chave do link (`?k=`, 12 caracteres). O `fight_replay` só relê `WoWCombatLog*.txt` ou reports do WCL que já estão no histórico. Um túnel rápido do Cloudflare (`cloudflared`, baixado na primeira vez e preso ao processo do app por um Job Object) dá o endereço público `https://….trycloudflare.com`, que muda a cada vez que o link é ligado.
 
 No navegador de quem abre, o build do app fora do Tauri entra no modo de visualização ([viewer](../src/lib/viewer.ts), `inViewer` em [backend](../src/lib/backend.ts)): o selo “Só para ver” no topo, a noite mais recente aberta, e nada que analise, salve, configure ou envie (nova análise, reanalisar, corte, fixar/apagar, Configurações, Warcraft Logs, ajuste e criação de regras, IA, anotação, marcas e Discord). O histórico é relido a cada 5 s com o ao vivo de quem compartilha ligado (20 s sem); a noite aberta salva de novo atualiza a tela, quem está no último pull ou no resumo vai para o pull novo com o aviso no canto, e o topo mostra o estado do ao vivo de quem compartilha. No `tauri dev`, `WIPE_DEV_SHARE=1` liga o link só neste PC (com `=tunnel`, também o túnel) e escreve o endereço no terminal; no Vite, o modo exige `?viewer=1`.
 
@@ -491,7 +491,7 @@ O contrato TypeScript de [types.ts](../src/types.ts) espelha a serialização Ru
 | `FightData` e tracks | Eventos e trajetórias para a luta completa ou trechos | Replay, clipes e detalhe temporal |
 | `WipeCall`, `cutoffT`, `analyzedMs` | Limite interpretativo/estatístico do pull | Contagens, médias, mortes consideradas e apresentação |
 
-Campos opcionais são relevantes à compatibilidade: relatórios antigos podem não ter casts, setup, dados completos de replay ou origem para releitura. O frontend contém mensagens para vários desses casos. A versão compacta do histórico, que alimenta a Evolução, vem sem `raidSeries` e `enemyHits` no pull, sem `recap`, `debuffs`, `mechanicDamage` e `positions` nas mortes, sem `events` e `snapshots` nas mecânicas e sem `takenByAbility`, `interruptLog`, `casts`, `damageBySpell`, `healingBySpell`, `setup` e `cdHeals` nos jogadores (`compact()` em `history.rs` e `src/web/history.ts`); o código da Evolução precisa aceitar esses campos ausentes (a falha descrita adiante veio daí).
+Campos opcionais são relevantes à compatibilidade: relatórios antigos podem não ter casts, setup, dados completos de replay ou origem para releitura. O frontend contém mensagens para vários desses casos. A versão compacta do histórico, que alimenta a Evolução, vem sem `raidSeries` e `enemyHits` no pull, sem `recap`, `debuffs`, `mechanicDamage` e `positions` nas mortes, sem `events` e `snapshots` nas mecânicas e sem `takenByAbility`, `interruptLog`, `casts`, `damageBySpell`, `healingBySpell`, `damageByTarget`, `setup` e `cdHeals` nos jogadores (`compact()` em `history.rs` e `src/web/history.ts`); o código da Evolução precisa aceitar esses campos ausentes (a falha descrita adiante veio daí).
 
 ### Responsabilidades por camada
 
@@ -585,7 +585,7 @@ A análise de um arquivo local usa o núcleo local. Integrações opcionais acre
 | Note de CDs de cura | [HealNotePanel](../src/components/HealNotePanel.tsx), [HealTimeline](../src/components/HealTimeline.tsx), [healTimeline](../src/lib/healTimeline.ts), [useTimeWindow](../src/lib/useTimeWindow.ts), [NoteBox](../src/components/NoteBox.tsx), [healNote](../src/lib/healNote.ts), [healNoteCheck](../src/lib/healNoteCheck.ts), [healCooldowns](../src/lib/healCooldowns.ts), [heal-cooldowns.json](../data/heal-cooldowns.json), [heal-note-calibrate](../scripts/heal-note-calibrate.mjs); regras em [heal-cd-note.md](heal-cd-note.md) |
 | Comparação e referências | [PerformanceView](../src/components/perf/PerformanceView.tsx), [bench](../src/lib/bench.ts), [wclApi](../src/lib/wclApi.ts), [src/data](../src/data) |
 | Simulação | [botSim](../src/lib/botSim.ts), [simProfile](../src/lib/simProfile.ts), [botDecisions](../src/lib/botDecisions.ts), [botView](../src/lib/botView.ts), [simc.rs](../src-tauri/src/simc.rs), [sim-check](../scripts/sim-check.mjs) |
-| Replay | [FightReplay](../src/components/FightReplay.tsx), [ReplayView](../src/components/ReplayView.tsx), [replayLayers](../src/components/replayLayers.tsx), [fullReplay](../src/lib/fullReplay.ts), [replayTimers](../src/lib/replayTimers.ts), [replayPrefs](../src/lib/replayPrefs.ts), [arenas](../src/lib/arenas.ts), [core/replay.rs](../crates/wipe-core/src/replay.rs), [arenas.json](../data/arenas.json), [utility.json](../data/utility.json), [replay-check](../scripts/replay-check.mjs), [arena-check](../scripts/arena-check.mjs) |
+| Replay | [FightReplay](../src/components/FightReplay.tsx), [ReplayView](../src/components/ReplayView.tsx), [replayLayers](../src/components/replayLayers.tsx), [fullReplay](../src/lib/fullReplay.ts), [replayTimers](../src/lib/replayTimers.ts), [replayPrefs](../src/lib/replayPrefs.ts), [timelineMoments](../src/lib/timelineMoments.ts), [arenas](../src/lib/arenas.ts), [core/replay.rs](../crates/wipe-core/src/replay.rs), [arenas.json](../data/arenas.json), [utility.json](../data/utility.json), [replay-check](../scripts/replay-check.mjs), [arena-check](../scripts/arena-check.mjs) |
 | Configuração de boss | [encounters](../encounters), [rules.rs](../crates/wipe-core/src/rules.rs), [RuleTuning](../src/components/RuleTuning.tsx) |
 | Rotação e dados de jogo | [rotations](../rotations), [rotation.rs](../crates/wipe-core/src/rotation.rs), [data](../data) |
 | Exportação e ao vivo | [share](../src/lib/share.ts), [replayClip](../src/lib/replayClip.tsx), [live](../src/lib/live.ts), [discordLive](../src/lib/discordLive.tsx) |
@@ -623,11 +623,11 @@ Não foram concluídos login externo, envio ao Discord, chamadas a provedor real
 3. **Discord no site:** o formulário compartilhado exibe opções de envio automático, mas o backend web não implementa ao vivo. O envio manual e a configuração existem; os checkboxes não habilitam monitoramento automático no navegador.
 4. **Indicadores no desenvolvimento:** sem backend, pasta detectada e IA “demo” são por padrão os dados de exemplo de `setup.ts` (com `?demoAiSetup=1`, o exemplo fica sem provedor de IA); não comprovam configuração real do usuário.
 
-Esses pontos são registros da inspeção; o item 1 foi corrigido depois, no #73.
+Esses pontos são registros da inspeção; o item 1 foi corrigido depois, no [PR #73](https://github.com/keter45/wipe-cause/pull/73) (commit `d3636c6`).
 
 ### Conferência contra o código (v0.42.0)
 
-Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026** e da `0.50.0` em **09/11/2026**.
+Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026** e da `0.50.0` em **09/11/2026** e da `0.56.0` em **12/11/2026**.
 
 ### Como reproduzir a navegação local
 
