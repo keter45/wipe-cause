@@ -81,6 +81,77 @@ Medido nas 853 vezes em que alguém perdeu o Noxious Shell nos reports míticos 
   - no `grim_guillotine_double_soak` do Coiled Altar, ela tomou 5,8M contra ~0,5M de quem não tinha a vulnerabilidade;
   - no `feasted_double_soak` do Twin Fangs, o Feasted caiu no mesmo ms do segundo soak.
 
+## Caustic Waves: de onde saem e quando (12/11)
+
+Medido em 36 pulls míticos (kW7y, BPR9, pRJD e os 6 wipes do DVYR) e 2 kills heroicos (JwC1 e
+DVYRk), com o centro da plataforma em (0; 1553,5), nas coordenadas cruas do JSON do WCL. No JSON cru,
+o `facing` vem espelhado em relação a esses eixos: a direção real é `-facing`. Com ele, a Ula'tek
+sempre olha para o centro. O núcleo não precisa disso: a importação do WCL já converte posição e
+`facing` para a convenção do log local (`wcl.rs`, na leitura do evento).
+
+- **Quem solta:** a Ula'tek, num anel a 46 jd do centro, em múltiplos de 45°. As caudas (1298570),
+  sempre em par, num anel a 56 jd, olhando para o centro com 0°, ±15° ou ±45° de desvio. A cauda do
+  1311807 fica a 41 jd e sai junto com o 1319282 da Ula'tek, a 90° dela.
+- **Roteiro fixo no mítico** (os mesmos segundos em todos os pulls):
+
+  | Tempo | Quem | Posição |
+  |---|---|---|
+  | 38 s | par de caudas | 0° e 45°, ou o espelho, 180° e −135° (sorteio 1) |
+  | 56 s | Ula'tek 1319282 + cauda 1311807 | Ula'tek sempre a 90°; a cauda a 0° ou 180°, do lado oposto ao do sorteio 1 |
+  | 59 s / 69 s | caudas | sempre −135° e −45° / 0° e 180° |
+  | 113 s | Ula'tek 1319282 + cauda 1311807 | Ula'tek a 0° ou 180° (sorteio 2); cauda a −90° |
+  | 116–157 s, P2 293 e 306 s | caudas | uma de duas sequências fixas, conforme o sorteio 2 |
+  | ~427 s | Ula'tek 1292211 | uma diagonal sorteada; as caudas do lado oposto a ela, a ±22,5° |
+  | P3 482, 532 e 576 s | Ula'tek 1292211 | +90° a cada cast; as caudas sempre do lado oposto |
+
+  No heroico a estrutura é a mesma, mas mais cedo (Ula'tek em 48 s e 100 s) e com menos caudas.
+- **Onda da cauda: velocidade.** Uma frente que sai da cauda no cast e anda 13,5 jd/s (p25–p75 de
+  13,1 a 14,2; 377 acertos). Leva ~7 s para atravessar a plataforma. Cada cast é uma unidade nova da
+  cauda (a instância muda), e o `facing` dela no cast fica a 0°, ±20° ou ±40° da direção do centro.
+  O `begincast` não traz posição nem `facing`.
+- **Onda da cauda: direção (12/11, medida de novo; a "faixa de ~55 jd" anterior estava errada).**
+  - Por cast, os acertos ficam juntos: espalhamento mediano de 5° (p25 2°, p75 15°; 29 casts com 3+
+    acertos). São ondas estreitas.
+  - A direção muda de cast para cast, quase sempre entre o `facing` da cauda e a direção do centro
+    (ex.: desvio de −40° → acertos a 9°, 18–23° ou 44° do `facing`, conforme o cast).
+  - Nenhuma forma fixa explica: 1 onda no `facing` explica 33% dos acertos a 4 jd; 3 ondas do
+    `facing` até o centro, 63%; um ângulo ao acaso, 2%. Mas os acertos para o lado do centro são em
+    boa parte onde o raid fica: pela taxa de acerto de quem a frente cruzou (12.511 passagens),
+    só o próprio `facing` sobe acima do fundo (9–23% contra 1–3%), e mesmo a até 3 jd dele só 10–14%
+    entre 45 e 90 jd tomam.
+  - O setor do `facing` até o centro (±5°) pega 85% dos acertos, mas também 72% de todas as
+    passagens, e lá dentro só 3,7% tomam (2,3% fora): é "tudo na frente da cauda", não diz nada.
+  - Conclusão: o log dá a hora e a velocidade da onda, não a direção. A direção de uma onda só se
+    sabe pelos acertos dela.
+- **Onda da cauda pelos acertos (12/11, para o `waves` com `cast_id`; design
+  [replay-cast-waves.md](designs/replay-cast-waves.md)).** Dos 471 acertos (1292403, sem tick),
+  331 batem com a frente de um cast de cauda a ±8 jd, em 192 casts.
+  - Frente − distância do acerto: p5 −6,5, p25 −2,8, mediana −0,5, p75 1,7, p95 4,0 jd (tolerância
+    de ±7 jd).
+  - Vão de ângulo entre acertos vizinhos do mesmo cast: 94 abaixo de 3°, 14 de 3–5°, 8 de 5–8°, 23
+    acima de 8°. Limite de 6° entre grupos: 219 grupos (1,14 por cast).
+  - Desvio lateral até o meio do grupo (limite 6°): mediana 0,1, p90 2,1, p95 3,0, máx 5,5 jd. Onda
+    de 6 jd de largura.
+  - Acerto mais distante do grupo: mediana 73, p90 88, máx 93 jd (7 s × 13,5 = 94,5 jd).
+  - Par de caudas (mesmo instante, mesmo anel): com ±7 jd e até 7 s, 318 acertos com cast; 112 (35%)
+    cabem nos dois casts do par, 75 com diferença de erro abaixo de 3 jd, 15 com a outra cauda a mais
+    de 90°. O `facing` não separa: os acertos ficam a até 48° dele (p50 6°, p95 37°). Com margem de
+    3 jd e coerência de 6° com os grupos já formados: 243 diretos, 19 pela coerência, 56 sem onda.
+    Resultado: 165 grupos em 151 casts.
+  - "Dentro e sem tomar" nas ondas assim desenhadas (faixa de 6 jd, passagens da frente radial): até
+    94,5 jd, 191 de 380 passagens tomaram (50%); até o acerto mais distante + 5 jd, 185 de 307 (60%).
+    No setor do `facing` até o centro eram 3,7%.
+- **Ondas da Ula'tek na P1 (1319282, cast de 6 s):** quase ninguém é acertado (17 acertos em 77
+  casts), então medi pela posição do raid. Em 73 de 81 casts, o raid fica empilhado a ~24 jd dela, a
+  ~15 jd para um lado, de 0 a +3 s; cruza entre +4 e +5 s; e fica ~15 jd do outro lado até +10 s. Ou
+  seja, a primeira onda varre o lado em que o raid não está, e a segunda o outro. O lado é sorteado a
+  cada cast (E→D 32 vezes, D→E 41), e no log não há nada que diga qual asa ela levantou: só dá para
+  inferir o lado depois do fato, pela posição do raid em +1–3 s.
+- **Ondas da Ula'tek na P2/P3 (1292211, cast de 4,5 s):** o raid fica parado a ~22 jd dela, quase
+  sempre de um lado só. Há acertos de 0 a 3 s perto dela (a onda dela) e de 5 a 7 s onde o raid está, o
+  que bate com a onda das caudas do lado oposto (76 jd a 13,5 jd/s ≈ 5,6 s). Faltam acertos para ver
+  os buracos da parede.
+
 ## Fora, e por quê
 
 - **Ovos sem posição.** No heroico os ovos nem são unidades do log. No mítico, quem não toma dano não
