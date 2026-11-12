@@ -676,8 +676,13 @@ code,
   font-size: 12px;
   font-weight: 500;
 }
-.finding-replay {
+/* Replay e Vídeo do achado, lado a lado (empilham no celular) */
+.finding-actions {
   align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
   white-space: nowrap;
 }
 .finding-count {

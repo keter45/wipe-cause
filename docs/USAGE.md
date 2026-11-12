@@ -39,7 +39,7 @@ Every analysis is saved in the sidebar under **Nights**, with its date: **Pin** 
 
 ### 2. See why you wiped
 
-The top of the pull is the **verdict**: where the boss ended, the wipe's **trigger** (the mechanic failure that set off the deaths in the collapse: those in the 30 s up to the wipe call or the N-th death; isolated deaths minutes earlier don't count) and the mechanic mistakes that caused the wipe, with who made them (the other mistakes and warnings open under **Show N other mistakes and warnings**) (see the [pull screenshot](screenshots/en/pull.webp)). Below it, the tabs. Each mistake with an ability has **▶ Replay m:ss**, which opens the Replay tab a few seconds before it happened.
+The top of the pull is the **verdict**: where the boss ended, the wipe's **trigger** (the mechanic failure that set off the deaths in the collapse: those in the 30 s up to the wipe call or the N-th death; isolated deaths minutes earlier don't count) and the mechanic mistakes that caused the wipe, with who made them (the other mistakes and warnings open under **Show N other mistakes and warnings**) (see the [pull screenshot](screenshots/en/pull.webp)). Below it, the tabs. Each mistake with an ability has **▶ Replay m:ss**, which opens the Replay tab a few seconds before it happened, and, when the pull has a Warcraft Recorder video, **Video**, which plays the recording from 5 s before the same moment.
 
 When the raid gives up (after a disaster, several players stop casting at the same time and die), the pull shows **Wipe call** (or **Possible call**, when the signal is weaker). With a sure call, what happens after it counts like the death cutoff: nobody is blamed for dying on purpose.
 

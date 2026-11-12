@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, Star, X } from 'lucide-react';
+import { ChevronDown, ExternalLink, NotebookPen, Play, Sparkles, Star, Video, X } from 'lucide-react';
 import { useNote } from '../lib/notes';
 import { addMark, useMarks } from '../lib/marks';
 import { PullMarks } from './PullMarks';
@@ -19,7 +19,7 @@ import { MechanicsView } from './MechanicsView';
 import { InterruptsView } from './InterruptsView';
 import { HealNotePanel } from './HealNotePanel';
 import { openExternal, readOnly, type WcrVideo } from '../lib/api';
-import { SeekContext } from '../lib/wcr';
+import { LEAD_MS, SeekContext, useSeek } from '../lib/wcr';
 import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
 import { ShareMenu } from './share/ShareMenu';
@@ -431,7 +431,9 @@ export function findingMoment(f: FindingT, pull: Pull, decisive: Pull['deaths'])
 function Finding({ f, pull, decisive, onReplay }: { f: FindingT; pull: Pull; decisive: Pull['deaths']; onReplay?: (t: number) => void }) {
   const t = useMessages(pullMsg);
   const who = whoOf(f, pull, decisive);
-  const at = onReplay ? findingMoment(f, pull, decisive) : null;
+  // vídeo do Warcraft Recorder deste pull (null = sem vídeo): o mesmo momento do Replay
+  const seekVideo = useSeek();
+  const at = onReplay || seekVideo ? findingMoment(f, pull, decisive) : null;
   const shown = who.slice(0, 6);
   const people = new Set(who.map((w) => w.name)).size;
   return (
@@ -470,10 +472,19 @@ function Finding({ f, pull, decisive, onReplay }: { f: FindingT; pull: Pull; dec
           )
         )}
       </div>
-      {at != null && onReplay && (
-        <button className="btn ghost sm finding-replay" onClick={() => onReplay(Math.max(0, at - REPLAY_LEAD_MS))} title={t.replayAtTitle(mmss(at))}>
-          <Play size={12} strokeWidth={2} aria-hidden /> {t.replayAt(mmss(at))}
-        </button>
+      {at != null && (onReplay || seekVideo) && (
+        <div className="finding-actions">
+          {onReplay && (
+            <button className="btn ghost sm" onClick={() => onReplay(Math.max(0, at - REPLAY_LEAD_MS))} title={t.replayAtTitle(mmss(at))}>
+              <Play size={12} strokeWidth={2} aria-hidden /> {t.replayAt(mmss(at))}
+            </button>
+          )}
+          {seekVideo && (
+            <button className="btn ghost sm" onClick={() => seekVideo(at)} title={t.videoAtTitle(mmss(Math.max(0, at - LEAD_MS)), mmss(at))}>
+              <Video size={12} strokeWidth={2} aria-hidden /> {t.videoAt}
+            </button>
+          )}
+        </div>
       )}
       {people > 0 && (
         <div className="finding-count">

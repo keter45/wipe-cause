@@ -170,7 +170,7 @@ Fontes: [NightSummary](../src/components/NightSummary.tsx), [HealNotePanel](../s
 
 `PullView` contém o cabeçalho do encontro, dificuldade, horário, duração, resultado, vida dos bosses e informações de corte/call de wipe. A barra de ações reúne anotação, marcação manual, compartilhamento e, quando associados, vídeo e link WCL.
 
-O bloco **O que mais pesou** usa o veredito para destacar a causa e as mortes decisivas; outros avisos ficam recolhidos. Cada achado com habilidade tem **▶ Replay m:ss** (com replay completo): abre a aba Replay 3 s antes da primeira falha de quem foi culpado, senão da primeira falha registrada, senão da primeira morte decisiva por aquela habilidade (`findingMoment`). Em Solo, o diagnóstico da raid é reduzido a uma linha e pode ser expandido, deixando a leitura individual em destaque.
+O bloco **O que mais pesou** usa o veredito para destacar a causa e as mortes decisivas; outros avisos ficam recolhidos. Cada achado com habilidade tem **▶ Replay m:ss** (com replay completo): abre a aba Replay 3 s antes da primeira falha de quem foi culpado, senão da primeira falha registrada, senão da primeira morte decisiva por aquela habilidade (`findingMoment`). Com vídeo do Warcraft Recorder no pull, o achado também tem **Vídeo**, que abre o player no mesmo momento (5 s antes, como os outros ▶ de vídeo). Em Solo, o diagnóstico da raid é reduzido a uma linha e pode ser expandido, deixando a leitura individual em destaque.
 
 As abas são preservadas em memória por foco: Guilda começa em Mortes; Solo, em Você. Trocar de pull mantém a última aba daquele modo. `PullView` fecha vídeo e recolhe avisos ao mudar o pull.
 

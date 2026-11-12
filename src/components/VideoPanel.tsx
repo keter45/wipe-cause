@@ -24,6 +24,7 @@ interface Props {
 export function VideoPanel({ povs, video, onPov, seek, onClose }: Props) {
   const t = useMessages(videoMsg);
   const ref = useRef<HTMLVideoElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
@@ -47,6 +48,11 @@ export function VideoPanel({ povs, video, onPov, seek, onClose }: Props) {
     }
   };
 
+  // um ▶ lá embaixo (erros, mortes) traz o player para a vista
+  useEffect(() => {
+    if (seek) panelRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [seek]);
+
   useEffect(() => {
     const v = ref.current;
     if (!v || !seek || !src) return;
@@ -59,7 +65,7 @@ export function VideoPanel({ povs, video, onPov, seek, onClose }: Props) {
   }, [seek, src]);
 
   return (
-    <section className="video-panel">
+    <section className="video-panel" ref={panelRef}>
       <header>
         <span className="pov-head">
           <Video size={16} strokeWidth={1.5} className="inline-icon" aria-hidden /> {t.povOf}
