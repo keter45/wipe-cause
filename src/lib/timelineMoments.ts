@@ -7,7 +7,8 @@ import type { FightMarker, MechanicLane } from './fight';
 /** Peso de uma mecânica na linha do tempo: as graves e gravíssimas aparecem; as leves ficam recolhidas. */
 export type MechanicWeight = 'wipe' | 'major' | 'minor' | 'hidden';
 export const WEIGHTS: readonly MechanicWeight[] = ['wipe', 'major', 'minor', 'hidden'];
-const WEIGHT_RANK: Record<MechanicWeight, number> = { wipe: 0, major: 1, minor: 2, hidden: 3 };
+/** Ordem por severidade: gravíssimo primeiro. */
+export const WEIGHT_RANK: Record<MechanicWeight, number> = { wipe: 0, major: 1, minor: 2, hidden: 3 };
 
 /** O peso que a regra do boss dá (sem escolha do usuário). Os orbs no chão (gráfico) contam como grave. */
 export function defaultWeight(laneKey: string, severity: MechanicSeverity): MechanicWeight {
@@ -27,11 +28,11 @@ export interface WeightedLane extends MechanicLane {
   weight: MechanicWeight;
 }
 
-/** Faixas com o peso valendo, das que mais pesam para as que menos, e dentro do peso por falhas. */
+/** Faixas com o peso valendo, por severidade (gravíssimo primeiro) e, dentro do peso, por falhas. */
 export function weighLanes(lanes: MechanicLane[], overrides: Record<string, MechanicWeight>): WeightedLane[] {
   return lanes
     .map((l) => ({ ...l, weight: weightOf(l.key, l.severity, overrides) }))
-    .sort((a, b) => (a.key === 'orbs' ? -1 : b.key === 'orbs' ? 1 : 0) || WEIGHT_RANK[a.weight] - WEIGHT_RANK[b.weight] || b.failures - a.failures);
+    .sort((a, b) => WEIGHT_RANK[a.weight] - WEIGHT_RANK[b.weight] || b.failures - a.failures);
 }
 
 /** Janela do pico de erros (ms) e quantos erros fazem um pico. */

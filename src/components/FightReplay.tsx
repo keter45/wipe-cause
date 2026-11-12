@@ -7,7 +7,7 @@ import { aurasAt, bossHpAt, crucialAt, crucialSpells, deadAt, EV, eventsBetween,
 import { canLoadFull, fightOverlays, headBadge, loadFullPull } from '../lib/fullReplay';
 import { nextCast, UPCOMING_MS } from '../lib/replayTimers';
 import { useTimeWindow, ZOOM_MIN_MS } from '../lib/useTimeWindow';
-import { clusterDeaths, defaultWeight, fightMoments, isPrimary, weighLanes, weightOf, WEIGHTS, type MechanicWeight, type Moment, type WeightedLane } from '../lib/timelineMoments';
+import { clusterDeaths, defaultWeight, fightMoments, isPrimary, weighLanes, weightOf, WEIGHT_RANK, WEIGHTS, type MechanicWeight, type Moment, type WeightedLane } from '../lib/timelineMoments';
 import { useMessages } from '../i18n';
 import * as prefs from '../lib/replayPrefs';
 import { fightMsg } from './FightReplay.i18n';
@@ -512,7 +512,8 @@ function FightTimeline({
   const endT = pull.wipeCall?.t ?? pull.cutoffT ?? null;
   const afterEnd =
     endT != null && endT < w1 ? <span className="fight-after-call" style={{ left: pct(Math.max(endT, w0)) }} title={pull.wipeCall ? t.afterCall : t.moment.cutoff} aria-hidden /> : null;
-  const dim = (m: FightMarker) => selected != null && m.kind !== 'cast' && m.guid !== selected;
+  // com um player em foco, só as mortes e os erros dele ficam acesos; o resto (dos outros, frontais) apaga
+  const dim = (m: FightMarker) => selected != null && (m.kind === 'cast' || m.guid !== selected);
   const markerButton = (m: FightMarker, i: number) => {
     const who = m.guid ? (names.get(m.guid) ?? null) : null;
     const label = m.kind === 'death' ? t.diedTo(m.label) : m.label;
@@ -617,7 +618,7 @@ function FightTimeline({
         <div className="fight-track" onClick={seekFromTrack} onPointerDown={startPan}>
           {afterEnd}
           {l.series && (
-            <svg className="fight-series" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden>
+            <svg className={`fight-series ${selected != null ? 'dim' : ''}`} viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden>
               <path d={seriesPath(l.series)} />
             </svg>
           )}
@@ -629,7 +630,7 @@ function FightTimeline({
               return (
                 <button
                   key={`${m.t}-${i}`}
-                  className={`fight-mark ${m.ok ? 'ok' : 'bad'} ${l.weight} ${selected != null && m.guid && m.guid !== selected ? 'dim' : ''} ${m.guid && m.guid === selected ? 'mine' : ''}`}
+                  className={`fight-mark ${m.ok ? 'ok' : 'bad'} ${l.weight} ${selected != null && (m.ok || m.guid !== selected) ? 'dim' : ''} ${!m.ok && m.guid && m.guid === selected ? 'mine' : ''}`}
                   style={{ left: pct(m.t) }}
                   title={label}
                   aria-label={label}
@@ -724,7 +725,9 @@ function FightTimeline({
 function WeightMenu({ lanes, weights, onChange }: { lanes: WeightedLane[]; weights: Record<string, MechanicWeight>; onChange: (w: Record<string, MechanicWeight>) => void }) {
   const t = useMessages(fightMsg);
   const [open, setOpen] = useState(false);
-  const list = [...lanes].sort((a, b) => (a.key === 'orbs' ? t.lanes.orbs : a.name).localeCompare(b.key === 'orbs' ? t.lanes.orbs : b.name));
+  // por severidade do boss (fixa: a linha não pula ao mudar o peso) e, dentro dela, pelo nome
+  const nameOf = (l: WeightedLane) => (l.key === 'orbs' ? t.lanes.orbs : l.name);
+  const list = [...lanes].sort((a, b) => WEIGHT_RANK[defaultWeight(a.key, a.severity)] - WEIGHT_RANK[defaultWeight(b.key, b.severity)] || nameOf(a).localeCompare(nameOf(b)));
   const set = (key: string, w: MechanicWeight, def: MechanicWeight) => {
     const next = { ...weights };
     if (w === def) delete next[key];

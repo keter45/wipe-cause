@@ -23,10 +23,10 @@ describe('weighLanes', () => {
       ['c', 'hidden'],
     ]);
   });
-  it('orbs no chão ficam em cima e contam como grave', () => {
+  it('orbs no chão contam como grave e entram na ordem por severidade', () => {
     expect(defaultWeight('orbs', 'none')).toBe('major');
-    const w = weighLanes([lane('x', 'wipe', [1]), { ...lane('orbs', 'none', []), series: [[0, 1]] }], {});
-    expect(w[0].key).toBe('orbs');
+    const w = weighLanes([{ ...lane('orbs', 'none', []), series: [[0, 1]] }, lane('x', 'wipe', [1]), lane('y', 'minor', [1])], {});
+    expect(w.map((l) => l.key)).toEqual(['x', 'orbs', 'y']);
   });
 });
 
