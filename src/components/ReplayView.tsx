@@ -60,6 +60,8 @@ interface Props {
   overlay?: ReactNode;
   /** entre o mapa e os controles (replay completo: a linha do tempo) */
   belowMap?: ReactNode;
+  /** em cima dos controles, na grade da linha do tempo (replay completo: os momentos principais) */
+  aboveDock?: ReactNode;
   /** logo depois da legenda do chão (replay completo: os debuffs na cabeça) */
   legendExtra?: ReactNode;
   /** replay completo: quem tem esta aura neste instante (centros das áreas em volta de players) */
@@ -439,7 +441,7 @@ function WorldMarkerIcon({ marker, x, y, title }: { marker: number; x: number; y
 }
 
 /** Replay das posições em volta de um momento (morte, acerto, falha, encontro). */
-export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, legendExtra, holders, unitHp, auraStacks, vacated, vanished, zones = [], cc = [], gateways = [], range, initial, frame, bounds }: Props) {
+export function ReplayView({ data, replay: r, classes, moment, autoplay = true, hp, dies, hits, playback, onSelect, full = false, isDead, badge, overlay, belowMap, aboveDock, legendExtra, holders, unitHp, auraStacks, vacated, vanished, zones = [], cc = [], gateways = [], range, initial, frame, bounds }: Props) {
   const clipCtx = useContext(ClipPullContext);
   const t = useMessages(replayMsg);
   // tempo: o de fora (replay completo) ou o próprio
@@ -1489,6 +1491,7 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       </div>
       {/* controles colados no mapa e, embaixo, a linha do tempo na mesma grade: o trilho dela tem a largura do slider */}
       <div className={belowMap ? 'replay-dock' : undefined}>
+      {aboveDock}
       <div className="replay-controls">
         <span className="replay-left">
         <button className="btn sm" onClick={() => (now >= r.to ? restart() : setPlaying(!playing))} aria-label={playing ? t.pause : t.play} title={playing ? t.pause : t.play}>

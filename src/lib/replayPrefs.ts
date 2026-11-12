@@ -1,6 +1,9 @@
 // Escolhas do usuário no replay que valem de uma sessão para outra: marcas de chão escondidas,
-// debuffs tirados da cabeça dos players (por boss), medidores recolhidos e as faixas por mecânica.
+// debuffs tirados da cabeça dos players (por boss), medidores recolhidos, as faixas por mecânica e o
+// peso de cada mecânica na linha do tempo (por boss).
 // Ficam no navegador do app; sem storage (modo privado, erro), valem só enquanto o app está aberto.
+
+import type { MechanicWeight } from './timelineMoments';
 
 const KEY = 'wipe-cause:replay-prefs';
 const GROUND_DEFAULTS = ['noxious_ground'];
@@ -24,6 +27,10 @@ interface Prefs {
   framesCollapsed: boolean;
   /** camadas do mapa desligadas (contagens, próximo cast, animações, CC, portais, interrupts) */
   hiddenLayers: string[];
+  /** encounter id -> peso que o usuário deu a cada mecânica na linha do tempo (chave da mecânica) */
+  mechanicWeights: Record<string, Record<string, MechanicWeight>>;
+  /** linha do tempo: faixas das mecânicas leves abertas */
+  minorLanes: boolean;
 }
 
 let cache: Prefs | null = null;
@@ -37,7 +44,7 @@ function load(): Prefs {
     /* sem storage */
   }
   const introduced = GROUND_DEFAULTS.filter((key) => !saved.groundDefaults?.includes(key));
-  cache = { groundDefaults: GROUND_DEFAULTS, hiddenGround: [...new Set([...(saved.hiddenGround ?? []), ...introduced])], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true, mechanicLanes: saved.mechanicLanes ?? true, framesCollapsed: saved.framesCollapsed ?? false, hiddenLayers: saved.hiddenLayers ?? [] };
+  cache = { groundDefaults: GROUND_DEFAULTS, hiddenGround: [...new Set([...(saved.hiddenGround ?? []), ...introduced])], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true, mechanicLanes: saved.mechanicLanes ?? true, framesCollapsed: saved.framesCollapsed ?? false, hiddenLayers: saved.hiddenLayers ?? [], mechanicWeights: saved.mechanicWeights ?? {}, minorLanes: saved.minorLanes ?? false };
   return cache;
 }
 
@@ -76,3 +83,9 @@ export const setFramesCollapsed = (v: boolean) => save({ ...load(), framesCollap
 
 export const hiddenLayers = () => new Set(load().hiddenLayers);
 export const setHiddenLayers = (keys: Set<string>) => save({ ...load(), hiddenLayers: [...keys] });
+
+export const mechanicWeights = (encounterId: number): Record<string, MechanicWeight> => ({ ...(load().mechanicWeights[encounterId] ?? {}) });
+export const setMechanicWeights = (encounterId: number, w: Record<string, MechanicWeight>) => save({ ...load(), mechanicWeights: { ...load().mechanicWeights, [encounterId]: w } });
+
+export const minorLanes = () => load().minorLanes;
+export const setMinorLanes = (v: boolean) => save({ ...load(), minorLanes: v });

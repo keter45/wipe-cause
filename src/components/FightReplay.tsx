@@ -1,18 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, CircleUserRound, X, ZoomOut } from 'lucide-react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CircleUserRound, Flag, Flame, SlidersHorizontal, Skull, TriangleAlert, X, ZoomOut } from 'lucide-react';
 import type { Pull, ReplayRef } from '../types';
 import { classColor, mmss, num, shortName } from '../lib/format';
 import { decodeReplay } from '../lib/replay';
 import { aurasAt, bossHpAt, crucialAt, crucialSpells, deadAt, EV, eventsBetween, fightView, hpAt, mechanicLanes, meterAt, METERS, type FightEventView, type FightMarker, type FightView, type MeterKind } from '../lib/fight';
 import { canLoadFull, fightOverlays, headBadge, loadFullPull } from '../lib/fullReplay';
 import { nextCast, UPCOMING_MS } from '../lib/replayTimers';
-import { useTimeWindow } from '../lib/useTimeWindow';
+import { useTimeWindow, ZOOM_MIN_MS } from '../lib/useTimeWindow';
+import { clusterDeaths, defaultWeight, fightMoments, isPrimary, weighLanes, weightOf, WEIGHTS, type MechanicWeight, type Moment, type WeightedLane } from '../lib/timelineMoments';
 import { useMessages } from '../i18n';
 import * as prefs from '../lib/replayPrefs';
 import { fightMsg } from './FightReplay.i18n';
 import { MapFilter, ReplayView, usePlayback } from './ReplayView';
 import { ClipPullContext } from './ClipButton';
 import { SpellIcon, SpellName } from './SpellIcon';
+import { Popover } from './Popover';
 
 /** Janela do painel do player focado: o que aconteceu com ele até o instante (ms). */
 const FEED_WINDOW_MS = 15_000;
@@ -103,6 +105,14 @@ function FightReplayInner({ pull, startAt, seekTo }: { pull: Pull; startAt: numb
     const from = Math.min(Math.max(0, pb.now - w * 0.1), duration - w);
     setWin([from, from + w]);
   }, [pb.now, pb.playing, win, duration]);
+  // peso de cada mecânica na linha do tempo (por boss): o do usuário por cima do da regra
+  const [weights, setWeightsState] = useState(() => prefs.mechanicWeights(pull.encounterId));
+  const setWeights = (w: Record<string, MechanicWeight>) => {
+    prefs.setMechanicWeights(pull.encounterId, w);
+    setWeightsState(w);
+  };
+  const lanes = useMemo(() => weighLanes(mechanicLanes(pull), weights), [pull, weights]);
+  const moments = useMemo(() => fightMoments(pull, lanes), [pull, lanes]);
   const seek = (tt: number, guid?: string) => {
     pb.setPlaying(false);
     pb.setNow(tt);
@@ -162,7 +172,10 @@ function FightReplayInner({ pull, startAt, seekTo }: { pull: Pull; startAt: numb
         gateways={gateways}
         legendExtra={heads.length > 0 && <HeadLegend heads={heads} hidden={hidden} onChange={setHeads} />}
         range={win}
-        belowMap={<FightTimeline pull={pull} view={view} now={pb.now} duration={duration} win={win} onWin={setWin} selected={selected} classes={classes} onSeek={seek} />}
+        aboveDock={<MomentChips moments={moments} now={pb.now} onSeek={seek} classes={classes} win={win} duration={duration} onWin={setWin} />}
+        belowMap={
+          <FightTimeline pull={pull} view={view} now={pb.now} duration={duration} win={win} onWin={setWin} selected={selected} classes={classes} onSeek={seek} lanes={lanes} weights={weights} onWeights={setWeights} />
+        }
       />
       </ClipPullContext.Provider>
       <FocusPanel pull={pull} view={view} now={pb.now} selected={selected} classes={classes} onClear={() => setSelected(null)} onSeek={seek} />
@@ -407,6 +420,9 @@ function FightTimeline({
   selected,
   classes,
   onSeek,
+  lanes,
+  weights,
+  onWeights,
 }: {
   pull: Pull;
   view: FightView;
@@ -418,6 +434,10 @@ function FightTimeline({
   selected: string | null;
   classes: Map<string, string | null>;
   onSeek: (t: number, guid?: string) => void;
+  /** faixas por mecânica com o peso valendo (o do usuário por cima do da regra) */
+  lanes: WeightedLane[];
+  weights: Record<string, MechanicWeight>;
+  onWeights: (w: Record<string, MechanicWeight>) => void;
 }) {
   const t = useMessages(fightMsg);
   const [w0, w1] = win;
@@ -430,13 +450,52 @@ function FightTimeline({
     onWin,
     measure: () => rootRef.current?.querySelector('.fight-lane .fight-track') ?? null,
   });
+  // onde ficam os trilhos dentro da linha do tempo (px): a agulha e a linha do mouse atravessam todas as faixas
+  const [geo, setGeo] = useState<{ left: number; width: number } | null>(null);
+  const measureGeo = () => {
+    const root = rootRef.current;
+    const track = root?.querySelector<HTMLElement>('.fight-lane .fight-track');
+    if (!root || !track) return;
+    const r = root.getBoundingClientRect();
+    const k = track.getBoundingClientRect();
+    const left = Math.round(k.left - r.left);
+    const width = Math.round(k.width);
+    // 1px de folga: arredondamento não vira um laço de medidas
+    setGeo((g) => (g && Math.abs(g.left - left) <= 1 && Math.abs(g.width - width) <= 1 ? g : { left, width }));
+  };
+  // mede quando as faixas mudam e quando a linha do tempo ou o trilho mudam de tamanho (a coluna dos
+  // nomes alarga ou encolhe com as faixas abertas); nunca a cada quadro
+  useLayoutEffect(() => {
+    measureGeo();
+    const root = rootRef.current;
+    const track = root?.querySelector<HTMLElement>('.fight-lane .fight-track');
+    if (!root) return;
+    const ro = new ResizeObserver(() => measureGeo());
+    ro.observe(root);
+    if (track) ro.observe(track);
+    return () => ro.disconnect();
+  }, [lanes]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [hover, setHover] = useState<number | null>(null);
+  const onMove = (ev: React.PointerEvent<HTMLDivElement>) => {
+    if (!geo || panning) return setHover(null);
+    const x = ev.clientX - ev.currentTarget.getBoundingClientRect().left - geo.left;
+    setHover(x >= 0 && x <= geo.width ? w0 + (x / geo.width) * span : null);
+  };
   const names = useMemo(() => new Map(pull.players.map((p) => [p.guid, shortName(p.name)] as const)), [pull]);
-  const shown = (m: FightMarker) => m.kind !== 'failure' || m.severity === 'wipe' || m.severity === 'major' || (selected != null && m.guid === selected);
+  const weightByKey = useMemo(() => new Map(lanes.map((l) => [l.key, l.weight] as const)), [lanes]);
+  const markerWeight = (m: FightMarker): MechanicWeight => (m.mechanicKey ? (weightByKey.get(m.mechanicKey) ?? weightOf(m.mechanicKey, m.severity ?? 'none', weights)) : 'major');
+  // falhas: as graves e gravíssimas de todo mundo; as leves só do player focado; as escondidas nunca
+  const shown = (m: FightMarker) => {
+    if (m.kind !== 'failure') return true;
+    const w = markerWeight(m);
+    return w !== 'hidden' && (isPrimary(w) || (selected != null && m.guid === selected));
+  };
   const markers = view.markers.filter(shown);
-  // uma faixa por mecânica (ou só a faixa das falhas, como antes)
-  const lanes = useMemo(() => mechanicLanes(pull), [pull]);
   const [byMechanic, setByMechanic] = useState(prefs.mechanicLanes);
-  const failed = lanes.reduce((n, l) => n + l.failures, 0);
+  const [showMinor, setShowMinor] = useState(prefs.minorLanes);
+  const primary = lanes.filter((l) => isPrimary(l.weight));
+  const minor = lanes.filter((l) => l.weight === 'minor');
+  const failed = primary.reduce((n, l) => n + l.failures, 0);
   const lane = (kind: FightMarker['kind']) => markers.filter((m) => m.kind === kind && inWin(m.t));
   const phases = pull.phaseMarks ?? [];
   // a faixa fica mesmo sem nada no trecho com zoom (senão as faixas pulam)
@@ -449,6 +508,10 @@ function FightTimeline({
   const axis: number[] = [];
   const step = AXIS_STEPS_MS.find((s) => span / s <= AXIS_MAX_TICKS) ?? AXIS_STEPS_MS[AXIS_STEPS_MS.length - 1];
   for (let x = Math.ceil(w0 / step) * step || step; x < w1; x += step) if (x > w0) axis.push(x);
+  // depois da call de wipe (ou do corte da análise): o resto do pull fica hachurado
+  const endT = pull.wipeCall?.t ?? pull.cutoffT ?? null;
+  const afterEnd =
+    endT != null && endT < w1 ? <span className="fight-after-call" style={{ left: pct(Math.max(endT, w0)) }} title={pull.wipeCall ? t.afterCall : t.moment.cutoff} aria-hidden /> : null;
   const dim = (m: FightMarker) => selected != null && m.kind !== 'cast' && m.guid !== selected;
   const markerButton = (m: FightMarker, i: number) => {
     const who = m.guid ? (names.get(m.guid) ?? null) : null;
@@ -456,7 +519,7 @@ function FightTimeline({
     return (
       <button
         key={`${m.kind}-${m.t}-${i}`}
-        className={`fight-marker ${m.kind} ${m.severity ?? ''} ${dim(m) ? 'dim' : ''} ${m.guid && m.guid === selected ? 'mine' : ''}`}
+        className={`fight-marker ${m.kind} ${m.kind === 'failure' ? markerWeight(m) : ''} ${dim(m) ? 'dim' : ''} ${m.guid && m.guid === selected ? 'mine' : ''}`}
         style={{ left: pct(m.t), ...(m.kind === 'death' && m.guid ? { color: classColor(classes.get(m.guid)) } : {}) }}
         title={t.markerTitle(mmss(m.t), label, who)}
         aria-label={t.markerTitle(mmss(m.t), label, who)}
@@ -469,7 +532,44 @@ function FightTimeline({
       </button>
     );
   };
-  const rows: [string, React.ReactNode, string][] = [
+  // mortes coladas viram uma bolha com quantas são; clicar aproxima até elas se separarem
+  const zoomTo = (from: number, to: number) => {
+    const pad = MARKER_LEAD_MS + 1_000;
+    let a = from - pad;
+    let b = to + pad;
+    if (b - a < ZOOM_MIN_MS) {
+      const mid = (a + b) / 2;
+      a = mid - ZOOM_MIN_MS / 2;
+      b = mid + ZOOM_MIN_MS / 2;
+    }
+    a = Math.max(0, a);
+    b = Math.min(duration, Math.max(b, a + ZOOM_MIN_MS));
+    onSeek(Math.max(0, from - MARKER_LEAD_MS));
+    if (b - a < span * 0.95) onWin([a, b]);
+  };
+  const clusters = clusterDeaths(lane('death'), span / Math.max(1, geo?.width ?? 600));
+  const deathNodes = clusters.map((c, i) => {
+    if (c.deaths.length === 1) return markerButton(c.deaths[0], i);
+    const mine = selected != null && c.deaths.some((d) => d.guid === selected);
+    const lines = c.deaths.map((d) => t.markerTitle(mmss(d.t), t.diedTo(d.label), d.guid ? (names.get(d.guid) ?? null) : null)).join('\n');
+    return (
+      <button
+        key={`cluster-${c.t}`}
+        className={`fight-cluster num ${selected != null && !mine ? 'dim' : ''} ${mine ? 'mine' : ''}`}
+        style={{ left: pct((c.t + c.end) / 2) }}
+        title={t.clusterTitle(c.deaths.length, lines)}
+        aria-label={t.clusterTitle(c.deaths.length, lines)}
+        onClick={(ev) => {
+          ev.stopPropagation();
+          zoomTo(c.t, c.end);
+        }}
+      >
+        {c.deaths.length}
+      </button>
+    );
+  });
+  const deathCount = pull.deaths.filter((d) => !d.ignored).length;
+  const rows: [string, React.ReactNode, string, React.ReactNode?][] = [
     [
       t.lanes.phases,
       phases.filter((p, i) => p.t <= w1 && (phases[i + 1]?.t ?? duration) >= w0).map((p) => [p, phases.indexOf(p)] as const).map(([p, i]) => (
@@ -479,13 +579,17 @@ function FightTimeline({
       )),
       'phase',
     ],
-    [t.lanes.deaths, lane('death').map(markerButton), 'death'],
+    [t.lanes.deaths, deathNodes, 'death', deathCount > 0 ? <span className="num fight-lane-fails">{deathCount}</span> : null],
     // com as faixas por mecânica, as falhas e os frontais aparecem nelas
     ...(byMechanic ? [] : ([[t.lanes.failures, lane('failure').map(markerButton), 'failure'], [t.lanes.casts, lane('cast').map(markerButton), 'cast']] as [string, React.ReactNode, string][])),
   ];
   const toggleLanes = () => {
     prefs.setMechanicLanes(!byMechanic);
     setByMechanic(!byMechanic);
+  };
+  const toggleMinor = () => {
+    prefs.setMinorLanes(!showMinor);
+    setShowMinor(!showMinor);
   };
   // gráfico dos orbs no chão: degraus no trecho mostrado (0 a 1000 na largura, 0 a 100 na altura)
   const seriesPath = (pts: [number, number][]) => {
@@ -501,19 +605,58 @@ function FightTimeline({
     }
     return `${d}L1000,${y(last).toFixed(1)}L1000,100Z`;
   };
+  const laneRow = (l: WeightedLane) => {
+    const name = l.key === 'orbs' ? t.lanes.orbs : l.name;
+    return (
+      <div key={l.key} className="fight-lane mech">
+        <span className="small muted fight-lane-label" title={name}>
+          {l.spellId ? <SpellIcon spellId={l.spellId} size={12} hover={false} /> : null}
+          <span className="fight-lane-name">{name}</span>
+          {l.failures > 0 && <span className="num fight-lane-fails">{l.failures}</span>}
+        </span>
+        <div className="fight-track" onClick={seekFromTrack} onPointerDown={startPan}>
+          {afterEnd}
+          {l.series && (
+            <svg className="fight-series" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden>
+              <path d={seriesPath(l.series)} />
+            </svg>
+          )}
+          {l.marks
+            .filter((m) => inWin(m.t))
+            .map((m, i) => {
+              const who = m.guid ? (names.get(m.guid) ?? null) : (m.label ?? null);
+              const label = t.markerTitle(mmss(m.t), m.ok ? name : `${name} · ${t.laneFailed}`, who);
+              return (
+                <button
+                  key={`${m.t}-${i}`}
+                  className={`fight-mark ${m.ok ? 'ok' : 'bad'} ${l.weight} ${selected != null && m.guid && m.guid !== selected ? 'dim' : ''} ${m.guid && m.guid === selected ? 'mine' : ''}`}
+                  style={{ left: pct(m.t) }}
+                  title={label}
+                  aria-label={label}
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    onSeek(Math.max(0, m.t - MARKER_LEAD_MS), m.guid);
+                  }}
+                />
+              );
+            })}
+        </div>
+      </div>
+    );
+  };
   return (
-    <div className={`fight-timeline ${zoomed ? 'pannable' : ''} ${panning ? 'panning' : ''}`} aria-label={t.timelineAria} role="group" ref={rootRef} onClickCapture={swallowClick}>
+    <div
+      className={`fight-timeline ${zoomed ? 'pannable' : ''} ${panning ? 'panning' : ''}`}
+      aria-label={t.timelineAria}
+      role="group"
+      ref={rootRef}
+      onClickCapture={swallowClick}
+      onPointerMove={onMove}
+      onPointerLeave={() => setHover(null)}
+    >
+      {/* a régua fica colada embaixo do slider: os dois são o mesmo trilho */}
       <div className="fight-axis">
-        {zoomed ? (
-          <button className="btn sm ghost fight-zoom-reset" onClick={() => onWin([0, duration])} title={t.zoomReset} aria-label={t.zoomReset}>
-            <ZoomOut size={13} strokeWidth={1.75} aria-hidden />
-            <span className="num">{`${mmss(w0)}–${mmss(w1)}`}</span>
-          </button>
-        ) : (
-          <span className="small muted fight-zoom-hint" title={t.zoomHint}>
-            {t.zoomShort}
-          </span>
-        )}
+        <span />
         <div className="fight-track" aria-hidden onPointerDown={startPan}>
           {axis.map((x) => (
             <span key={x} className="fight-tick" style={{ left: pct(x) }}>
@@ -524,12 +667,15 @@ function FightTimeline({
       </div>
       {rows
         .filter(([, , kind]) => has.has(kind))
-        .map(([label, items]) => (
+        .map(([label, items, , extra]) => (
           <div key={label} className="fight-lane">
-            <span className="small muted">{label}</span>
+            <span className="small muted fight-lane-label">
+              <span className="fight-lane-name">{label}</span>
+              {extra}
+            </span>
             <div className="fight-track" onClick={seekFromTrack} onPointerDown={startPan}>
+              {afterEnd}
               {items}
-              <span className="fight-now" style={{ left: pct(now) }} aria-hidden />
             </div>
           </div>
         ))}
@@ -540,53 +686,207 @@ function FightTimeline({
             {t.lanes.mechanics}
             {!byMechanic && failed > 0 && <span className="num fight-lane-fails">{failed}</span>}
           </button>
-          <span />
+          <WeightMenu lanes={lanes} weights={weights} onChange={onWeights} />
         </div>
       )}
       {/* as faixas rolam sozinhas: a linha do tempo não empurra o mapa para fora da tela */}
-      {byMechanic && (
-      <div className="fight-lanes">
-      {lanes.map((l) => {
-          const name = l.key === 'orbs' ? t.lanes.orbs : l.name;
-          return (
-            <div key={l.key} className="fight-lane mech">
-              <span className="small muted fight-lane-label" title={name}>
-                {l.spellId ? <SpellIcon spellId={l.spellId} size={12} hover={false} /> : null}
-                <span className="fight-lane-name">{name}</span>
-                {l.failures > 0 && <span className="num fight-lane-fails">{l.failures}</span>}
-              </span>
-              <div className="fight-track" onClick={seekFromTrack} onPointerDown={startPan}>
-                {l.series && (
-                  <svg className="fight-series" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden>
-                    <path d={seriesPath(l.series)} />
-                  </svg>
-                )}
-                {l.marks
-                  .filter((m) => inWin(m.t))
-                  .map((m, i) => {
-                    const who = m.guid ? (names.get(m.guid) ?? null) : (m.label ?? null);
-                    const label = t.markerTitle(mmss(m.t), m.ok ? name : `${name} · ${t.laneFailed}`, who);
-                    return (
-                      <button
-                        key={`${m.t}-${i}`}
-                        className={`fight-mark ${m.ok ? 'ok' : 'bad'} ${l.severity} ${selected != null && m.guid && m.guid !== selected ? 'dim' : ''} ${m.guid && m.guid === selected ? 'mine' : ''}`}
-                        style={{ left: pct(m.t) }}
-                        title={label}
-                        aria-label={label}
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          onSeek(Math.max(0, m.t - MARKER_LEAD_MS), m.guid);
-                        }}
-                      />
-                    );
-                  })}
-                <span className="fight-now" style={{ left: pct(now) }} aria-hidden />
-              </div>
+      {byMechanic && (primary.length > 0 || minor.length > 0) && (
+        <div className="fight-lanes">
+          {primary.map(laneRow)}
+          {minor.length > 0 && (
+            <div className="fight-lane fight-minor-head">
+              <button className="btn sm ghost fight-lanes-toggle" aria-expanded={showMinor} onClick={toggleMinor} title={showMinor ? t.minorHide : t.minorShow}>
+                {showMinor ? <ChevronDown size={12} strokeWidth={1.75} aria-hidden /> : <ChevronRight size={12} strokeWidth={1.75} aria-hidden />}
+                {t.minorLanes}
+                <span className="num muted">{minor.length}</span>
+              </button>
+              <span />
             </div>
-          );
-        })}
-      </div>
+          )}
+          {showMinor && minor.map(laneRow)}
+        </div>
       )}
+      {geo && (
+        <div className="fight-tl-overlay" style={{ left: geo.left, width: geo.width }} aria-hidden>
+          {inWin(now) && <span className="fight-now" style={{ left: pct(now) }} />}
+          {hover != null && (
+            <span className="fight-hover" style={{ left: pct(hover) }}>
+              <span className="fight-hover-time num">{mmss(hover)}</span>
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Peso de cada habilidade na linha do tempo: o usuário escolhe; o padrão vem da regra do boss. */
+function WeightMenu({ lanes, weights, onChange }: { lanes: WeightedLane[]; weights: Record<string, MechanicWeight>; onChange: (w: Record<string, MechanicWeight>) => void }) {
+  const t = useMessages(fightMsg);
+  const [open, setOpen] = useState(false);
+  const list = [...lanes].sort((a, b) => (a.key === 'orbs' ? t.lanes.orbs : a.name).localeCompare(b.key === 'orbs' ? t.lanes.orbs : b.name));
+  const set = (key: string, w: MechanicWeight, def: MechanicWeight) => {
+    const next = { ...weights };
+    if (w === def) delete next[key];
+    else next[key] = w;
+    onChange(next);
+  };
+  const changed = Object.keys(weights).length;
+  return (
+    <span className="weight-menu">
+      <Popover
+        open={open}
+        onClose={() => setOpen(false)}
+        label={t.weightsTitle}
+        trigger={
+          <button className={`btn sm ghost ${open ? 'pressed' : ''}`} aria-expanded={open} onClick={() => setOpen(!open)} title={t.weightsTitle}>
+            <SlidersHorizontal size={13} strokeWidth={1.75} aria-hidden />
+            {t.weights}
+            {changed > 0 && <span className="num muted">{changed}</span>}
+          </button>
+        }
+      >
+        <div className="map-filter-head small">
+          <span className="muted">{t.weightsTitle}</span>
+          {changed > 0 && (
+            <button className="link small" onClick={() => onChange({})}>
+              {t.weightsReset}
+            </button>
+          )}
+        </div>
+        <p className="small muted weight-help">{t.weightsHelp}</p>
+        <ul className="plain weight-list">
+          {list.map((l) => {
+            const def = defaultWeight(l.key, l.severity);
+            const name = l.key === 'orbs' ? t.lanes.orbs : l.name;
+            return (
+              <li key={l.key} className="weight-row">
+                {l.spellId != null ? <SpellName spellId={l.spellId} name={name} size={16} /> : <span className="spell-name-text">{name}</span>}
+                <span className="segmented sm" role="group" aria-label={name}>
+                  {WEIGHTS.map((w) => (
+                    <button
+                      key={w}
+                      aria-pressed={l.weight === w}
+                      className={`${l.weight === w ? 'active' : ''} ${w === def ? 'default' : ''}`}
+                      title={w === def ? t.weightDefault(t.weight[def]) : undefined}
+                      onClick={() => set(l.key, w, def)}
+                    >
+                      {t.weight[w]}
+                    </button>
+                  ))}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </Popover>
+    </span>
+  );
+}
+
+/** Momentos principais do pull em chips, com setas para pular de um ao outro; o zoom fica no fim da linha. */
+function MomentChips({
+  moments,
+  now,
+  onSeek,
+  classes,
+  win,
+  duration,
+  onWin,
+}: {
+  moments: Moment[];
+  now: number;
+  onSeek: (t: number, guid?: string) => void;
+  classes: Map<string, string | null>;
+  win: [number, number];
+  duration: number;
+  onWin: (w: [number, number]) => void;
+}) {
+  const t = useMessages(fightMsg);
+  const at = (m: Moment) => Math.max(0, m.t - MARKER_LEAD_MS);
+  const go = (m: Moment) => onSeek(at(m), m.kind === 'firstDeath' || m.kind === 'firstFail' ? m.guid : undefined);
+  // o momento "atual": o último a que o instante já chegou
+  let current = -1;
+  moments.forEach((m, i) => {
+    if (at(m) <= now + 50) current = i;
+  });
+  const prev = [...moments].reverse().find((m) => at(m) < now - 500);
+  const next = moments.find((m) => at(m) > now + 50);
+  const zoomed = win[0] > 0 || win[1] < duration;
+  const label = (m: Moment) => {
+    switch (m.kind) {
+      case 'firstFail':
+        return (
+          <>
+            <TriangleAlert size={13} strokeWidth={1.75} aria-hidden />
+            {t.moment.firstFail}
+            {m.label && <SpellName spellId={m.spellId} name={m.label} size={14} />}
+          </>
+        );
+      case 'firstDeath':
+        return (
+          <>
+            <Skull size={13} strokeWidth={1.75} aria-hidden />
+            {t.moment.firstDeath}
+            {m.label && (
+              <span className="fight-moment-who" style={{ color: classColor(m.guid ? classes.get(m.guid) : null) }}>
+                {shortName(m.label)}
+              </span>
+            )}
+          </>
+        );
+      case 'peak':
+        return (
+          <>
+            <Flame size={13} strokeWidth={1.75} aria-hidden />
+            {t.peak(m.count ?? 0)}
+          </>
+        );
+      default:
+        return (
+          <>
+            <Flag size={13} strokeWidth={1.75} aria-hidden />
+            {t.moment[m.kind]}
+          </>
+        );
+    }
+  };
+  return (
+    <div className="fight-moments" role="toolbar" aria-label={t.momentsAria}>
+      {moments.length > 0 && (
+        <>
+          <button className="btn sm ghost fight-moment-step" disabled={!prev} onClick={() => prev && go(prev)} aria-label={t.prevMoment} title={t.prevMoment}>
+            <ChevronLeft size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+          {moments.map((m, i) => (
+            <button
+              key={`${m.kind}-${m.t}`}
+              className={`btn sm ghost fight-moment ${i === current ? 'pressed' : ''}`}
+              aria-pressed={i === current}
+              onClick={() => go(m)}
+              title={m.kind === 'peak' ? t.peakTitle(m.count ?? 0, mmss(m.t), mmss(m.end ?? m.t)) : undefined}
+            >
+              <span className="num muted">{m.kind === 'peak' && mmss(m.end ?? m.t) !== mmss(m.t) ? `${mmss(m.t)}–${mmss(m.end ?? m.t)}` : mmss(m.t)}</span>
+              {label(m)}
+            </button>
+          ))}
+          <button className="btn sm ghost fight-moment-step" disabled={!next} onClick={() => next && go(next)} aria-label={t.nextMoment} title={t.nextMoment}>
+            <ChevronRight size={14} strokeWidth={1.75} aria-hidden />
+          </button>
+        </>
+      )}
+      <span className="fight-moments-zoom">
+        {zoomed ? (
+          <button className="btn sm ghost fight-zoom-reset" onClick={() => onWin([0, duration])} title={t.zoomReset} aria-label={t.zoomReset}>
+            <ZoomOut size={13} strokeWidth={1.75} aria-hidden />
+            <span className="num">{`${mmss(win[0])}–${mmss(win[1])}`}</span>
+          </button>
+        ) : (
+          <span className="small muted fight-zoom-hint" title={t.zoomHint}>
+            {t.zoomShort}
+          </span>
+        )}
+      </span>
     </div>
   );
 }
