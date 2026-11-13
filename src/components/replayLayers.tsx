@@ -184,7 +184,7 @@ const WAVE_MARK_YD = [2, 7] as const;
 const WAVE_FADE_MS = 500;
 
 /**
- * Ondas que saem de um player marcado (coordenadas do mapa): antes, setas tracejadas nas direções
+ * Ondas que saem de quem lança a onda (coordenadas do mapa): antes, setas tracejadas nas direções
  * em volta dele, com o arco que fecha até a saída; depois, uma barra por direção andando para fora.
  */
 export function Waves({ waves, now, sx, sy, scale, clip, hidden, labels, posOf }: { waves: NonNullable<ReplayData['waves']>; now: number; sx: (x: number) => number; sy: (y: number) => number; scale: number; clip?: string; hidden: Set<string>; labels: boolean; posOf: (guid: string) => [number, number] | null }) {
@@ -221,6 +221,28 @@ export function Waves({ waves, now, sx, sy, scale, clip, hidden, labels, posOf }
         const age = now - w.at;
         const d = w.start + (w.speed * age) / 1000;
         const fade = Math.min(1, (w.at + w.durationMs - now) / WAVE_FADE_MS);
+        if (w.inferred) {
+          // inimigo fora da arena: a origem e o rastro ficam fora do clip, só a frente fica dentro
+          const rays = w.angles.map((a) => {
+            const [cx, cy] = [Math.cos(a), Math.sin(a)];
+            return { cx, cy, fx: w.x + cx * d, fy: w.y + cy * d };
+          });
+          const h = w.width / 2;
+          return (
+            <g key={`${w.key}-${i}`}>
+              <title>{t.waveInferred(w.name)}</title>
+              <g className="replay-wave replay-wave--inferred" opacity={fade}>
+                <circle className="replay-wave-origin" cx={sx(w.x)} cy={sy(w.y)} r={1 * scale} />
+                {rays.map((r, j) => <line key={j} className="replay-wave-trail" x1={sx(w.x)} y1={sy(w.y)} x2={sx(r.fx)} y2={sy(r.fy)} />)}
+              </g>
+              <g className="replay-wave replay-wave--inferred" opacity={fade} clipPath={clip}>
+                {rays.map(({ cx, cy, fx, fy }, j) => (
+                  <line key={j} className="replay-wave-front" x1={sx(fx - cy * h)} y1={sy(fy + cx * h)} x2={sx(fx + cy * h)} y2={sy(fy - cx * h)} />
+                ))}
+              </g>
+            </g>
+          );
+        }
         return (
           <g key={`${w.key}-${i}`} className="replay-wave" opacity={fade} clipPath={clip}>
             <title>{w.name}</title>

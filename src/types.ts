@@ -117,8 +117,9 @@ export interface RaidSeries {
 }
 
 /**
- * Ondas de um player marcado: a marca de `from` a `at` (no player); em `at` saem de (x, y) nas direções
+ * Ondas de quem lança a onda: a marca de `from` a `at` (no player); em `at` saem de (x, y) nas direções
  * `angles` (radianos), a frente a `start` + `speed`·t jardas, por `durationMs`, com `width` jardas de largura.
+ * `inferred`: onda de cast de inimigo, com as direções tiradas dos acertos (aparece só em `at`).
  */
 export interface WaveView {
   key: string;
@@ -134,6 +135,7 @@ export interface WaveView {
   speed: number;
   width: number;
   durationMs: number;
+  inferred?: boolean;
 }
 
 /** Poça: anunciada no cast (`from`), no chão de `on` a `to`, crescendo e recuando em `growMs`; círculos [x, y, raio] no log. */

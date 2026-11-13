@@ -8600,6 +8600,14 @@ button.kpi:hover {
   stroke-width: 1;
   stroke-dasharray: 4 4;
 }
+/* onda inferida dos acertos: frente tracejada (ponta reta, senão a ponta redonda fecha o traço) e o ponto de origem */
+.replay-wave--inferred .replay-wave-front {
+  stroke-linecap: butt;
+  stroke-dasharray: 6 4;
+}
+.replay-wave-origin {
+  fill: currentColor;
+}
 .replay-pickups-left {
   fill: #67e8f9;
 }
