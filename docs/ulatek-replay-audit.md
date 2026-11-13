@@ -40,6 +40,7 @@ forma: outros ids das mesmas habilidades, Writhing Gestation, Shadow Molt e Boil
 | Putrid Membrane, Acidic Expulsion | dano no raid inteiro | `ground: false` |
 | Adds | cada tipo com cor e ícone de uma habilidade: verdes para o que sai dos ovos (Rawling, Viper, Venomous Heart), quentes para os Doomscales; Warden e Ravenous Doomscale entram no mapa (`replay: true`) | `units` com `color`/`icon` |
 | Ovos com casca (mítico) | Blightscale Spawn 265644 e 268121, sem `UNIT_DIED`, vida de 0 a 82 s, até 22 s sem linha com o ovo ainda no chão. Saem do log de quatro jeitos: pego (Noxious Shell 1307612 num player; vem da Ula'tek, não do ovo; o player está a 2,3-4,8 jd no log local e até 15 jd no WCL, e os DoTs batem no ovo por mais 1,6-2,7 s), quebrado (vira Rawling 1-3 s depois da última linha), Writhing Gestation (vira Blightscale Clutch 263535: 6 ovos somem em 226,7 s e 6 Clutches nascem em 227,9 s, DVYR fight 40) e choca (vira Viper). No log local, os 8 ovos saem do mapa na Shell certa (design [replay-unit-exit.md](designs/replay-unit-exit.md)) | `units` com `replay`, `until_last_line: true` e `cleared_by_aura: { aura: 1307612, radius: 15, within_s: 3 }` |
+| Caustic Waves da cauda | a direção muda de cast para cast e não está no log; a frente anda 13,5 jd/s a partir da cauda (seção abaixo) | `waves: { cast_id: 1298570, speed: 13.5, width: 6, duration_s: 7 }`: onda inferida dos acertos |
 | Mephitic Thrash | todo mundo toma o mesmo dano (595-625k sem mitigação) de 35 a 60 jd da cauda: o dano não cai com a distância | sem forma (premissa 10) |
 
 ## Saída dos ovos do mapa (`replay:check`, 09/11)
@@ -151,6 +152,10 @@ sempre olha para o centro. O núcleo não precisa disso: a importação do WCL j
   sempre de um lado só. Há acertos de 0 a 3 s perto dela (a onda dela) e de 5 a 7 s onde o raid está, o
   que bate com a onda das caudas do lado oposto (76 jd a 13,5 jd/s ≈ 5,6 s). Faltam acertos para ver
   os buracos da parede.
+- **Com a regra (`waves: { cast_id: 1298570 }`, `replay:check` de 12/11, 4 reports míticos, 40 pulls):**
+  656 casts da cauda; 131 com onda, 519 sem acerto, 6 sem posição. 352 acertos: 236 com cast (51
+  ambíguos, 21,6%) e 116 sem cast que explique (ondas da Ula'tek e Volatile Purge, com o mesmo dano).
+  Design: [replay-cast-waves.md](designs/replay-cast-waves.md).
 
 ## Fora, e por quê
 
@@ -160,8 +165,9 @@ sempre olha para o centro. O núcleo não precisa disso: a importação do WCL j
   menos de 20 s do fim).
 - **Ondas do Volatile Purge** (mítico, P3). Quem soakou o Serpent's Bite solta Caustic Waves numa
   seta quando a aura (1312967/1316356) sai. Só o kill mítico chegou à P3: 7 saídas e 6 acertos
-  atribuíveis, sem padrão nem nos eixos do mundo nem na direção do player. Falta log, e o `waves` hoje
-  só aceita ângulo fixo.
+  atribuíveis, sem padrão nem nos eixos do mundo nem na direção do player. Falta log, e o `waves` com
+  aura só aceita ângulo fixo; a direção pelos acertos é só para gatilho por cast (o mesmo dano do
+  `caustic_waves`).
 - **Raio do Toxic Incubation** (mítico). O cast (1299759) da Ula'tek espectral não tem alvo no log
   (vai para o Wretch), e o Wretch não ganha aura nenhuma dela, então o `line` não tem ponta.
 - **Grasping Fangs** (correntes do Warden). O `line` desenha só durante o cast, e as correntes ficam

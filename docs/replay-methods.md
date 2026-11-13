@@ -140,7 +140,9 @@ ficou a 0,9 jd desse ponto na mediana com R = 25, em 365 smashes. Vira `soak: { 
 ahead: R }` com o `cast_id`: um círculo por cast, mesmo sem ninguém dentro, e o que ninguém pegou
 aparece vazio. Nas falhas, o player mais perto do ponto dá o teto do raio.
 
-### Ondas que saem do marcado (`waves`)
+### Ondas (`waves`)
+
+#### Onda que sai do marcado (`aura`)
 
 Onda não tem unidade nem posição no log: só os acertos (com a posição de quem tomou) e a aura de quem
 a solta. Para achar a direção, teste hipóteses em vez de olhar histogramas: para cada base (eixos do
@@ -159,6 +161,29 @@ as setas em volta do marcado até a saída e as barras andando, cortadas na bord
 Unidade que só a onda mata e que não tem posição no log (os tumores do Vashnik) não dá para achar pela
 hora da morte: cada morte cabe em ~12 pontos (5 marcados × 4 direções, dentro do chão), e as ondas
 anteriores quase não descartam nenhum (eles morrem na primeira Plague Froth depois de nascer).
+
+#### Onda de cast, direção pelos acertos (`cast_id`)
+
+Quando a onda sai do cast de um inimigo e a direção muda de cast para cast sem estar no log (as caudas
+da Ula'tek), nenhuma forma fixa explica os acertos. Confira isso antes: com o teste de hipóteses de
+cima, conte quantas passagens da frente por um player acertam; se uma direção fixa explica a maioria,
+use `aura` ou outra forma. Se não explica, a regra é `waves: { cast_id, speed, width, duration_s }`, e o
+núcleo tira a direção dos acertos:
+
+- cada acerto do dano da mecânica (sem tick periódico, com o `min_amount`) é candidato dos casts cujo
+  raio (`speed` · tempo desde o fim do cast) passa a até 7 jd dele;
+- os acertos de um cast se juntam por ângulo visto de onde ele saiu (grupos de até 6°, circulares);
+- um acerto que serve a dois casts quase igual (menos de 3 jd de diferença) é ambíguo e só entra se
+  cair a até 6° de um grupo de um só deles;
+- a onda vai até o acerto mais longe do grupo mais 5 jd, sai no fim do cast e é marcada como
+  inferida (frente tracejada saindo de um ponto).
+
+A velocidade sai como no `aura`: o envelope de baixo de distância × tempo. A largura, pelo desvio de
+lado dos acertos de um grupo. As quatro distâncias (7 jd, 6°, 3 jd e 5 jd) são do motor, em
+`crates/wipe-core/src/analysis.rs` (`CAST_WAVE_*`); viram campo da regra só se outro boss pedir outro
+valor. Dois casts no mesmo instante e perto (as caudas em par) deixam parte dos acertos ambígua: na
+Ula'tek, ~22%. Onda que não acertou ninguém não aparece, e o `replay:check` conta esses casts
+(`castWaves`: casts, sem posição, sem acerto, com onda, acertos, ambíguos, sem cast).
 
 ### Raio de explosão: o par de danos dentro e fora
 
