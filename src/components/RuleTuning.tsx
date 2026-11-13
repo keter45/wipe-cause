@@ -18,7 +18,7 @@ import {
 } from '../lib/rules';
 import { mechanicSpellId } from '../lib/spells';
 import { SpellIcon } from './SpellIcon';
-import { messagesOf, useMessages } from '../i18n';
+import { messagesOf, tr, useMessages } from '../i18n';
 import { tuningMsg } from './RuleTuning.i18n';
 import { Hint } from './ui/Hint';
 
@@ -332,7 +332,7 @@ function RuleRow({
             <input className="text-input" value={effective(m, ov, 'message') ?? ''} onChange={(e) => onChange({ message: e.target.value })} />
           </label>
           <p className="muted small">{t.customTextNote}</p>
-          {typeof m.notes === 'string' && m.notes && <p className="muted small">{t.ruleNote(m.notes)}</p>}
+          {m.notes && <p className="muted small">{t.ruleNote(tr(m.notes))}</p>}
         </div>
       )}
     </div>

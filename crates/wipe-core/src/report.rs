@@ -192,7 +192,7 @@ pub struct UnitCount {
     pub series: Vec<(i64, u32)>,
 }
 
-/// Ondas de um player marcado: a marca de `from` a `at` (no player), e em `at` as ondas saem de (x, y)
+/// Ondas de quem lança a onda: a marca de `from` a `at` (em quem lança), e em `at` as ondas saem de (x, y)
 /// nas direções `angles` (radianos, no sistema do log), a frente a `start` + `speed`·t jardas, por
 /// `duration_ms`, com `width` jardas de largura.
 #[derive(Debug, Clone, Serialize)]
@@ -211,6 +211,9 @@ pub struct WaveView {
     pub speed: f32,
     pub width: f32,
     pub duration_ms: i64,
+    /// direção inferida dos acertos (onda de cast, `waves.cast_id`); o mapa desenha a frente tracejada
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub inferred: bool,
 }
 
 /// Poça no replay: anunciada no cast (`from`), no chão de `on` a `to` (cresce e recua em `grow_ms`),
@@ -496,6 +499,11 @@ pub struct BossCast {
     /// direção do boss no fim do cast (radianos, no mesmo sistema das posições)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub facing: Option<f32>,
+    /// posição de quem lança no fim do cast (da mesma linha do `facing`); não vai para o JSON
+    #[serde(skip)]
+    pub x: Option<f32>,
+    #[serde(skip)]
+    pub y: Option<f32>,
     /// cortado (interrupt)
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub interrupted: bool,
@@ -722,6 +730,30 @@ pub struct MechanicResult {
     /// atribuição por posição (`detect.assign`): o resumo das levas do pull (o `replay:check` lê)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assign: Option<AssignSummary>,
+    /// ondas de cast (`waves.cast_id`): o resumo do pull inteiro (o `replay:check` lê)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cast_waves: Option<CastWaveSummary>,
+}
+
+/// Ondas de cast num pull (`waves.cast_id`, direção pelos acertos), contadas no pull inteiro, antes da
+/// janela do replay. `casts = no_pos + no_hits + drawn`; `ambiguous` é parte de `hits`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CastWaveSummary {
+    /// casts não interrompidos do `cast_id`
+    pub casts: u32,
+    /// casts sem posição na linha que os fecha
+    pub no_pos: u32,
+    /// casts com posição e sem grupo de acertos
+    pub no_hits: u32,
+    /// casts que viraram onda
+    pub drawn: u32,
+    /// acertos com pelo menos um cast candidato, um por player por cast
+    pub hits: u32,
+    /// acertos de `hits` que não ficaram em cast nenhum (cabem em mais de um)
+    pub ambiguous: u32,
+    /// acertos sem cast candidato
+    pub unassigned: u32,
 }
 
 /// Levas da atribuição por posição num pull (ver `assign.rs`). Cada escudo que ficou cai em um só

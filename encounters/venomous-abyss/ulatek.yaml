@@ -125,7 +125,14 @@ mechanics:
     tolerance: 0
     tip: { pt: "Desviar das ondas de veneno (da Ula'tek e da cauda) e não deixar ovo no caminho delas.", en: "Dodge the venom waves (from Ula'tek and from the tail) and keep eggs out of their path." }
     message: { pt: "{player} tomou Caustic Waves ({count}x)", en: "{player} was hit by Caustic Waves ({count}x)" }
-    notes: "Casts: 1292211 e 1319282 (Ula'tek) e 1298570/1311807 (Gore Rattle); o dano é o mesmo 1292403. Pós-nerf (07/11): impacto 350-550k; o DoT tica até 50k no heroico e até ~220k no mítico, por isso o corte em 230k."
+    # onda da cauda (Gore Rattle, cast 1298570): sai da cauda no anel a 56 jd do centro, a 13,5 jd/s; a direção
+    # muda de um cast para o outro e não está no log, então o replay a tira dos acertos (agrupados por ângulo).
+    # Medido em 12/11/2026 nos reports kW7y1qfK8zR39LAn, BPR9KFWZYnwy7T4f, pRJDTa1j7qc9tAx8, DVYRKLqg3zw6tC8c
+    # e JwC1GWMzmjZD72Yv: docs/ulatek-replay-audit.md ("Caustic Waves: de onde saem e quando").
+    waves: { cast_id: 1298570, speed: 13.5, width: 6, duration_s: 7 }
+    notes:
+      pt: "Casts: 1292211 e 1319282 (Ula'tek) e 1298570/1311807 (Gore Rattle); o dano é o mesmo 1292403. Pós-nerf (07/11): impacto 350-550k; o DoT tica até 50k no heroico e até ~220k no mítico, por isso o corte em 230k. A direção da onda da cauda não está no log; o replay mostra só as ondas que acertaram alguém, na direção dos acertos."
+      en: "Casts: 1292211 and 1319282 (Ula'tek) and 1298570/1311807 (Gore Rattle); the damage is the same 1292403. After the nerf (Nov 7): impact 350-550k; the DoT ticks up to 50k on heroic and up to ~220k on mythic, hence the 230k cutoff. The tail wave's direction is not in the log; the replay shows only the waves that hit someone, in the direction of the hits."
 
   - key: mothers_wrath
     name: "Mother's Wrath"

@@ -36,6 +36,9 @@ const UNIT_SHARE = 0.01;
 const CAST_PER_PULL = 1;
 /** Atribuição por posição: escudos que ficaram sem culpado nem portador morto acima disto: ATENÇÃO. */
 const ASSIGN_UNEXPLAINED = 0.2;
+/** Ondas de cast (`waves.cast_id`): acertos sem cast acima disto, ou casts sem posição acima disto: ATENÇÃO. */
+const CAST_WAVE_UNASSIGNED = 0.5;
+const CAST_WAVE_NO_POS = 0.25;
 /** Nota do encaixe da arena abaixo disto: reencaixar (scripts/arena-fit.mjs). */
 const ARENA_FIT = 0.9;
 /** Fora da conferência: ataque corpo a corpo (o tank está sempre no boss) e dano sem origem (o próprio player). */
@@ -55,7 +58,7 @@ if (!input) {
 /** Os ids que ligam uma mecânica ao log. */
 function idsOf(m) {
   const d = m.detect ?? {};
-  const out = [...(d.damage_ids ?? []), ...(d.fail_ids ?? []), ...(d.aura_ids ?? []), d.aura_id, d.cast_id, d.hit_aura_id, d.soak_aura_id, d.confirm_aura, d.enrage_aura_id, m.cone?.cast_id, m.line?.cast_id, m.area?.aura, ...(m.cone?.target_spells ?? []), ...(m.blast?.event_ids ?? [])];
+  const out = [...(d.damage_ids ?? []), ...(d.fail_ids ?? []), ...(d.aura_ids ?? []), d.aura_id, d.cast_id, d.hit_aura_id, d.soak_aura_id, d.confirm_aura, d.enrage_aura_id, m.cone?.cast_id, m.line?.cast_id, m.area?.aura, m.waves?.cast_id, ...(m.cone?.target_spells ?? []), ...(m.blast?.event_ids ?? [])];
   return out.filter((x) => typeof x === 'number');
 }
 
@@ -67,6 +70,7 @@ function shapesOf(m) {
   if (m.line) s.push('linha');
   if (m.soak) s.push('soak');
   if (m.blast) s.push('explosão');
+  if (m.waves) s.push('ondas');
   if (m.detect?.orbs) s.push('orbs');
   if (m.detect?.gaze) s.push('fantasmas');
   if (m.type === 'interrupt') s.push('add com barra de cast');
@@ -198,6 +202,24 @@ for (const a of assigns) {
   if (a.shieldsLeft && a.unexplained / a.shieldsLeft > ASSIGN_UNEXPLAINED) add('ATENÇÃO', `${a.name}: ${a.unexplained} de ${a.shieldsLeft} falhas sem culpado nem portador morto: confira o \`reach\` e os lugares de \`detect.assign\` (skill replay-build).`);
 }
 
+// ondas de cast (`waves.cast_id`): soma o resumo `castWaves` de cada pull
+const CAST_WAVE_KEYS = ['casts', 'noPos', 'noHits', 'drawn', 'hits', 'ambiguous', 'unassigned'];
+const castWaves = (rule?.mechanics ?? [])
+  .filter((m) => m.waves?.cast_id != null)
+  .map((m) => {
+    const sum = { key: m.key, name: m.name, ...Object.fromEntries(CAST_WAVE_KEYS.map((k) => [k, 0])) };
+    for (const p of pulls) {
+      const w = (p.mechanics ?? []).find((x) => x.key === m.key)?.castWaves;
+      if (w) for (const k of CAST_WAVE_KEYS) sum[k] += w[k] ?? 0;
+    }
+    return sum;
+  });
+for (const w of castWaves) {
+  if (!w.casts) add('ATENÇÃO', `${w.name}: nenhum cast ${'`'}waves.cast_id${'`'} nos pulls: confira o id do cast (skill replay-build).`);
+  if (w.unassigned > (w.hits + w.unassigned) * CAST_WAVE_UNASSIGNED) add('ATENÇÃO', `${w.name}: ${w.unassigned} de ${w.hits + w.unassigned} acertos sem cast que explique: confira ${'`'}speed${'`'} e se outro inimigo solta o mesmo dano (skill replay-build).`);
+  if (w.noPos > w.casts * CAST_WAVE_NO_POS) add('ATENÇÃO', `${w.name}: ${w.noPos} de ${w.casts} casts sem posição de quem lançou: o log não tem o bloco avançado nessas linhas.`);
+}
+
 const status = items.some((i) => i.level === 'REVISAR') ? 'REVISAR' : items.length ? 'ATENÇÃO' : 'OK';
 
 // ---------------------------------------------------------------- relatório
@@ -222,7 +244,10 @@ for (const a of assigns) {
   if (a.offSpot.length) md.push(`- **Alvos fora dos lugares:** ${a.offSpot.map(([x, y]) => `(${x.toFixed(1)}, ${y.toFixed(1)})`).join(', ')}`);
 }
 if (ghosts.length) md.push(`- **Fantasmas** (${ghosts.map((m) => m.key).join(', ')}): o caminho é simulado; calibre com \`WIPE_GAZE_DUMP\` + \`scripts/ghost-calibrate.mjs\` (skill replay-build).`);
+for (const w of castWaves) {
+  md.push('', `## Ondas de cast — ${w.name} (${w.key})`, '', `- **Casts:** ${w.casts}: com onda ${w.drawn}, sem acerto ${w.noHits}, sem posição ${w.noPos}`, `- **Acertos:** ${w.hits} com cast (${w.ambiguous} ambíguos, ${w.hits ? pct(w.ambiguous / w.hits) : '—'}), ${w.unassigned} sem cast`);
+}
 const longest = [...pulls].sort((a, b) => b.durationMs - a.durationMs)[0];
 md.push('', `Para olhar no app: pull ${longest.pullNumber} (${mmss(longest.durationMs)}), aba Replay, com o replay completo da luta.`, '');
-const file = writeReport(OUT, title, md.join('\n'), { title, night, status, items, rule: rule?.file ?? null, arena: arena ? { name: arena.name, fit: arena.fit } : null, rows, unknownCasts, hiddenUnits, assigns, lateExits: Object.fromEntries(lateExits) });
+const file = writeReport(OUT, title, md.join('\n'), { title, night, status, items, rule: rule?.file ?? null, arena: arena ? { name: arena.name, fit: arena.fit } : null, rows, unknownCasts, hiddenUnits, assigns, castWaves, lateExits: Object.fromEntries(lateExits) });
 console.log(`${status} · ${rows.length} spells · ${unknownCasts.length} casts sem regra · ${file}.md`);

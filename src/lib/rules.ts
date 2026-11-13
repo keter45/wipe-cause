@@ -26,7 +26,8 @@ export interface RuleMechanic {
   message?: Loc;
   detect?: Record<string, unknown>;
   overrides?: Record<string, Record<string, unknown>>;
-  notes?: string;
+  /** texto livre; nas regras do app pode vir { pt, en } */
+  notes?: Loc;
   [k: string]: unknown;
 }
 
