@@ -1,7 +1,7 @@
 # Ondas do replay disparadas por cast, na direção dos acertos (caudas da Ula'tek)
 
 *   **Author:** @keter45
-*   **Status:** Approved
+*   **Status:** Implemented
 *   **Date:** 2026-11-12
 
 --------------------------------------------------------------------------------
