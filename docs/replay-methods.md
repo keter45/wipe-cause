@@ -171,11 +171,13 @@ use `aura` ou outra forma. Se não explica, a regra é `waves: { cast_id, speed,
 núcleo tira a direção dos acertos:
 
 - cada acerto do dano da mecânica (sem tick periódico, com o `min_amount`) é candidato dos casts cujo
-  raio (`speed` · tempo desde o fim do cast) passa a até 7 jd dele;
-- os acertos de um cast se juntam por ângulo visto de onde ele saiu (grupos de até 6°, circulares);
+  raio (`start` + `speed` · tempo desde o fim do cast) passa a até 7 jd dele;
+- os acertos de um cast se juntam por ângulo visto de onde ele saiu: um grupo novo começa quando o vão
+  entre ângulos vizinhos passa de 6° (com a volta de ±180°);
 - um acerto que serve a dois casts quase igual (menos de 3 jd de diferença) é ambíguo e só entra se
   cair a até 6° de um grupo de um só deles;
-- a onda vai até o acerto mais longe do grupo mais 5 jd, sai no fim do cast e é marcada como
+- a onda vai até o acerto mais longe do cast (de todos os grupos) mais 5 jd, sem passar de
+  `duration_s`, sai no fim do cast e é marcada como
   inferida (frente tracejada saindo de um ponto).
 
 A velocidade sai como no `aura`: o envelope de baixo de distância × tempo. A largura, pelo desvio de

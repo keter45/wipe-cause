@@ -47,7 +47,7 @@ players. O que vem da **regra** é a forma das habilidades, e o que vem da **are
 - **"… está na regra … mas não desenha nada"**: dano no raid → `ground: false`; senão a forma que falta.
 - **"casts do boss sem regra"**: cast que vira frontal, linha ou área no guia → `cone`/`line`/`area` com esse `cast_id`. Cast que é só estado ou outro id da mesma habilidade (o cast tem id diferente do dano) → nada a fazer; anote na auditoria.
 - **"<unidade> … não aparece no mapa"**: add que importa (matar, desviar das linhas) → `units` com `replay: true`; o perigo é em volta dela → `area: { npc, radius }`.
-- **"Sem arena" / "encaixe abaixo de 0,9"**: seção "Arena". Arena com `anchored: true` (giro fixo, como a do Vashnik) não gera o aviso de encaixe: ali a nota baixa é esperada.
+- **"Sem arena" / "encaixe abaixo de 0,9"**: seção "Arena". Arena com `anchored: true` (giro fixo, como a do Vashnik) não gera o aviso de encaixe: ali a nota mede só a região da luta e pode ficar abaixo de 0,9 sem ser erro.
 - **Fantasmas** (`detect.gaze`): o caminho é simulado. Quando o usuário disser que estão errados, seção "Unidades que o log não mostra".
 
 ## Formas (releia a descrição de cada habilidade)

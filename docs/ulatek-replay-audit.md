@@ -1,14 +1,15 @@
 # Replay do Ula'tek: o que foi medido
 
-09/11/2026. O Ula'tek passou pelo método do [replay-methods.md](replay-methods.md) depois do nerf de
+09/11/2026, atualizada até 12/11. O Ula'tek passou pelo método do [replay-methods.md](replay-methods.md) depois do nerf de
 07/11. O nerf mudou dano e contagem (ovos, alvos), não tamanho, então os logs de antes também servem
 para medir forma.
 
 Logs:
 - Warcraft Logs, pós-nerf: `DVYRKLqg3zw6tC8c` (kill heroico de 07/11 e 6 wipes míticos),
   `JwC1GWMzmjZD72Yv` (kill heroico de 08/11), `pRJDTa1j7qc9tAx8` (kill mítico de 08/11) e
-  `BPR9KFWZYnwy7T4f` (kill mítico e 6 wipes de 09/11, guilda Rancour: o teste dos ovos e das falhas no raid).
-- Locais, antes do nerf: heroico de 06/10 (3 pulls, 1 kill) e de 01/10, mítico de 05/11 (1 pull de 72 s).
+  `BPR9KFWZYnwy7T4f` (kill mítico e 6 wipes de 09/11, guilda Rancour: o teste dos ovos e das falhas no raid) e
+  `kW7y1qfK8zR39LAn` (noite de prog da Rancour).
+- Locais, antes do nerf: heroico de 06/10 (3 pulls, 1 kill) e de 01/10, mítico de 05/11 (1 pull de 72 s); depois do nerf, o log local de 09/11.
 
 Conferência final: `npm run replay:check` sem REVISAR no heroico e no mítico. Sobram só os casts sem
 forma: outros ids das mesmas habilidades, Writhing Gestation, Shadow Molt e Boiling Venom.
@@ -181,7 +182,7 @@ sempre olha para o centro. O núcleo não precisa disso: a importação do WCL j
   - Call of the Serpent 1304012: o cast dos ovos que caem, cujo dano (1290409) já marca o chão.
 - **Falhas no raid inteiro, sem forma (`ground: false`):**
   - **Mother's Wrath 1301122:** o alvo saiu do alcance da mordida.
-  - **Unchecked Rage:** ninguém no corpo a corpo da Ula'tek. O log usa o id 1301007. O id do Journal, 1286945, que
-    estava na regra, nunca apareceu.
+  - **Unchecked Rage:** ninguém no corpo a corpo da Ula'tek. O log usa o id 1301007. O id do Journal, 1286945, nunca
+    apareceu, e continua na regra junto com o 1301007.
   - No BPR9, o Unchecked Rage saiu em 3 de 6 wipes, a cada ~2,4 s depois que o tank morreu (fights 1 e 3) ou desde
     5,9 s num pull sem tank no corpo a corpo (fight 6). Nenhum nos 2 kills nem nos 6 wipes do DVYR.

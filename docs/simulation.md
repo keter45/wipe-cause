@@ -113,7 +113,7 @@ DPS real ÷ robô: mediana 98%, a maioria entre 76% e 110%. Fora disso:
 `rotation-refresh`). `npm run sim:check -- <log> --boss "<nome>" --difficulty Mythic`
 (`scripts/sim-check.mjs`) simula a raide toda com o próprio código do app (`simProfile.ts`,
 empacotado na hora), com o mesmo corte de mortes do app (4) e 1000 iterações, e escreve
-`samples/sim/<data>-<boss>.md`: OK / ATENÇÃO / REVISAR, a tabela real × robô por player e o modelo da
+`samples/sim/<data>-<boss>-<dificuldade>.md` (e o `.json`): OK / ATENÇÃO / REVISAR, a tabela real × robô por player e o modelo da
 luta que o robô jogou (fases, vida e execute, Bloodlust, movimento por trecho, alvos). REVISAR:
 mediana dos DPS fora de 85–105%, DPS acima de 110%, perfil que o SimC não roda, perfil sem o
 movimento medido. A skill `sim-calibrate` resolve cada item (onde corrigir: a medida no núcleo, as

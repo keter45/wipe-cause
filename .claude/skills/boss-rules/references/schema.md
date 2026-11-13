@@ -126,10 +126,11 @@ detect:
   culprit_auras: [..]         # opcional: auras de portador consumidas na falha
   orbs: { .. }                # opcional: orbs carregados/largados (culpa quem levou um até outro no chão)
   pairing: { .. }             # opcional: debuff de somar encostando (sem fail_ids: a falha é o encontro com soma errada)
+  assign: { .. }              # opcional: alvos em lugares fixos e grupos de portadores (culpa o grupo cujo alvo ficou com a aura)
   gaze: { fixate_aura, fixate_cast, hit_aura, half_angle: 45, window_ms: 5000, sim: { name, speed, half_angle, delay_ms, stun_ms, catch_aura } }   # opcional: fantasma que só para com o alvo olhando; culpa quem ficou de costas para o próprio; `sim` desenha o caminho dele no replay
 blame_message: { pt: "{player} carregava o orb", en: "{player} carried the orb" }
 ```
-Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `orbs`, `culprit_auras`, `pairing` ou `gaze`); sem nenhum deles, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.
+Log: evento em `fail_ids` = falha coletiva (rajadas a <1,5s contam uma vez). A lista de jogadores tem **só culpados** (via `orbs`, `culprit_auras`, `pairing`, `gaze` ou `assign`); sem nenhum deles, fica vazia. Ex.: `the-coiled-altar.yaml` → `purple_detonation`.
 
 Frontal em cone (qualquer tipo): `cone: { cast_id, half_angle, range, target_spells }` no nível da mecânica desenha um triângulo no replay, apontado para o alvo do boss durante o cast. O alvo é quem o boss acerta corpo a corpo; boss que não bate corpo a corpo precisa de `target_spells` (spells que só vão no alvo dele, ex.: Dread Bolt).
 
