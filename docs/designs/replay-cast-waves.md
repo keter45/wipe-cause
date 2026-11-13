@@ -372,8 +372,8 @@ Cada fase deixa o build e os testes passando antes da próxima.
         `waves.cast_id` (`spell_id` = primeiro `damage_ids`).
     *   No `finish()`, o literal de `MechanicResult` ganha `cast_waves: None`.
     *   Testes:
-        *   o Vashnik continua dando o mesmo spec (`vashnik_plague_froth_sends_four_axis_waves`, sem
-            mudança);
+        *   o Vashnik continua dando o mesmo spec (`vashnik_plague_froth_sends_four_axis_waves`, com
+            uma checagem nova de que `cast_waves()` vem vazio);
         *   `waves` com `aura` e `cast_id` juntos, e sem nenhum dos dois, são recusados, e a mensagem
             cita a key;
         *   `waves: { cast_id, speed, width, duration_s }` carrega;
@@ -387,7 +387,8 @@ Cada fase deixa o build e os testes passando antes da próxima.
 *   **Proposed Changes**:
     *   `soak_hits` vira `spot_hits` (mesma tupla `(i64, f32, f32, usize, String)`: hora, x, y, índice,
         player). No ramo do dano em player (onde hoje se chama `soak_for`), chama `spot_for(spell_id,
-        amount + absorbed)` e, para mecânica com `waves.cast_id`, só em `SPELL_DAMAGE`. O resto da
+        amount + absorbed, periodic)`, que para mecânica com `waves.cast_id` descarta só
+        `SPELL_PERIODIC_DAMAGE`. O resto da
         captura continua como hoje: usa a posição do bloco avançado ou a última posição conhecida do
         player e só roda com `counting` ativo (do início do encontro ao corte da análise). A captura por
         aura (`soak_for_aura`) não muda.
@@ -418,7 +419,9 @@ Cada fase deixa o build e os testes passando antes da próxima.
             ambíguo → o ambíguo vai para esse cast;
         *   cast sem acerto → nenhuma onda, conta em `no_hits`; cast interrompido → ignorado;
         *   cast sem `x, y` → nenhuma onda, conta em `no_pos`;
-        *   a onda da aura (Vashnik) continua saindo igual, na mesma ordem e sem `inferred`.
+        *   a onda da aura (Vashnik) continua saindo igual, na mesma ordem e sem `inferred`: conferido
+            pelo `replay:check` do Vashnik contra a linha de base (passo 2 do Verification Plan), sem
+            teste de unidade próprio.
 
 #### 3. `crates/wipe-core/src/report.rs` (Modify)
 
@@ -485,7 +488,7 @@ Cada fase deixa o build e os testes passando antes da próxima.
         ninguém não aparece." / en "Dashed front coming out of a dot: an enemy's wave, toward whoever
         it hit (inferred). A wave that hit no one is not shown.".
 
-#### 8. `src/components/replayLayers.test.tsx` (Create; hoje só existe `ReplayView.test.tsx`, sem mapa)
+#### 8. `src/components/replayLayers.test.tsx` (Create; antes só existia `ReplayView.test.tsx`, sem mapa)
 
 *   **Type / Scope**: teste do front.
 *   **Proposed Changes**: renderiza `Waves` direto com `clip="url(#x)"`, uma onda `inferred` e uma sem:
@@ -521,8 +524,8 @@ Cada fase deixa o build e os testes passando antes da próxima.
 #### 11. `docs/replay-methods.md` (Modify)
 
 *   **Type / Scope**: método do replay.
-*   **Proposed Changes**: a seção "Ondas que saem do marcado (`waves`)" vira "Ondas (`waves`)", com a
-    subseção "Onda de cast, direção pelos acertos (`cast_id`)": quando usar (a direção muda de cast para
+*   **Proposed Changes**: a seção "Ondas que saem do marcado (`waves`)" vira "Ondas (`waves`)", com o
+    texto de antes na subseção "Onda que sai do marcado (`aura`)" e a subseção "Onda de cast, direção pelos acertos (`cast_id`)": quando usar (a direção muda de cast para
     cast e nenhuma forma fixa explica os acertos, pela taxa de acerto nas passagens da frente), como
     medir velocidade e largura, as quatro constantes e quando virariam campo, a ambiguidade de casts no
     mesmo instante e o limite (onda sem acerto não aparece).
@@ -530,7 +533,7 @@ Cada fase deixa o build e os testes passando antes da próxima.
 #### 12. `.claude/skills/boss-rules/references/schema.md` (Modify)
 
 *   **Type / Scope**: esquema da regra.
-*   **Proposed Changes**: linha do `waves` (hoje ausente) com os dois gatilhos (`aura`: ângulo fixo;
+*   **Proposed Changes**: linha do `waves` (antes ausente) com os dois gatilhos (`aura`: ângulo fixo;
     `cast_id`: direção pelos acertos, inferida, e `directions`/`angle` sem efeito) e os exemplos do
     Vashnik e da Ula'tek.
 
@@ -570,7 +573,9 @@ Cada fase deixa o build e os testes passando antes da próxima.
         de `npm run replay:check -- <json> --boss "Ula'tek" --difficulty Mythic` e a do Vashnik.
     2.  **Depois, Ula'tek mítico:** a seção de ondas de cast do `caustic_waves` existe, com
         `casts > 0`, `drawn` entre 130 e 170 e `ambiguous` até 25% de `hits` (a simulação do algoritmo
-        nesses 36 pulls deu 151 casts com onda, 318 acertos com candidato e 56 ambíguos); nenhum
+        nesses 36 pulls deu 151 casts com onda, 318 acertos com candidato e 56 ambíguos; o `replay:check`
+        de 12/11, com 40 pulls, deu 131, 236 e 51, ou 21,6%: dentro da faixa, perto da borda de baixo
+        do `drawn`, que vale também para os 40 pulls); nenhum
         REVISAR novo em relação à linha de base. O heroico (`JwC1GWMzmjZD72Yv` e o kill do DVYR) roda à
         parte só para conferir que não há erro.
     3.  **Fora da faixa:** abrir 3 pulls no replay e comparar ondas e acertos antes do PR.
