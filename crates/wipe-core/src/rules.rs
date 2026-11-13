@@ -278,12 +278,18 @@ pub struct PoolShape {
     pub radius: f32,
 }
 
-/// Ondas que saem de quem tinha a `aura` quando ela sai: `directions` ondas igualmente espaçadas a partir
-/// de `angle` (graus, no sistema do log: 0 = +x, 90 = +y), a frente começando a `start` jardas e andando
-/// a `speed` jardas/s por `duration_s`; cada onda tem `width` jardas de largura.
+/// Ondas que andam no mapa, a frente começando a `start` jardas e andando a `speed` jardas/s por até
+/// `duration_s`; cada onda tem `width` jardas de largura. Um e só um gatilho:
+/// - `aura`: saem de quem tinha a aura quando ela sai, em `directions` direções igualmente espaçadas a
+///   partir de `angle` (graus, no sistema do log: 0 = +x, 90 = +y);
+/// - `cast_id`: saem de quem lançou, no fim do cast, na direção dos acertos do dano da própria mecânica
+///   (inferida; `directions` e `angle` não têm efeito). Ver `docs/designs/replay-cast-waves.md`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct WaveSpec {
-    pub aura: u32,
+    #[serde(default)]
+    pub aura: Option<u32>,
+    #[serde(default)]
+    pub cast_id: Option<u32>,
     #[serde(default = "four")]
     pub directions: u32,
     #[serde(default)]
@@ -297,6 +303,34 @@ pub struct WaveSpec {
 
 fn four() -> u32 {
     4
+}
+
+impl WaveSpec {
+    /// Um e só um gatilho (`aura` ou `cast_id`).
+    pub fn check(&self, key: &str) -> Result<(), String> {
+        if self.aura.is_some() == self.cast_id.is_some() {
+            return Err(crate::i18n::pick(
+                format!("mecânica {key}: waves precisa de exatamente um entre aura e cast_id"),
+                format!("mechanic {key}: waves needs exactly one of aura and cast_id"),
+            ));
+        }
+        Ok(())
+    }
+}
+
+/// Onda de cast (`waves.cast_id`) para o passo do fim da análise.
+#[derive(Debug, Clone)]
+pub struct CastWaveInfo {
+    pub index: usize,
+    pub key: String,
+    pub name: String,
+    /// spell do acerto (o primeiro `damage_ids`), para o ícone
+    pub spell_id: u32,
+    pub cast_id: u32,
+    pub start: f32,
+    pub speed: f32,
+    pub width: f32,
+    pub duration_s: f32,
 }
 
 /// Aura num inimigo que o mapa mostra (o escudo do add, o véu do boss): anel com as stacks e, com
@@ -636,6 +670,9 @@ impl RuleSet {
                 }
             }
             let m: Mechanic = yaml_serde::from_value(v).map_err(|e| format!("{}: {e}", self.file))?;
+            if let Some(w) = &m.waves {
+                w.check(&m.key).map_err(|e| format!("{}: {e}", self.file))?;
+            }
             let applies = m.difficulty.is_empty() || diff.is_some_and(|d| m.difficulty.iter().any(|x| x == d));
             if applies {
                 out.push(m);
@@ -1496,9 +1533,38 @@ impl RuleTracker {
         self.mechs.iter().position(|m| m.soak.is_some() && m.detect.soak_aura_id == Some(spell_id))
     }
 
-    /// Mecânica com soak cujo dano é este spell: índice.
-    pub fn soak_for(&self, spell_id: u32) -> Option<usize> {
-        self.mechs.iter().position(|m| m.soak.is_some() && m.detect.damage_ids.iter().flatten().any(|&d| d == spell_id))
+    /// Mecânica que precisa de onde o player estava no acerto (soak, ou `waves` com `cast_id`) cujo dano é
+    /// este spell: índice. `amount` = dano do hit com o absorvido (o mesmo do `on_damage`), para o
+    /// `min_amount`; `periodic` = tick (a onda de cast só conta o golpe direto).
+    pub fn spot_for(&self, spell_id: u32, amount: i64, periodic: bool) -> Option<usize> {
+        self.mechs.iter().position(|m| {
+            let cast_wave = m.waves.as_ref().is_some_and(|w| w.cast_id.is_some());
+            (m.soak.is_some() || (cast_wave && !periodic))
+                && m.detect.damage_ids.iter().flatten().any(|&d| d == spell_id)
+                && !m.detect.min_amount.is_some_and(|min| amount < min)
+        })
+    }
+
+    /// Ondas de cast (`waves.cast_id`), para o passo do fim da análise.
+    pub fn cast_waves(&self) -> Vec<CastWaveInfo> {
+        self.mechs
+            .iter()
+            .enumerate()
+            .filter_map(|(index, m)| {
+                let w = m.waves.as_ref()?;
+                Some(CastWaveInfo {
+                    index,
+                    key: m.key.clone(),
+                    name: m.name.clone(),
+                    spell_id: m.detect.damage_ids.iter().flatten().next().copied().unwrap_or(0),
+                    cast_id: w.cast_id?,
+                    start: w.start,
+                    speed: w.speed,
+                    width: w.width,
+                    duration_s: w.duration_s,
+                })
+            })
+            .collect()
     }
 
     /// Dados do soak da mecânica `i` (para o replay).
@@ -1522,7 +1588,7 @@ impl RuleTracker {
     /// Ondas da aura (regra com `waves`): chave, nome, spell do acerto e a forma.
     pub fn waves_for_aura(&self, aura: u32) -> Option<(&str, &str, u32, &WaveSpec)> {
         self.mechs.iter().find_map(|m| {
-            let w = m.waves.as_ref().filter(|w| w.aura == aura)?;
+            let w = m.waves.as_ref().filter(|w| w.aura == Some(aura))?;
             Some((m.key.as_str(), m.name.as_str(), m.detect.damage_ids.iter().flatten().next().copied().unwrap_or(0), w))
         })
     }
@@ -2091,6 +2157,7 @@ impl RuleTracker {
                 pairings: st.pairings,
                 ghost_yards: ghost_yards.take_if(|(_, gi)| *gi == mi).map(|(y, _)| y),
                 assign: assign_summary.take_if(|(_, ai)| *ai == mi).map(|(s, _)| s),
+                cast_waves: None,
             });
         }
         let rank = |s: &str| match s {
@@ -2788,6 +2855,36 @@ mechanics:
     }
 
     #[test]
+    fn cast_waves_need_exactly_one_trigger() {
+        let rule = |waves: &str| {
+            format!(
+                "name: Boss\nencounter_id: 44\nmechanics:\n  - key: wave\n    name: Wave\n    type: avoidable_damage\n    detect: {{ damage_ids: [80], min_amount: 230000 }}\n    waves: {waves}\n  - key: pool\n    name: Pool\n    type: soak\n    detect: {{ damage_ids: [90] }}\n    soak: {{ radius: 8 }}\n"
+            )
+        };
+        // os dois gatilhos, ou nenhum: a regra inteira é recusada, com a key na mensagem
+        for bad in ["{ aura: 1, cast_id: 2, speed: 13.5, width: 6, duration_s: 7 }", "{ speed: 13.5, width: 6, duration_s: 7 }"] {
+            let err = RuleSet::parse("t.yaml", &rule(bad)).err().unwrap();
+            assert!(err.contains("t.yaml") && err.contains("wave"), "{err}");
+        }
+        let set = RuleSet::parse("t.yaml", &rule("{ cast_id: 2, speed: 13.5, width: 6, duration_s: 7 }")).unwrap();
+        let tr = RuleTracker::new(&[&set], 16).unwrap();
+        let infos = tr.cast_waves();
+        assert_eq!(infos.len(), 1);
+        let w = &infos[0];
+        assert_eq!((w.index, w.key.as_str(), w.spell_id, w.cast_id), (0, "wave", 80, 2));
+        assert_eq!((w.start, w.speed, w.width, w.duration_s), (0.0, 13.5, 6.0, 7.0));
+        // a onda de cast não é onda de aura
+        assert!(tr.waves_for_aura(2).is_none());
+        // onde estava no acerto: o golpe direto que passa do `min_amount` (com o absorvido); o tick não
+        assert_eq!(tr.spot_for(80, 250_000, false), Some(0));
+        assert_eq!(tr.spot_for(80, 200_000, false), None);
+        assert_eq!(tr.spot_for(80, 250_000, true), None);
+        // o soak continua como antes
+        assert_eq!(tr.spot_for(90, 1, false), Some(1));
+        assert_eq!(tr.spot_for(90, 1, true), Some(1));
+    }
+
+    #[test]
     fn aura_options_amount_and_culprits() {
         let yaml = r#"
 name: "Boss"
@@ -3029,7 +3126,7 @@ mechanics:
         let sets = book.for_encounter(3429, "The Coiled Altar");
         let tracker = RuleTracker::new(&sets, 16).unwrap();
         for (damage, cast) in [(1283594, 1283489), (1299296, 1299267)] {
-            let info = tracker.soak_info(tracker.soak_for(damage).unwrap()).unwrap();
+            let info = tracker.soak_info(tracker.spot_for(damage, 0, false).unwrap()).unwrap();
             assert_eq!((info.radius, info.cast_id, info.players), (9.0, Some(cast), Some(5)));
             assert!(tracker.ground_for(damage).is_none());
         }
@@ -3064,7 +3161,7 @@ mechanics:
         // o orb (Barbed Bulwark) sai do mapa no soak do Caustic Globule (raio 5) ou em 15s
         let clears = tracker.unit_clears();
         assert_eq!(clears.len(), 1);
-        let globule = tracker.soak_for(1289201).unwrap();
+        let globule = tracker.spot_for(1289201, 0, false).unwrap();
         assert_eq!((clears[0].npc, clears[0].cleared_by, clears[0].lifetime_ms), (269194, Some((globule, 5.0)), Some(15_000)));
         assert_eq!(tracker.unit_aura_for(1303378).map(|a| (a.2, a.3)), Some((true, false)));
     }
@@ -3121,6 +3218,7 @@ mechanics:
         assert_eq!((key, spell, w.directions, w.angle), ("plague_wave", 1295798, 4, 0.0));
         assert_eq!((w.start, w.speed, w.width, w.duration_s), (4.0, 12.3, 6.0, 5.0));
         assert!(tracker.waves_for_aura(1281910).is_none());
+        assert!(tracker.cast_waves().is_empty());
         // os tumores: desenhados desde a primeira linha (só quem tem posição no fim do cast) e contados vivos
         let tumor = tracker.seen_units().iter().find(|u| u.npc == 269430).unwrap();
         assert!(tumor.from_first_line && tumor.count);

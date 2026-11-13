@@ -6,7 +6,7 @@ use crate::fight::{self, FightCapture};
 use crate::report::*;
 use crate::replay::{self, Trails};
 use crate::rotation::{RotationBook, RotationTracker};
-use crate::rules::{AuraClear, RuleBook, RuleTracker, SoakInfo};
+use crate::rules::{AuraClear, CastWaveInfo, RuleBook, RuleTracker, SoakInfo};
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// Janela do death recap.
@@ -433,7 +433,7 @@ pub(crate) struct PullBuilder {
     /// marcas de chão do grupo (world markers)
     markers: Vec<WorldMarker>,
     /// acertos de soak (regra com `soak`): (t, x, y, mecânica, player)
-    soak_hits: Vec<(i64, f32, f32, usize, String)>,
+    spot_hits: Vec<(i64, f32, f32, usize, String)>,
     blast_events: Vec<(i64, u32, String)>,
     /// última marca de cada (player, tipo), para não repetir os ticks de quem ficou parado na poça
     ground_last: HashMap<(String, usize), (i64, f32, f32)>,
@@ -524,7 +524,7 @@ impl PullBuilder {
             trails: Trails::default(),
             ground_kinds: Vec::new(),
             ground_marks: Vec::new(),
-            soak_hits: Vec::new(),
+            spot_hits: Vec::new(),
             blast_events: Vec::new(),
             markers: Vec::new(),
             ground_last: HashMap::new(),
@@ -919,7 +919,7 @@ impl PullBuilder {
                     // curse que aumenta o tempo de cast no lançador agora (não somam: vale o maior)
                     let slow_pct = self.cast_slows.get(&guid).and_then(|s| s.iter().filter_map(|id| CAST_SLOWS.iter().find(|c| c.0 == *id).map(|c| c.1)).max());
                     let target = (cone.is_some() || line.is_some_and(|l| l.1.is_none())).then(|| self.boss_target.get(&guid).cloned()).flatten();
-                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, interrupted: false, interrupted_by: None, slow_pct, cone, target, line: line.map(|l| l.0) });
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid, spell_id: id, name, facing: None, x: None, y: None, interrupted: false, interrupted_by: None, slow_pct, cone, target, line: line.map(|l| l.0) });
                 }
                 // portal do warlock: a barra do cast em cima dele no replay completo
                 if Self::is_group_player(f[1], hex(f[3])) {
@@ -1032,7 +1032,7 @@ impl PullBuilder {
         if is_player && f[0] == "SPELL_AURA_APPLIED" && self.counting() {
             if let Some(i) = self.rules.as_ref().and_then(|r| r.soak_for_aura(spell_id)) {
                 if let Some((x, y, _)) = self.players.get(dst_guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= GROUND_POS_MAX_AGE_MS) {
-                    self.soak_hits.push((rel, x, y, i, dst_guid.to_string()));
+                    self.spot_hits.push((rel, x, y, i, dst_guid.to_string()));
                 }
             }
         }
@@ -1221,6 +1221,7 @@ impl PullBuilder {
                     speed: spec.speed,
                     width: spec.width,
                     duration_ms: (spec.duration_s * 1000.0) as i64,
+                    inferred: false,
                 });
             }
             _ => {}
@@ -1464,11 +1465,12 @@ impl PullBuilder {
                 if let Some(a) = adv.as_ref().filter(|a| a.info_guid == dst_guid && !dot_tick) {
                     self.ground_hit(spell_id, dst_guid, a.x, a.y, rel);
                 }
-                // soak: onde cada um que entrou estava
-                if let Some(i) = self.rules.as_ref().and_then(|r| r.soak_for(spell_id)).filter(|_| !dot_tick) {
+                // soak e onda de cast: onde cada um que tomou estava
+                let periodic = f[0] == "SPELL_PERIODIC_DAMAGE";
+                if let Some(i) = self.rules.as_ref().and_then(|r| r.spot_for(spell_id, amount + absorbed, periodic)).filter(|_| !dot_tick) {
                     let here = adv.as_ref().filter(|a| a.info_guid == dst_guid).map(|a| (a.x, a.y)).or_else(|| self.players.get(dst_guid).and_then(|p| p.pos).filter(|p| rel - p.2 <= GROUND_POS_MAX_AGE_MS).map(|p| (p.0, p.1)));
                     if let Some((x, y)) = here {
-                        self.soak_hits.push((rel, x, y, i, dst_guid.to_string()));
+                        self.spot_hits.push((rel, x, y, i, dst_guid.to_string()));
                     }
                 }
                 let failed = self.rules.as_mut().map(|r| r.on_damage(spell_id, dst_guid, dst_name, amount + absorbed, rel)).unwrap_or_default();
@@ -1710,6 +1712,8 @@ impl PullBuilder {
                 }
             }
             let facing = adv.as_ref().filter(|a| a.info_guid == src_guid).and_then(|a| a.facing);
+            // posição de quem lança na mesma linha (origem da onda de cast, `waves.cast_id`)
+            let adv_xy = adv.as_ref().filter(|a| a.info_guid == src_guid).map(|a| (a.x, a.y));
             // só fecha o cast aberto se for o mesmo spell (um instantâneo no meio, ex.: o do add ao ser cortado, não fecha)
             let open = self.open_casts.get(src_guid).copied().filter(|&i| self.boss_casts[i].spell_id == spell_id);
             let i = match open {
@@ -1718,10 +1722,12 @@ impl PullBuilder {
                     let c = &mut self.boss_casts[i];
                     c.end = Some(rel);
                     c.facing = facing;
+                    c.x = adv_xy.map(|p| p.0);
+                    c.y = adv_xy.map(|p| p.1);
                     i
                 }
                 None => {
-                    self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None });
+                    self.boss_casts.push(BossCast { t: rel, end: None, guid: src_guid.to_string(), spell_id, name: spell_name.clone(), facing, x: adv_xy.map(|p| p.0), y: adv_xy.map(|p| p.1), interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None });
                     self.boss_casts.len() - 1
                 }
             };
@@ -2215,7 +2221,7 @@ impl PullBuilder {
             .rules
             .as_ref()
             .map(|r| {
-                self.soak_hits
+                self.spot_hits
                     .iter()
                     .map(|h| h.3)
                     .collect::<HashSet<usize>>()
@@ -2232,7 +2238,9 @@ impl PullBuilder {
         let pickup_kinds = self.rules.as_ref().map(|r| r.pickup_kinds()).unwrap_or_default();
         let pool_specs = self.rules.as_ref().map(|r| r.pool_specs()).unwrap_or_default();
         let interrupt_casters: Vec<String> = self.rules.as_ref().map(|r| self.boss_casts.iter().filter(|c| r.is_interrupt_cast(c.spell_id)).map(|c| c.guid.clone()).collect()).unwrap_or_default();
-        let mechanics = self
+        // ondas de cast (`waves.cast_id`): lidas antes de a regra ser consumida
+        let cast_wave_infos = self.rules.as_ref().map(|r| r.cast_waves()).unwrap_or_default();
+        let mut mechanics = self
             .rules
             .map(|mut r| {
                 let deaths: Vec<i64> = pending.iter().map(|d| d.death.t).collect();
@@ -2241,6 +2249,13 @@ impl PullBuilder {
                 r.finish(&roles, &ranges)
             })
             .unwrap_or_default();
+        // ondas de cast: direção pelos acertos; o resumo conta o pull inteiro, antes da janela do replay
+        let (cast_waves, cast_wave_sums) = build_cast_waves(&self.spot_hits, &cast_wave_infos, &self.boss_casts);
+        for m in &mut mechanics {
+            if let Some(s) = cast_wave_sums.get(&m.key) {
+                m.cast_waves = Some(s.clone());
+            }
+        }
 
         // call de wipe: quem morreu parado, todo mundo junto (todas as mortes, mesmo depois do corte);
         // gatilhos: a morte do tank, uma mecânica que matou muita gente, uma falha grave do raid
@@ -2341,7 +2356,7 @@ impl PullBuilder {
             for g in guids {
                 let Some((t0, x, y)) = self.trails.first(&g) else { continue };
                 let cleared = c.cleared_by.and_then(|(i, r)| {
-                    self.soak_hits.iter().filter(|h| h.3 == i && h.0 >= t0 && (h.1 - x).hypot(h.2 - y) <= r + UNIT_CLEAR_SLACK_YD).map(|h| h.0).min()
+                    self.spot_hits.iter().filter(|h| h.3 == i && h.0 >= t0 && (h.1 - x).hypot(h.2 - y) <= r + UNIT_CLEAR_SLACK_YD).map(|h| h.0).min()
                 });
                 let last = c.until_last_line.then(|| self.last_line.get(&g).copied()).flatten();
                 let ends = [cleared, c.lifetime_ms.map(|ms| t0 + ms), last, picked.get(&g).copied()];
@@ -2381,7 +2396,9 @@ impl PullBuilder {
                 }
             }
         }
-        let soaks = build_soaks(&self.soak_hits, &soak_meta, &self.boss_casts, &refs, &self.trails);
+        let soaks = build_soaks(&self.spot_hits, &soak_meta, &self.boss_casts, &refs, &self.trails);
+        // ondas de cast: só as que alguma janela de replay mostra (pelo próprio fim da onda)
+        let cast_waves: Vec<WaveView> = cast_waves.into_iter().filter(|w| refs.iter().any(|r| w.from + w.duration_ms >= r.from && w.from <= r.to)).collect();
         let blasts = replay::build_blasts(&soaks, &self.blast_events, &blast_specs, &refs);
         let arena = tracks.as_ref().and_then(|_| self.trails.arena());
         let casts = {
@@ -2478,7 +2495,8 @@ impl PullBuilder {
                     items: std::mem::take(&mut self.pickups),
                 }),
                 pools,
-                waves: std::mem::take(&mut self.waves),
+                // as da aura como hoje; as de cast depois
+                waves: std::mem::take(&mut self.waves).into_iter().chain(cast_waves).collect(),
                 unit_counts,
                 unit_looks,
                 raid_series,
@@ -2684,6 +2702,195 @@ fn match_aura_clears(a: &AuraClear, guids: &[String], gains: &[(i64, u32, f32, f
 const SOAK_CAST_MAX_MS: i64 = 15_000;
 /// Add de interrupt fica no mapa até isto depois do último cast.
 const INTERRUPT_ADD_LINGER_MS: i64 = 1_000;
+
+// Ondas de cast (`waves.cast_id`), medidas na cauda da Ula'tek (audit, 2026-11-12; reports kW7y, BPR9,
+// pRJD, DVYR e JwC1): ver docs/designs/replay-cast-waves.md.
+/// Folga entre a distância do acerto até a origem e `start + speed × tempo` (erro da frente: p5 −6,5,
+/// p95 +4,0 jd).
+const CAST_WAVE_TOL_YD: f32 = 7.0;
+/// Vão de ângulo que separa dois grupos de acertos do mesmo cast (vãos entre vizinhos quase todos < 3°,
+/// quebra entre 5° e 8°).
+const CAST_WAVE_SPREAD_DEG: f32 = 6.0;
+/// O segundo melhor cast tem de ser pior por isto para o acerto não ser ambíguo (casts em par no mesmo
+/// instante: 75 dos 112 acertos que cabem nos dois ficam abaixo de 3 jd de diferença).
+const CAST_WAVE_AMBIGUOUS_YD: f32 = 3.0;
+/// A onda anda até o acerto mais distante do cast mais isto ("dentro e sem tomar": 60% tomam com o
+/// corte, 50% sem).
+const CAST_WAVE_REACH_YD: f32 = 5.0;
+
+/// Separa ângulos (radianos) em grupos onde o vão passa de `gap`, contando a volta de ±π: começa depois
+/// do maior vão. Devolve os índices de cada grupo.
+fn angle_groups(angles: &[f32], gap: f32) -> Vec<Vec<usize>> {
+    let mut order: Vec<usize> = (0..angles.len()).collect();
+    order.sort_by(|&a, &b| angles[a].total_cmp(&angles[b]));
+    let n = order.len();
+    if n == 0 {
+        return Vec::new();
+    }
+    // vão depois de cada posição (o último fecha a volta, +2π)
+    let gap_after = |k: usize| {
+        let (a, b) = (angles[order[k]], angles[order[(k + 1) % n]]);
+        if k + 1 == n { b + std::f32::consts::TAU - a } else { b - a }
+    };
+    let widest = (0..n).max_by(|&a, &b| gap_after(a).total_cmp(&gap_after(b))).unwrap_or(n - 1);
+    let mut groups: Vec<Vec<usize>> = Vec::new();
+    for s in 0..n {
+        let k = (widest + 1 + s) % n;
+        let new_group = s == 0 || gap_after((k + n - 1) % n) > gap;
+        if new_group {
+            groups.push(Vec::new());
+        }
+        if let Some(g) = groups.last_mut() {
+            g.push(order[k]);
+        }
+    }
+    groups
+}
+
+/// Média circular de ângulos (radianos).
+fn circular_mean(angles: impl Iterator<Item = f32>) -> f32 {
+    let (s, c) = angles.fold((0.0f32, 0.0f32), |(s, c), a| (s + a.sin(), c + a.cos()));
+    s.atan2(c)
+}
+
+/// Distância entre dois ângulos (radianos, 0..π).
+fn angle_dist(a: f32, b: f32) -> f32 {
+    (a - b).sin().atan2((a - b).cos()).abs()
+}
+
+/// Ondas de cast (`waves.cast_id`): para cada cast, os acertos que batem com a frente viram grupos por
+/// ângulo, e cada grupo vira uma direção (inferida). Devolve as ondas de todos os casts (a janela do
+/// replay fica com quem chama) e o resumo de cada mecânica, contado no pull inteiro.
+fn build_cast_waves(hits: &[(i64, f32, f32, usize, String)], infos: &[CastWaveInfo], casts: &[BossCast]) -> (Vec<WaveView>, HashMap<String, CastWaveSummary>) {
+    let mut views = Vec::new();
+    let mut sums = HashMap::new();
+    let spread = CAST_WAVE_SPREAD_DEG.to_radians();
+    for info in infos {
+        let mut sum = CastWaveSummary::default();
+        // 1. casts com posição no fim do cast
+        let mut origins: Vec<(&BossCast, i64, f32, f32)> = Vec::new();
+        for c in casts.iter().filter(|c| c.spell_id == info.cast_id && !c.interrupted) {
+            sum.casts += 1;
+            match (c.x, c.y) {
+                (Some(x), Some(y)) => origins.push((c, c.end.unwrap_or(c.t), x, y)),
+                _ => sum.no_pos += 1,
+            }
+        }
+        let max_ms = (info.duration_s * 1000.0) as i64;
+        // (hora, x, y, player) e o erro da frente em cada cast candidato
+        struct Hit<'a> {
+            x: f32,
+            y: f32,
+            guid: &'a str,
+            err: f32,
+        }
+        /// acerto que cabe em mais de um cast: os candidatos (cast, erro) a menos da margem do melhor
+        struct Ambiguous<'a> {
+            x: f32,
+            y: f32,
+            guid: &'a str,
+            cand: Vec<(usize, f32)>,
+        }
+        let mut clear: Vec<Vec<Hit>> = (0..origins.len()).map(|_| Vec::new()).collect();
+        let mut ambiguous: Vec<Ambiguous> = Vec::new();
+        for h in hits.iter().filter(|h| h.3 == info.index) {
+            // 2. candidatos
+            let mut cand: Vec<(usize, f32)> = origins
+                .iter()
+                .enumerate()
+                .filter(|(_, o)| (0..=max_ms).contains(&(h.0 - o.1)))
+                .map(|(i, o)| (i, (info.start + info.speed * (h.0 - o.1) as f32 / 1000.0 - (h.1 - o.2).hypot(h.2 - o.3)).abs()))
+                .filter(|(_, e)| *e <= CAST_WAVE_TOL_YD)
+                .collect();
+            if cand.is_empty() {
+                sum.unassigned += 1;
+                continue;
+            }
+            sum.hits += 1;
+            cand.sort_by(|a, b| a.1.total_cmp(&b.1));
+            // 3. acerto claro
+            if cand.len() == 1 || cand[1].1 - cand[0].1 >= CAST_WAVE_AMBIGUOUS_YD {
+                clear[cand[0].0].push(Hit { x: h.1, y: h.2, guid: &h.4, err: cand[0].1 });
+            } else {
+                let best = cand[0].1;
+                cand.retain(|c| c.1 - best < CAST_WAVE_AMBIGUOUS_YD);
+                ambiguous.push(Ambiguous { x: h.1, y: h.2, guid: &h.4, cand });
+            }
+        }
+        // 4. grupos dos acertos claros, com a média de cada um (fixa no passo 5)
+        let angle_of = |i: usize, x: f32, y: f32| (y - origins[i].3).atan2(x - origins[i].2);
+        let mut groups: Vec<Vec<Vec<Hit>>> = Vec::new();
+        let mut means: Vec<Vec<f32>> = Vec::new();
+        for (i, hs) in clear.into_iter().enumerate() {
+            let angles: Vec<f32> = hs.iter().map(|h| angle_of(i, h.x, h.y)).collect();
+            let idx = angle_groups(&angles, spread);
+            means.push(idx.iter().map(|g| circular_mean(g.iter().map(|&k| angles[k]))).collect());
+            let mut slots: Vec<Option<Hit>> = hs.into_iter().map(Some).collect();
+            groups.push(idx.iter().map(|g| g.iter().filter_map(|&k| slots[k].take()).collect()).collect());
+        }
+        // 5. ambíguo: entra se só um candidato tem grupo a até `spread`
+        for Ambiguous { x, y, guid, cand } in ambiguous {
+            let fits: Vec<(usize, usize, f32)> = cand
+                .iter()
+                .filter_map(|&(i, err)| {
+                    let a = angle_of(i, x, y);
+                    let (g, d) = means[i].iter().enumerate().map(|(g, &m)| (g, angle_dist(a, m))).min_by(|a, b| a.1.total_cmp(&b.1))?;
+                    (d <= spread).then_some((i, g, err))
+                })
+                .collect();
+            match fits.as_slice() {
+                [(i, g, err)] => groups[*i][*g].push(Hit { x, y, guid, err: *err }),
+                _ => sum.ambiguous += 1,
+            }
+        }
+        // 6. uma por player por cast (o de menor erro), e a onda
+        for (i, gs) in groups.into_iter().enumerate() {
+            let mut best: HashMap<&str, f32> = HashMap::new();
+            for h in gs.iter().flatten() {
+                let e = best.entry(h.guid).or_insert(h.err);
+                *e = e.min(h.err);
+            }
+            let mut kept: HashSet<&str> = HashSet::new();
+            let (c, at, x0, y0) = origins[i];
+            let mut angles = Vec::new();
+            let mut reach = 0.0f32;
+            for g in &gs {
+                let mine: Vec<&Hit> = g.iter().filter(|h| best.get(h.guid) == Some(&h.err) && kept.insert(h.guid)).collect();
+                if mine.is_empty() {
+                    continue;
+                }
+                angles.push(circular_mean(mine.iter().map(|h| (h.y - y0).atan2(h.x - x0))));
+                reach = mine.iter().map(|h| (h.x - x0).hypot(h.y - y0)).fold(reach, f32::max);
+            }
+            let dropped = gs.iter().map(Vec::len).sum::<usize>() - kept.len();
+            sum.hits -= dropped as u32;
+            if angles.is_empty() {
+                sum.no_hits += 1;
+                continue;
+            }
+            sum.drawn += 1;
+            let duration_ms = (((reach + CAST_WAVE_REACH_YD - info.start) / info.speed.max(0.1)) * 1000.0) as i64;
+            views.push(WaveView {
+                key: info.key.clone(),
+                name: info.name.clone(),
+                spell_id: info.spell_id,
+                guid: c.guid.clone(),
+                from: at,
+                at,
+                x: x0,
+                y: y0,
+                angles,
+                start: info.start,
+                speed: info.speed,
+                width: info.width,
+                duration_ms: duration_ms.clamp(0, max_ms),
+                inferred: true,
+            });
+        }
+        sums.insert(info.key.clone(), sum);
+    }
+    (views, sums)
+}
 
 /// Soaks do pull: os acertos da mesma mecânica no mesmo instante, juntados por perto (vários círculos
 /// ao mesmo tempo viram vários soaks); o centro é o meio de quem entrou. Só os que algum replay mostra.
@@ -2922,6 +3129,91 @@ mod tests {
     use super::*;
     use crate::tokenizer::split_fields;
 
+    fn wave_info() -> CastWaveInfo {
+        CastWaveInfo { index: 0, key: "wave".into(), name: "Wave".into(), spell_id: 80, cast_id: 2, start: 0.0, speed: 13.5, width: 6.0, duration_s: 7.0 }
+    }
+
+    /// Cast da onda que termina em `end`, lançado de (x, y) (`None` = sem posição na linha).
+    fn wave_cast(end: i64, pos: Option<(f32, f32)>) -> BossCast {
+        BossCast {
+            t: end - 2_400, end: Some(end), guid: format!("Tail-{end}-{pos:?}"), spell_id: 2, name: "Wave".into(),
+            facing: None, x: pos.map(|p| p.0), y: pos.map(|p| p.1), interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None,
+        }
+    }
+
+    /// Acerto de `who` a `d` jardas de (x0, y0) no ângulo `deg`, na hora em que a frente (13,5 jd/s) passa.
+    fn wave_hit(at: i64, (x0, y0): (f32, f32), deg: f32, d: f32, who: &str) -> (i64, f32, f32, usize, String) {
+        let a = deg.to_radians();
+        (at + (d / 13.5 * 1000.0) as i64, x0 + d * a.cos(), y0 + d * a.sin(), 0, who.to_string())
+    }
+
+    #[test]
+    fn cast_wave_goes_toward_the_hits_and_stops_after_the_farthest() {
+        let hits = vec![wave_hit(1_000, (0.0, 0.0), 30.0, 40.0, "A"), wave_hit(1_000, (0.0, 0.0), 30.0, 60.0, "B")];
+        let (views, sums) = build_cast_waves(&hits, &[wave_info()], &[wave_cast(1_000, Some((0.0, 0.0)))]);
+        assert_eq!(views.len(), 1);
+        let w = &views[0];
+        assert!(w.inferred && w.from == 1_000 && w.at == 1_000 && w.width == 6.0 && w.spell_id == 80);
+        assert_eq!(w.angles.len(), 1);
+        assert!((w.angles[0] - 30f32.to_radians()).abs() < 0.01);
+        // até o acerto mais distante + 5 jd: 65 / 13,5 s
+        assert!((w.duration_ms - 4_815).abs() <= 2, "{}", w.duration_ms);
+        assert_eq!(sums["wave"], CastWaveSummary { casts: 1, drawn: 1, hits: 2, ..Default::default() });
+    }
+
+    #[test]
+    fn cast_wave_groups_by_angle_across_the_wrap() {
+        let o = (0.0, 0.0);
+        let run = |degs: &[f32]| {
+            let hits: Vec<_> = degs.iter().enumerate().map(|(i, &d)| wave_hit(0, o, d, 50.0, &format!("P{i}"))).collect();
+            build_cast_waves(&hits, &[wave_info()], &[wave_cast(0, Some(o))]).0
+        };
+        assert_eq!(run(&[10.0, 30.0])[0].angles.len(), 2);
+        assert_eq!(run(&[10.0, 13.0])[0].angles.len(), 1);
+        let wrap = run(&[178.0, -178.0]);
+        assert_eq!(wrap[0].angles.len(), 1);
+        assert!((wrap[0].angles[0].abs() - std::f32::consts::PI).abs() < 0.01);
+    }
+
+    #[test]
+    fn cast_wave_counts_one_hit_per_player_and_skips_off_front_hits() {
+        let o = (0.0, 0.0);
+        let mut hits = vec![wave_hit(0, o, 0.0, 40.0, "A"), wave_hit(0, o, 0.0, 41.0, "A")];
+        // fora da frente: 20 jd a mais do que a frente andou
+        let (t, x, y, i, g) = wave_hit(0, o, 0.0, 30.0, "B");
+        hits.push((t, x + 20.0, y, i, g));
+        let (views, sums) = build_cast_waves(&hits, &[wave_info()], &[wave_cast(0, Some(o))]);
+        assert_eq!(views.len(), 1);
+        assert_eq!(sums["wave"], CastWaveSummary { casts: 1, drawn: 1, hits: 1, unassigned: 1, ..Default::default() });
+    }
+
+    #[test]
+    fn cast_wave_pair_leaves_the_center_hit_ambiguous_unless_a_group_explains_it() {
+        let (a, b) = ((-30.0, 0.0), (30.0, 0.0));
+        let casts = [wave_cast(0, Some(a)), wave_cast(0, Some(b))];
+        // a 30 jd das duas caudas, no mesmo instante: não dá para saber de qual veio
+        let center = wave_hit(0, a, 0.0, 30.0, "C");
+        let (views, sums) = build_cast_waves(std::slice::from_ref(&center), &[wave_info()], &casts);
+        assert!(views.is_empty());
+        assert_eq!(sums["wave"], CastWaveSummary { casts: 2, no_hits: 2, hits: 1, ambiguous: 1, ..Default::default() });
+        // um acerto claro da cauda da esquerda na mesma direção: o do centro vai para ela
+        let clear = wave_hit(0, a, 1.0, 58.0, "D");
+        let (views, sums) = build_cast_waves(&[center, clear], &[wave_info()], &casts);
+        assert_eq!(views.len(), 1);
+        assert_eq!(views[0].x, -30.0);
+        assert_eq!(sums["wave"], CastWaveSummary { casts: 2, no_hits: 1, drawn: 1, hits: 2, ..Default::default() });
+    }
+
+    #[test]
+    fn cast_wave_without_hits_position_or_after_interrupt_draws_nothing() {
+        let mut cut = wave_cast(5_000, Some((0.0, 0.0)));
+        cut.interrupted = true;
+        let casts = [wave_cast(0, Some((0.0, 0.0))), wave_cast(10_000, None), cut];
+        let (views, sums) = build_cast_waves(&[], &[wave_info()], &casts);
+        assert!(views.is_empty());
+        assert_eq!(sums["wave"], CastWaveSummary { casts: 2, no_pos: 1, no_hits: 1, ..Default::default() });
+    }
+
     #[test]
     fn soak_uses_cast_target_and_real_cast_start() {
         let mut trails = Trails::default();
@@ -2929,7 +3221,7 @@ mod tests {
         trails.on_pos("Player-1-A", "Target", false, 100, 52.0, 0.0, 7_000);
         let cast = BossCast {
             t: 3_000, end: Some(6_500), guid: "Boss".into(), spell_id: 1283489, name: "Guillotine".into(),
-            facing: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None,
+            facing: None, x: None, y: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None,
             target: Some("Player-1-A".into()), line: None,
         };
         let meta = HashMap::from([(0, SoakInfo { key: "guillotine".into(), name: "Guillotine".into(), spell_id: 1283594, cast_id: Some(1283489), radius: 9.0, players: Some(5), ahead: None })]);
@@ -3000,7 +3292,7 @@ mod tests {
         }
         let cast = |t: i64, facing: f32| BossCast {
             t, end: Some(t + 1_500), guid: "Boss".into(), spell_id: 7, name: "Stone Breaker".into(),
-            facing: Some(facing), interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None,
+            facing: Some(facing), x: None, y: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None,
         };
         let meta = HashMap::from([(0, SoakInfo { key: "smash".into(), name: "Stone Breaker".into(), spell_id: 8, cast_id: Some(7), radius: 3.0, players: Some(1), ahead: Some(25.0) })]);
         // o tank pega o primeiro (a 1 jd do ponto); ninguém pega o segundo, virado para o outro lado
@@ -3116,7 +3408,7 @@ mod tests {
     fn pocas_de_tamanho_conhecido_por_cast_e_cortadas_na_troca_de_fase() {
         let shape = |r: f32| crate::rules::PoolShape { centers: vec![(1160.0, r), (1160.0, -r)], radius: r };
         let spec = crate::rules::PoolSpec { cast_id: 7, delay_s: 4.5, duration_s: 22.0, grow_s: 3.0, ends_on_phase_change: true, shapes: vec![shape(40.0), shape(42.5)] };
-        let cast = |t: i64| BossCast { t, end: None, guid: "Boss".into(), spell_id: 7, name: "Fangs".into(), facing: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None };
+        let cast = |t: i64| BossCast { t, end: None, guid: "Boss".into(), spell_id: 7, name: "Fangs".into(), facing: None, x: None, y: None, interrupted: false, interrupted_by: None, slow_pct: None, cone: None, target: None, line: None };
         let phases = [PhaseMark { t: 0, key: "p1".into(), name: "P1".into() }, PhaseMark { t: 171_000, key: "p2".into(), name: "P2".into() }];
         let pools = build_pools(&[("pool".into(), "Pool".into(), 9, spec)], &[cast(0), cast(85_000), cast(170_000), cast(200_000)], &phases);
         // 1ª com o primeiro tamanho; as seguintes com o último; a que a troca de fase corta antes de cair some

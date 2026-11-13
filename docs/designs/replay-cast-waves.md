@@ -358,9 +358,11 @@ Cada fase deixa o build e os testes passando antes da próxima.
         precisa de exatamente um entre aura e cast_id"` / en `"mechanic {key}: waves needs exactly one
         of aura and cast_id"`. `RuleSet::mechanics_for` chama logo depois de desserializar cada
         mecânica, antes do filtro de dificuldade, e prefixa `"{arquivo}: "` como nos outros erros dele.
+        Como o `RuleSet::parse` já chama `mechanics_for`, a regra inválida é recusada ao carregar.
     *   `RuleTracker::waves_for_aura`: passa a olhar só specs com `aura` (`w.aura == Some(aura)`).
-    *   `RuleTracker::soak_for` vira `spot_for(spell_id: u32, amount: i64) -> Option<usize>`: devolve a
-        mecânica com `soak` ou com `waves.cast_id` cujo `damage_ids` contém `spell_id` e, se houver
+    *   `RuleTracker::soak_for` vira `spot_for(spell_id: u32, amount: i64, periodic: bool) ->
+        Option<usize>`: devolve a mecânica com `soak` ou com `waves.cast_id` (esta só com `periodic`
+        falso, isto é, fora de `SPELL_PERIODIC_DAMAGE`) cujo `damage_ids` contém `spell_id` e, se houver
         `detect.min_amount`, com `amount ≥ min_amount`. `amount` é `amount + absorbed`, o mesmo valor
         que o `on_damage` recebe. Mudança de comportamento: um soak com `min_amount` deixa de capturar
         acertos abaixo dele (nenhum soak usa `min_amount` hoje).
