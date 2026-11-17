@@ -3206,7 +3206,18 @@ mechanics:
             tracker.unit_clears().iter().map(|c| (c.npc, c.until_last_line, c.by_aura, c.lifetime_ms)).collect();
         eggs.sort_by_key(|e| e.0);
         let shell = Some(AuraClear { aura: 1307612, radius: 15.0, within_ms: 3_000 });
-        assert_eq!(eggs, vec![(265644, true, shell, None), (268121, true, shell, None)]);
+        // cauda (259555, 267418) e Ula'tek espectral (268029) na última linha; Spectral Coil (267679) 3 s depois do golpe
+        assert_eq!(
+            eggs,
+            vec![
+                (259555, true, None, None),
+                (265644, true, shell, None),
+                (267418, true, None, None),
+                (267679, false, None, Some(3_000)),
+                (268029, true, None, None),
+                (268121, true, shell, None),
+            ]
+        );
     }
 
     #[test]
