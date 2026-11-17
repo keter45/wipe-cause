@@ -9741,6 +9741,16 @@ button.vh-stat:hover {
 .dmg-field {
   display: grid;
   gap: 4px;
+  min-width: 0;
+}
+/* .text-input.sm tem largura fixa (260px); aqui o campo ocupa a coluna do painel */
+.dmg-form .text-input.sm {
+  width: 100%;
+  min-width: 0;
+}
+.dmg-window .btn {
+  height: 28px;
+  white-space: nowrap;
 }
 .dmg-window {
   display: grid;
