@@ -98,7 +98,7 @@ export interface Pull {
   /** quantas unidades de um tipo estão vivas ao longo do pull (regra `units` com `count`): [ms, quantas] */
   unitCounts?: { npc: number; name: string; series: [number, number][] }[];
   /** cara de cada tipo de unidade no mapa (regra `units` com `color` / `icon`) */
-  unitLooks?: { npc: number; color?: string; icon?: number }[];
+  unitLooks?: { npc: number; name?: string; color?: string; icon?: number }[];
   /** note de CDs de cura: a raide sem tanks segundo a segundo, até o corte (análises antigas não têm) */
   raidSeries?: RaidSeries;
   /** dano inevitável em players sem tanks: [segundo, spellId (0 = ambiente), dano] */

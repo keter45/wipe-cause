@@ -172,11 +172,14 @@ pub struct RaidSeries {
     pub unavoidable_k: Vec<u32>,
 }
 
-/// Como um tipo de unidade aparece no mapa: a cor dela e um ícone (spell) para saber quem é quem.
+/// Como um tipo de unidade aparece no mapa: o nome da regra, a cor dela e um ícone (spell) para saber
+/// quem é quem (o nome do log pode repetir o de outra unidade, ex.: a Ula'tek espectral).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UnitLook {
     pub npc: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

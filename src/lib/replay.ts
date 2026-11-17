@@ -110,13 +110,18 @@ export function decodeReplay(pull: Pick<Pull, 'tracks' | 'ground' | 'arena' | 'c
     arena: pull.arena && { ...pull.arena, cells: pull.arena.cells.map(([c, l]) => [-l - 1, c]) },
     map: pull.encounterId != null ? arenaFor(pull.encounterId) : undefined,
     casts: [...(pull.casts ?? [])].map((c) => (c.facing != null ? { ...c, facing: facingToMap(c.facing) } : c)).sort((a, b) => a.t - b.t),
-    units: decodeTracks(pull.tracks),
+    units: decodeTracks(pull.tracks, ruleNames(pull.unitLooks)),
     groundKinds: pull.ground?.kinds ?? [],
     ground: (pull.ground?.marks ?? []).map(([t, x, y, kind]) => ({ t, x: -y / 10, y: x / 10, kind })).sort((a, b) => a.t - b.t),
   };
 }
 
-function decodeTracks(tracks: PullTracks | undefined | null): Map<string, ReplayUnit> {
+/** Nome da regra de cada tipo de unidade (npc): o do log pode repetir o de outra (a Ula'tek espectral se chama "Ula'tek"). */
+function ruleNames(looks: Pull['unitLooks']): Map<number, string> {
+  return new Map((looks ?? []).filter((l) => l.name).map((l) => [l.npc, l.name!]));
+}
+
+function decodeTracks(tracks: PullTracks | undefined | null, names: Map<number, string> = new Map()): Map<string, ReplayUnit> {
   const out = new Map<string, ReplayUnit>();
   if (!tracks) return out;
   for (const u of tracks.units) {
@@ -124,7 +129,8 @@ function decodeTracks(tracks: PullTracks | undefined | null): Map<string, Replay
     for (const s of u.segs) {
       for (let i = 0; i + 1 < s.xy.length; i += 2) pts.push([s.t0 + (i / 2) * tracks.stepMs, ...toMap(s.xy[i] / 10, s.xy[i + 1] / 10)]);
     }
-    out.set(u.guid, { guid: u.guid, name: u.name, kind: u.kind, pts, owner: u.owner, estimatedFrom: u.estimatedFrom, seen: u.seen?.map((s) => s * tracks.stepMs) });
+    const name = (u.kind === 'enemy' && names.get(npcOf(u.guid) ?? -1)) || u.name;
+    out.set(u.guid, { guid: u.guid, name, kind: u.kind, pts, owner: u.owner, estimatedFrom: u.estimatedFrom, seen: u.seen?.map((s) => s * tracks.stepMs) });
   }
   return out;
 }
