@@ -660,11 +660,14 @@ export function ReplayView({ data, replay: r, classes, moment, autoplay = true, 
       .map((q) => [sx(q[0]), sy(q[1])]);
     const enemyLabel = new Map<string, boolean>();
     for (const e of enemies) {
-      // quem aparece depois (adds) entra pelo primeiro ponto
-      const pe = posAt(e, Math.max(r.t, e.pts[0]?.[0] ?? r.t));
+      // quem aparece depois (adds) entra pelo primeiro ponto; quem já saiu, pelo último
+      const pe = posAt(e, Math.min(Math.max(r.t, e.pts[0]?.[0] ?? r.t), e.pts.at(-1)?.[0] ?? r.t));
       if (!pe) continue;
       const q: [number, number] = [sx(pe[0]), sy(pe[1]) + BOSS_LABEL_DY]; // onde o nome fica
-      const ok = !placed.some((o) => Math.abs(o[0] - q[0]) < 80 && Math.abs(o[1] - q[1]) < 28);
+      // o losango (boss, ou unidade sem ícone) sempre leva o nome: sem ele, dois losangos são iguais;
+      // o add com ícone já se identifica pelo ícone e só leva o nome se não cobrir outro
+      const diamond = !data.unitLooks?.get(npcOf(e.guid) ?? -1)?.icon;
+      const ok = diamond || !placed.some((o) => Math.abs(o[0] - q[0]) < 80 && Math.abs(o[1] - q[1]) < 28);
       if (ok) placed.push(q);
       enemyLabel.set(e.guid, ok);
     }

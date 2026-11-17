@@ -642,7 +642,8 @@ impl RuleSet {
                         let npc = u.get("npc_id").and_then(Value::as_u64)? as u32;
                         let color = u.get("color").and_then(Value::as_str).map(str::to_string);
                         let icon = u.get("icon").and_then(Value::as_u64).map(|n| n as u32);
-                        (color.is_some() || icon.is_some()).then_some(crate::report::UnitLook { npc, color, icon })
+                        let name = u.get("name").and_then(Value::as_str).map(str::to_string);
+                        (name.is_some() || color.is_some() || icon.is_some()).then_some(crate::report::UnitLook { npc, name, color, icon })
                     })
                     .collect()
             })
@@ -3238,6 +3239,17 @@ mechanics:
         let looks: Vec<(u32, Option<&str>, Option<u32>)> = tracker.unit_looks().iter().map(|l| (l.npc, l.color.as_deref(), l.icon)).collect();
         assert!(looks.contains(&(260905, Some("#f97316"), Some(1305901))));
         assert!(looks.contains(&(260895, Some("#a78bfa"), Some(1312366))));
+    }
+
+    #[test]
+    fn unit_looks_carry_the_rule_name() {
+        // a Ula'tek espectral se chama "Ula'tek" no log, como o boss: o mapa usa o nome da regra
+        let book = RuleBook::embedded();
+        let sets = book.for_encounter(3492, "Ula'tek");
+        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        let name = |npc: u32| tracker.unit_looks().iter().find(|l| l.npc == npc).and_then(|l| l.name.clone());
+        assert_eq!(name(268029).as_deref(), Some("Ula'tek (spectral)"));
+        assert_eq!(name(257758).as_deref(), Some("Ula'tek"));
     }
 
     #[test]
