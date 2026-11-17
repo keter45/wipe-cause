@@ -19,8 +19,12 @@ difficulties: [normal, heroic, mythic]
 units:
   - { key: ulatek, name: "Ula'tek", npc_id: 257758, boss: true }
   - { key: gore_rattle, name: "Gore Rattle", npc_id: null }   # dois npc ids no log: 259555 e 267418
+  # cauda e Ula'tek espectral (e os Coils, com lifetime_s): o log dá uma posição só e nunca os mata; sem uma
+  # saída, cada um que aparece fica parado no mapa até o fim do pull (16/11)
+  - { key: gore_rattle_a, name: "Gore Rattle", npc_id: 259555, until_last_line: true }
+  - { key: gore_rattle_b, name: "Gore Rattle", npc_id: 267418, until_last_line: true }
   # cor e ícone no mapa (`color`, `icon`): verdes para o que sai dos ovos, quentes para os Doomscales
-  - { key: spectral_coil, name: "Spectral Coil", npc_id: 267679, replay: true, color: "#94a3b8", icon: 1287265 }   # fica no veneno; o círculo do soak sai 22 jd na frente dele
+  - { key: spectral_coil, name: "Spectral Coil", npc_id: 267679, replay: true, color: "#94a3b8", icon: 1287265, lifetime_s: 3 }   # fica no veneno; o círculo do soak sai 22 jd na frente dele. O log só o cita no golpe (1287265): fica 3 s e sai
   - { key: venomous_heart, name: "Venomous Heart", npc_id: 267460, replay: true, color: "#22c55e", icon: 1299526 }   # janela de dano: todo mundo nele
   - { key: blightscale_viper, name: "Blightscale Viper", npc_id: 261915, replay: true, color: "#2dd4bf", icon: 1301800 }   # matar rápido
   - { key: blightscale_rawling, name: "Blightscale Rawling", npc_id: 261874, replay: true, color: "#84cc16", icon: 1287032 }   # matar antes de ferver
@@ -36,7 +40,7 @@ units:
   # DoT depois de pego). Medido em 09/11 no log local de 05/11, WCL pRJD e DVYR (352 ovos): docs/ulatek-replay-audit.md
   - { key: blightscale_spawn, name: "Blightscale Spawn", npc_id: 265644, replay: true, color: "#d9f99d", icon: 1307612, until_last_line: true, cleared_by_aura: { aura: 1307612, radius: 15, within_s: 3 } }
   - { key: blightscale_spawn_2, name: "Blightscale Spawn", npc_id: 268121, replay: true, color: "#d9f99d", icon: 1307612, until_last_line: true, cleared_by_aura: { aura: 1307612, radius: 15, within_s: 3 } }
-  - { key: spectral_ulatek, name: "Ula'tek (spectral)", npc_id: 268029 }   # mítico: o raio do Toxic Incubation
+  - { key: spectral_ulatek, name: "Ula'tek (spectral)", npc_id: 268029, until_last_line: true }   # mítico: o raio do Toxic Incubation
   - { key: toxin_cloud_stalker, name: "Toxin Cloud Stalker", npc_id: 265946 }
 
 phases:
