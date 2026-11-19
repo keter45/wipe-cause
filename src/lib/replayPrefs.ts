@@ -4,8 +4,8 @@
 // Ficam no navegador do app; sem storage (modo privado, erro), valem só enquanto o app está aberto.
 
 import type { MechanicWeight } from './timelineMoments';
+import { KEYS, ls } from './storage';
 
-const KEY = 'wipe-cause:replay-prefs';
 const GROUND_DEFAULTS = ['noxious_ground'];
 
 interface Prefs {
@@ -37,12 +37,7 @@ let cache: Prefs | null = null;
 
 function load(): Prefs {
   if (cache) return cache;
-  let saved: Partial<Prefs> = {};
-  try {
-    saved = JSON.parse(localStorage.getItem(KEY) ?? '{}') as Partial<Prefs>;
-  } catch {
-    /* sem storage */
-  }
+  const saved: Partial<Prefs> = ls.getJson<Partial<Prefs>>(KEYS.replayPrefs) ?? {};
   const introduced = GROUND_DEFAULTS.filter((key) => !saved.groundDefaults?.includes(key));
   cache = { groundDefaults: GROUND_DEFAULTS, hiddenGround: [...new Set([...(saved.hiddenGround ?? []), ...introduced])], hiddenHead: saved.hiddenHead ?? {}, metersCollapsed: saved.metersCollapsed ?? false, hiddenAreas: saved.hiddenAreas ?? [], showNames: saved.showNames ?? true, showMarkers: saved.showMarkers ?? true, mechanicLanes: saved.mechanicLanes ?? true, framesCollapsed: saved.framesCollapsed ?? false, hiddenLayers: saved.hiddenLayers ?? [], mechanicWeights: saved.mechanicWeights ?? {}, minorLanes: saved.minorLanes ?? false };
   return cache;
@@ -50,11 +45,7 @@ function load(): Prefs {
 
 function save(p: Prefs) {
   cache = p;
-  try {
-    localStorage.setItem(KEY, JSON.stringify(p));
-  } catch {
-    /* sem storage: fica só na memória */
-  }
+  ls.setJson(KEYS.replayPrefs, p);
 }
 
 export const hiddenGround = () => new Set(load().hiddenGround);

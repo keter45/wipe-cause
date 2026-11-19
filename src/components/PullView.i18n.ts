@@ -1,4 +1,5 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 export const pullMsg = defineMessages(
   {
@@ -33,7 +34,6 @@ export const pullMsg = defineMessages(
     videoPovs: (n: number) => `Vídeo (${n} POVs)`,
     video: (who: string) => `Vídeo (${who})`,
     wclTitle: (label: string) => `Abre o report filtrado neste boss; a try é a "${label}" da lista`,
-    shareName: (title: string, boss: string, diff: string) => `${title} - ${boss} ${diff}`,
     raid: 'Raid:',
     hide: 'esconder',
     why: 'ver o porquê',
@@ -50,7 +50,7 @@ export const pullMsg = defineMessages(
     notePlaceholderKill: 'Anotação do kill…',
     notePlaceholderWipe: 'Motivo do wipe ou anotação…',
     noteAria: 'Anotação do pull',
-    focus: 'Foco da progressão',
+    focus: G.pt.progressionFocus,
     focusMark: 'Foco',
   },
   {
@@ -85,7 +85,6 @@ export const pullMsg = defineMessages(
     videoPovs: (n: number) => `Video (${n} POVs)`,
     video: (who: string) => `Video (${who})`,
     wclTitle: (label: string) => `Opens the report filtered to this boss; the try is "${label}" in the list`,
-    shareName: (title: string, boss: string, diff: string) => `${title} - ${boss} ${diff}`,
     raid: 'Raid:',
     hide: 'hide',
     why: 'see why',
@@ -102,7 +101,7 @@ export const pullMsg = defineMessages(
     notePlaceholderKill: 'Note about the kill…',
     notePlaceholderWipe: 'Reason for the wipe or a note…',
     noteAria: 'Pull note',
-    focus: 'Progression focus',
+    focus: G.en.progressionFocus,
     focusMark: 'Focus',
   },
 );

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DISCORD_USERNAME } from '../../lib/discordConst';
 import { Send } from 'lucide-react';
 import { discordPost, discordSetConfig, type DiscordConfig } from '../../lib/api';
 import { useMessages } from '../../i18n';
@@ -19,7 +20,7 @@ export function DiscordForm({ current, onSaved }: { current: DiscordConfig | nul
     setSending(true);
     setMsg(null);
     try {
-      await discordPost({ username: 'Wipe Cause', content: t.testContent }, webhook.trim());
+      await discordPost({ username: DISCORD_USERNAME, content: t.testContent }, webhook.trim());
       setMsg({ ok: true, text: t.testSent });
     } catch (e) {
       setMsg({ ok: false, text: String(e) });

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Copy, HeartPulse, Play } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
-import { mmss, shortName } from '../lib/format';
+import { mmss, shortName, fraction, normName } from '../lib/format';
 import { healCd } from '../lib/healCooldowns';
 import { progressLabel } from '../lib/phases';
 import { selectHealRefs } from '../lib/healer';
@@ -17,6 +17,7 @@ import { Hint } from './ui/Hint';
 import { useMessages } from '../i18n';
 import { healNoteMsg } from './HealNotePanel.i18n';
 import { CollapseButton, useCollapsed } from './CollapsiblePanel';
+import { copyText } from '../lib/share';
 
 interface Props {
   /** pulls do mesmo boss e dificuldade na noite */
@@ -32,9 +33,8 @@ interface Props {
 
 /** referências de fora do healer (análise de healer, docs/healer-analysis.md §2) */
 const refsOf = (p: Pull, pl: PlayerStats) => selectHealRefs(p, pl)?.entries ?? [];
-const pct = (x: number) => `${Math.round(x * 100)}%`;
 const sec = (ms: number) => `${ms >= 0 ? '+' : '−'}${(Math.abs(ms) / 1000).toFixed(1)} s`;
-const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('pt-BR');
+const norm = (s: string) => normName(s);
 
 /** A note de CDs de cura do líder conferida contra os pulls (regras em docs/heal-cd-note.md). */
 export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsible = false }: Props) {
@@ -195,7 +195,7 @@ export function HealNotePanel({ pulls, focus, live = false, onReplay, collapsibl
                       const spellId = g.key ? Number(g.key.split(':')[0]) : null;
                       return (
                         <button key={`${g.start}-${g.end}`} type="button" className="heal-tl-card" onClick={() => setFocusAt(g.start)}>
-                          <span>{t.tlGapTip(i + 1, pct(g.peak))}</span>
+                          <span>{t.tlGapTip(i + 1, fraction(g.peak))}</span>
                           {spellId != null && <SpellName spellId={spellId} name={enemyNames.get(spellId) ?? nameOf(spellId)} size={14} />}
                           {g.free.length > 0 && (
                             <span>
@@ -554,19 +554,19 @@ function UseCell({ uses, night, focus }: { uses: UseVerdict[]; night?: NightOver
     );
   // overheal: no pull, o uso contra as referências e a noite ao lado, sem cor; na noite, a soma dos usos
   const oh = focus ? uses.find((u) => u.overheal)?.overheal : null;
-  const band = (b: { p25: number; p75: number } | null) => (b ? ` (${t.refBand(pct(b.p25), pct(b.p75))})` : '');
+  const band = (b: { p25: number; p75: number } | null) => (b ? ` (${t.refBand(fraction(b.p25), fraction(b.p75))})` : '');
   if (oh)
     parts.push(
       <span key="o" className={oh.high ? 'bad' : ''} title={t.overhealHint}>
-        {t.overheal(pct(oh.share))}
+        {t.overheal(fraction(oh.share))}
         {band(oh.ref)}
-        {night && <span className="muted"> · {t.nightAvg(pct(night.share))}</span>}
+        {night && <span className="muted"> · {t.nightAvg(fraction(night.share))}</span>}
       </span>,
     );
   else if (!focus && night && uses.some((u) => u.overheal))
     parts.push(
       <span key="o" className={night.high ? 'bad' : ''} title={t.overhealHint}>
-        {t.overheal(pct(night.share))}
+        {t.overheal(fraction(night.share))}
         {band(night.ref)}
       </span>,
     );
@@ -616,12 +616,8 @@ function Suggestion({ note, s, moment, person, nameOf }: SuggestionProps) {
   };
   const copy = async () => {
     const text = exportNote(note, changes);
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-    } catch {
-      setManual(text);
-    }
+    if (await copyText(text)) setCopied(true);
+    else setManual(text);
   };
   if (!s.adds.length && !s.moves.length)
     return (
@@ -639,7 +635,7 @@ function Suggestion({ note, s, moment, person, nameOf }: SuggestionProps) {
           <li key={`a${i}`}>
             <div>
               <span className="bad">{t.uncoveredHit}</span> {moment(a.reason.momentKey)}{' '}
-              <span className="muted small">· {t.reason(a.reason.pulls, a.reason.reached, a.reason.medianSize != null ? pct(a.reason.medianSize) : '')}</span>
+              <span className="muted small">· {t.reason(a.reason.pulls, a.reason.reached, a.reason.medianSize != null ? fraction(a.reason.medianSize) : '')}</span>
             </div>
             {a.candidates.map((c, j) => (
               <label key={j} className="heal-note-change">

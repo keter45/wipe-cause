@@ -130,7 +130,7 @@ Um boss novo passa pelos dois primeiros e pelo último; um patch ou uma raide no
 `npm run refresh` refaz sem IA tudo o que muda com o jogo: baixa a APL do SimulationCraft (e marca as specs em que ela mudou), roda os tops de cada spec pelo motor, ajusta só os números das rotações (metas de uptime e de uso de cooldown pelo quartil de baixo dos tops; id novo da mesma habilidade em `alt_ids`; evento repetido do mesmo botão em `ignore_casts`), gera a referência dos tops por boss e escreve um relatório em `samples/refresh/<data>.md` (e `.json`; uma rodada em algumas specs escreve `<data>-<specs>.md`) com cada spec **OK**, **ATENÇÃO** ou **REVISAR**.
 
 - `npm run refresh -- --tops`: baixa os tops antes (credenciais por variável de ambiente, `samples/wcl-credentials.env`, fora do git, ou o cofre do app; com mais de um cliente no arquivo, troca quando os pontos por hora acabam).
-- `npm run refresh -- --tops --zone latest --fresh`: raide nova; os chefes vêm da zona mais nova do Warcraft Logs (sem regras escritas) e os tops do raide anterior saem da referência. O `--zone` também aceita o id de uma zona; o `--fresh` renomeia cada pasta de tops antiga para `tops-<data>`, sem apagar nada.
+- `npm run refresh -- --tops --zone latest --fresh`: raide nova; os chefes vêm da zona mais nova do Warcraft Logs (sem regras escritas) e os tops da raide anterior saem da referência. O `--zone` também aceita o id de uma zona; o `--fresh` renomeia cada pasta de tops antiga para `tops-<data>`, sem apagar nada.
 - `npm run refresh -- arcane fire`: só essas specs (sem nomes, todas as specs com YAML em `rotations/`).
 - `npm run refresh -- --tops --per-boss N`: quantos tops baixar por boss (padrão 4).
 - `npm run refresh -- --dry`: só o relatório, sem mudar YAML nem referência (o cache da APL do SimulationCraft é atualizado mesmo assim, então a rodada seguinte não marca mais "APL mudou"); dá para combinar com nomes de spec.
@@ -144,7 +144,7 @@ REVISAR é o que muda o que a spec é (habilidade que os tops pararam de usar, h
 
 Sem escrever à mão nem usar IA: `scripts/rotation.mjs` monta o YAML a partir da APL e dos dados de spell do SimulationCraft e calibra nos logs dos tops do Warcraft Logs.
 
-1. `node scripts/rotation.mjs tops <spec> [--difficulty 5] [--per-boss 2]`: baixa os 2 melhores parses de cada chefe do raide (luta com Power Infusion de outra pessoa sai), com os eventos do player e dos pets, os buffs nele, as mortes, os casts dos inimigos e o dano de um colega, em `samples/rotation/<spec>/tops/`. Credenciais como no `refresh`: variável de ambiente, `samples/wcl-credentials.env` ou o cofre do app.
+1. `node scripts/rotation.mjs tops <spec> [--difficulty 5] [--per-boss 2]`: baixa os 2 melhores parses de cada chefe da raide (luta com Power Infusion de outra pessoa sai), com os eventos do player e dos pets, os buffs nele, as mortes, os casts dos inimigos e o dano de um colega, em `samples/rotation/<spec>/tops/`. Credenciais como no `refresh`: variável de ambiente, `samples/wcl-credentials.env` ou o cofre do app.
 2. `node scripts/rotation.mjs calibrate <spec> [--dirs a,b] [--force]`: gera o rascunho e o roda nos tops pelo próprio motor do app.
    - **Prioridade:** sai da APL, por árvore de herói, em alvo único e AoE.
    - **Ids:** vêm do que os tops castam.

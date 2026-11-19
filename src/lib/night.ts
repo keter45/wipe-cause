@@ -7,6 +7,7 @@ import { bestWipe, progressLabel } from './phases';
 import { blameFactor, mechanicMistakes, mistakes, PERSONAL_BLAME } from './blame';
 import { scorePull } from './score';
 import { deathKey, massDeathKeys } from './massDeaths';
+import { median } from './stats';
 
 /** Intervalo entre trys acima disso vira "pausa" (break, troca de boss, reset de estratégia). */
 export const BREAK_MS = 10 * 60_000;
@@ -79,6 +80,18 @@ export interface PlayerNight {
   avgPerf: number | null;
 }
 
+/**
+ * Quem jogou ao menos essa fração dos pulls conta como da raide (entra em destaques, alertas e
+ * tabelas); quem entrou em poucos fica de fora. A mesma nos cartões, na Evolução e na gravidade das mortes.
+ */
+export const REGULAR_SHARE = 0.3;
+
+/** Mínimo de pulls para contar como da raide, de `total` pulls. */
+export const regularMin = (total: number) => Math.max(1, Math.ceil(total * REGULAR_SHARE));
+
+/** Os players da raide na noite, da menor nota média para a maior. */
+export const regularPlayers = (s: NightSummary) => s.players.filter((x) => x.pulls >= regularMin(s.pulls.length)).sort((a, b) => a.avgScore - b.avgScore);
+
 export interface NightSummary {
   pulls: Pull[];
   wipes: number;
@@ -99,12 +112,6 @@ export interface NightSummary {
   players: PlayerNight[];
 }
 
-const median = (xs: number[]) => {
-  if (!xs.length) return 0;
-  const s = [...xs].sort((a, b) => a - b);
-  const m = s.length >> 1;
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-};
 
 export function summarizeNight(allPulls: Pull[]): NightSummary {
   const pulls = [...allPulls].sort((a, b) => a.startMs - b.startMs);
@@ -229,7 +236,7 @@ export function summarizeNight(allPulls: Pull[]): NightSummary {
     downtimeMs: gaps.reduce((n, g) => n + g.ms, 0),
     gaps,
     avgGapMs: tryGaps.length ? tryGaps.reduce((a, b) => a + b, 0) / tryGaps.length : 0,
-    medianGapMs: median(tryGaps),
+    medianGapMs: median(tryGaps) ?? 0,
     longestGap: gaps.reduce<Gap | null>((b, g) => (!b || g.ms > b.ms ? g : b), null),
     causes: [...causes.values()].sort((a, b) => b.triggers - a.triggers || b.deaths - a.deaths || b.failures - a.failures),
     players,

@@ -103,7 +103,6 @@ const commands: Record<string, (a: Args) => unknown> = {
   discord_get_config: () => discordGetConfig(),
   discord_set_config: (a) => discordSetConfig(a.config as DiscordConfig),
   discord_post: (a) => discordPost(a.payload, a.webhook),
-  discord_post_image: (a) => discordPostFiles(a.payload, [{ name: a.fileName, mime: 'image/png', dataB64: a.dataB64 }], a.webhook),
   discord_post_files: (a) => discordPostFiles(a.payload, a.files, a.webhook),
 
   ai_get_config: () => aiGetConfig(),

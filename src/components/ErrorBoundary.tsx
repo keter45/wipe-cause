@@ -3,6 +3,7 @@ import { AlertTriangle, ClipboardCopy, RotateCcw, X } from 'lucide-react';
 import { dismissError, errorMessage, onErrors, type AppError } from '../lib/errors';
 import { messagesOf, useMessages } from '../i18n';
 import { errorMsg } from './ErrorBoundary.i18n';
+import { copyText } from '../lib/share';
 
 interface Props {
   children: ReactNode;
@@ -87,10 +88,7 @@ function CopyDetails({ text }: { text: string }) {
     <button
       className="btn ghost sm"
       onClick={() =>
-        navigator.clipboard
-          .writeText(text)
-          .then(() => setDone(true))
-          .catch(() => {})
+        void copyText(text).then(setDone)
       }
     >
       <ClipboardCopy size={14} strokeWidth={1.5} aria-hidden /> {done ? t.copied : t.copy}

@@ -3,6 +3,7 @@
 // spell; o ícone vem do Wowhead pelo id.
 
 import type { Pull } from '../types';
+import { normName } from './format';
 
 /** Spell que representa a mecânica `key` (a primeira ocorrência nos pulls). */
 export function mechanicSpellId(pulls: Pull | Pull[], key: string | null | undefined): number | null {
@@ -21,7 +22,7 @@ export function mechanicSpellMap(pulls: Pull[]): Map<string, number> {
   return out;
 }
 
-const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('en');
+const norm = (s: string) => normName(s);
 
 /**
  * Nome (em minúsculas) -> spell de tudo o que aparece no pull: para achar ícones de nomes

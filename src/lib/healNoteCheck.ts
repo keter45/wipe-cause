@@ -3,11 +3,11 @@
 // docs/heal-cd-note.md.
 
 import type { PhaseMark, PlayerStats, Pull } from '../types';
-import { shortName } from './format';
+import { shortName, normName } from './format';
 import { nearestAnchor } from './cdAnchors';
 import { castIdsOf, healCd, healCooldowns, type HealCd, type HealCdEffect } from './healCooldowns';
 import { band, MIN_REFS, OVERHEAL_MARGIN, type Band, type HealRefEntry } from './healer';
-import { quantile } from './quantile';
+import { quantile } from './stats';
 import { mapPhases, type NoteChange, type ParsedNote } from './healNote';
 import { highDamage, raidLow, type Moment } from './raidHits';
 
@@ -70,7 +70,7 @@ export interface PhaseOffset {
 
 export type NoteOf = (p: Pull) => ParsedNote | null;
 
-const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('pt-BR');
+const norm = (s: string) => normName(s);
 const median = (xs: number[]) => quantile(xs, 0.5);
 
 const playerOf = (pull: Pull, tag: string): PlayerStats | undefined => pull.players.find((p) => norm(shortName(p.name)) === norm(tag));
@@ -354,7 +354,8 @@ export function noDamageWindow(effect: HealCdEffect, u: number, d: number): [num
   return [u - 5_000, u + d + RECOVER_MS];
 }
 
-export const overlaps = (a: number, b: number, c: number, d: number) => a <= d && c <= b;
+export { overlaps } from './stats';
+import { overlaps } from './stats';
 
 export interface UseVerdict {
   /** momento da noite que a linha cobre neste pull */
@@ -379,7 +380,8 @@ export interface PullVerdicts {
   lowWithoutHit: { start: number; end: number }[];
 }
 
-const PLANNED: LineState[] = ['on_time', 'early', 'late', 'not_used', 'dead'];
+/** Estados de uma linha planejada da note (o que a linha do tempo e a conferência mostram). */
+export const PLANNED: LineState[] = ['on_time', 'early', 'late', 'not_used', 'dead'];
 
 /** O momento que a linha cobre (pela hora ajustada), o mais perto quando cobre mais de um. */
 export function momentOf(cd: HealCd, at: number, pullId: number, ms: Moment[]): Moment | null {

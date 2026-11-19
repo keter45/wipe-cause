@@ -1,10 +1,11 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 const s = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 export const soloNightMsg = defineMessages(
   {
-    yourCharacter: 'Seu personagem',
+    yourCharacter: G.pt.yourCharacter,
     logOwner: 'Quem gravou o log',
     yourNight: 'Sua noite',
     noneInNight: 'Não deu para saber quem é você nos pulls de raid deste log (análise do Warcraft Logs ou outro personagem). Escolha o personagem acima.',
@@ -40,7 +41,7 @@ export const soloNightMsg = defineMessages(
     ofPullsPct: (pct: number) => `${pct}% dos pulls`,
   },
   {
-    yourCharacter: 'Your character',
+    yourCharacter: G.en.yourCharacter,
     logOwner: 'Whoever recorded the log',
     yourNight: 'Your night',
     noneInNight: "Couldn't tell who you are in this log's raid pulls (Warcraft Logs analysis or another character). Pick the character above.",

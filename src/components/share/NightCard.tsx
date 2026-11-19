@@ -1,6 +1,6 @@
 import type { Pull } from '../../types';
 import { mmss } from '../../lib/format';
-import { groupByBoss, summarizeNight } from '../../lib/night';
+import { groupByBoss, summarizeNight, regularPlayers } from '../../lib/night';
 import { raidOnly } from '../../lib/content';
 import { bestWipe, progressLabel } from '../../lib/phases';
 import { BossName } from '../Names';
@@ -23,7 +23,7 @@ export function NightShareCard({ pulls: all, detail = 'summary' }: { pulls: Pull
   const pulls = raidOnly(all);
   const s = summarizeNight(pulls);
   const causes = s.causes.filter((c) => c.triggers > 0);
-  const players = [...s.players].filter((x) => x.pulls >= Math.max(1, s.pulls.length / 3)).sort((a, b) => a.avgScore - b.avgScore);
+  const players = regularPlayers(s);
   const attention = players.filter((x) => x.avgScore < ATTENTION_SCORE);
   const first = s.pulls[0];
   const end = new Date(s.endMs).toLocaleTimeString(intlLocale(), { hour: '2-digit', minute: '2-digit' });

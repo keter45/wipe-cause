@@ -10,7 +10,7 @@ import type { PlayerStats, Pull } from '../types';
 import { SPEC_NAMES } from './specs';
 import { anchorTimes } from './benchMetrics';
 import { anchoredMoments, type AnchoredMoment, type Anchors } from './cdAnchors';
-import { quantile } from './quantile';
+import { quantile } from './stats';
 
 export interface HealRefEntry {
   name: string;

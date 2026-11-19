@@ -14,9 +14,9 @@ import { useMessages } from "../../i18n";
 import { botMsg } from "./bot.i18n";
 import { Hint } from "../ui/Hint";
 import { CollapseButton, useCollapsed } from "../CollapsiblePanel";
+import { potentialTone } from '../../lib/botView';
 
-const tone = (pct: number) =>
-  pct >= 0.97 ? "good" : pct >= 0.85 ? "warn" : "bad";
+const tone = (frac: number) => potentialTone(frac);
 
 /** Resumo do boss: simular a raide toda e o % do potencial de cada um, em barras. */
 export function RaidBot({ pulls }: { pulls: Pull[] }) {

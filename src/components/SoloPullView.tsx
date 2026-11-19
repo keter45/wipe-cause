@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, Footprints, ShieldAlert, Skull, Target } from 'lucide-react';
 import type { PlayerStats, Pull } from '../types';
 import { mmss, num, shortName } from '../lib/format';
-import { candidates, defaultReference, detectCooldowns, isHealer, outputPerSec, type Sample } from '../lib/performance';
-import { fairReference, losses, myDeaths, myMechanicFailures, type Loss } from '../lib/solo';
+import { candidates, defaultReference, detectCooldowns, isHealer, outputPerSec, type Sample, outputUnit } from '../lib/performance';
+import { costLabel, fairReference, losses, myDeaths, myMechanicFailures, type Loss } from '../lib/solo';
 import { meIn, setSoloCharacter, useSoloCharacter } from '../lib/mode';
 import { useSeek } from '../lib/wcr';
 import { specLabel } from '../lib/specs';
@@ -93,7 +93,7 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
   const t = useMessages(soloPullMsg);
   const seek = useSeek();
   const healer = isHealer(me.player);
-  const unit = healer ? 'HPS' : 'DPS';
+  const unit = outputUnit(me.player);
   const ls = useMemo(() => losses(me), [me]);
   const out = outputPerSec(me);
 
@@ -143,8 +143,7 @@ function SoloPull({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
         </span>
         <CharacterPicker pull={me.pull} current={me.player} />
         <ShareMenu
-          card={(detail) => <SoloShareCard me={me} ref_={ref} refLabel={refLabel} cds={cds} detail={detail} />}
-          name={`${shortName(me.player.name)} - ${me.pull.encounterName} ${me.pull.difficultyName} - pull ${me.pull.pullNumber}`}
+          posts={(detail) => [{ title: `${shortName(me.player.name)} - ${me.pull.encounterName} ${me.pull.difficultyName} - pull ${me.pull.pullNumber}`, card: <SoloShareCard me={me} ref_={ref} refLabel={refLabel} cds={cds} detail={detail} /> }]}
         />
       </div>
 
@@ -304,11 +303,6 @@ function NextPull({ losses: ls, unit, seek }: { losses: Loss[]; unit: string; se
   );
 }
 
-/** Sem estimativa de dano: o peso vira "alto / médio / baixo". */
-const costLabel = (l: Loss) => {
-  const t = messagesOf(soloPullMsg);
-  return l.weightSec >= 25 ? t.costHigh : l.weightSec >= 8 ? t.costMid : t.costLow;
-};
 
 // ---- sobrevivência e mecânicas
 

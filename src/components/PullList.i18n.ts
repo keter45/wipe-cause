@@ -1,9 +1,10 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 export const pullListMsg = defineMessages(
   {
     pullsAria: 'Pulls da noite',
-    nightSummary: 'Resumo da noite',
+    nightSummary: G.pt.nightSummary,
     bossSummary: 'Resumo do boss',
     noRaidBoss: 'Nenhum boss de raid neste log.',
     dungeons: 'Masmorras (M+)',
@@ -20,7 +21,7 @@ export const pullListMsg = defineMessages(
   },
   {
     pullsAria: "The night's pulls",
-    nightSummary: 'Night summary',
+    nightSummary: G.en.nightSummary,
     bossSummary: 'Boss summary',
     noRaidBoss: 'No raid bosses in this log.',
     dungeons: 'Dungeons (M+)',

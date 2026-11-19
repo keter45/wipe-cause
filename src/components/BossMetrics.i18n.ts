@@ -1,10 +1,11 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
 
 export const bossMetricsMsg = defineMessages(
   {
-    title: 'Métricas do grupo',
+    title: G.pt.groupMetrics,
     hint: 'As mecânicas que importam para o grupo, somadas na noite. Fica salvo para este boss.',
     add: 'Adicionar métrica',
     addTitle: 'Mecânicas deste boss',
@@ -65,7 +66,7 @@ export const bossMetricsMsg = defineMessages(
     cleanNoDefensive: 'Ninguém morreu com pot/defensivo livre.',
   },
   {
-    title: 'Group metrics',
+    title: G.en.groupMetrics,
     hint: 'The mechanics that matter to the group, added up over the night. Saved for this boss.',
     add: 'Add metric',
     addTitle: "This boss's mechanics",

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Pull } from '../../types';
 import { mmss, num, shortName } from '../../lib/format';
-import { candidates, defaultReference, detectCooldowns, isHealer, outputPerSec, perfInsights, totalCpm, type Sample } from '../../lib/performance';
+import { candidates, defaultReference, detectCooldowns, isHealer, outputPerSec, perfInsights, totalCpm, type Sample, outputUnit } from '../../lib/performance';
 import { ShareMenu } from '../share/ShareMenu';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { specLabel } from '../../lib/specs';
@@ -26,23 +26,10 @@ import { Hint } from '../ui/Hint';
 import { PlayerPicker } from './PlayerPicker';
 import { BotComparison } from './BotComparison';
 import { botMsg } from './bot.i18n';
+import { KEYS, ls } from '../../lib/storage';
 
-const PLAYER_KEY = 'wipe-cause:perf-player';
-
-function rememberedPlayer(): string | null {
-  try {
-    return localStorage.getItem(PLAYER_KEY);
-  } catch {
-    return null;
-  }
-}
-function rememberPlayer(name: string) {
-  try {
-    localStorage.setItem(PLAYER_KEY, name);
-  } catch {
-    /* sem storage */
-  }
-}
+const rememberedPlayer = () => ls.get(KEYS.perfPlayer);
+const rememberPlayer = (name: string) => ls.set(KEYS.perfPlayer, name);
 
 const ROLE_ORDER = { tank: 0, healer: 1, dps: 2 } as const;
 const sampleKey = (s: Sample) => `${s.pull.id}:${s.player.guid}`;
@@ -148,7 +135,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
   const refWcl = mode === 'tops' ? (topSample?.source ?? null) : raidWcl;
   const top = mode === 'tops' ? (topSample?.source ?? null) : null;
   const links = perfLinks(mineWcl, refWcl, wclType, top && { name: top.name, server: top.server, region: top.region });
-  const unit = healer ? 'HPS' : 'DPS';
+  const unit = outputUnit(me.player);
   const m = messagesOf(perfViewMsg);
   const picker = (
     <>
@@ -254,8 +241,7 @@ function Comparison({ me, nightPulls, wclCode }: { me: Sample; nightPulls: Pull[
           {mode === 'tops' ? m.noteTops : m.noteRaid} <Hint>{m.noteRest}</Hint>
         </p>
         <ShareMenu
-          card={(detail) => <PerfShareCard me={me} ref_={ref} refName={refName} cds={cds} links={links} detail={detail} />}
-          name={`${shortName(me.player.name)} - ${me.pull.encounterName} ${me.pull.difficultyName} - pull ${me.pull.pullNumber}`}
+          posts={(detail) => [{ title: `${shortName(me.player.name)} - ${me.pull.encounterName} ${me.pull.difficultyName} - pull ${me.pull.pullNumber}`, card: <PerfShareCard me={me} ref_={ref} refName={refName} cds={cds} links={links} detail={detail} /> }]}
         />
       </div>
 

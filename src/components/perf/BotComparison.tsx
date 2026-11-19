@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Bot, Play, RotateCcw, X } from 'lucide-react';
 import type { Pull } from '../../types';
-import { mmss, shortName } from '../../lib/format';
+import { mmss, shortName, shortDateTime, shortSecs } from '../../lib/format';
 import { detectCooldowns, perfInsights, totalCpm, type Sample } from '../../lib/performance';
 import { BOT_ITERATIONS, botMe, botSample, loadBotRun, NoPullError, runBot, type BotRun, type BotStep } from '../../lib/botSim';
 import { openExternal, simcCancel, simcStatus, type SimcStatus } from '../../lib/api';
@@ -21,7 +21,6 @@ import { botDecisions, findingKey, type BotDecisions, type TopsDiff, type TopsNo
 import { fixes, potential } from '../../lib/botView';
 import { DecisionCards, PotentialGauge, SimSheet, TOP_FIXES, TopFixes, fixCost } from './BotParts';
 
-const fmtWhen = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
 
 /** "Comparar com o robô": simula o player com o SimulationCraft e compara como com um top. */
 export function BotComparison({ me, nightPulls }: { me: Sample; nightPulls: Pull[] }) {
@@ -120,7 +119,7 @@ function RunChips({ run }: { run: BotRun }) {
   const version = /SimulationCraft (\d\S*)/.exec(run.banner)?.[1];
   return (
     <>
-      <span className="bot-chip">{t.when(fmtWhen(run.created))}</span>
+      <span className="bot-chip">{t.when(shortDateTime(run.created))}</span>
       {version && (
         <span className="bot-chip" title={run.banner}>
           SimC {version}
@@ -190,7 +189,6 @@ function BotResult({ run, nightPulls, name }: { run: BotRun; nightPulls: Pull[];
   );
 }
 
-const secs = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
 
 function noteText(n: TopsNote): string {
   const t = messagesOf(botMsg).topsNote;
@@ -200,7 +198,7 @@ function noteText(n: TopsNote): string {
     case 'lose':
       return t.lose(Math.round(n.pct * 100));
     case 'hold':
-      return t.hold(secs(n.ms));
+      return t.hold(shortSecs(n.ms));
     case 'no_align':
       return t.no_align(n.partner);
   }
@@ -212,7 +210,7 @@ function diffText(d: TopsDiff): string {
     case 'consumers':
       return t.diffConsumers(d.name, d.bot.join(', '), d.tops.join(', '));
     case 'held':
-      return t.diffHeld(d.name, secs(d.bot), secs(d.tops));
+      return t.diffHeld(d.name, shortSecs(d.bot), shortSecs(d.tops));
     case 'align':
       return (d.who === 'tops' ? t.diffAlignTops : t.diffAlignBot)(d.name, d.partnerName, Math.round(d.share * 100));
   }

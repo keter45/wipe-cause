@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLocale } from '../i18n';
+import { KEYS, ls } from './storage';
 
 export interface SpellTooltip {
   name: string;
@@ -25,7 +26,7 @@ const LOCALE_ID: Record<TooltipLang, number> = { en: 0, pt: 8 };
 /** Spells em inglês guardados só pelo número (cache antigo); itens e outros idiomas com prefixo. */
 const keyOf = (id: number, kind: TooltipKind, lang: TooltipLang = 'en') => (lang === 'en' ? '' : `${lang}:`) + (kind === 'spell' ? String(id) : `item:${id}`);
 
-const CACHE_KEY = 'wipe-cause:wowhead:';
+const CACHE_KEY = KEYS.wowhead;
 /** buscas simultâneas no Wowhead (um recap tem dezenas de spells) */
 const MAX_CONCURRENT = 4;
 
@@ -55,15 +56,10 @@ export function tooltipText(html: string): string {
 export function cachedTooltip(id: number, kind: TooltipKind = 'spell', lang: TooltipLang = 'en'): SpellTooltip | null | undefined {
   const key = keyOf(id, kind, lang);
   if (memory.has(key)) return memory.get(key);
-  try {
-    const raw = localStorage.getItem(CACHE_KEY + key);
-    if (raw) {
-      const t = JSON.parse(raw) as SpellTooltip;
-      memory.set(key, t);
-      return t;
-    }
-  } catch {
-    /* sem storage */
+  const t = ls.getJson<SpellTooltip>(CACHE_KEY + key);
+  if (t) {
+    memory.set(key, t);
+    return t;
   }
   return undefined;
 }
@@ -71,11 +67,7 @@ export function cachedTooltip(id: number, kind: TooltipKind = 'spell', lang: Too
 function writeCache(key: string, t: SpellTooltip | null) {
   memory.set(key, t);
   if (!t) return; // "não existe" só na memória: pode aparecer no Wowhead depois
-  try {
-    localStorage.setItem(CACHE_KEY + key, JSON.stringify(t));
-  } catch {
-    /* sem storage: fica só na memória */
-  }
+  ls.setJson(CACHE_KEY + key, t);
 }
 
 function schedule<T>(job: () => Promise<T>): Promise<T> {

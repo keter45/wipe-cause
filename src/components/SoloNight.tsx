@@ -13,12 +13,10 @@ import { Sparkline } from './SoloCharts';
 import { withErrorBoundary } from './ErrorBoundary';
 import { messagesOf, useMessages } from '../i18n';
 import { soloNightMsg } from './SoloNight.i18n';
+import { median } from '../lib/stats';
+import { outputUnit } from '../lib/performance';
 
-const unitOf = (b: SoloBoss) => (b.pulls[0]?.player.role === 'healer' ? 'HPS' : 'DPS');
-const median = (xs: number[]) => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s.length ? s[Math.floor(s.length / 2)] : null;
-};
+const unitOf = (b: SoloBoss) => outputUnit(b.pulls[0]?.player);
 
 /** Personagens de raid no log (para escolher quem é você quando o log não diz). */
 function CharacterSelect({ pulls }: { pulls: Pull[] }) {

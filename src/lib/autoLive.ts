@@ -6,26 +6,14 @@ import { useEffect, useRef } from 'react';
 import { inDesktop } from './api';
 import { fetchGuildReports, groupNights } from './guildNights';
 import type { WclGuild } from './wclApi';
+import { KEYS, ls } from './storage';
 
 const CHECK_MS = 2 * 60_000;
 /** Quem desligou o ao vivo não quer que ele volte nesta raid. */
 const DISMISS_MS = 6 * 3_600_000;
 
-const KEY = 'wipe-cause:auto-live';
-export function autoLiveEnabled(): boolean {
-  try {
-    return localStorage.getItem(KEY) !== '0';
-  } catch {
-    return true;
-  }
-}
-export function setAutoLiveEnabled(on: boolean) {
-  try {
-    localStorage.setItem(KEY, on ? '1' : '0');
-  } catch {
-    /* sem storage */
-  }
-}
+export const autoLiveEnabled = () => ls.getBool(KEYS.autoLive, true);
+export const setAutoLiveEnabled = (on: boolean) => ls.setBool(KEYS.autoLive, on);
 
 export function useAutoLive(guild: WclGuild | null, active: boolean, start: () => void) {
   const dismissedAt = useRef(0);

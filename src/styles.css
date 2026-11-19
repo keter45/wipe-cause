@@ -1195,21 +1195,6 @@ tbody tr:last-child td {
 .num {
   text-align: right;
 }
-.sort {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: inherit;
-  font-weight: inherit;
-}
-.sort:hover,
-.sort.active {
-  color: var(--text);
-}
-.sort.active::after {
-  content: ' ↓';
-}
 .player-row {
   cursor: pointer;
 }
@@ -1749,7 +1734,7 @@ ul.plain {
 .award-people .first {
   font-weight: 600;
 }
-.scoreboard th .sort {
+.scoreboard th .sort-btn {
   font-size: 12px;
 }
 
@@ -6880,6 +6865,27 @@ button.kpi:hover {
 }
 .share-card.wide {
   width: 920px;
+}
+/* HTML/PDF com mais de um cartão (noite + métricas): um embaixo do outro */
+.share-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+/* Evolução: as noites lado a lado precisam de largura */
+.share-card.evolution-card {
+  width: 920px;
+}
+.share-card.evolution-card.wide {
+  width: 1080px;
+}
+.share-card.evolution-card .panel {
+  margin: 14px 0 0;
+}
+/* no cartão não tem como passar o mouse: as explicações (i) ficam de fora */
+.share-card .hint {
+  display: none;
 }
 /* Métricas do grupo no Discord: três cartões por linha, como no resumo do boss */
 .share-card.metrics-card {

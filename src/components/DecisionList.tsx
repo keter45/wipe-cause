@@ -1,5 +1,5 @@
 import type { DecisionFinding } from '../lib/decisions';
-import { mmss, uniqueSeconds } from '../lib/format';
+import { mmss, uniqueSeconds, percentOf, shortSecs } from '../lib/format';
 import { useSeek } from '../lib/wcr';
 import { useMessages } from '../i18n';
 import { SpellIcon } from './SpellIcon';
@@ -7,8 +7,6 @@ import { Colored, useMentionsSpell } from './Names';
 import { PlayAt } from './VideoPanel';
 import { decisionMsg } from './DecisionList.i18n';
 
-const pct = (x: number) => Math.round(x * 100);
-const secs = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
 
 /**
  * Decisões diferentes da referência (proc perdido ou esperando, cooldown segurado ou fora do
@@ -21,13 +19,13 @@ export function DecisionList({ list, who = null, notes }: { list: DecisionFindin
   const text = (d: DecisionFinding): string => {
     switch (d.kind) {
       case 'proc_lost':
-        return t.procLost(d.name, pct(d.you), pct(d.tops), who);
+        return t.procLost(d.name, percentOf(d.you), percentOf(d.tops), who);
       case 'proc_wait':
         return t.procWait(d.name, d.you.toFixed(1), d.tops.toFixed(1), d.instead.name, who);
       case 'cd_held':
-        return t.cdHeld(d.name, secs(d.you), secs(d.tops), who);
+        return t.cdHeld(d.name, shortSecs(d.you), shortSecs(d.tops), who);
       case 'cd_align':
-        return (d.partnerKind === 'cast' ? t.cdAlignCast : t.cdAlignBuff)(d.name, d.partnerName, pct(d.tops), pct(d.you), who);
+        return (d.partnerKind === 'cast' ? t.cdAlignCast : t.cdAlignBuff)(d.name, d.partnerName, percentOf(d.tops), percentOf(d.you), who);
     }
   };
   return (

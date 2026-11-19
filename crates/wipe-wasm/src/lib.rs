@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
 use wipe_core::i18n::pick;
 use wipe_core::rules::{RuleBook, Tuning, TUNABLE_FIELDS};
 use wipe_core::summary::{best_hp, best_phase, has_raid, main_encounter, title_of};
-use wipe_core::wcl::{dedupe, is_short_wipe, slim_events, WclAnalyzer};
+use wipe_core::wcl::{is_short_wipe, raid_fights, slim_events, WclAnalyzer};
 use wipe_core::LogReport;
 
 fn err(e: impl std::fmt::Display) -> JsError {
@@ -160,7 +160,7 @@ impl WclSession {
 
     /// Fights a baixar: bosses de raid, um por pull entre os reports, sem os wipes curtos.
     pub fn fights(&mut self) -> Result<String, JsError> {
-        let all: Vec<_> = dedupe(self.analyzer()?.fights()).into_iter().filter(|f| !wipe_core::data::is_dungeon(f.difficulty_id, f.size)).collect();
+        let all = raid_fights(self.analyzer()?.fights());
         if all.is_empty() {
             return Err(err(pick("Nenhum boss nos reports.", "No bosses in the reports.")));
         }

@@ -10,6 +10,8 @@ import { inDesktop } from './api';
 import { EagerIcons } from '../components/SpellIcon';
 import { getLocale, messagesOf } from '../i18n';
 import { shareLibMsg } from './share.i18n';
+import { bytesToB64, dataUrlB64, utf8ToB64 } from './bytes';
+import { DISCORD_COLORS, DISCORD_USERNAME } from './discordConst';
 
 /** Renderiza `node` fora da tela e devolve o elemento pronto (e como desmontar). */
 async function mount(node: ReactElement): Promise<{ el: HTMLElement; done: () => void }> {
@@ -142,13 +144,15 @@ h4 { break-after: avoid; }
   win.print();
 }
 
-const b64 = (dataUrl: string) => dataUrl.slice(dataUrl.indexOf(',') + 1);
-const utf8b64 = (text: string) => {
-  const bytes = new TextEncoder().encode(text);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(bin);
-};
+/** Copia o texto; false se não deu (sem área de transferência ou permissão): quem chama mostra outro jeito. */
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function copyPng(dataUrl: string) {
   const blob = await (await fetch(dataUrl)).blob();
@@ -171,38 +175,28 @@ async function saveFile(name: string, ext: 'png' | 'html' | 'json' | 'webp', dat
   return true;
 }
 
-export const savePng = (dataUrl: string, name: string) => saveFile(name, 'png', b64(dataUrl), 'image/png');
-export const saveHtml = (html: string, name: string) => saveFile(name, 'html', utf8b64(html), 'text/html');
-export const saveJson = (json: string, name: string) => saveFile(name, 'json', utf8b64(json), 'application/json');
-export const saveClip = (clip: Uint8Array, name: string) => saveFile(name, 'webp', bytesBase64(clip), 'image/webp');
-
-/** Bytes em base64 (em pedaços: um clipe tem alguns MB). */
-export function bytesBase64(bytes: Uint8Array): string {
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(bin);
-}
+export const savePng = (dataUrl: string, name: string) => saveFile(name, 'png', dataUrlB64(dataUrl), 'image/png');
+export const saveHtml = (html: string, name: string) => saveFile(name, 'html', utf8ToB64(html), 'text/html');
+export const saveJson = (json: string, name: string) => saveFile(name, 'json', utf8ToB64(json), 'application/json');
+export const saveClip = (clip: Uint8Array, name: string) => saveFile(name, 'webp', bytesToB64(clip), 'image/webp');
 
 /**
  * Envia ao webhook configurado o cartão (PNG, como imagem do embed) e/ou o clipe do erro (WebP
- * animado, como anexo: o Discord mostra logo abaixo).
+ * animado, como anexo: o Discord mostra logo abaixo). Todo envio de imagem passa por aqui.
  */
 export async function sendToDiscord(title: string, files: { png?: { dataUrl: string; name: string }; clip?: { bytes: Uint8Array; name: string } }) {
-  const embed: Record<string, unknown> = { title, color: 0x3987e5 };
+  const embed: Record<string, unknown> = { title, color: DISCORD_COLORS.info };
   if (files.png) embed.image = { url: `attachment://${files.png.name}` };
-  const payload = { username: 'Wipe Cause', embeds: [embed] };
+  const payload = { username: DISCORD_USERNAME, embeds: [embed] };
   const list = [
-    ...(files.png ? [{ name: files.png.name, mime: 'image/png', dataB64: b64(files.png.dataUrl) }] : []),
-    ...(files.clip ? [{ name: files.clip.name, mime: 'image/webp', dataB64: bytesBase64(files.clip.bytes) }] : []),
+    ...(files.png ? [{ name: files.png.name, mime: 'image/png', dataB64: dataUrlB64(files.png.dataUrl) }] : []),
+    ...(files.clip ? [{ name: files.clip.name, mime: 'image/webp', dataB64: bytesToB64(files.clip.bytes) }] : []),
   ];
   await invoke('discord_post_files', { payload, files: list, webhook: null });
 }
 
-/** Envia o PNG ao webhook configurado, como imagem de um embed. */
-export async function sendPngToDiscord(dataUrl: string, fileName: string, title: string) {
-  const payload = { username: 'Wipe Cause', embeds: [{ title, color: 0x3987e5, image: { url: `attachment://${fileName}` } }] };
-  await invoke('discord_post_image', { payload, fileName, dataB64: b64(dataUrl), webhook: null });
-}
+/** Nome do arquivo do clipe: o título e o momento ("pull-12-the-coiled-altar-sever.webp"). */
+export const clipFileName = (title: string, what = '') => `${fileSlug(`${title} ${what}`) || 'wipe-cause'}.webp`;
 
 /** Nome de arquivo sem acentos/espaços: "pull-12-the-coiled-altar". */
 export const fileSlug = (s: string) =>

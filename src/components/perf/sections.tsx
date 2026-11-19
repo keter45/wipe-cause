@@ -13,6 +13,7 @@ import { signedSec } from './CooldownCompare';
 import { messagesOf, useMessages } from '../../i18n';
 import { perfViewMsg } from './perf.i18n';
 import { Stat as StatCard, type Tone } from '../ui/Stat';
+import { KEYS, ls } from '../../lib/storage';
 
 
 /** Número seu × da referência, no cartão comum de números. */
@@ -27,23 +28,13 @@ export function Stat({ label, mine, ref, tone = '', extra, sub }: { label: strin
 export const burstKey = (w: BurstWindow) => `${w.name}#${w.index}`;
 
 /** Cada uso de cooldown maior vira uma janela (chip); dentro, a sequência de casts lado a lado. */
-const PICK_KEY = 'wipe-cause:burst-cds:';
-
 /** Cooldowns escolhidos para abrir janela, por spec (null = ainda não escolheu: usa os marcados de início). */
 export function loadBurstPick(specId: number | null): Set<string> | null {
-  try {
-    const raw = specId != null ? localStorage.getItem(PICK_KEY + specId) : null;
-    return raw ? new Set(JSON.parse(raw) as string[]) : null;
-  } catch {
-    return null;
-  }
+  const saved = specId != null ? ls.getJson<string[]>(KEYS.burstCds + specId) : null;
+  return saved ? new Set(saved) : null;
 }
 function saveBurstPick(specId: number | null, names: Set<string>) {
-  try {
-    if (specId != null) localStorage.setItem(PICK_KEY + specId, JSON.stringify([...names]));
-  } catch {
-    /* sem storage: vale só nesta sessão */
-  }
+  if (specId != null) ls.setJson(KEYS.burstCds + specId, [...names]);
 }
 
 export function Bursts({ me, ref_, cds }: { me: Sample; ref_: Sample; cds: ReturnType<typeof detectCooldowns> }) {

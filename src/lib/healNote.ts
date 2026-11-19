@@ -8,7 +8,10 @@
 //   intstart … intend                        (escala de interrupts, lida pela aba Interrupts)
 
 import type { PhaseMark, Pull } from '../types';
-import { shortName } from './format';
+import { shortName, normName } from './format';
+import { nightDate } from './samePull';
+import { KEYS, ls } from './storage';
+import { assignmentsKey } from './assignments';
 
 export interface NoteHeader {
   encounterId: number | null;
@@ -39,7 +42,7 @@ export interface ParsedNote {
   isNsrt: boolean;
 }
 
-const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('pt-BR');
+const norm = (s: string) => normName(s);
 
 function fields(line: string): Map<string, string> | null {
   const out = new Map<string, string>();
@@ -185,49 +188,29 @@ export interface NoteVersion {
 export const MAX_VERSIONS = 20;
 
 type BossKey = Pick<Pull, 'encounterId' | 'difficultyId'>;
-const currentKey = (p: BossKey) => `wipe-cause:assignments:${p.encounterId}:${p.difficultyId}`;
-const versionsKey = (p: BossKey) => `wipe-cause:heal-note:${p.encounterId}:${p.difficultyId}`;
+// a mesma chave das escalas; função (não alias): assignments.ts e healNote.ts se importam
+const currentKey = (p: BossKey) => assignmentsKey(p);
+const versionsKey = (p: BossKey) => `${KEYS.healNote}:${p.encounterId}:${p.difficultyId}`;
 
-function storage(): Storage | null {
-  try {
-    return typeof localStorage === 'undefined' ? null : localStorage;
-  } catch {
-    return null;
-  }
-}
-
-/** Data local (YYYY-MM-DD) do primeiro pull da noite. */
+/** A noite (YYYY-MM-DD) do primeiro pull. */
 export function nightOf(pulls: Pick<Pull, 'startMs' | 'tzOffsetHours'>[]): string | null {
   if (!pulls.length) return null;
   const first = pulls.reduce((a, b) => (b.startMs < a.startMs ? b : a));
-  return new Date(first.startMs + (first.tzOffsetHours ?? 0) * 3_600_000).toISOString().slice(0, 10);
+  return nightDate(first.startMs, first.tzOffsetHours);
 }
 
 export function noteVersions(p: BossKey): NoteVersion[] {
-  const s = storage();
-  if (!s) return [];
-  try {
-    const raw = s.getItem(versionsKey(p));
-    if (raw) return JSON.parse(raw) as NoteVersion[];
-    const text = s.getItem(currentKey(p)) ?? '';
-    return text.trim() ? [{ text, savedAt: 0, night: null, fromPull: 0, fromPullManual: false }] : [];
-  } catch {
-    return [];
-  }
+  const saved = ls.getJson<NoteVersion[]>(versionsKey(p));
+  if (saved) return saved;
+  const text = ls.get(currentKey(p)) ?? '';
+  return text.trim() ? [{ text, savedAt: 0, night: null, fromPull: 0, fromPullManual: false }] : [];
 }
 
 function write(p: BossKey, versions: NoteVersion[]) {
-  const s = storage();
-  if (!s) return;
   const list = [...versions].sort((a, b) => a.savedAt - b.savedAt).slice(-MAX_VERSIONS);
-  try {
-    s.setItem(versionsKey(p), JSON.stringify(list));
-    const text = list[list.length - 1]?.text ?? '';
-    if (text.trim()) s.setItem(currentKey(p), text);
-    else s.removeItem(currentKey(p));
-  } catch {
-    /* sem storage */
-  }
+  ls.setJson(versionsKey(p), list);
+  const text = list[list.length - 1]?.text ?? '';
+  ls.set(currentKey(p), text.trim() ? text : null);
 }
 
 /** Players das linhas da note (só os que existem na noite), pelo nome curto. */

@@ -1,19 +1,20 @@
 import type { Pull } from '../../types';
-import { mmss, num } from '../../lib/format';
-import { summarizeNight, type Cause, type NightSummary, type PlayerNight } from '../../lib/night';
+import { mmss, num, decimals } from '../../lib/format';
+import { summarizeNight, type Cause, type PlayerNight, regularPlayers } from '../../lib/night';
 import { mechanicSpellId } from '../../lib/spells';
 import { scoreTier } from '../../lib/score';
 import { SpellName } from '../SpellIcon';
 import { BossName } from '../Names';
-import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight, phaseCountOf, progressLabel, pullProgress, reachedPhase } from '../../lib/phases';
+import { failedPhase, phaseLabel, phaseSec, phaseTone, phasesOfNight, phaseCountOf, progressLabel, pullProgress } from '../../lib/phases';
 import { ATTENTION_SCORE, Card, More, ScoreChips, Section, Who, dateOf, type CardDetail } from './common';
-import { intlLocale, useMessages } from '../../i18n';
+import { useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
+import { pullColor } from '../../lib/pullColors';
 
 const SUMMARY = { causes: 3, attention: 5, highlights: 3 };
 
-/** Quem jogou pelo menos 1/3 dos pulls (quem entrou num pull só não vira destaque nem alerta). */
-const regulars = (s: NightSummary) => [...s.players].filter((x) => x.pulls >= Math.max(1, s.pulls.length / 3)).sort((a, b) => a.avgScore - b.avgScore);
+/** Quem jogou o bastante (quem entrou num pull só não vira destaque nem alerta). */
+const regulars = (s: Parameters<typeof regularPlayers>[0]) => regularPlayers(s);
 const asScore = (x: PlayerNight) => ({ guid: x.guid, name: x.name, class: x.class, score: x.avgScore });
 
 /**
@@ -69,9 +70,9 @@ export function PullBars({ pulls }: { pulls: Pull[] }) {
       <svg width={W} height={TOP + H + BOTTOM} viewBox={`0 0 ${W} ${TOP + H + BOTTOM}`} className="share-bars" role="img" aria-label={t.barsAria}>
         {pulls.map((p, i) => {
           // até onde foi na luta toda (fases passadas + vida da fase), na cor da fase
-          const phase = p.success ? null : reachedPhase(p);
           const h = p.success ? H : Math.max(2, pullProgress(p, phases) * H);
-          const fill = p.success ? 'var(--kill)' : phase ? (phase.index >= 3 ? '#b48cf2' : '#6ea8fe') : (p.phaseCount ?? 0) >= 2 ? '#d4a54a' : '#3987e5';
+          // a mesma cor do gráfico do app (pela fase em que acabou)
+          const fill = pullColor(p);
           const x = i * band + 1;
           const w = Math.max(2, band - 2);
           // cor e fonte em linha: o gerador de imagem não aplica fill de SVG vindo de classe
@@ -127,8 +128,8 @@ export function PeopleSection({ attention, players, full }: { attention: PlayerN
   const highlights = [...players].reverse().filter((x) => x.avgScore >= ATTENTION_SCORE).slice(0, SUMMARY.highlights);
   return (
     <div>
-      <Section title={t.below80} aside={!full && attention.length > SUMMARY.attention ? `+${attention.length - SUMMARY.attention}` : undefined}>
-        {attention.length ? <ScoreChips list={(full ? attention : attention.slice(0, SUMMARY.attention)).map(asScore)} /> : <p className="share-muted">{t.nobodyBelow}</p>}
+      <Section title={t.belowScore(ATTENTION_SCORE)} aside={!full && attention.length > SUMMARY.attention ? `+${attention.length - SUMMARY.attention}` : undefined}>
+        {attention.length ? <ScoreChips list={(full ? attention : attention.slice(0, SUMMARY.attention)).map(asScore)} /> : <p className="share-muted">{t.nobodyBelow(ATTENTION_SCORE)}</p>}
       </Section>
       {highlights.length > 0 && (
         <Section title={t.highlights}>
@@ -139,7 +140,6 @@ export function PeopleSection({ attention, players, full }: { attention: PlayerN
   );
 }
 
-const oneDecimal = (n: number) => n.toLocaleString(intlLocale(), { maximumFractionDigits: 1 });
 
 /** Resumo: uma linha por fase cronometrada (média e melhor da noite contra o alvo). */
 function PhaseLine({ pulls }: { pulls: Pull[] }) {
@@ -154,7 +154,7 @@ function PhaseLine({ pulls }: { pulls: Pull[] }) {
         return (
           <p key={n.key} className="share-phase">
             <SpellName spellId={n.spellId} name={n.name} size={16} />{' '}
-            {n.avg != null ? t.phaseAvg(oneDecimal(n.avg)) : t.phaseNoClean}
+            {n.avg != null ? t.phaseAvg(decimals(n.avg)) : t.phaseNoClean}
             {best.length > 0 && t.phaseBest(Math.min(...best))}
             {n.targetMs != null && <span className="share-muted">{t.phaseGood(Math.round(n.targetMs / 1000))}</span>}
             {failed > 0 && <span className="share-bad">{t.phaseFailed(failed)}</span>}

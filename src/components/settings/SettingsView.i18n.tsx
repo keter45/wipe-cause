@@ -1,4 +1,5 @@
 import { defineMessages } from '../../i18n';
+import { glossary as G } from '../../i18n/glossary';
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -31,7 +32,7 @@ export const settingsMsg = defineMessages(
       about: 'Sobre',
     },
     logs: {
-      title: 'Pasta de logs do WoW',
+      title: G.pt.logsFolder,
       desc: 'Onde o jogo grava os WoWCombatLog*.txt.',
       missing: 'Falta configurar',
       detected: 'Detectada',
@@ -99,7 +100,7 @@ export const settingsMsg = defineMessages(
       available: (v: string) => `v${v} disponível`,
       browser: 'modo navegador',
       checking: 'Procurando…',
-      latest: 'Você está na versão mais recente',
+      latest: G.pt.latestVersion,
       availableLong: (v: string) => `Versão ${v} disponível: instale pela faixa no topo`,
       downloading: 'Baixando atualização…',
       version: 'Versão',
@@ -143,7 +144,7 @@ export const settingsMsg = defineMessages(
       about: 'About',
     },
     logs: {
-      title: 'WoW logs folder',
+      title: G.en.logsFolder,
       desc: 'Where the game writes the WoWCombatLog*.txt files.',
       missing: 'Not set up',
       detected: 'Detected',
@@ -211,7 +212,7 @@ export const settingsMsg = defineMessages(
       available: (v: string) => `v${v} available`,
       browser: 'browser mode',
       checking: 'Checking…',
-      latest: 'You are on the latest version',
+      latest: G.en.latestVersion,
       availableLong: (v: string) => `Version ${v} available: install it from the banner at the top`,
       downloading: 'Downloading update…',
       version: 'Version',

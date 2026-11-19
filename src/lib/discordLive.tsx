@@ -1,4 +1,4 @@
-// Discord no modo ao vivo, tudo como imagem (o mesmo cartão do "Compartilhar"):
+// Discord no modo ao vivo, tudo como imagem: os mesmos posts do "Compartilhar" (lib/sharePosts):
 //   wipe -> o cartão do pull (motivo do wipe) e o clipe com o resumo da try, kill -> o resumo do boss, fim da raid -> o
 //   resumo da noite e, em outra mensagem, os cartões das Métricas do grupo. O fim da raid é quando o ao vivo é desligado ou 30 min sem pull novo.
 
@@ -7,57 +7,20 @@ import type { Pull } from '../types';
 import { discordGetConfig } from './api';
 import { raidOnly } from './content';
 import { bossKey } from './night';
-import { PlayerClassesContext, playerClasses } from './players';
-import { cardPng, fileSlug, sendPngToDiscord, sendToDiscord } from './share';
-import { BossShareCard } from '../components/share/BossCard';
-import { NightShareCard } from '../components/share/NightCard';
-import { MetricsShareCard } from '../components/share/MetricsCard';
-import { nightBossMetrics } from './bossMetrics';
-import { PullShareCard } from '../components/share/PullCard';
-import { messagesOf } from '../i18n';
-import { discordMsg } from './discord.i18n';
-import { clipMoments, replayClip } from './replayClip';
-import { progressLabel } from './phases';
+import { playerClasses } from './players';
+import { bossPosts, nightPosts, pullPosts, sendPosts } from './sharePosts';
 
 /** Sem pull novo por isso, a raid acabou: vai o resumo da noite. */
 const NIGHT_IDLE_MS = 30 * 60_000;
-/** O clipe demorou demais (algo travou): vai só o cartão. */
-const CLIP_TIMEOUT_MS = 3 * 60_000;
 
-async function send(card: React.ReactElement, all: Pull[], title: string) {
-  const png = await cardPng(<PlayerClassesContext.Provider value={playerClasses(all)}>{card}</PlayerClassesContext.Provider>);
-  await sendPngToDiscord(png, `${fileSlug(title) || 'wipe-cause'}.png`, title);
-}
-
-/** Um pull que acabou: wipe = o motivo do wipe; kill = o resumo do boss (todos os pulls até o kill). */
+/** Um pull que acabou: wipe = o motivo do wipe (com o clipe); kill = o resumo do boss (todos os pulls até o kill). */
 export async function postPullImage(p: Pull, all: Pull[]) {
-  if (p.success) {
-    const key = bossKey(p);
-    await send(<BossShareCard title={key} pulls={all.filter((x) => bossKey(x) === key)} />, all, `Kill · ${key}`);
-  } else {
-    const title = messagesOf(discordMsg).wipeTitle(p.pullNumber, bossKey(p), progressLabel(p));
-    const cfg = await discordGetConfig().catch(() => null);
-    const moments = cfg?.clip === false ? [] : clipMoments(p);
-    if (!moments.length) return send(<PullShareCard pull={p} />, all, title);
-    // o cartão e, junto, o clipe com o resumo da try (se não der para desenhar, vai só o cartão)
-    const png = await cardPng(<PlayerClassesContext.Provider value={playerClasses(all)}>{<PullShareCard pull={p} />}</PlayerClassesContext.Provider>);
-    const name = fileSlug(title) || 'wipe-cause';
-    const clip = await Promise.race([
-      replayClip(p, moments, { title: `Pull ${p.pullNumber} · ${p.encounterName}` }).catch(() => null),
-      new Promise<null>((ok) => setTimeout(() => ok(null), CLIP_TIMEOUT_MS)),
-    ]);
-    if (clip) await sendToDiscord(title, { png: { dataUrl: png, name: `${name}.png` }, clip: { bytes: clip, name: `${name}.webp` } });
-    else await sendPngToDiscord(png, `${name}.png`, title);
-  }
+  const key = bossKey(p);
+  await sendPosts(p.success ? bossPosts(key, all.filter((x) => bossKey(x) === key)) : pullPosts(p), playerClasses(all));
 }
 
 export async function postNightImage(all: Pull[]) {
-  const raid = raidOnly(all);
-  if (!raid.length) return;
-  const day = raid[0].startLocal.split(' ')[0]?.split('/').slice(0, 2).reverse().join('/') ?? '';
-  await send(<NightShareCard pulls={all} />, all, messagesOf(discordMsg).nightTitle(day));
-  // os cartões completos das métricas que o grupo escolheu em cada boss, numa mensagem à parte
-  if (nightBossMetrics(raid).length) await send(<MetricsShareCard pulls={all} />, all, messagesOf(discordMsg).metricsTitle(day));
+  await sendPosts(nightPosts(all), playerClasses(all));
 }
 
 /**

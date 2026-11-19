@@ -1,4 +1,5 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 const secPt = (ms: number) => `${(ms / 1000).toFixed(1).replace('.', ',')}s`;
 const secEn = (ms: number) => `${(ms / 1000).toFixed(1)}s`;
@@ -9,7 +10,7 @@ export const fightMsg = defineMessages(
     loading: 'Relendo o pull no log…',
     beta: 'Replay ainda em construção: alguns bosses podem ter inconsistências.',
     error: (msg: string) => `Não foi possível montar o replay: ${msg}`,
-    retry: 'Tentar de novo',
+    retry: G.pt.retry,
     framesAria: 'Quadro do raid: clique num player para segui-lo',
     dead: 'morto',
     lanes: { phases: 'Fases', deaths: 'Mortes', failures: 'Falhas', casts: 'Frontais', mechanics: 'Mecânicas', orbs: 'Orbs no chão' },
@@ -84,7 +85,7 @@ ${lines}`,
     loading: 'Re-reading the pull from the log…',
     beta: 'Replay still under construction: some bosses may have inconsistencies.',
     error: (msg: string) => `Could not build the replay: ${msg}`,
-    retry: 'Try again',
+    retry: G.en.retry,
     framesAria: 'Raid frames: click a player to follow them',
     dead: 'dead',
     lanes: { phases: 'Phases', deaths: 'Deaths', failures: 'Failures', casts: 'Frontals', mechanics: 'Mechanics', orbs: 'Orbs on the ground' },

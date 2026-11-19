@@ -3,7 +3,7 @@ import { BookOpen, ExternalLink } from 'lucide-react';
 import type { RotationResult } from '../types';
 import { OPENER_CASTS, OPENER_MIN_SUPPORT, type BenchView } from '../lib/bench';
 import { ANCHOR_WINDOW_MS } from '../lib/benchMetrics';
-import { mmss, uniqueSeconds } from '../lib/format';
+import { mmss, uniqueSeconds, percentOf, shortSecs } from '../lib/format';
 import { openExternal } from '../lib/api';
 import { useSeek } from '../lib/wcr';
 import { scoreTier } from '../lib/score';
@@ -18,8 +18,6 @@ import { Clamp } from './ui/Clamp';
 
 export { uniqueSeconds };
 
-const pctOf = (x: number) => Math.round(x * 100);
-const secs = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
 
 /**
  * A rotação do player comparada com a rotação base escrita da spec: aproveitamento, os erros
@@ -91,7 +89,7 @@ export function RotationPanel({
               <div className="rot-rate" aria-label={t.rateAria(Math.round(f.rate * 100))}>
                 <span style={{ transform: `scaleX(${f.rate})` }} />
               </div>
-              {bench?.checks[f.id] != null && <p className="muted small tabular">{t.vsTops(pctOf(f.rate), pctOf(bench.checks[f.id]))}</p>}
+              {bench?.checks[f.id] != null && <p className="muted small tabular">{t.vsTops(percentOf(f.rate), percentOf(bench.checks[f.id]))}</p>}
               {f.times.length > 0 && (
                 <p className="rot-times small">
                   {uniqueSeconds(f.times).slice(0, 8).map((at) => (
@@ -176,8 +174,8 @@ export function RotationPanel({
                   <Colored
                     text={
                       c.kind === 'mix'
-                        ? t.ctxMix(c.ctx === 'aoe' ? 'AoE' : t.single, c.name, pctOf(c.tops), pctOf(c.you))
-                        : t.ctxUptime(c.name, c.auraKind === 'debuff', pctOf(c.tops), pctOf(c.you))
+                        ? t.ctxMix(c.ctx === 'aoe' ? 'AoE' : t.single, c.name, percentOf(c.tops), percentOf(c.you))
+                        : t.ctxUptime(c.name, c.auraKind === 'debuff', percentOf(c.tops), percentOf(c.you))
                     }
                   />
                 </span>
@@ -194,7 +192,7 @@ export function RotationPanel({
             {bench.mix.slice(0, 4).map((m) => (
               <li key={m.spellId}>
                 <Colored text={m.tops > m.you ? t.mixMore(m.name) : t.mixLess(m.name)} />
-                <span className="muted tabular"> — {t.mixLine(pctOf(m.you), pctOf(m.tops))}</span>
+                <span className="muted tabular"> — {t.mixLine(percentOf(m.you), percentOf(m.tops))}</span>
               </li>
             ))}
           </ul>
@@ -212,7 +210,7 @@ export function RotationPanel({
                   <PlayAt t={w.t} seek={seek} />
                 </span>
                 <br />
-                <span className="warn">{t.windowIdle(secs(w.you), secs(w.tops))}</span>
+                <span className="warn">{t.windowIdle(shortSecs(w.you), shortSecs(w.tops))}</span>
                 {w.use.length > 0 && (
                   <span className="muted">
                     {' '}
@@ -254,7 +252,7 @@ export function RotationPanel({
                       <span style={{ transform: `scaleX(${c.usage})` }} />
                     </div>
                   </td>
-                  {bench && <td className="num tabular muted">{bench.cdUsage[c.spellId] != null ? t.topsShort(pctOf(bench.cdUsage[c.spellId])) : ''}</td>}
+                  {bench && <td className="num tabular muted">{bench.cdUsage[c.spellId] != null ? t.topsShort(percentOf(bench.cdUsage[c.spellId])) : ''}</td>}
                 </tr>
               ))}
             </tbody>

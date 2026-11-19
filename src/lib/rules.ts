@@ -6,6 +6,7 @@ import { hasBackend } from './api';
 import type { MechanicSeverity, Pull } from '../types';
 import { messagesOf, tr, type Loc } from '../i18n';
 import { wclMsg } from './wcl.i18n';
+import { KEYS, ls } from './storage';
 
 /** Mecânica como está no YAML (o padrão). */
 export interface RuleMechanic {
@@ -62,16 +63,9 @@ export interface BossRules {
   tuning: Tuning | null;
 }
 
-const DEMO_KEY = 'wipe-cause:demo-tuning:';
-
 /** No navegador: monta a regra a partir das mecânicas do pull (só para ver a tela). */
 function demoRules(pull: Pull): BossRules {
-  let tuning: Tuning | null = null;
-  try {
-    tuning = JSON.parse(localStorage.getItem(DEMO_KEY + pull.encounterId) ?? 'null');
-  } catch {
-    /* sem storage */
-  }
+  const tuning = ls.getJson<Tuning>(KEYS.demoTuning + pull.encounterId);
   return {
     encounterId: pull.encounterId,
     name: pull.encounterName,
@@ -90,7 +84,7 @@ export async function rulesGet(pull: Pull): Promise<BossRules> {
 
 export async function rulesSaveTuning(tuning: Tuning): Promise<void> {
   if (!hasBackend) {
-    localStorage.setItem(DEMO_KEY + tuning.encounter_id, JSON.stringify(tuning));
+    ls.setJson(KEYS.demoTuning + tuning.encounter_id, tuning);
     return;
   }
   await invoke('rules_save_tuning', { tuning });
@@ -98,7 +92,7 @@ export async function rulesSaveTuning(tuning: Tuning): Promise<void> {
 
 export async function rulesResetTuning(encounterId: number): Promise<void> {
   if (!hasBackend) {
-    localStorage.removeItem(DEMO_KEY + encounterId);
+    ls.remove(KEYS.demoTuning + encounterId);
     return;
   }
   await invoke('rules_reset_tuning', { encounterId });

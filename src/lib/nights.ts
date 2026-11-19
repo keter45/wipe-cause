@@ -8,11 +8,9 @@
 import type { LogFile } from './api';
 import { uniquePulls, LIVE_MS, type GuildNight } from './guildNights';
 import { coreRoster, isGuildGroup, nightKind, type NightKind } from './roster';
+import { MIN_PULL_MS, samePullStart } from './samePull';
+import { overlaps } from './stats';
 
-/** Wipes mais curtos que isso a análise descarta (pull falso / reset). */
-const MIN_PULL_MS = 30_000;
-/** Mesmo pull no log do PC e no WCL: começam com poucos segundos de diferença. */
-const SAME_PULL_MS = 20_000;
 /** Log do PC e reports do WCL são da mesma noite se os horários se encontram (com folga). */
 const OVERLAP_MS = 30 * 60_000;
 /** Download: ~1 s de API por 11 s de luta (medido: noite de 70 min de luta ≈ 6 min). */
@@ -67,14 +65,14 @@ export function buildNights(files: LogFile[], guild: GuildNight[], now = Date.no
   // cópias (warcraftlogsarchive, Split-*) só se não houver o log original da mesma hora
   const withPeek = files.filter((f) => f.peek?.firstMs != null);
   const main = withPeek.filter(isMain);
-  const copies = withPeek.filter((f) => !isMain(f) && !main.some((m) => overlaps(range(m), range(f), 0)));
+  const copies = withPeek.filter((f) => !isMain(f) && !main.some((m) => rangesMeet(range(m), range(f), 0)));
   const locals = [...main, ...copies];
 
   const nights: Night[] = [];
   const used = new Set<LogFile>();
   for (const g of guild) {
     const gr: [number, number] = [g.startTime, g.endTime];
-    const mine = locals.filter((f) => overlaps(range(f), gr, OVERLAP_MS));
+    const mine = locals.filter((f) => rangesMeet(range(f), gr, OVERLAP_MS));
     mine.forEach((f) => used.add(f));
     nights.push(night(mine, g, now));
   }
@@ -119,9 +117,8 @@ function range(f: LogFile): [number, number] {
   return [f.peek?.firstMs ?? f.modifiedMs, f.peek?.lastMs ?? f.modifiedMs];
 }
 
-function overlaps(a: [number, number], b: [number, number], slack: number) {
-  return a[0] <= b[1] + slack && b[0] <= a[1] + slack;
-}
+/** As faixas [início, fim] se encontram, com folga. */
+const rangesMeet = (a: [number, number], b: [number, number], slack: number) => overlaps(a[0], a[1], b[0], b[1], slack);
 
 function night(files: LogFile[], wcl: GuildNight | null, now: number): Night {
   const bosses: NightBossRow[] = [];
@@ -153,7 +150,7 @@ function night(files: LogFile[], wcl: GuildNight | null, now: number): Night {
       if (difficultyId === 8) continue; // M+
       if (!p.kill && p.durationMs < MIN_PULL_MS) continue; // wipe curto: a análise descarta
       // o mesmo pull casa pelo boss e pelo horário (o log e o WCL podem escrever dificuldades diferentes)
-      if (localStarts.some((l) => l.encounterId === p.encounterId && Math.abs(l.start - p.start) < SAME_PULL_MS)) continue;
+      if (localStarts.some((l) => l.encounterId === p.encounterId && samePullStart(l.start, p.start))) continue;
       // boss que o log do PC tem, com outra dificuldade: soma na linha dele
       const b = bosses.find((x) => x.encounterId === p.encounterId && x.local > 0) ?? row(p.encounterId, p.name, difficultyId);
       b.missing++;

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { CloudDownload, Radio } from 'lucide-react';
 import { defineMessages } from '../../i18n';
+import { glossary as G } from '../../i18n/glossary';
 
 const wclIcon = <CloudDownload size={14} strokeWidth={1.75} className="wcl-mark" aria-hidden />;
 const liveIcon = <Radio size={14} strokeWidth={1.75} aria-hidden />;
@@ -9,7 +10,7 @@ export const firstStepsMsg = defineMessages(
   {
     see: 'Ver',
     configure: 'Configurar',
-    logsTitle: 'Pasta de logs do WoW',
+    logsTitle: G.pt.logsFolder,
     logsText: (dir: ReactNode) => <>O app lê o combat log que o WoW grava no seu PC ({dir}). Normalmente é encontrada sozinha.</>,
     gameTitle: 'No jogo: ligar o combat log',
     how: 'Como',
@@ -56,7 +57,7 @@ export const firstStepsMsg = defineMessages(
   {
     see: 'View',
     configure: 'Set up',
-    logsTitle: 'WoW logs folder',
+    logsTitle: G.en.logsFolder,
     logsText: (dir: ReactNode) => <>The app reads the combat log WoW writes on your PC ({dir}). It's usually found automatically.</>,
     gameTitle: 'In game: turn on the combat log',
     how: 'How',

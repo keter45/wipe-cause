@@ -2,7 +2,7 @@ import { createContext, useEffect, useState } from 'react';
 import { ArrowDownToLine, ArrowUpToLine, Clapperboard, ImageDown, MessageSquare } from 'lucide-react';
 import type { Pull } from '../types';
 import { hasBackend } from '../lib/api';
-import { fileSlug, saveClip, sendToDiscord } from '../lib/share';
+import { clipFileName, saveClip, sendToDiscord } from '../lib/share';
 import type { ClipMoment, ClipView } from '../lib/replayClip';
 import { clockText, fitClipRange, MAX_CUSTOM_SPAN_MS, parseClock } from '../lib/clipSpan';
 import { useSetup } from '../lib/setup';
@@ -75,7 +75,7 @@ export function ClipButton({ pull, title, moment, bounds, range, custom, onRange
       const { replayClip } = await import('../lib/replayClip');
       const bytes = await replayClip(pull, m, { title, span: range, view: clipView(), onProgress: setProgress });
       const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/webp' }));
-      setClip({ bytes, url, name: `${fileSlug(`${title} ${m.label}`) || 'wipe-cause'}.webp` });
+      setClip({ bytes, url, name: clipFileName(title, m.label) });
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
     } finally {

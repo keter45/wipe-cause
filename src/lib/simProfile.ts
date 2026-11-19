@@ -10,6 +10,8 @@ import { SPEC_NAMES } from './specs';
 import { bossKey } from './night';
 import { myDeaths } from './solo';
 import type { TalentTree } from './talents';
+import { nearestRank } from './stats';
+import { BLOODLUST_IDS, BLOOD_FURY_IDS, POWER_INFUSION } from './cooldowns';
 
 /** Pulls do "mesmo dia": até tantas horas do pull de referência. */
 const SAME_DAY_MS = 12 * 3600_000;
@@ -97,7 +99,7 @@ const SLOTS: Record<number, string> = {
 /** Racial usada no pull -> raça (as passivas não aparecem no log). */
 const RACIALS: [number[], string][] = [
   [[26297], 'troll'],
-  [[20572, 33702, 33697], 'orc'],
+  [BLOOD_FURY_IDS, 'orc'],
   [[265221], 'dark_iron_dwarf'],
   [[274738], 'maghar_orc'],
   [[255647], 'lightforged_draenei'],
@@ -154,8 +156,7 @@ const RAID_BUFFS: [string, string][] = [
   ['hunters_mark', 'Hunter'],
 ];
 
-const BLOODLUST_IDS = new Set([2825, 32182, 80353, 264667, 390386, 466904, 444257]);
-const POWER_INFUSION = 10060;
+const LUST_IDS = new Set(BLOODLUST_IDS);
 
 /** O que não deu para ler do log e ficou no padrão do SimC (a tela avisa). */
 export type SimAssumption = 'race' | 'flask' | 'food' | 'rune';
@@ -176,13 +177,12 @@ export function raidTargets(pull: Pull): number[] {
   const out: number[] = [];
   for (let i = 0; i < len; i++) {
     const v = rows.map((r) => r[i] ?? 0);
-    out.push(v.length ? quantile(v, TARGET_QUANTILE) : 1);
+    out.push(v.length ? nearestRank(v, TARGET_QUANTILE) : 1);
   }
   return out;
 }
 
-const quantile = (v: number[], q: number) => [...v].sort((a, b) => a - b)[Math.min(v.length - 1, Math.floor(v.length * q))];
-const median = (v: number[]) => quantile(v, 0.5);
+const median = (v: number[]) => nearestRank(v, 0.5);
 
 /** Trechos seguidos com o mesmo número de alvos: [início, fim, alvos] em ms. */
 export function targetWindows(buckets: number[], windowMs: number): [number, number, number][] {
@@ -225,7 +225,7 @@ export function fightMovement(pull: Pull, windowMs: number): MoveWindow[] | null
       .filter((p) => playedMs(pull, p) >= to)
       .map((p) => p.moveTimeline!.slice(i, j).reduce((s, v) => s + v, 0) / (to - from));
     if (shares.length < MOVE_MIN_PLAYERS) continue;
-    const share = Math.min(0.6, Math.round(quantile(shares, MOVE_QUANTILE) * 20) / 20);
+    const share = Math.min(0.6, Math.round(nearestRank(shares, MOVE_QUANTILE) * 20) / 20);
     const last = out[out.length - 1];
     if (last && last.to === from && last.share === share) last.to = to;
     else out.push({ from, to, share });
@@ -341,7 +341,7 @@ export function buildSimProfile(pick: SimPick, tree: TalentTree): SimProfile | n
 
   // buffs de fora nos mesmos momentos
   const received = (player.buffsReceived ?? []).filter((u) => u.t < windowMs);
-  const lust = received.find((u) => BLOODLUST_IDS.has(u.spellId));
+  const lust = received.find((u) => LUST_IDS.has(u.spellId));
   out(`override.bloodlust=${lust ? 1 : 0}`);
   if (lust) out(`bloodlust_time=${sec(lust.t)}`);
   const pi = received.filter((u) => u.spellId === POWER_INFUSION).map((u) => sec(u.t));

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import type { Anchors } from '../lib/cdAnchors';
-import { mmss } from '../lib/format';
+import { mmss, fraction } from '../lib/format';
 import { castIdsOf, healCd } from '../lib/healCooldowns';
 import { mapPhases } from '../lib/healNote';
 import { cdRowKey, cdRows, markCdId, stackLanes, type CdRow, type CdUse, type Gap, type NoteMark } from '../lib/healTimeline';
@@ -33,7 +33,6 @@ interface BossEntry {
   size?: number;
 }
 
-const pct = (x: number) => `${Math.round(x * 100)}%`;
 const sec = (ms: number) => `${ms >= 0 ? '+' : '−'}${(Math.abs(ms) / 1000).toFixed(1)} s`;
 const useKey = (u: CdUse) => `u:${u.player.guid}:${u.at}:${u.cd.id}`;
 const markKey = (m: NoteMark) => `m:${m.guid}:${m.at}:${m.lineIndex}`;
@@ -175,7 +174,7 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
               'gap',
               (from + to) / 2,
               <>
-                <span className="bad">{t.tlGapTip(i + 1, pct(g.peak))}</span>
+                <span className="bad">{t.tlGapTip(i + 1, fraction(g.peak))}</span>
                 {g.free.length > 0 && (
                   <>
                     <span className="muted">{t.tlFree}</span>
@@ -204,7 +203,7 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
   const useLabel = (u: CdUse) => {
     const who = `${u.player.name} · ${mmss(u.at)}`;
     const oh = u.overheal;
-    return `${u.cd.name} · ${who}${oh ? ` · ${t.tlUseTip(pct(oh.share), oh.ref ? t.refBand(pct(oh.ref.p25), pct(oh.ref.p75)) : '')}` : ''}${u.noDamage ? ` · ${t.noDamage}` : ''}${u.cycle ? ` · ${t.tlCycleLikely}` : ''}${u.readyAt != null ? ` · ${t.tlReady(u.readyAt)}` : ''}`;
+    return `${u.cd.name} · ${who}${oh ? ` · ${t.tlUseTip(fraction(oh.share), oh.ref ? t.refBand(fraction(oh.ref.p25), fraction(oh.ref.p75)) : '')}` : ''}${u.noDamage ? ` · ${t.noDamage}` : ''}${u.cycle ? ` · ${t.tlCycleLikely}` : ''}${u.readyAt != null ? ` · ${t.tlReady(u.readyAt)}` : ''}`;
   };
 
   return (
@@ -472,7 +471,7 @@ export function HealTimeline({ pull, uses, marks, gaps, hits, low, bossCasts, on
                                     title={useLabel(u)}
                                     aria-label={useLabel(u)}
                                     onClick={(ev) => seek(ev, u.at)}
-                                    onMouseEnter={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} />{u.overheal && <span className={u.overheal.high ? 'bad' : ''}>{t.tlUseTip(pct(u.overheal.share), u.overheal.ref ? t.refBand(pct(u.overheal.ref.p25), pct(u.overheal.ref.p75)) : '')}</span>}{u.noDamage && <span className="bad">{t.noDamage}</span>}{u.cycle && <span className="muted">{t.tlCycleLikely}</span>}{u.stacked && <span className="bad">{t.stacked}</span>}<span className="muted">{mmss(u.at)}–{mmss(u.end)}</span>{u.readyAt != null && <span className="muted">{t.tlReady(u.readyAt)}</span>}</>)}
+                                    onMouseEnter={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} />{u.overheal && <span className={u.overheal.high ? 'bad' : ''}>{t.tlUseTip(fraction(u.overheal.share), u.overheal.ref ? t.refBand(fraction(u.overheal.ref.p25), fraction(u.overheal.ref.p75)) : '')}</span>}{u.noDamage && <span className="bad">{t.noDamage}</span>}{u.cycle && <span className="muted">{t.tlCycleLikely}</span>}{u.stacked && <span className="bad">{t.stacked}</span>}<span className="muted">{mmss(u.at)}–{mmss(u.end)}</span>{u.readyAt != null && <span className="muted">{t.tlReady(u.readyAt)}</span>}</>)}
                                     onFocus={() => showTip(id, u.at, <><SpellName spellId={u.cd.id} name={u.cd.name} size={14} /><PlayerName name={p.name} guid={p.guid} cls={p.class} /></>)}
                                     onBlur={() => setTip(null)}
                                   >

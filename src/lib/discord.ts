@@ -2,15 +2,17 @@
 // Limites do Discord: título 256, descrição 4096, 25 campos, valor de campo 1024, total 6000.
 
 import type { Pull } from '../types';
-import { mmss, pct, shortName } from './format';
+import { clockOf, mmss, pct, shortName } from './format';
 import type { NightSummary } from './night';
-import { analyzePull, lowestBossHp } from './verdict';
+import { analyzePull } from './verdict';
+import { bossKey } from './night';
 import { bossUrl } from './wcl';
 import { assignmentsFor, checkAssignments } from './assignments';
 import { messagesOf, tr } from '../i18n';
 import { discordMsg } from './discord.i18n';
 import { progressLabel } from './phases';
 import { mechanicMistakes } from './blame';
+import { DISCORD_COLORS, DISCORD_USERNAME } from './discordConst';
 
 export interface DiscordEmbed {
   title: string;
@@ -26,9 +28,7 @@ export interface DiscordPayload {
   embeds: DiscordEmbed[];
 }
 
-const RED = 0xe05656;
-const GREEN = 0x4cc38a;
-const BLUE = 0x3987e5;
+const { wipe: RED, kill: GREEN, info: BLUE } = DISCORD_COLORS;
 
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
 
@@ -52,14 +52,23 @@ function field(name: string, items: string[]) {
   return items.length ? [{ name, value: lines(items) }] : [];
 }
 
+/** Título de um pull em tudo que vai ao Discord (imagem, texto) e no aviso do ao vivo. */
+export function pullTitle(p: Pull): string {
+  const t = messagesOf(discordMsg);
+  return p.success ? t.killTitle(bossKey(p)) : t.wipeTitle(p.pullNumber, bossKey(p), progressLabel(p));
+}
+
+/** Título do resumo de um boss na noite (`key` = bossKey): "Kill · …" se matou, senão "Resumo · …". */
+export function bossTitle(key: string, killed: boolean): string {
+  const t = messagesOf(discordMsg);
+  return killed ? t.killTitle(key) : t.summaryTitle(key);
+}
+
 /** Resumo de um pull: gatilho, erros de mecânica, mortes decisivas, defensivos e interrupts. */
 export function pullPayload(p: Pull, wclCode?: string | null): DiscordPayload {
   const v = analyzePull(p);
   const t = messagesOf(discordMsg);
-  const hp = lowestBossHp(p);
-  const title = p.success
-    ? `Kill · ${p.encounterName} ${p.difficultyName} (${mmss(p.durationMs)})`
-    : `Wipe ${p.pullNumber} · ${p.encounterName} ${p.difficultyName}${hp != null ? ` — ${progressLabel(p)}` : ''}`;
+  const title = pullTitle(p);
 
   const mechanics = p.mechanics
     .filter((m) => m.failures > 0 && m.severity === 'wipe')
@@ -82,7 +91,7 @@ export function pullPayload(p: Pull, wclCode?: string | null): DiscordPayload {
 
   const counted = p.deaths.filter((d) => !d.ignored).length;
   return {
-    username: 'Wipe Cause',
+    username: DISCORD_USERNAME,
     embeds: [
       {
         title: clip(title, 256),
@@ -95,7 +104,7 @@ export function pullPayload(p: Pull, wclCode?: string | null): DiscordPayload {
           ...field(t.noDefensive, noDefensive),
           ...field(t.interrupts, passed),
         ].slice(0, 25),
-        footer: { text: t.footer(p.startLocal.split(' ')[1]?.slice(0, 5) ?? '', mmss(p.durationMs), counted) },
+        footer: { text: t.footer(clockOf(p), mmss(p.durationMs), counted) },
       },
     ],
   };
@@ -120,10 +129,10 @@ export function bossPayload(title: string, s: NightSummary): DiscordPayload {
     .map((p) => t.hero(shortName(p.name), p.cleanPulls, p.pulls));
   const best = s.kills ? 'Kill' : s.best ? t.bestPull(s.best.pull.pullNumber, pct(s.best.hp)) : '—';
   return {
-    username: 'Wipe Cause',
+    username: DISCORD_USERNAME,
     embeds: [
       {
-        title: clip(t.summaryTitle(title), 256),
+        title: clip(bossTitle(title, s.kills > 0), 256),
         description: t.summary(s.pulls.length, s.wipes, s.kills, best),
         color: s.kills ? GREEN : BLUE,
         fields: [...field(t.causes, causes), ...field(t.villains, villains), ...field(t.heroes, heroes)],

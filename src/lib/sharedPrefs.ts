@@ -7,17 +7,10 @@
 // para o localStorage do navegador dele, que no site é o mesmo da versão web (a note dele não pode
 // ser trocada pela de quem compartilhou).
 
+import { SHARED_KEYS } from './storage';
+
 /** Prefixos das chaves (`wipe-cause:…`) que vão para o link. Notas, marcas e configurações ficam de fora. */
-export const SHARED_PREFIXES = [
-  'wipe-cause:heal-note',
-  'wipe-cause:assignments:',
-  'wipe-cause:boss-metrics:',
-  'wipe-cause:summary.',
-  'wipe-cause:trends.',
-  'wipe-cause:parses:',
-  'wipe-cause:replay-prefs',
-  'wipe-cause:burst-cds:',
-];
+export const SHARED_PREFIXES = SHARED_KEYS;
 
 export const isShared = (key: string) => SHARED_PREFIXES.some((p) => key.startsWith(p));
 

@@ -2,28 +2,17 @@ import { useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useMessages } from '../i18n';
 import { collapsiblePanelMsg } from './CollapsiblePanel.i18n';
+import { KEYS, ls } from '../lib/storage';
 
-const KEY_PREFIX = 'wipe-cause:';
 
 /** Escolha de aberto/recolhido no navegador; `key` segue a convenção `wipe-cause:<key>`. */
 export function useCollapsed(key: string, defaultOpen = true): [boolean, () => void] {
-  const storageKey = `${KEY_PREFIX}${key}`;
-  const [open, setOpen] = useState(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      return saved == null ? defaultOpen : saved !== '0';
-    } catch {
-      return defaultOpen;
-    }
-  });
+  const storageKey = `${KEYS.collapse}${key}`;
+  const [open, setOpen] = useState(() => ls.getBool(storageKey, defaultOpen));
   const toggle = () => {
     setOpen((old) => {
       const next = !old;
-      try {
-        localStorage.setItem(storageKey, next ? '1' : '0');
-      } catch {
-        // sem localStorage: vale só nesta tela
-      }
+      ls.setBool(storageKey, next);
       return next;
     });
   };

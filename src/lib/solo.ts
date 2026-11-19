@@ -11,16 +11,16 @@ import type { Pull, PlayerStats, RotationFinding } from '../types';
 import { PERSONAL_BLAME } from './blame';
 import { bossKey } from './night';
 import { castsOf, isHealer, outputPerSec, type Sample } from './performance';
-import { damageSource } from './format';
+import { damageSource, wholeSecs } from './format';
 import { meIn } from './mode';
 import { messagesOf, tr } from '../i18n';
 import { soloMsg } from './solo.i18n';
+import { soloPullMsg } from '../components/SoloPullView.i18n';
 
 /** Janela da linha do tempo do núcleo (TIMELINE_MS). */
 export const BUCKET_MS = 5_000;
 
 const aliveMs = (s: Sample) => Math.max(1, s.player.aliveMs ?? s.pull.analyzedMs);
-const fmtSec = (ms: number) => `${Math.round(ms / 1000)}s`;
 
 // ---------------------------------------------------------------- dano perdido
 
@@ -101,7 +101,7 @@ export function losses(s: Sample): Loss[] {
     out.push({
       key: `death:${death.t}`,
       kind: 'death',
-      title: t.diedEarly(fmtSec(remainingMs)),
+      title: t.diedEarly(wholeSecs(remainingMs)),
       detail: t.killingBlow(kb, death.causedBy?.name ?? null),
       tip: tips.length ? t.atTheTime(tips.join('; ')) : t.watchVideo,
       lost,
@@ -388,4 +388,13 @@ export function soloBosses(nights: { pulls: Pull[] }[], chosen: string | null): 
     }
   }
   return [...m.values()].sort((a, b) => b.nights - a.nights);
+}
+
+/** Peso de uma perda sem estimativa de dano: alto, médio ou baixo (a tela do pull e o cartão Solo). */
+export const costTier = (l: Pick<Loss, 'weightSec'>): 'high' | 'mid' | 'low' => (l.weightSec >= 25 ? 'high' : l.weightSec >= 8 ? 'mid' : 'low');
+
+/** "custo alto" / "custo médio" / "custo baixo". */
+export function costLabel(l: Pick<Loss, 'weightSec'>): string {
+  const t = messagesOf(soloPullMsg);
+  return { high: t.costHigh, mid: t.costMid, low: t.costLow }[costTier(l)];
 }

@@ -5,7 +5,7 @@ import type { Pull } from '../types';
 import { messagesOf } from '../i18n';
 import { trendsMsg } from './trends.i18n';
 import { shortName } from './format';
-import { bossKey, summarizeNight, type NightSummary } from './night';
+import { bossKey, summarizeNight, type NightSummary, REGULAR_SHARE } from './night';
 import { raidOnly } from './content';
 import { mechanicSpellId } from './spells';
 import { scorePull } from './score';
@@ -17,6 +17,8 @@ import { coreRoster, isGuildGroup } from './roster';
 import { bestPulls, countedEarlyDeaths, DECISIVE_MS, MIN_BEST_PLAYED } from './progDeaths';
 import { wipeCause } from './verdict';
 import { phaseCountOf } from './phases';
+import { samePullStart } from './samePull';
+import { mean } from './stats';
 
 export interface NightInput {
   id: string;
@@ -181,12 +183,11 @@ export interface Trends {
 /** Mudança mínima de nota para contar como melhora ou piora. */
 export const MOVE_MIN_SCORE = 5;
 /** Na progressão, entra quem jogou ao menos isso dos wipes (e no mínimo PROGRESSION_MIN_PULLS). */
-const PROGRESSION_SHARE = 0.3;
+const PROGRESSION_SHARE = REGULAR_SHARE;
 const PROGRESSION_MIN_PULLS = 5;
 /** Nos destaques da prog, entra quem jogou ao menos isso dos pulls. */
-const PROG_AWARD_SHARE = 0.3;
+const PROG_AWARD_SHARE = REGULAR_SHARE;
 
-const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
 /**
  * Começo x fim: média da primeira metade das noites em que jogou contra a da segunda (com 2 noites,
@@ -569,9 +570,6 @@ function progBoard(nights: TrendNight[]): { awards: ProgAwards; deathTable: Deat
  * salvas (pelo nome: o GUID pode mudar entre o log do PC e o Warcraft Logs). Sem noites suficientes
  * para saber, tudo conta como guilda.
  */
-/** Pulls do mesmo boss que começam com menos disso de diferença são o mesmo pull (log e WCL arredondam diferente). */
-const SAME_PULL_MS = 5_000;
-
 /**
  * A mesma raide salva duas vezes (de dois arquivos, ou do log e do WCL) contaria em dobro: cada
  * pull entra uma vez só (o da noite mais antiga na lista), e a noite que fica sem pull novo sai.
@@ -582,7 +580,7 @@ export function dedupeNights(input: NightInput[]): NightInput[] {
   for (const n of input) {
     const pulls = n.pulls.filter((p) => {
       const starts = seen.get(p.encounterId) ?? [];
-      if (starts.some((t) => Math.abs(t - p.startMs) < SAME_PULL_MS)) return false;
+      if (starts.some((t) => samePullStart(t, p.startMs))) return false;
       seen.set(p.encounterId, [...starts, p.startMs]);
       return true;
     });

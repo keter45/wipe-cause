@@ -93,7 +93,7 @@ export function PullShareCard({ pull: p, detail = 'summary' }: { pull: Pull; det
             </Section>
           )}
           {lowest.length > 0 && (
-            <Section title={t.below80} aside={!full && lowest.length > SUMMARY.scores ? `+${lowest.length - SUMMARY.scores}` : undefined}>
+            <Section title={t.belowScore(ATTENTION_SCORE)} aside={!full && lowest.length > SUMMARY.scores ? `+${lowest.length - SUMMARY.scores}` : undefined}>
               <ScoreChips list={full ? lowest : lowest.slice(0, SUMMARY.scores)} />
             </Section>
           )}

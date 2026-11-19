@@ -1,4 +1,5 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 const s = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -8,11 +9,9 @@ export const nightMsg = defineMessages(
     errorBoss: 'no resumo do boss',
     onlyDungeons: (n: number) => `Este log só tem masmorras (${n} ${s(n, 'chefe', 'chefes')} de M+): veja na lista, em “Masmorras (M+)”.`,
     noPulls: 'Nenhum pull no log.',
-    nightTitle: 'Resumo da noite',
+    nightTitle: G.pt.nightSummary,
     nightTime: 'Tempo da noite',
     nightCounts: (bosses: number, pulls: number, kills: number) => `${bosses} ${s(bosses, 'boss', 'bosses')} · ${pulls} pulls · ${kills} ${s(kills, 'kill', 'kills')}`,
-    shareNight: (time: string) => `Resumo da noite - ${time}`,
-    shareBoss: (title: string) => `Resumo - ${title}`,
     raidTime: 'Tempo de raid',
     inCombat: 'Em combate',
     downtime: 'Downtime',
@@ -127,11 +126,9 @@ export const nightMsg = defineMessages(
     errorBoss: 'in the boss summary',
     onlyDungeons: (n: number) => `This log only has dungeons (${n} M+ ${s(n, 'boss', 'bosses')}): see them in the list, under “Dungeons (M+)”.`,
     noPulls: 'No pulls in the log.',
-    nightTitle: 'Night summary',
+    nightTitle: G.en.nightSummary,
     nightTime: 'Night time',
     nightCounts: (bosses: number, pulls: number, kills: number) => `${bosses} ${s(bosses, 'boss', 'bosses')} · ${pulls} pulls · ${kills} ${s(kills, 'kill', 'kills')}`,
-    shareNight: (time: string) => `Night summary - ${time}`,
-    shareBoss: (title: string) => `Summary - ${title}`,
     raidTime: 'Raid time',
     inCombat: 'In combat',
     downtime: 'Downtime',

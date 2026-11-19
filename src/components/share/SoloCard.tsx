@@ -1,6 +1,6 @@
 import { mmss, num } from '../../lib/format';
-import { isHealer, outputPerSec, type CooldownInfo, type Sample } from '../../lib/performance';
-import { advantageWindows, castDiff, losses, myDeaths, myMechanicFailures, relevantSpells, takenMoreThan, type Loss } from '../../lib/solo';
+import { outputPerSec, type CooldownInfo, type Sample, outputUnit } from '../../lib/performance';
+import { advantageWindows, castDiff, costLabel as costTierLabel, losses, myDeaths, myMechanicFailures, relevantSpells, takenMoreThan, type Loss } from '../../lib/solo';
 import { specLabel } from '../../lib/specs';
 import { scoreTier } from '../../lib/score';
 import { SpellIcon, SpellName } from '../SpellIcon';
@@ -14,7 +14,7 @@ const SUMMARY_LOSSES = 3;
 
 const costLabel = (l: Loss, unit: string) => {
   const t = messagesOf(shareMsg);
-  return l.lost != null ? t.cost(num(l.lost), unit === 'HPS') : l.weightSec >= 25 ? t.costHigh : l.weightSec >= 8 ? t.costMid : t.costLow;
+  return l.lost != null ? t.cost(num(l.lost), unit === 'HPS') : costTierLabel(l);
 };
 
 /**
@@ -37,7 +37,7 @@ export function SoloShareCard({
 }) {
   const t = useMessages(shareMsg);
   const full = detail === 'full';
-  const unit = isHealer(me.player) ? 'HPS' : 'DPS';
+  const unit = outputUnit(me.player);
   const out = outputPerSec(me);
   const refOut = ref_ ? outputPerSec(ref_) : 0;
   const diff = refOut > 0 ? ((out - refOut) / refOut) * 100 : null;

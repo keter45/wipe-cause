@@ -4,27 +4,18 @@
 
 import { useEffect, useState } from 'react';
 import type { Pull } from '../types';
+import { KEYS, ls } from './storage';
 
-const KEY = 'wipe-cause:note:';
 const listeners = new Set<() => void>();
 
 export const noteKey = (p: Pick<Pull, 'encounterId' | 'startMs'>) => `${p.encounterId}:${p.startMs}`;
 
 export function getNote(p: Pick<Pull, 'encounterId' | 'startMs'>): string {
-  try {
-    return localStorage.getItem(KEY + noteKey(p)) ?? '';
-  } catch {
-    return '';
-  }
+  return ls.get(KEYS.notes + noteKey(p)) ?? '';
 }
 
 export function setNote(p: Pick<Pull, 'encounterId' | 'startMs'>, text: string) {
-  try {
-    if (text.trim()) localStorage.setItem(KEY + noteKey(p), text);
-    else localStorage.removeItem(KEY + noteKey(p));
-  } catch {
-    /* sem storage: a nota vale só nesta sessão */
-  }
+  ls.set(KEYS.notes + noteKey(p), text.trim() ? text : null);
   listeners.forEach((f) => f());
 }
 

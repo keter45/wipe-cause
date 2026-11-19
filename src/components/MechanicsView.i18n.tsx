@@ -1,4 +1,5 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 export const mechMsg = defineMessages(
   {
@@ -16,7 +17,7 @@ export const mechMsg = defineMessages(
     clean: (list: string) => `Sem falhas: ${list}`,
     notEvaluated: (list: string) => `Ainda não avaliadas automaticamente: ${list}`,
     rulesFile: (file: string) => `Regras: ${file}`,
-    focus: 'Foco da progressão',
+    focus: G.pt.progressionFocus,
     focusMark: 'Foco',
     yourRule: 'sua regra',
     adjusted: 'ajustada',
@@ -51,7 +52,7 @@ export const mechMsg = defineMessages(
     clean: (list: string) => `No failures: ${list}`,
     notEvaluated: (list: string) => `Not evaluated automatically yet: ${list}`,
     rulesFile: (file: string) => `Rules: ${file}`,
-    focus: 'Progression focus',
+    focus: G.en.progressionFocus,
     focusMark: 'Focus',
     yourRule: 'your rule',
     adjusted: 'adjusted',

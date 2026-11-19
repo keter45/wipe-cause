@@ -4,6 +4,8 @@
 // logs usa o cooldown, e o seu uso é procurado em volta da mesma mecânica do seu pull.
 // Só funções puras: o app usa para comparar e os testes rodam direto.
 
+import { median } from './stats';
+
 /** Cooldown usado até isso antes do cast do boss (preparar antes do dano) ainda conta para ele... */
 export const ANCHOR_BEFORE_MS = 15_000;
 /** ...e até isso depois (o dano cai depois do cast). */
@@ -48,12 +50,6 @@ export function nearestAnchor(t: number, anchors: Anchors): { anchor: number; k:
   return best;
 }
 
-const median = (xs: number[]) => {
-  const v = [...xs].sort((a, b) => a - b);
-  const m = Math.floor(v.length / 2);
-  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
-};
-
 /**
  * Mecânicas em que pelo menos `minShare` dos logs de referência usam o cooldown, e o que você fez em
  * cada uma. `minRefs`: logs que chegaram na mecânica, no mínimo, para valer.
@@ -76,9 +72,9 @@ export function anchoredMoments(refs: AnchoredSide[], ours: AnchoredSide, minSha
     if (reached.length < minRefs) continue;
     const support = v.dts.size / reached.length;
     if (support < minShare) continue;
-    const dt = median([...v.dts.values()]);
+    const dt = median([...v.dts.values()])!; // support > 0: tem valor
     const at = ours.anchors[v.anchor]?.[v.k - 1] ?? null;
-    const refAt = median(reached.map((r) => r.anchors[v.anchor][v.k - 1])) + dt;
+    const refAt = median(reached.map((r) => r.anchors[v.anchor][v.k - 1]))! + dt; // reached >= minRefs
     cands.push({ anchor: v.anchor, k: v.k, dt, support, at, you: null, refAt });
   }
   // mecânicas coladas viram um momento só: fica a de mais apoio

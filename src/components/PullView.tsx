@@ -6,12 +6,12 @@ import { PullMarks } from './PullMarks';
 import { useWclParses } from '../lib/useWclParses';
 import { BossName, Colored } from './Names';
 import type { Pull } from '../types';
-import { classColor, mmss, pct, shortName } from '../lib/format';
+import { classColor, clockOf, mmss, pct, shortName } from '../lib/format';
 import { analyzePull, lowestBossHpAtEnd } from '../lib/verdict';
 import { DeathList } from './DeathList';
 import { Hint } from './ui/Hint';
 import { Clamp } from './ui/Clamp';
-import { decodeReplay } from '../lib/replay';
+import { decodeReplay, REPLAY_LEAD_MS } from '../lib/replay';
 import { usePotentials } from '../lib/botRaid';
 import { PlayersTable } from './PlayersTable';
 import { EnemySpellsTable } from './EnemySpellsTable';
@@ -24,8 +24,7 @@ import { bossUrl, wclPullLabel } from '../lib/wcl';
 import { PlayAt, VideoPanel } from './VideoPanel';
 import { ShareMenu } from './share/ShareMenu';
 import { ClipPullContext } from './ClipButton';
-import { clipMoments } from '../lib/replayClip';
-import { PullShareCard } from './share/PullCard';
+import { pullPosts } from '../lib/sharePosts';
 import { AskView } from './AskView';
 import { ErrorBoundary } from './ErrorBoundary';
 import { PerformanceView } from './perf/PerformanceView';
@@ -174,11 +173,6 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
     { label: t.groups.fight, tabs: [{ key: 'replay', label: t.tabs.replay }, { key: 'spells', label: t.tabs.spells }] },
       ];
 
-  // os erros que levaram ao wipe (a causa e as falhas que mataram antes da cascata), para o clipe do Compartilhar
-  const clipShare = useMemo(() => {
-    const moments = clipMoments(pull);
-    return moments.length ? { pull, moments } : null;
-  }, [pull]);
   const clipCtx = useMemo(() => ({ pull, title: `Pull ${pull.pullNumber} · ${pull.encounterName}` }), [pull]);
 
   return (
@@ -191,7 +185,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
             <BossName encounterId={pull.encounterId} name={pull.encounterName} size={30} />
           </h2>
           <div className="pull-facts muted">
-            {pull.difficultyName} · pull {pull.pullNumber} · {pull.startLocal.split(' ')[1]?.slice(0, 5)} · {t.fightLength(mmss(pull.durationMs))}
+            {pull.difficultyName} · pull {pull.pullNumber} · {clockOf(pull)} · {t.fightLength(mmss(pull.durationMs))}
             {pull.incomplete && <span className="warn">{t.incomplete}</span>}
             {call ? (
               <span title={call.detail} className={call.possible ? '' : 'wipe-call'}>
@@ -247,7 +241,7 @@ function PullViewInner({ pull, wclCode, povs, nightPulls, onRulesChanged, live =
             </button>
           )}
           {(video || wclCode) && <span className="toolbar-divider" aria-hidden />}
-          <ShareMenu discord={() => pullPayload(pull, wclCode)} clip={clipShare} card={(detail) => <PullShareCard pull={pull} detail={detail} />} name={t.shareName(pull.success ? 'Kill' : `Wipe ${pull.pullNumber}`, pull.encounterName, pull.difficultyName)} />
+          <ShareMenu discord={() => pullPayload(pull, wclCode)} posts={(detail) => pullPosts(pull, detail)} />
         </span>
       </div>
 
@@ -406,8 +400,6 @@ function whoOf(f: FindingT, pull: Pull, decisive: Pull['deaths']): Who[] {
   return ds.length >= 2 ? ds.map((d) => ({ key: `${d.guid}:${d.t}`, name: shortName(d.name), cls: d.class ?? cls(d.guid), x: mmss(d.t) })) : [];
 }
 
-/** O replay abre um pouco antes do momento, para dar contexto. */
-const REPLAY_LEAD_MS = 3000;
 
 /**
  * Quando o achado aconteceu: a primeira falha de quem foi culpado na mecânica (sem quem fez a

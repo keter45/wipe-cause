@@ -13,6 +13,7 @@ import { SPEC_NAMES } from './specs';
 import { WCL_DIFFICULTY } from './wcl';
 import { messagesOf } from '../i18n';
 import { wclMsg } from './wcl.i18n';
+import { POWER_INFUSION } from './cooldowns';
 
 export interface WclGuild {
   id: number;
@@ -242,7 +243,6 @@ const CASTS_QUERY = `query Casts($code: String!, $fight: Int!, $source: Int!, $s
   } }
 }`;
 
-const POWER_INFUSION = 10060;
 const PI_QUERY = `query PI($code: String!, $fight: Int!, $target: Int!, $start: Float!, $end: Float!) {
   reportData { report(code: $code) {
     events(fightIDs: [$fight], targetID: $target, dataType: Buffs, abilityID: ${POWER_INFUSION}, startTime: $start, endTime: $end, limit: 1000) { data }

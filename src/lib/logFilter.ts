@@ -2,6 +2,7 @@
 // entre aberturas.
 
 import type { Night } from './nights';
+import { KEYS, ls } from './storage';
 
 export interface BossOption {
   encounterId: number;
@@ -50,22 +51,13 @@ export const matchesBoss = (b: { encounterId: number; difficultyId: number }, f:
 export const filterNights = (nights: Night[], f: LogFilter): Night[] =>
   nights.filter((n) => (n.bosses.length === 0 ? f.group !== 'pug' && f.encounterId == null : n.bosses.some((b) => inGroup(b, f.group) && matchesBoss(b, f))));
 
-const KEY = 'wipe-cause:logs-filter';
 
 export function savedLogFilter(): LogFilter {
-  try {
-    const v = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-    if (v && typeof v === 'object') return { encounterId: Number(v.encounterId) || null, difficultyId: Number(v.difficultyId) || null, group: ['guild', 'pug', 'all'].includes(v.group) ? v.group : 'guild' };
-  } catch {
-    /* sem storage ou valor antigo */
-  }
+  const v = ls.getJson<Record<string, unknown>>(KEYS.logsFilter);
+  if (v && typeof v === 'object') return { encounterId: Number(v.encounterId) || null, difficultyId: Number(v.difficultyId) || null, group: ['guild', 'pug', 'all'].includes(v.group as string) ? (v.group as LogFilter['group']) : 'guild' };
   return { encounterId: null, difficultyId: null, group: 'guild' };
 }
 
 export function saveLogFilter(f: LogFilter) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(f));
-  } catch {
-    /* vale só nesta sessão */
-  }
+  ls.setJson(KEYS.logsFilter, f);
 }

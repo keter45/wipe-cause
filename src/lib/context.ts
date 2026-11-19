@@ -4,6 +4,7 @@
 // funções puras e imports de tipo (o script carrega este arquivo direto no Node).
 
 import type { PlayerStats, Pull, RotationResult } from '../types';
+import { nearestRank } from './stats';
 
 /** Trecho da contagem de alvos do motor (TARGET_BUCKET_MS). */
 export const TARGET_BUCKET_MS = 2000;
@@ -29,10 +30,6 @@ const MIN_REF = 6;
 
 export type Ctx = 'st' | 'aoe';
 
-const quant = (xs: number[], q: number): number => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s[Math.min(s.length - 1, Math.floor(q * s.length))];
-};
 const round = (x: number) => Math.round(x * 1000) / 1000;
 
 /** Até quando o player conta: a morte ou o fim do tempo analisado. */
@@ -86,7 +83,7 @@ export interface ContextRef {
 export function buildContextRef(samples: { pull: Pull; player: PlayerStats }[], name: (id: number, fallback: string) => string): ContextRef | null {
   const list = samples.filter((s) => s.player.rotation?.targets?.length);
   if (list.length < MIN_REF) return null;
-  const ref: ContextRef = { n: list.length, ms: Math.round(quant(list.map((s) => untilOf(s.pull, s.player)), 0.5)), mix: { st: {}, aoe: {} }, kept: {} };
+  const ref: ContextRef = { n: list.length, ms: Math.round(nearestRank(list.map((s) => untilOf(s.pull, s.player)), 0.5)), mix: { st: {}, aoe: {} }, kept: {} };
   const mixes = list.map((s) => contextMix(s.pull, s.player));
   const names = new Map<number, string>();
   for (const s of list) for (const c of s.player.casts ?? []) names.set(c.spellId, c.name);
@@ -96,7 +93,7 @@ export function buildContextRef(samples: { pull: Pull; player: PlayerStats }[], 
     const ids = new Set(have.flatMap((m) => [...m[ctx].share.keys()]));
     for (const id of ids) {
       const xs = have.map((m) => m[ctx].share.get(id) ?? 0);
-      ref.mix[ctx][id] = { name: name(id, names.get(id) ?? `${id}`), med: round(quant(xs, 0.5)), p10: round(quant(xs, 0.1)), p90: round(quant(xs, 0.9)) };
+      ref.mix[ctx][id] = { name: name(id, names.get(id) ?? `${id}`), med: round(nearestRank(xs, 0.5)), p10: round(nearestRank(xs, 0.1)), p90: round(nearestRank(xs, 0.9)) };
     }
   }
   // auras mantidas: as que quase todo top tem, com uptime alto e pouca variação
@@ -108,11 +105,11 @@ export function buildContextRef(samples: { pull: Pull; player: PlayerStats }[], 
       k.byRot.push(u.byRotation ?? 0);
     }
   for (const [id, k] of kinds) {
-    if (quant(k.byRot, 0.5) < KEPT_BY_ROTATION) continue;
+    if (nearestRank(k.byRot, 0.5) < KEPT_BY_ROTATION) continue;
     const xs = ups.map((u) => u.get(id)).filter((x): x is number => x != null);
     if (xs.length < Math.max(MIN_REF, list.length * 0.8)) continue;
-    const med = quant(xs, 0.5);
-    const p10 = quant(xs, 0.1);
+    const med = nearestRank(xs, 0.5);
+    const p10 = nearestRank(xs, 0.1);
     if (med >= KEPT_MEDIAN && p10 >= KEPT_P10) ref.kept[id] = { name: name(id, k.name), kind: k.kind, med: round(med), p10: round(p10) };
   }
   return ref;
@@ -239,8 +236,8 @@ export function discoverBuild(
       let weight = 0;
       for (const g of strata) {
         const k = Math.min(g.yes.length, g.no.length);
-        w += quant(g.yes.map((i) => mixes[i].get(id) ?? 0), 0.5) * k;
-        wo += quant(g.no.map((i) => mixes[i].get(id) ?? 0), 0.5) * k;
+        w += nearestRank(g.yes.map((i) => mixes[i].get(id) ?? 0), 0.5) * k;
+        wo += nearestRank(g.no.map((i) => mixes[i].get(id) ?? 0), 0.5) * k;
         weight += k;
       }
       [w, wo] = [w / weight, wo / weight];
