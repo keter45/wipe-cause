@@ -9,6 +9,7 @@ import { messagesOf } from '../i18n';
 import { viewerMsg } from './viewer.i18n';
 import { viewerGist } from './backend';
 import { applySharedPrefs } from './sharedPrefs';
+import { KEYS } from './storage';
 
 /** O app de quem compartilhou não responde (desligado, sem internet, link desligado). */
 export class ViewerOffline extends Error {
@@ -54,7 +55,7 @@ function forgetTarget() {
   if (viewerGist && Date.now() - targetAt > 15_000) targetAt = 0;
 }
 
-const KEY = 'wipe-cause:viewer-key';
+const KEY = KEYS.viewerKey;
 
 /** A chave do link (`?k=`). Fica guardada na aba, para recarregar a página sem perder. */
 export function viewerKey(): string {

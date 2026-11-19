@@ -81,6 +81,11 @@ pub fn is_short_wipe(f: &WclFight) -> bool {
     !f.kill && f.end_time - f.start_time < crate::analysis::MIN_PULL_MS
 }
 
+/// Os fights de raid para baixar: sem repetidos (`dedupe`) e sem masmorras. O app e o site usam este.
+pub fn raid_fights(fights: &[WclFight]) -> Vec<WclFight> {
+    dedupe(fights).into_iter().filter(|f| !crate::data::is_dungeon(f.difficulty_id, f.size)).collect()
+}
+
 /// Uma fonte da verdade por pull: o report que cobre mais bosses vale; os outros só entram
 /// com os pulls que faltam nele. Devolve os fights escolhidos em ordem de horário.
 pub fn dedupe(fights: &[WclFight]) -> Vec<WclFight> {

@@ -1,4 +1,5 @@
 import { defineMessages } from '../../i18n';
+import { glossary as G } from '../../i18n/glossary';
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -36,8 +37,7 @@ export const viewerHomeMsg = defineMessages(
     causeCount: (n: number) => `${n}×`,
     firstToDie: 'Mais mortes que contaram',
     loading: 'Esperando o primeiro try…',
-    metrics: 'Métricas do grupo',
-    yards: (n: number) => `${n} jd`,
+    metrics: G.pt.groupMetrics,
     noteCds: 'CDs da note',
     onTime: (n: number, total: number) => `${n}/${total} na hora`,
     cdNotUsed: 'não usou',
@@ -77,8 +77,7 @@ export const viewerHomeMsg = defineMessages(
     causeCount: (n: number) => `${n}×`,
     firstToDie: 'Most deaths that counted',
     loading: 'Waiting for the first try…',
-    metrics: 'Group metrics',
-    yards: (n: number) => `${n} yd`,
+    metrics: G.en.groupMetrics,
     noteCds: 'Note CDs',
     onTime: (n: number, total: number) => `${n}/${total} on time`,
     cdNotUsed: 'not used',

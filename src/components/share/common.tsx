@@ -2,36 +2,25 @@
 // resumo (o que cabe numa olhada no Discord) e o completo (tudo aberto, para quem quer o detalhe).
 
 import type { ReactNode } from 'react';
-import type { Pull } from '../../types';
 import { classColor, shortName } from '../../lib/format';
 import { scoreTier } from '../../lib/score';
-import { getLocale, useMessages } from '../../i18n';
+import { useMessages } from '../../i18n';
 import { shareMsg } from './share.i18n';
 
 export type CardDetail = 'summary' | 'full';
 
 /** Nota abaixo disto é "precisa de atenção" (a mesma linha do tom das notas no app). */
-export const ATTENTION_SCORE = 80;
+export { ATTENTION_SCORE } from '../../lib/score';
 
 export function Brand() {
   return <span className="share-brand">Wipe Cause</span>;
 }
 
-/** "9/28/2026 22:48:18.335-3" (formato do log) -> "28/09" (em inglês, "09/28") */
-export const dateOf = (p: Pull) => {
-  const md = (p.startLocal.split(' ')[0] ?? '')
-    .split('/')
-    .slice(0, 2)
-    .map((x) => x.padStart(2, '0'));
-  return (getLocale() === 'en' ? md : md.reverse()).join('/');
-};
-export const timeOf = (p: Pull) => p.startLocal.split(' ')[1]?.slice(0, 5) ?? '';
+/** Data e hora do pull nos cartões: as mesmas do app. */
+export { dayMonth as dateOf, clockOf as timeOf } from '../../lib/format';
 
-/** "2h13" / "47min" */
-export const hm = (ms: number) => {
-  const min = Math.round(ms / 60_000);
-  return min >= 60 ? `${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')}` : `${min}min`;
-};
+/** Duração longa nos cartões: a mesma do app ("2h 13min"). */
+export { longDuration as hm } from '../../lib/format';
 
 /** Cartão: borda do resultado, cabeçalho (título, linha de baixo, número grande) e rodapé. */
 export function Card({

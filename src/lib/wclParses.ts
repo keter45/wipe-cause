@@ -9,6 +9,9 @@ import { WCL_DIFFICULTY } from './wcl';
 import { messagesOf } from '../i18n';
 import { wclMsg } from './wcl.i18n';
 import { noteKey } from './notes';
+import { parseBand } from './parseBands';
+import { KEYS, ls } from './storage';
+import { normName } from './format';
 
 export type ParseMetric = 'dps' | 'hps';
 
@@ -30,19 +33,10 @@ export interface PlayerParse {
 /** Healer é ranqueado por HPS; dps e tank, por DPS (como o Warcraft Logs faz por padrão). */
 export const metricFor = (role: PlayerStats['role']): ParseMetric => (role === 'healer' ? 'hps' : 'dps');
 
-/** Cores do Warcraft Logs por faixa de parse. */
-export function parseColor(p: number | null | undefined): string {
-  if (p == null) return 'var(--muted)';
-  if (p >= 100) return '#e5cc80';
-  if (p >= 99) return '#e268a8';
-  if (p >= 95) return '#ff8000';
-  if (p >= 75) return '#a335ee';
-  if (p >= 50) return '#0070ff';
-  if (p >= 25) return '#1eff00';
-  return '#9d9d9d';
-}
+/** Cores do Warcraft Logs por faixa de parse (a mesma escala das notas, em score.ts). */
+export const parseColor = (p: number | null | undefined): string => (p == null ? 'var(--muted)' : parseBand(p).color);
 
-const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('en');
+const norm = (s: string) => normName(s);
 /** Reino como o WCL escreve no slug: minúsculo, sem apóstrofo, espaços viram hífen. */
 export const serverSlug = (server: string) => norm(server).replace(/['’]/g, '').replace(/\s+/g, '-');
 /**
@@ -89,7 +83,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 // pelo nome do player (o guid muda entre o log do PC e o Warcraft Logs).
 
 type PullRef = Pick<Pull, 'encounterId' | 'startMs' | 'difficultyId'>;
-const PARSES_KEY = 'wipe-cause:parses:';
+const PARSES_KEY = KEYS.parses;
 
 /** O que fica salvo por kill: a dificuldade (para comparar com kills iguais) e o parse de cada player. */
 interface SavedKill {
@@ -106,9 +100,8 @@ const rounded = (p: PlayerParse): PlayerParse => ({ ...p, percent: wholeParse(p.
 
 function readSaved(key: string): SavedKill | null {
   try {
-    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(key);
-    if (!raw) return null;
-    const v = JSON.parse(raw) as SavedKill | Record<string, PlayerParse>;
+    const v = ls.getJson<SavedKill | Record<string, PlayerParse>>(key);
+    if (!v) return null;
     // formato antigo: só o parse de cada player, sem a dificuldade
     const saved: { difficultyId?: number; byName: Record<string, PlayerParse>; realmKey?: boolean } = 'byName' in v && typeof v.byName === 'object' ? (v as SavedKill) : { byName: v as Record<string, PlayerParse> };
     return { difficultyId: saved.difficultyId ?? -1, byName: Object.fromEntries(Object.entries(saved.byName).map(([k, p]) => [k, rounded(p)])), realmKey: saved.realmKey === true };
@@ -134,11 +127,7 @@ export function needsKillParses(p: PullRef & Pick<Pull, 'players'>): boolean {
 }
 
 function saveKillParses(p: PullRef, byName: Record<string, PlayerParse>) {
-  try {
-    localStorage.setItem(PARSES_KEY + noteKey(p), JSON.stringify({ difficultyId: p.difficultyId, byName, realmKey: true } satisfies SavedKill));
-  } catch {
-    /* sem storage: vale só nesta sessão */
-  }
+  ls.setJson(PARSES_KEY + noteKey(p), { difficultyId: p.difficultyId, byName, realmKey: true } satisfies SavedKill);
 }
 
 export interface OwnParses {

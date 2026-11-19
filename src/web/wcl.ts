@@ -9,6 +9,7 @@ import { webMsg } from './web.i18n';
 import { call } from './engine';
 import { idbDelPrefix, idbGet, idbSet, lsGet, lsSet } from './store';
 import type { Summary } from './history';
+import { b64url } from '../lib/bytes';
 
 const m = () => messagesOf(webMsg);
 
@@ -30,7 +31,6 @@ const redirectUri = () => new URL(`${import.meta.env.BASE_URL}oauth.html`, windo
 
 // ---------------------------------------------------------------- login com a conta
 
-const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const random = (n: number) => b64url(crypto.getRandomValues(new Uint8Array(n)));
 
 async function postToken(form: Record<string, string>): Promise<Record<string, unknown>> {
@@ -275,7 +275,17 @@ const KEEP_REPORTS = 6;
 const SETTLED_AFTER_MS = 30_000;
 const REPORT_IDLE_MS = 10 * 60_000;
 
-const eventsKey = (code: string, fight: number) => `wcl-events:${code}:v4:${fight}`;
+/**
+ * O fight já pode ir para o cache? `span` = início e fim do report (epoch ms); `fightEnd` é
+ * relativo ao início do report, como todo tempo de fight no WCL. Assentou se o report tem eventos
+ * depois dele, ou se o report não recebe nada há REPORT_IDLE_MS (log ao vivo parado).
+ * O mesmo que `fight_settled` em wcl_source.rs.
+ */
+export function fightSettled([start, end]: [number, number], fightEnd: number, now: number): boolean {
+  return end - start - fightEnd > SETTLED_AFTER_MS || now - end > REPORT_IDLE_MS;
+}
+
+const eventsKey = (code: string, fight: number) => `wcl-events:${code}:v5:${fight}`;
 
 /** Marca os reports como usados agora e apaga os eventos dos mais antigos. */
 async function pruneEvents(codes: string[]) {
@@ -319,9 +329,7 @@ async function feedFight(sid: number, code: string, f: { id: number; startTime: 
     pages.push(r.slim ?? '[]');
     onPage?.(pages.length);
   }
-  const [start, end] = span;
-  const settled = end - f.endTime > SETTLED_AFTER_MS || Date.now() - (start + end) > REPORT_IDLE_MS;
-  if (settled) await idbSet(key, joinPages(pages)).catch(() => {});
+  if (fightSettled(span, f.endTime, Date.now())) await idbSet(key, joinPages(pages)).catch(() => {});
 }
 
 /**

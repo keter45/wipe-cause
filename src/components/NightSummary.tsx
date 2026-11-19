@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Award as AwardIcon, ChevronRight, EyeOff, Hand, Handshake, HeartPulse, ShieldCheck, ShieldOff, Skull, Swords, TriangleAlert, type LucideIcon } from 'lucide-react';
 import type { Pull } from '../types';
-import { classColor, mmss, num, pct, shortName, longDuration } from '../lib/format';
+import { classColor, clockAt, clockOf, mmss, num, pct, shortName, longDuration } from '../lib/format';
 import { bossKey, groupByBoss, summarizeNight, topBy, type Gap, type NightSummary as Summary, type PlayerNight } from '../lib/night';
 import { dungeonsOnly, raidOnly } from '../lib/content';
 import { BossName } from './Names';
@@ -17,8 +17,7 @@ import { NightPhaseTimes } from './PhaseTimes';
 import { NightStackOrigins } from './StackOrigins';
 import { RaidBot } from './perf/RaidBot';
 import { BossMetrics } from './BossMetrics';
-import { BossShareCard } from './share/BossCard';
-import { NightShareCard } from './share/NightCard';
+import { bossPosts, nightPosts } from '../lib/sharePosts';
 import { withErrorBoundary } from './ErrorBoundary';
 import { bossPayload } from '../lib/discord';
 import { messagesOf, useMessages } from '../i18n';
@@ -27,6 +26,7 @@ import { Hint } from './ui/Hint';
 import { HealNotePanel } from './HealNotePanel';
 import { DeathSeverityCard } from './DeathSeverityCard';
 import { CollapseButton, CollapsiblePanel, useCollapsed } from './CollapsiblePanel';
+import { SortTh, useSort } from './ui/SortTh';
 
 interface Props {
   pulls: Pull[];
@@ -36,14 +36,12 @@ interface Props {
 }
 
 function endClock(s: Summary): string {
-  return s.pulls.length ? new Date(s.endMs + (s.pulls[0].tzOffsetHours ?? 0) * 3_600_000).toISOString().slice(11, 16) : '';
+  return s.pulls.length ? clockAt(s.endMs, s.pulls[0].tzOffsetHours) : '';
 }
 
 const duration = longDuration;
 
-function clock(p: Pull): string {
-  return p.startLocal.split(' ')[1]?.slice(0, 5) ?? '';
-}
+const clock = (p: Pull) => clockOf(p);
 
 /** Visão geral da noite: tempo e downtime da raid inteira e um card por boss. */
 function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Props & { onSelectBoss: (key: string) => void }) {
@@ -63,7 +61,7 @@ function NightOverviewInner({ pulls: allPulls, onSelectPull, onSelectBoss }: Pro
         <h2>{t.nightTitle}</h2>
         <span className="head-actions">
           <span className="muted small">{t.nightCounts(bosses.length, s.pulls.length, s.kills)}</span>
-          <ShareMenu card={(detail) => <NightShareCard pulls={allPulls} detail={detail} />} name={t.shareNight(clock(s.pulls[0]))} />
+          <ShareMenu posts={(detail) => nightPosts(allPulls, detail)} />
         </span>
       </header>
 
@@ -141,7 +139,7 @@ function BossSummaryInner({ title, pulls, onSelectPull, live }: Props & { title:
           <BossName encounterId={pulls[0]?.encounterId} name={title} size={26} />
         </h2>
         <span className="head-actions">
-          <ShareMenu discord={() => bossPayload(title, s)} card={(detail) => <BossShareCard title={title} pulls={pulls} detail={detail} />} name={t.shareBoss(title)} />
+          <ShareMenu discord={() => bossPayload(title, s)} posts={(detail) => bossPosts(title, pulls, detail)} />
         </span>
       </header>
 
@@ -543,20 +541,17 @@ function columns(): { key: SortKey; label: string; title?: string }[] {
 }
 
 function Scoreboard({ players }: { players: PlayerNight[] }) {
-  const [sort, setSort] = useState<SortKey>('decisiveDeaths');
-  const rows = [...players].sort((a, b) =>
-    sort === 'name' ? a.name.localeCompare(b.name) : sort === 'avgScore' ? a.avgScore - b.avgScore : (b[sort] as number) - (a[sort] as number),
-  );
+  // nome de A a Z; nota, pior primeiro; os outros números, do maior
+  const sort = useSort<SortKey>('decisiveDeaths', (k) => (k === 'name' || k === 'avgScore' ? 1 : -1));
+  const rows = [...players].sort((a, b) => sort.compare(a[sort.key], b[sort.key]));
   return (
     <table className="players scoreboard">
       <thead>
         <tr>
           {columns().map((c) => (
-            <th key={c.key} className={c.key === 'name' ? '' : 'num'} title={c.title}>
-              <button className={`sort ${sort === c.key ? 'active' : ''}`} onClick={() => setSort(c.key)}>
-                {c.label}
-              </button>
-            </th>
+            <SortTh key={c.key} k={c.key} sort={sort} className={c.key === 'name' ? '' : 'num'} title={c.title}>
+              {c.label}
+            </SortTh>
           ))}
         </tr>
       </thead>

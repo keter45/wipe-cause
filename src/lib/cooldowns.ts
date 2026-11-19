@@ -4,6 +4,15 @@
 // cooldowns menores (20-60s: Stormkeeper, Frozen Orb, Colossus Smash) estão em MINOR: não abrem
 // janela de burst, mas o uso deles é comparado com a referência.
 
+import { normName } from './format';
+
+/** IDs que o app inteiro usa (cooldowns, simulação, Warcraft Logs, comparação com o robô). */
+export const POWER_INFUSION = 10060;
+/** Bloodlust e equivalentes (Heroism, Time Warp, Primal Rage, Fury of the Aspects, tambores). */
+export const BLOODLUST_IDS = [2825, 32182, 80353, 264667, 390386, 466904, 444257];
+/** Blood Fury: um ID por tipo de classe (força/agilidade, intelecto, os dois). */
+export const BLOOD_FURY_IDS = [20572, 33702, 33697];
+
 type Role = 'dps' | 'healer';
 interface Cd {
   id: number;
@@ -79,7 +88,7 @@ const CDS: Record<string, Cd[]> = {
   Priest: [
     { id: 228260, name: 'Voidform' },
     { id: 391109, name: 'Dark Ascension' },
-    { id: 10060, name: 'Power Infusion' },
+    { id: POWER_INFUSION, name: 'Power Infusion' },
     { id: 64843, name: 'Divine Hymn', role: 'healer' },
     { id: 200183, name: 'Apotheosis', role: 'healer' },
     { id: 62618, name: 'Power Word: Barrier', role: 'healer' },
@@ -230,7 +239,7 @@ const MINOR: Record<string, (Cd & { cd: number })[]> = {
 
 /** Raciais ofensivas: entram como cooldown de dano de qualquer classe. */
 const RACIALS: Cd[] = [
-  { id: 20572, name: 'Blood Fury' },
+  ...BLOOD_FURY_IDS.map((id) => ({ id, name: 'Blood Fury' })),
   { id: 26297, name: 'Berserking' },
   { id: 265221, name: 'Fireblood' },
   { id: 274738, name: 'Ancestral Call' },
@@ -239,7 +248,7 @@ const RACIALS: Cd[] = [
 /** Poções de combate cujo nome não diz "potion". */
 export const COMBAT_POTION_NAMES = ["Light's Potential", 'Potion of Recklessness', 'Tempered Potion', 'Potion of Unwavering Focus'];
 
-const norm = (s: string) => s.toLocaleLowerCase('en');
+const norm = (s: string) => normName(s);
 
 /** É um cooldown maior de dano (ou de cura, para healer) desta classe? */
 export function isMajorCooldown(cls: string | null | undefined, role: string | null | undefined, spellId: number, name: string): boolean {

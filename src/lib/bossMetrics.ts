@@ -9,6 +9,8 @@ import { bossMetricsMsg } from './bossMetrics.i18n';
 import { mechanicMistakes, mistakes } from './blame';
 import { deathKey, massDeathKeys } from './massDeaths';
 import { groupByBoss } from './night';
+import { mmss } from './format';
+import { KEYS, ls } from './storage';
 
 export interface MetricOption {
   key: string;
@@ -128,7 +130,7 @@ function windowStart(pull: Pull, w: DamageWindow): number | null {
   return mark ? Math.floor(mark.t / 1000) + w.from : null;
 }
 
-const mmssSec = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const mmssSec = (s: number) => mmss(s * 1000);
 
 /** Nome da métrica: "Ula'tek · P2 0:00–0:20" ou "Ula'tek · 1:30–2:00". */
 export function damageWindowName(w: DamageWindow, phases: { key: string; name: string }[]): string {
@@ -463,25 +465,13 @@ export function metricTrend(nights: { label: string; pulls: Pull[] }[], key: str
   };
 }
 
-const KEY = 'wipe-cause:boss-metrics:';
-
 /** Mecânicas escolhidas para o resumo deste boss, na ordem do usuário. */
 export function savedBossMetrics(encounterId: number): string[] {
-  try {
-    const v = JSON.parse(localStorage.getItem(KEY + encounterId) ?? '[]');
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
-  } catch {
-    return [];
-  }
+  const v = ls.getJson<unknown>(KEYS.bossMetrics + encounterId);
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
 }
 
-export function saveBossMetrics(encounterId: number, keys: string[]) {
-  try {
-    localStorage.setItem(KEY + encounterId, JSON.stringify(keys));
-  } catch {
-    /* vale só nesta sessão */
-  }
-}
+export const saveBossMetrics = (encounterId: number, keys: string[]) => ls.setJson(KEYS.bossMetrics + encounterId, keys);
 
 /** As métricas escolhidas de cada boss da noite (boss sem escolha fica de fora). */
 export function nightBossMetrics(pulls: Pull[]): { key: string; encounterId: number; metrics: MetricNight[] }[] {

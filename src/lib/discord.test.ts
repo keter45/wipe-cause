@@ -21,7 +21,7 @@ describe('pullPayload', () => {
 
   it('título com HP, gatilho na descrição e culpados nos campos', () => {
     const e = pullPayload(p, 'xFLWV9Yay2HZwrQk').embeds[0];
-    expect(e.title).toBe('Wipe 1 · Boss Mythic — 50.0%');
+    expect(e.title).toBe('Wipe 1 · Boss · Mythic · boss em 50.0%');
     expect(e.description).toContain('gatilho: Virulent Mutation (detonação)');
     expect(e.url).toContain('/reports/xFLWV9Yay2HZwrQk?boss=1&difficulty=5&wipes=1');
     const mech = e.fields.find((f) => f.name === 'Erros de mecânica')!;
@@ -46,7 +46,7 @@ describe('bossPayload', () => {
       pull(1, 120_000, 60_000, { success: true }),
     ]);
     const e = bossPayload('Boss · Mythic', s).embeds[0];
-    expect(e.title).toBe('Resumo · Boss · Mythic');
+    expect(e.title).toBe('Kill · Boss · Mythic');
     expect(e.description).toBe('2 pulls · 1 wipes · 1 kills · Kill');
     expect(e.fields[0].value).toContain('**Orb roxo** — gatilho em 1 de 1 wipes');
   });

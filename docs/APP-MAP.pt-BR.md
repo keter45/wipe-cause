@@ -3,8 +3,8 @@
 Documentação funcional e técnica das telas, componentes e conexões entre funcionalidades.
 
 **Referência:** navegação na versão `0.37.0` em **21/10/2026**, com as alterações locais da
-árvore de trabalho daquela data; texto conferido contra o código da versão `0.57.0` em
-**13/11/2026**, só pelo código, sem abrir as telas.
+árvore de trabalho daquela data; texto conferido contra o código da versão `0.58.0` em
+**19/11/2026**, só pelo código, sem abrir as telas.
 
 ## Como ler
 
@@ -359,12 +359,12 @@ O insumo é o conjunto de análises salvas, obtido por `historyTrends`; abrir um
 | --- | --- |
 | Seleção por boss/dificuldade, agrupamento da guilda e opção de incluir pug | Seleção de personagem e bosses em que ele participou |
 | Melhor progresso por noite, gatilhos de wipe, evolução das notas e problemas recorrentes | Melhor produção, mediana de rotação, mortes e erros por pull entre noites |
-| Tabela de jogadores ordenável (nota média, mortes por pull; quem jogou menos de 30% das trys recolhido), painel Destaques da prog (Quem menos/mais morre, Quem mais causou wipes e cards de top 3 com barra, de quem jogou ≥30% dos pulls), cards Gravidade das mortes: DPS e Mortes que viraram wipe, e botão Reanalisar as noites deste boss (só desktop); painel Métricas do grupo com a escolha por boss do resumo (total das noites, players somados nas noites com quantas repetiram) | Gráficos e tabela da trajetória individual |
+| Tabela de jogadores ordenável (nota média, mortes por pull; quem jogou menos de 30% das trys recolhido), painel Destaques da prog (Quem menos/mais morre, Quem mais causou wipes e cards de top 3 com barra, de quem jogou ≥30% dos pulls), cards Gravidade das mortes: DPS e Mortes que viraram wipe, botão Reanalisar as noites deste boss (só desktop) e Compartilhar (o cartão da Evolução, resumo ou completo); painel Métricas do grupo com a escolha por boss do resumo (total das noites, players somados nas noites com quantas repetiram) | Gráficos e tabela da trajetória individual |
 | Pode apresentar os parses de kill já salvos | Depende dos campos de análise individual presentes nos relatórios |
 
 A unificação de GUIDs ocorre antes de comparar análises locais e WCL. Sem isso, a mesma pessoa poderia aparecer como identidades separadas. Sem histórico ou sem participação do personagem, há estados vazios. Uma única noite permite leitura parcial, mas não estabelece evolução entre sessões.
 
-Fontes: [TrendsView](../src/components/TrendsView.tsx), [SoloNight](../src/components/SoloNight.tsx), [trends](../src/lib/trends.ts), [guids](../src/lib/guids.ts).
+Fontes: [TrendsView](../src/components/TrendsView.tsx), [TrendsPanels](../src/components/TrendsPanels.tsx), [SoloNight](../src/components/SoloNight.tsx), [trends](../src/lib/trends.ts), [guids](../src/lib/guids.ts).
 
 ### 3.20 Perguntar à IA
 
@@ -378,13 +378,13 @@ Fontes: [AskView](../src/components/AskView.tsx), [aiContext](../src/lib/aiConte
 
 ### 3.21 Compartilhar
 
-`ShareMenu` recebe um componente de cartão e produz a representação adequada ao escopo: pull, boss, noite, Solo ou comparação de desempenho. Permite alternar Resumo/Completo.
+`ShareMenu` recebe os posts do escopo (`sharePosts`: pull, boss, noite, Evolução; Solo e comparação de desempenho montam o seu) e produz a representação adequada. Permite alternar Resumo/Completo. Imagem = o cartão principal; HTML/PDF = todos os cartões; Discord = uma mensagem por cartão (a noite vai com as Métricas do grupo à parte).
 
 As ações incluem copiar imagem, salvar PNG, salvar HTML e PDF quando solicitado pelo chamador ou selecionada a versão completa. O pull pode oferecer WebP animado dos momentos relevantes. Ações de Discord dependem de backend e webhook configurado; o menu também pode oferecer mensagem textual quando o chamador fornece o payload.
 
-**Conexão:** cartões manuais e envio automático usam a mesma família de componentes em `components/share/`, reduzindo divergência entre o que aparece no app e o que chega ao canal. Gerar um clipe de replay é distinto de exportar a gravação do Warcraft Recorder.
+**Conexão:** o Compartilhar e o envio automático do ao vivo usam os mesmos posts de `lib/sharePosts.tsx` (cartão, título, clipe do wipe respeitando a opção de clipe, cartões extras): mudar um muda os dois. O cartão da Evolução usa os mesmos painéis da tela (`TrendsPanels.tsx`). Gerar um clipe de replay é distinto de exportar a gravação do Warcraft Recorder.
 
-Fontes: [ShareMenu](../src/components/share/ShareMenu.tsx), [share](../src/lib/share.ts), [cartão de pull](../src/components/share/PullCard.tsx), [discordLive](../src/lib/discordLive.tsx).
+Fontes: [ShareMenu](../src/components/share/ShareMenu.tsx), [sharePosts](../src/lib/sharePosts.tsx), [share](../src/lib/share.ts), [cartão de pull](../src/components/share/PullCard.tsx), [discordLive](../src/lib/discordLive.tsx).
 
 ### 3.22 Ao vivo, avisos e resumo automático
 
@@ -446,7 +446,7 @@ No navegador de quem abre, o build do app fora do Tauri entra no modo de visuali
 
 **Início ([ViewerHome](../src/components/viewer/ViewerHome.tsx)):** a página inicial do modo de visualização (`page = 'home'`). Faixa com uma barra por try do boss (altura relativa ao melhor try; clicar, ← → e Anterior/Próximo trocam o try), o try visto (resultado e progresso por fase, gatilho, primeira morte decisiva, mortes no tempo em até 3 faixas, erros graves por habilidade com barras) e o boss na noite (`summarizeNight`: melhor, tries, tempo em combate, gatilhos com barras, mortes decisivas por player). Um dono só do try visto (`viewedId`) com "acompanhando": anda sozinho com try novo; voltar a um try antigo para de acompanhar e mostra o botão do try novo. Embaixo, o card do replay do try (`FightReplay`, que só carrega quando o card aparece ou num ▶): os ▶ do gatilho, da primeira morte, de cada erro (`findingMoment`) e de cada CD da note, e as bolinhas das mortes, mandam `seekTo` ({t, n, guid}) para o replay ir 3 s antes, selecionar o player e tocar, sem sair da página. "Análise completa" abre o `PullView`. Dentro do try, em [ViewerPanels](../src/components/viewer/ViewerPanels.tsx): as métricas do grupo salvas para o boss, só daquele try (`savedBossMetrics` + `metricNight` do try: quantas vezes, barra na escala do pior try da noite, quem errou) e os CDs da note (`noteVersions` → `matchLines`, a mesma conferência da aba CDs de cura: na hora / total e, por linha, não usou, antes, depois ou morto). Em até 760 px (`.app.is-viewer`), sem lateral e com o logo levando ao início.
 
-**Discord:** com o link ligado, `discord_post`, `discord_post_image` e `discord_post_files` ([discord.rs](../src-tauri/src/discord.rs)) põem "👁️ Ver ao vivo: <link>" no fim do `content` (o link fixo, senão o do túnel; `<>` evita a prévia; o texto é cortado para caber nos 2000 caracteres).
+**Discord:** com o link ligado, `discord_post` e `discord_post_files` ([discord.rs](../src-tauri/src/discord.rs)) põem "👁️ Ver ao vivo: <link>" no fim do `content` (o link fixo, senão o do túnel; `<>` evita a prévia; o texto é cortado para caber nos 2000 caracteres).
 
 **Escolhas da tela:** o app manda ao servidor do link, a cada 10 s quando mudam, as chaves do localStorage listadas em [sharedPrefs](../src/lib/sharedPrefs.ts) (note de CDs de cura e textos da escala, métricas do grupo por boss, cards recolhidos `summary.*`/`trends.*`, parses do WCL, camadas do replay e CDs escolhidos no desempenho), pelo comando `share_prefs_set`; o servidor guarda só em memória e entrega por `share_prefs_get`. No navegador do visitante, [viewerStorage](../src/lib/viewerStorage.ts) troca o `localStorage` por uma cópia em memória antes de qualquer outro módulo, o [main](../src/main.tsx) espera as escolhas (até 5 s) antes de desenhar, e cada releitura do histórico aplica as novas e redesenha o conteúdo. Nada vai para o localStorage do visitante (no site, o mesmo da versão web). A note fica só para leitura e as métricas sem Adicionar, sugestões, mover e tirar.
 
@@ -545,7 +545,7 @@ O corte por N mortes é aplicado a wipes; kills preservam a luta completa. O rep
 | Corte de mortes e filtro da Nova análise | localStorage | localStorage |
 | Parses do WCL e link do report por log | localStorage | localStorage |
 | Preferências do replay (camadas, chão, áreas, auras na cabeça por boss, nomes, marcas, medidores, faixas por mecânica, quadros recolhidos) | localStorage | localStorage |
-| Eventos baixados do WCL | `wcl-events-v4/<código>/` no diretório de dados do app | IndexedDB, com as respostas que não mudam |
+| Eventos baixados do WCL | `wcl-events-v5/<código>/` no diretório de dados do app | IndexedDB, com as respostas que não mudam |
 | Simulações | Diretório `simc/saved/` | Execução e persistência SimC indisponíveis; só no `npm run dev` fora do Tauri, a ponte `/__simc` guarda em localStorage |
 | Conversas com IA | Memória da sessão por pull | Memória da sessão por pull |
 | Arquivo aberto para reanálise/replay | Caminho do arquivo original | Objeto `File` mantido em memória enquanto a página permanece aberta |
@@ -588,7 +588,7 @@ A análise de um arquivo local usa o núcleo local. Integrações opcionais acre
 | Configuração de boss | [encounters](../encounters), [rules.rs](../crates/wipe-core/src/rules.rs), [RuleTuning](../src/components/RuleTuning.tsx) |
 | Rotação e dados de jogo | [rotations](../rotations), [rotation.rs](../crates/wipe-core/src/rotation.rs), [data](../data), [rotation.mjs](../scripts/rotation.mjs), [refresh.mjs](../scripts/refresh.mjs) |
 | Exportação e ao vivo | [share](../src/lib/share.ts), [replayClip](../src/lib/replayClip.tsx), [live](../src/lib/live.ts), [discordLive](../src/lib/discordLive.tsx) |
-| Link de visualização | [share.rs](../src-tauri/src/share.rs), [share_gist.rs](../src-tauri/src/share_gist.rs), [viewer](../src/lib/viewer.ts), [backend](../src/lib/backend.ts), [ShareForm](../src/components/settings/ShareForm.tsx) |
+| Link de visualização | [share.rs](../src-tauri/src/share.rs), [share_gist.rs](../src-tauri/src/share_gist.rs), [viewer](../src/lib/viewer.ts), [backend](../src/lib/backend.ts), [sharedPrefs](../src/lib/sharedPrefs.ts), [viewerStorage](../src/lib/viewerStorage.ts), [storage](../src/lib/storage.ts), [ViewerHome](../src/components/viewer/ViewerHome.tsx), [ViewerPanels](../src/components/viewer/ViewerPanels.tsx), [ShareForm](../src/components/settings/ShareForm.tsx) |
 | Idiomas | [i18n](../src/i18n/index.ts), dicionários `*.i18n.*` junto dos componentes/módulos, [core/i18n.rs](../crates/wipe-core/src/i18n.rs) |
 
 Os scripts npm, os subcomandos do `wipe-cli`, o `simulate-live.mjs` e as conferências por boss (`replay:check`, `sim:check`) estão descritos em [Desenvolvimento](CONTRIBUTING.pt-BR.md#desenvolvimento) e [Processos padrão](CONTRIBUTING.pt-BR.md#processos-padrão), no guia de contribuição; as peças comuns desses scripts ficam em [scripts/lib/checks.mjs](../scripts/lib/checks.mjs).
@@ -626,7 +626,7 @@ Esses pontos são registros da inspeção; o item 1 foi corrigido depois, no [PR
 
 ### Conferência contra o código (v0.42.0)
 
-Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026** e da `0.50.0` em **09/11/2026**, da `0.56.0` em **12/11/2026** e da `0.57.0` em **13/11/2026**.
+Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026** e da `0.50.0` em **09/11/2026**, da `0.56.0` em **12/11/2026**, da `0.57.0` em **13/11/2026** e da `0.58.0` em **19/11/2026**.
 
 ### Como reproduzir a navegação local
 
@@ -655,6 +655,6 @@ Na porta do Vite (1420 no `dev`, 1430 no `dev:web`, fixas), os seguintes parâme
 | `/?demoLive=1&report=/samples/n-wcl-sim.json` | Sem backend (pelo `report=`): apresentação visual de ao vivo; não simula o acompanhamento real. No `dev:web`, o `demoLive` só mostra o aviso depois de abrir um relatório |
 | `/?demoUpdate=1` | Apresentação visual de atualização disponível |
 | `/?viewer=1` | Só no `dev`: a interface no modo do link de visualização, lendo de `/api/invoke` da mesma origem |
-| `/?v=dev&tunnel=<endereço>&k=<chave>` | Só no `dev:web`: o link fixo direto num túnel (ou num servidor de teste), sem ler o Gist |
+| `/?v=dev&tunnel=<endereço>&k=<chave>` | Só no servidor de desenvolvimento (pensado para o `dev:web`): o link fixo direto num túnel (ou num servidor de teste), sem ler o Gist |
 
 Os relatórios de `samples/` são dados locais, normalmente fora do Git; um clone novo pode não conter esses arquivos. Nesse caso, os exemplos exigem gerar relatórios com `wipe-cli` ou disponibilizar amostras compatíveis. Para gerar dados, siga o [guia de contribuição](CONTRIBUTING.pt-BR.md); não versione combat logs brutos ou credenciais junto da documentação.

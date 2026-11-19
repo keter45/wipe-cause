@@ -2,6 +2,7 @@
 // (defensivo grande, healthstone e poção). Cálculo puro; o card está em DeathSeverityCard.
 
 import type { Death, Pull } from '../types';
+import { REGULAR_SHARE } from './night';
 
 /** Defensivos grandes (cd >= 60s e reduzem dano de verdade ou são imunidade), por spell id. */
 export const BIG_DEFENSIVES: ReadonlySet<number> = new Set([
@@ -47,7 +48,7 @@ export interface SeverityRules {
 /** Evolução: só quem tem 50+ pulls; fica esmaecido com menos de 15 mortes. */
 export const EVOLUTION_RULES: SeverityRules = { minPulls: 50, minPullsFrac: 0, dimBelow: 15, minDeaths: 0 };
 /** Resumo da noite: 30% dos pulls da noite; só quem morreu ao menos uma vez; esmaecido com menos de 5 mortes. */
-export const NIGHT_RULES: SeverityRules = { minPulls: 0, minPullsFrac: 0.3, dimBelow: 5, minDeaths: 1 };
+export const NIGHT_RULES: SeverityRules = { minPulls: 0, minPullsFrac: REGULAR_SHARE, dimBelow: 5, minDeaths: 1 };
 
 /** 4 = tinha tudo livre; 1 a 3 = parte; 0 = já tinha usado tudo. */
 export type SeverityLevel = 0 | 1 | 2 | 3 | 4;

@@ -216,7 +216,6 @@ pub fn run() {
             discord::discord_get_config,
             discord::discord_set_config,
             discord::discord_post,
-            discord::discord_post_image,
             discord::discord_post_files,
             fetch_image,
             save_file,

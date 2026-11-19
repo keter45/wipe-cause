@@ -13,6 +13,7 @@ import { PlayerName } from '../Names';
 import { SpellIcon, SpellName } from '../SpellIcon';
 import { useMessages } from '../../i18n';
 import { viewerHomeMsg } from './ViewerHome.i18n';
+import { bossMetricsMsg } from '../BossMetrics.i18n';
 
 /** ▶ que leva o replay do card de baixo até o momento. */
 export function PlayAt({ onPlay, stop = false }: { onPlay: () => void; stop?: boolean }) {
@@ -55,6 +56,7 @@ interface TryMetric {
  */
 export function TryMetrics({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
   const t = useMessages(viewerHomeMsg);
+  const bm = useMessages(bossMetricsMsg);
   const encounterId = pull.encounterId;
   const rows = useMemo((): TryMetric[] => {
     if (encounterId == null) return [];
@@ -78,7 +80,8 @@ export function TryMetrics({ pulls, pull }: { pulls: Pull[]; pull: Pull }) {
     });
   }, [pulls, pull, encounterId]);
   if (!rows.length) return null;
-  const fmt = (m: TryMetric, n: number) => (m.dmg ? num(n) : m.yd ? t.yards(Math.round(n)) : `${n}×`);
+  // os mesmos números dos cartões de métrica
+  const fmt = (m: TryMetric, n: number) => (m.dmg ? num(n) : m.yd ? bm.yards(Math.round(n)) : bm.times(n));
   return (
     <div className="vh-mistakes">
       <span className="muted small">{t.metrics}</span>

@@ -1,6 +1,6 @@
 import { defineMessages } from '../i18n';
+import { fraction } from '../lib/format';
 
-const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 export const healerMsg = defineMessages(
   {
@@ -34,13 +34,13 @@ export const healerMsg = defineMessages(
     youWere: (v: string) => `você ${v}`,
     when: 'Quando',
     tip: {
-      cooldown: (name: string, you: number, ref: number) => `${name}: usado em ${pct(you)} das vezes possíveis; a referência usa ${pct(ref)}.`,
+      cooldown: (name: string, you: number, ref: number) => `${name}: usado em ${fraction(you)} das vezes possíveis; a referência usa ${fraction(ref)}.`,
       check: (title: string) => title,
       manaLeft: (you: number, ref: number) => `Terminou o kill com ${you}% de mana; a referência termina com ${ref}%. Mana sobrando é cura que não saiu.`,
       manaOut: 'A mana acabou antes do fim da luta; a referência chega ao fim com mana.',
-      idle: (you: number, ref: number) => `Parado ${pct(you)} do tempo com gente ferida; a referência fica ${pct(ref)}.`,
-      overheal: (name: string, you: number, ref: number) => `${name}: ${pct(you)} de overheal; a referência fica em ${pct(ref)}. É mana gasta em quem já estava cheio.`,
-      ally: (name: string, you: number, ref: number) => `${name} ativo em alguém da raid ${pct(you)} do tempo; a referência mantém ${pct(ref)}.`,
+      idle: (you: number, ref: number) => `Parado ${fraction(you)} do tempo com gente ferida; a referência fica ${fraction(ref)}.`,
+      overheal: (name: string, you: number, ref: number) => `${name}: ${fraction(you)} de overheal; a referência fica em ${fraction(ref)}. É mana gasta em quem já estava cheio.`,
+      ally: (name: string, you: number, ref: number) => `${name} ativo em alguém da raid ${fraction(you)} do tempo; a referência mantém ${fraction(ref)}.`,
     },
     why: {
       cooldown: 'Cooldown parado é cura que a luta não recebe.',
@@ -102,13 +102,13 @@ export const healerMsg = defineMessages(
     youWere: (v: string) => `you ${v}`,
     when: 'When',
     tip: {
-      cooldown: (name: string, you: number, ref: number) => `${name}: used ${pct(you)} of the possible times; the reference uses ${pct(ref)}.`,
+      cooldown: (name: string, you: number, ref: number) => `${name}: used ${fraction(you)} of the possible times; the reference uses ${fraction(ref)}.`,
       check: (title: string) => title,
       manaLeft: (you: number, ref: number) => `Ended the kill with ${you}% mana; the reference ends with ${ref}%. Leftover mana is healing that never went out.`,
       manaOut: 'Mana ran out before the end of the fight; the reference reaches the end with mana.',
-      idle: (you: number, ref: number) => `Idle ${pct(you)} of the time while people were hurt; the reference is at ${pct(ref)}.`,
-      overheal: (name: string, you: number, ref: number) => `${name}: ${pct(you)} overheal; the reference stays at ${pct(ref)}. That is mana spent on people already full.`,
-      ally: (name: string, you: number, ref: number) => `${name} active on someone in the raid ${pct(you)} of the time; the reference keeps it ${pct(ref)}.`,
+      idle: (you: number, ref: number) => `Idle ${fraction(you)} of the time while people were hurt; the reference is at ${fraction(ref)}.`,
+      overheal: (name: string, you: number, ref: number) => `${name}: ${fraction(you)} overheal; the reference stays at ${fraction(ref)}. That is mana spent on people already full.`,
+      ally: (name: string, you: number, ref: number) => `${name} active on someone in the raid ${fraction(you)} of the time; the reference keeps it ${fraction(ref)}.`,
     },
     why: {
       cooldown: 'A cooldown sitting is healing the fight never gets.',

@@ -6,14 +6,13 @@ import {
 } from "../lib/stackOrigins";
 import { PlayerName } from "./Names";
 import { SpellIcon, SpellName } from "./SpellIcon";
-import { intlLocale, useMessages } from "../i18n";
+import { useMessages } from "../i18n";
 import { stackOriginsMsg } from "./StackOrigins.i18n";
 import { Hint } from "./ui/Hint";
 import { CollapseButton, useCollapsed } from "./CollapsiblePanel";
+import { decimals } from '../lib/format';
 
-const int = (n: number) => n.toLocaleString(intlLocale());
-const oneDecimal = (n: number) =>
-  n.toLocaleString(intlLocale(), { maximumFractionDigits: 1 });
+const int = (n: number) => decimals(n, 0);
 
 /** Boss na noite: de onde vieram os stacks do debuff (evitáveis por fonte, inevitáveis, tirados) e cada player. */
 export function NightStackOrigins({ pulls }: { pulls: Pull[] }) {
@@ -122,7 +121,7 @@ function StackOriginsPanel({ n }: { n: StackOriginsNight }) {
                         className={`num ${p.avoidableTotal ? "bad" : "muted"}`}
                         title={
                           p.pulls
-                            ? t.perPull(oneDecimal(p.avoidableTotal / p.pulls))
+                            ? t.perPull(decimals(p.avoidableTotal / p.pulls))
                             : undefined
                         }
                       >

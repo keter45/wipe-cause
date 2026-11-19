@@ -1,4 +1,5 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 export const tuningMsg = defineMessages(
   {
@@ -47,7 +48,7 @@ export const tuningMsg = defineMessages(
     save: 'Salvar e reanalisar',
     turnOff: 'Desligar esta mecânica',
     turnOn: 'Ligar esta mecânica',
-    focus: 'Foco da progressão',
+    focus: G.pt.progressionFocus,
     severity: 'Gravidade',
     backToDefault: 'Voltar ao padrão',
     more: 'Mais opções',
@@ -111,7 +112,7 @@ export const tuningMsg = defineMessages(
     save: 'Save and re-analyze',
     turnOff: 'Turn this mechanic off',
     turnOn: 'Turn this mechanic on',
-    focus: 'Progression focus',
+    focus: G.en.progressionFocus,
     severity: 'Severity',
     backToDefault: 'Back to the default',
     more: 'More options',

@@ -13,13 +13,14 @@
 // intstart…intend; sem o bloco, não há escala (as linhas de CD não viram grupos).
 
 import type { MechanicResult, Pull } from '../types';
-import { shortName } from './format';
+import { shortName, normName } from './format';
 import { parseNote } from './healNote';
+import { KEYS, ls } from './storage';
 
 /** mecânica (key) -> grupos -> players (nome curto, como no raid) em ordem */
 export type Assignments = Map<string, string[][]>;
 
-const norm = (s: string) => s.normalize('NFC').toLocaleLowerCase('pt-BR');
+const norm = (s: string) => normName(s);
 
 /** Tira cores e texturas do MRT (||cffRRGGBB, ||r, ||T...||t) e ícones {rt1}. */
 function clean(line: string): string {
@@ -122,25 +123,12 @@ export function checkAssignments(m: MechanicResult, groups: string[][]): { casts
 // ---------------------------------------------------------------------------
 // Onde fica salvo: a nota colada, por boss + dificuldade (vale para todas as noites)
 
-const KEY = 'wipe-cause:assignments:';
-const keyOf = (p: Pull) => `${KEY}${p.encounterId}:${p.difficultyId}`;
+/** A nota colada de um boss + dificuldade (a mesma que a note de CDs de cura edita, em healNote.ts). */
+export const assignmentsKey = (p: Pick<Pull, 'encounterId' | 'difficultyId'>) => `${KEYS.assignments}${p.encounterId}:${p.difficultyId}`;
 
-export function savedNote(p: Pull): string {
-  try {
-    return localStorage.getItem(keyOf(p)) ?? '';
-  } catch {
-    return '';
-  }
-}
+export const savedNote = (p: Pull): string => ls.get(assignmentsKey(p)) ?? '';
 
-export function saveNote(p: Pull, text: string) {
-  try {
-    if (text.trim()) localStorage.setItem(keyOf(p), text);
-    else localStorage.removeItem(keyOf(p));
-  } catch {
-    /* sem storage */
-  }
-}
+export const saveNote = (p: Pull, text: string) => ls.set(assignmentsKey(p), text.trim() ? text : null);
 
 /** Escala salva deste boss, já lida contra o raid do pull. */
 export const assignmentsFor = (p: Pull): Assignments => parseAssignments(savedNote(p), p);

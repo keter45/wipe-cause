@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { defineMessages } from '../../i18n';
+import { glossary as G } from '../../i18n/glossary';
 
 const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
 
@@ -38,7 +39,7 @@ export const shareMsg = defineMessages(
 
     // comum
     more: (k: number) => `+${k} no relatório completo`,
-    below80: 'Abaixo de 80',
+    belowScore: (n: number) => `Abaixo de ${n}`,
     players: 'Jogadores',
     player: 'Jogador',
     deathsCol: 'Mortes',
@@ -75,7 +76,7 @@ export const shareMsg = defineMessages(
     topCauses: 'Maiores causas',
     triggerIn: (k: number, wipes: number) => `gatilho em ${k} de ${n(wipes, 'wipe', 'wipes')}`,
     noTriggers: 'Sem gatilhos apontados.',
-    nobodyBelow: 'Ninguém: todo mundo com nota média 80 ou mais.',
+    nobodyBelow: (n: number) => `Ninguém: todo mundo com nota média ${n} ou mais.`,
     highlights: 'Destaques',
     phaseAvg: (s: string) => `média ${s}s`,
     phaseNoClean: 'sem tempo limpo',
@@ -92,20 +93,19 @@ export const shareMsg = defineMessages(
     decisive: 'Decisivas',
     mechErrors: 'Erros de mecânica',
     avgOutput: 'DPS / HPS médio',
-    nightTitle: 'Resumo da noite',
+    nightTitle: G.pt.nightSummary,
     nightSub: (when: string, total: string, combat: number, pulls: number) => `${when}${total} de raid · ${combat}% em combate · ${n(pulls, 'pull', 'pulls')}`,
     nightFoot: (gap: string, down: string) => `Nota média 0–100 · entre trys: média ${gap} · pausas ${down}`,
     inCombat: (t: string) => ` · ${t} em combate`,
     bestWipe: (hp: string) => ` · melhor wipe ${hp}`,
     topWipeCauses: 'Maiores causas de wipe',
-    groupMetrics: 'Métricas do grupo',
+    groupMetrics: G.pt.groupMetrics,
     metricsSub: (day: string, pulls: number) => `${day ? `${day} · ` : ''}${n(pulls, 'pull', 'pulls')} · o que o grupo escolheu acompanhar em cada boss`,
+    evolutionTitle: (boss: string) => `Evolução · ${boss}`,
+    evolutionSub: (nights: number, pulls: number, from: string, to: string) => `${n(nights, 'noite', 'noites')} · ${n(pulls, 'pull', 'pulls')}${from && to && from !== to ? ` · ${from} → ${to}` : ''}`,
 
     // solo
     cost: (amount: string, healer: boolean) => `~${amount} de ${healer ? 'cura' : 'dano'}`,
-    costHigh: 'custo alto',
-    costMid: 'custo médio',
-    costLow: 'custo baixo',
     comparedWith: (who: string) => ` · comparado com ${who}`,
     perAliveSecond: (unit: string) => `${unit} por segundo vivo`,
     outputLabel: (healer: boolean) => `${healer ? 'Cura' : 'Dano'} por segundo vivo`,
@@ -162,7 +162,7 @@ export const shareMsg = defineMessages(
     fullTitle: (name: string) => `${name} (full)`,
 
     more: (k: number) => `+${k} in the full report`,
-    below80: 'Below 80',
+    belowScore: (n: number) => `Below ${n}`,
     players: 'Players',
     player: 'Player',
     deathsCol: 'Deaths',
@@ -197,7 +197,7 @@ export const shareMsg = defineMessages(
     topCauses: 'Top causes',
     triggerIn: (k: number, wipes: number) => `trigger in ${k} of ${n(wipes, 'wipe', 'wipes')}`,
     noTriggers: 'No triggers identified.',
-    nobodyBelow: 'Nobody: everyone averaged 80 or more.',
+    nobodyBelow: (n: number) => `Nobody: everyone averaged ${n} or more.`,
     highlights: 'Highlights',
     phaseAvg: (s: string) => `average ${s}s`,
     phaseNoClean: 'no clean time',
@@ -214,19 +214,18 @@ export const shareMsg = defineMessages(
     decisive: 'Decisive',
     mechErrors: 'Mechanic errors',
     avgOutput: 'Average DPS / HPS',
-    nightTitle: 'Night summary',
+    nightTitle: G.en.nightSummary,
     nightSub: (when: string, total: string, combat: number, pulls: number) => `${when}${total} of raid · ${combat}% in combat · ${n(pulls, 'pull', 'pulls')}`,
     nightFoot: (gap: string, down: string) => `Average score 0–100 · between tries: average ${gap} · breaks ${down}`,
     inCombat: (t: string) => ` · ${t} in combat`,
     bestWipe: (hp: string) => ` · best wipe ${hp}`,
     topWipeCauses: 'Top wipe causes',
-    groupMetrics: 'Group metrics',
+    groupMetrics: G.en.groupMetrics,
     metricsSub: (day: string, pulls: number) => `${day ? `${day} · ` : ''}${n(pulls, 'pull', 'pulls')} · what the group chose to track on each boss`,
+    evolutionTitle: (boss: string) => `Progress · ${boss}`,
+    evolutionSub: (nights: number, pulls: number, from: string, to: string) => `${n(nights, 'night', 'nights')} · ${n(pulls, 'pull', 'pulls')}${from && to && from !== to ? ` · ${from} → ${to}` : ''}`,
 
     cost: (amount: string, healer: boolean) => `~${amount} ${healer ? 'healing' : 'damage'}`,
-    costHigh: 'high cost',
-    costMid: 'medium cost',
-    costLow: 'low cost',
     comparedWith: (who: string) => ` · compared with ${who}`,
     perAliveSecond: (unit: string) => `${unit} per second alive`,
     outputLabel: (healer: boolean) => `${healer ? 'Healing' : 'Damage'} per second alive`,

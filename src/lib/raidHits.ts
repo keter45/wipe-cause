@@ -5,7 +5,7 @@
 import type { Pull } from '../types';
 import { anchorTimes } from './benchMetrics';
 import { nearestAnchor, SAME_MOMENT_MS, type Anchors } from './cdAnchors';
-import { quantile } from './quantile';
+import { quantile } from './stats';
 
 /** Golpe: dano inevitável em 5 s acima disso da vida máxima somada da raide sem tanks. */
 export const STRONG_HIT_SHARE = 0.8;

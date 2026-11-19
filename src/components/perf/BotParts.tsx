@@ -5,17 +5,17 @@ import type { BotChoice } from '../../lib/botDecisions';
 import { findingKey } from '../../lib/botDecisions';
 import type { DecisionFinding } from '../../lib/decisions';
 import type { Sample } from '../../lib/performance';
-import { raceName, simFacts, type Fix, type Have, type Potential, type SimFacts } from '../../lib/botView';
-import { mmss, num, uniqueSeconds } from '../../lib/format';
+import { raceName, simFacts, type Fix, type Have, type Potential, type SimFacts, potentialTone } from '../../lib/botView';
+import { mmss, num, uniqueSeconds, percentOf, shortSecs } from '../../lib/format';
 import { useSeek } from '../../lib/wcr';
 import { messagesOf, useMessages } from '../../i18n';
 import { botMsg } from './bot.i18n';
 import { SpellIcon } from '../SpellIcon';
 import { PlayAt } from '../VideoPanel';
 import { Hint } from '../ui/Hint';
+import { BLOODLUST_IDS, POWER_INFUSION } from '../../lib/cooldowns';
 
-const BLOODLUST = 2825;
-const POWER_INFUSION = 10060;
+const BLOODLUST = BLOODLUST_IDS[0];
 const LUST_MS = 40_000;
 const PI_MS = 15_000;
 
@@ -186,7 +186,7 @@ export function PotentialGauge({ p }: { p: Potential }) {
       <span className="muted small">
         {t.label} <Hint>{t.hint}</Hint>
       </span>
-      <strong className={`bot-gauge-value ${p.pct >= 0.97 ? 'good' : p.pct >= 0.85 ? 'warn' : 'bad'}`}>{Math.round(p.pct * 100)}%</strong>
+      <strong className={`bot-gauge-value ${potentialTone(p.pct)}`}>{Math.round(p.pct * 100)}%</strong>
       <div className="bot-gauge-track">
         <span className="bot-gauge-band" style={{ left: x(p.low), width: `calc(${x(p.high)} - ${x(p.low)})` }} />
         <span className="bot-gauge-mean" style={{ left: x(1) }} />
@@ -201,8 +201,6 @@ export function PotentialGauge({ p }: { p: Potential }) {
 
 // ---------------------------------------------------------------- cartões de decisão
 
-const pct = (x: number) => Math.round(x * 100);
-const secs = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
 
 interface CardView {
   spellId: number;
@@ -216,15 +214,15 @@ function cardOf(d: DecisionFinding | BotChoice): CardView {
   const t = messagesOf(botMsg).card;
   switch (d.kind) {
     case 'bot_choice':
-      return { spellId: d.buff, head: t.active(d.buffName), you: t.times(d.spell.name, d.times.length), bot: t.share(d.bot.name, pct(d.botShare)), times: d.times };
+      return { spellId: d.buff, head: t.active(d.buffName), you: t.times(d.spell.name, d.times.length), bot: t.share(d.bot.name, percentOf(d.botShare)), times: d.times };
     case 'proc_lost':
-      return { spellId: d.buff, head: t.lost(d.name), you: t.pctLost(pct(d.you)), bot: t.pctLost(pct(d.tops)), times: d.times };
+      return { spellId: d.buff, head: t.lost(d.name), you: t.pctLost(percentOf(d.you)), bot: t.pctLost(percentOf(d.tops)), times: d.times };
     case 'proc_wait':
       return { spellId: d.buff, head: t.waiting(d.name), you: t.waitCasts(d.you.toFixed(1), d.instead.name), bot: t.waitBot(d.tops.toFixed(1)), times: d.times };
     case 'cd_held':
-      return { spellId: d.spellId, head: t.held(d.name), you: t.secs(secs(d.you)), bot: t.secs(secs(d.tops)), times: d.times };
+      return { spellId: d.spellId, head: t.held(d.name), you: t.secs(shortSecs(d.you)), bot: t.secs(shortSecs(d.tops)), times: d.times };
     case 'cd_align':
-      return { spellId: d.spellId, head: t.align(d.name, d.partnerName), you: t.together(pct(d.you)), bot: t.together(pct(d.tops)), times: d.times };
+      return { spellId: d.spellId, head: t.align(d.name, d.partnerName), you: t.together(percentOf(d.you)), bot: t.together(percentOf(d.tops)), times: d.times };
   }
 }
 

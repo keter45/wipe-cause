@@ -6,7 +6,7 @@ import type { Anchors } from './cdAnchors';
 import type { HealCd } from './healCooldowns';
 import { castIdsOf, healCd, healCooldowns } from './healCooldowns';
 import type { ParsedNote } from './healNote';
-import type { LineCheck, LineState, PullVerdicts, RefsOf, UseOverheal, UseVerdict } from './healNoteCheck';
+import { PLANNED, type LineCheck, type LineState, type PullVerdicts, type RefsOf, type UseOverheal, type UseVerdict } from './healNoteCheck';
 import {
   castTimes,
   momentOf,
@@ -103,7 +103,6 @@ export interface NightGap {
   reached: number;
 }
 
-const PLANNED: LineState[] = ['on_time', 'early', 'late', 'not_used', 'dead'];
 
 /** Usos de CD do pull, pelos casts da tabela; com note, `withNote` troca pelos veredictos da linha. */
 export function uses(pull: Pull, ms: Moment[], hits: Hit[], refsOf: RefsOf, cycleRule = true, cds?: Map<string, number>): CdUse[] {

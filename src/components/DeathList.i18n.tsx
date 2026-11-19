@@ -1,4 +1,5 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 const s = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -16,7 +17,7 @@ export const deathMsg = defineMessages(
     mass: 'wipe geral',
     causeTitle: (pct: number) => `${pct}% do dano recebido nos últimos 15s`,
     cause: 'causa:',
-    unknownKillingBlow: 'golpe final desconhecido',
+    unknownKillingBlow: G.pt.unknownKillingBlow,
     lowHealTitle: 'Cura recebida nos últimos 10s abaixo de 25% do HP máximo',
     lowHeal: 'pouca cura',
     resourcesAria: 'Recursos usados antes de morrer',
@@ -83,7 +84,7 @@ export const deathMsg = defineMessages(
     mass: 'mass wipe',
     causeTitle: (pct: number) => `${pct}% of the damage taken in the last 15s`,
     cause: 'cause:',
-    unknownKillingBlow: 'unknown killing blow',
+    unknownKillingBlow: G.en.unknownKillingBlow,
     lowHealTitle: 'Healing received in the last 10s below 25% of max HP',
     lowHeal: 'low healing',
     resourcesAria: 'Resources used before dying',

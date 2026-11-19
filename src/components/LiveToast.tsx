@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Pull } from '../types';
-import { lowestBossHp } from '../lib/verdict';
 import { mechanicSpellId } from '../lib/spells';
 import { useNote } from '../lib/notes';
 import { readOnly } from '../lib/api';
@@ -9,7 +8,7 @@ import { SpellName } from './SpellIcon';
 import { BossName } from './Names';
 import { useMessages } from '../i18n';
 import { liveToastMsg } from './LiveToast.i18n';
-import { progressLabel } from '../lib/phases';
+import { pullTitle } from '../lib/discord';
 
 /** Tempo na tela: dá para ler entre um pull e outro sem ficar no caminho. */
 const SHOW_MS = 20_000;
@@ -33,13 +32,12 @@ export function LiveToast({ pull: p, discord, onOpen, onClose }: { pull: Pull; d
     return () => window.clearTimeout(id);
   }, [p, holding]);
 
-  const hp = lowestBossHp(p);
   return (
     <div className={`live-toast ${p.success ? 'kill' : 'wipe'}`} role="status">
       <div className="live-toast-row">
         <div className="live-toast-body">
           <strong>
-            <BossName encounterId={p.encounterId} name={p.success ? `Kill! ${p.encounterName}` : `Pull ${p.pullNumber} · ${p.encounterName}${hp != null ? ` — ${progressLabel(p)}` : ''}`} size={18} />
+            <BossName encounterId={p.encounterId} name={pullTitle(p)} size={18} />
           </strong>
           {!p.success && p.trigger && (
             <span className="small">

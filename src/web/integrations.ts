@@ -7,11 +7,13 @@ import type { AiConfig, ChatMessage } from '../lib/ai';
 import { messagesOf } from '../i18n';
 import { webMsg } from './web.i18n';
 import { lsGet, lsSet } from './store';
+import { b64ToBytes } from '../lib/bytes';
 
 const m = () => messagesOf(webMsg);
 
 // ---------------------------------------------------------------- Discord
 
+/** Os mesmos de WEBHOOK_PREFIXES/ALLOWED_MIME em src-tauri/src/discord.rs; os erros também batem com `send_error` de lá. */
 const WEBHOOK_PREFIXES = ['https://discord.com/api/webhooks/', 'https://discordapp.com/api/webhooks/', 'https://ptb.discord.com/api/webhooks/', 'https://canary.discord.com/api/webhooks/'];
 const validWebhook = (url: string) => WEBHOOK_PREFIXES.some((p) => url.startsWith(p));
 const ALLOWED_MIME = ['image/png', 'image/webp'];
@@ -50,7 +52,6 @@ async function send(url: string, init: RequestInit) {
 export const discordPost = (payload: unknown, webhook?: string | null) =>
   send(webhookOf(webhook), { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
-const fromB64 = (b64: string) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
 
 /** Mensagem com anexos (cartão do wipe, clipe WebP). */
 export function discordPostFiles(payload: unknown, files: { name: string; mime: string; dataB64: string }[], webhook?: string | null) {
@@ -58,7 +59,7 @@ export function discordPostFiles(payload: unknown, files: { name: string; mime: 
   if (!files.every((f) => ALLOWED_MIME.includes(f.mime))) throw 'file type not allowed';
   const form = new FormData();
   form.append('payload_json', JSON.stringify(payload));
-  files.forEach((f, i) => form.append(`files[${i}]`, new Blob([fromB64(f.dataB64)], { type: f.mime }), f.name.replace(/[^A-Za-z0-9._-]/g, '')));
+  files.forEach((f, i) => form.append(`files[${i}]`, new Blob([b64ToBytes(f.dataB64)], { type: f.mime }), f.name.replace(/[^A-Za-z0-9._-]/g, '')));
   return send(url, { body: form });
 }
 

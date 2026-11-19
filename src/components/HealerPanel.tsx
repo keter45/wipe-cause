@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import type { PlayerStats, Pull } from '../types';
 import { compareHealer, type Band, type CdMoments, type HealTip } from '../lib/healer';
-import { mmss, uniqueSeconds } from '../lib/format';
+import { mmss, uniqueSeconds, fraction } from '../lib/format';
 import { useSeek } from '../lib/wcr';
 import { tr, useMessages } from '../i18n';
 import { SpellIcon, SpellName } from './SpellIcon';
@@ -10,7 +10,6 @@ import { healerMsg } from './HealerPanel.i18n';
 import { Colored, useMentionsSpell } from './Names';
 import { Hint } from './ui/Hint';
 
-const pct = (x: number) => `${Math.round(x * 100)}%`;
 /** Distância até o cast do boss: "+3 s", "−2 s". */
 const dtLabel = (ms: number) => `${ms < 0 ? '−' : '+'}${Math.round(Math.abs(ms) / 1000)} s`;
 const num = (x: number) => (x >= 1e6 ? `${(x / 1e6).toFixed(2)}M` : x >= 1e3 ? `${Math.round(x / 1e3)}k` : `${Math.round(x)}`);
@@ -50,7 +49,7 @@ export function HealerPanel({ pull, me, part = 'all' }: { pull: Pull; me: Player
         return t.tip.ally(x.name ?? '', x.you, x.ref.median);
     }
   };
-  const fmtOf = (x: HealTip): ((v: number) => string) => (x.kind === 'manaLeft' || x.kind === 'manaOut' ? (v) => `${Math.round(v)}%` : pct);
+  const fmtOf = (x: HealTip): ((v: number) => string) => (x.kind === 'manaLeft' || x.kind === 'manaOut' ? (v) => `${Math.round(v)}%` : fraction);
 
   const showHealing = part !== 'cooldowns';
   const showCooldowns = part !== 'healing';
@@ -94,7 +93,7 @@ export function HealerPanel({ pull, me, part = 'all' }: { pull: Pull; me: Player
         </h5>
       <div className="healer-context">
         <Ctx label={t.hps} you={c.you.hps} band={c.hps} fmt={num} />
-        <Ctx label={t.share} you={c.you.share} band={c.share} fmt={pct} />
+        <Ctx label={t.share} you={c.you.share} band={c.share} fmt={fraction} />
         <Ctx label={t.dtps} you={c.you.dtps} band={c.dtps} fmt={num} />
       </div>
       {raidMore != null && raidMore >= 15 && <p className="small warn">{t.raidTookMore(raidMore)}</p>}
@@ -179,10 +178,10 @@ export function HealerPanel({ pull, me, part = 'all' }: { pull: Pull; me: Player
                   <td>
                     <SpellName spellId={m.spellId} name={m.name} size={16} />
                   </td>
-                  <td className="num tabular">{pct(m.you)}</td>
-                  {refCount > 0 && <td className="num tabular muted">{m.ref != null ? pct(m.ref) : '–'}</td>}
-                  <td className={`num tabular ${m.overRef != null && m.overYou - m.overRef >= 0.1 ? 'warn' : m.overRef != null && m.overRef - m.overYou >= 0.1 ? 'good' : ''}`}>{pct(m.overYou)}</td>
-                  {refCount > 0 && <td className="num tabular muted">{m.overRef != null ? pct(m.overRef) : '–'}</td>}
+                  <td className="num tabular">{fraction(m.you)}</td>
+                  {refCount > 0 && <td className="num tabular muted">{m.ref != null ? fraction(m.ref) : '–'}</td>}
+                  <td className={`num tabular ${m.overRef != null && m.overYou - m.overRef >= 0.1 ? 'warn' : m.overRef != null && m.overRef - m.overYou >= 0.1 ? 'good' : ''}`}>{fraction(m.overYou)}</td>
+                  {refCount > 0 && <td className="num tabular muted">{m.overRef != null ? fraction(m.overRef) : '–'}</td>}
                   <td className={`num tabular ${m.castsYou != null && m.castsRef ? (m.castsYou < m.castsRef * 0.85 ? 'warn' : m.castsYou > m.castsRef * 1.15 ? 'good' : '') : ''}`}>{m.castsYou ?? '–'}</td>
                   {refCount > 0 && <td className="num tabular muted">{m.castsRef != null ? Math.round(m.castsRef) : '–'}</td>}
                 </tr>

@@ -13,8 +13,8 @@ import { useMessages } from '../i18n';
 import { pullListMsg } from './PullList.i18n';
 import { pullColor } from '../lib/pullColors';
 import { bestWipe, progressLabel, reachedPhase } from '../lib/phases';
+import { KEYS, ls } from '../lib/storage';
 
-const DUNGEONS_OPEN_KEY = 'wipe-cause:dungeons-open';
 
 /** `summary`: NIGHT = visão geral da noite; chave de boss = resumo daquele boss; null = um pull. */
 export const NIGHT = 'night';
@@ -48,21 +48,11 @@ export function PullList({ pulls, selected: selectedProp, onSelect: select, summ
   };
   const raid = raidOnly(pulls);
   const dungeons = dungeonsOnly(pulls);
-  const [openDungeons, setOpenDungeons] = useState(() => {
-    try {
-      return localStorage.getItem(DUNGEONS_OPEN_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
+  const [openDungeons, setOpenDungeons] = useState(() => ls.getBool(KEYS.dungeonsOpen, false));
   const toggleDungeons = () => {
     const next = !openDungeons;
     setOpenDungeons(next);
-    try {
-      localStorage.setItem(DUNGEONS_OPEN_KEY, next ? '1' : '0');
-    } catch {
-      /* sem storage */
-    }
+    ls.setBool(KEYS.dungeonsOpen, next);
   };
   const props = { selected, onSelect, summary, onSummary };
   return (

@@ -1,11 +1,12 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 const s = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 export const soloPullMsg = defineMessages(
   {
     errorScope: 'na sua análise',
-    yourCharacter: 'Seu personagem',
+    yourCharacter: G.pt.yourCharacter,
     choose: 'Escolha…',
     recordedLog: ' (gravou o log)',
     whoTitle: 'Quem é você neste pull?',
@@ -64,7 +65,7 @@ export const soloPullMsg = defineMessages(
     noMistakes: 'Nenhum erro seu nas mecânicas cadastradas, e você não morreu.',
     bossNoRules: 'Este boss ainda não tem regras de mecânica cadastradas.',
     deathAt: (t: string) => `Morte em ${t}`,
-    unknownKillingBlow: 'golpe final desconhecido',
+    unknownKillingBlow: G.pt.unknownKillingBlow,
     after: (name: string) => ` · depois de ${name}`,
     availableThen: (list: string) => `Disponível na hora: ${list}. `,
     noDefensive: 'Sem defensivo disponível. ',
@@ -79,7 +80,7 @@ export const soloPullMsg = defineMessages(
   },
   {
     errorScope: 'in your analysis',
-    yourCharacter: 'Your character',
+    yourCharacter: G.en.yourCharacter,
     choose: 'Choose…',
     recordedLog: ' (recorded the log)',
     whoTitle: 'Who are you in this pull?',
@@ -138,7 +139,7 @@ export const soloPullMsg = defineMessages(
     noMistakes: "No mistakes of yours in the mechanics with rules, and you didn't die.",
     bossNoRules: "This boss doesn't have mechanic rules yet.",
     deathAt: (t: string) => `Death at ${t}`,
-    unknownKillingBlow: 'unknown killing blow',
+    unknownKillingBlow: G.en.unknownKillingBlow,
     after: (name: string) => ` · after ${name}`,
     availableThen: (list: string) => `Available at the time: ${list}. `,
     noDefensive: 'No defensive available. ',

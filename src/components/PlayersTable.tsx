@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import type { PlayerStats, Pull } from '../types';
 import { scoreTier, type PlayerScore } from '../lib/score';
-import { classColor, mmss, num, ROLE_LABEL, shortName, damageSource } from '../lib/format';
+import { classColor, mmss, num, ROLE_LABEL, shortName, damageSource, shortDate } from '../lib/format';
 import { SpellIcon, SpellName } from './SpellIcon';
 import { ownPreviousParses, parseColor, type OwnParses, type PlayerParse } from '../lib/wclParses';
 import type { ParseState } from '../lib/useWclParses';
 import { useMessages } from '../i18n';
 import { playersMsg } from './PlayersTable.i18n';
+import { potentialTone } from '../lib/botView';
+import { SortTh, useSort } from './ui/SortTh';
 
 type SortKey = 'name' | 'score' | 'parse' | 'potential' | 'dps' | 'hps' | 'damageTaken' | 'deaths' | 'defensives';
 
@@ -39,15 +41,10 @@ export function PlayersTable({ players, scores, parseState, pull, potentials }: 
   const t = useMessages(playersMsg);
   const columns = COLUMNS.filter((c) => c.key !== 'potential' || (potentials?.size ?? 0) > 0);
   const parses = parseState?.kind === 'ready' ? parseState.parses : undefined;
-  const [sort, setSort] = useState<SortKey>('score');
+  // nota: pior primeiro (quem precisa de atenção); nome de A a Z; os outros números, do maior
+  const sort = useSort<SortKey>('score', (k) => (k === 'score' || k === 'name' ? 1 : -1));
   const [open, setOpen] = useState<string | null>(null);
-  const sorted = [...players].sort((a, b) => {
-    const va = value(a, sort, scores, parses, potentials);
-    const vb = value(b, sort, scores, parses, potentials);
-    // nota: pior primeiro (quem precisa de atenção)
-    if (sort === 'score') return (va as number) - (vb as number);
-    return typeof va === 'string' ? va.localeCompare(vb as string) : (vb as number) - va;
-  });
+  const sorted = [...players].sort((a, b) => sort.compare(value(a, sort.key, scores, parses, potentials), value(b, sort.key, scores, parses, potentials)));
 
   return (
     <>
@@ -56,15 +53,9 @@ export function PlayersTable({ players, scores, parseState, pull, potentials }: 
       <thead>
         <tr>
           {columns.map((c) => (
-            <th key={c.key} className={c.num ? 'num' : ''}>
-              <button
-                className={`sort ${sort === c.key ? 'active' : ''}`}
-                onClick={() => setSort(c.key)}
-                title={c.key === 'parse' ? t.parseTitle : c.key === 'potential' ? t.potentialTitle : undefined}
-              >
-                {t.columns[c.key]}
-              </button>
-            </th>
+            <SortTh key={c.key} k={c.key} sort={sort} className={c.num ? 'num' : ''} title={c.key === 'parse' ? t.parseTitle : c.key === 'potential' ? t.potentialTitle : undefined}>
+              {t.columns[c.key]}
+            </SortTh>
           ))}
           <th className="num">Pot / HS</th>
         </tr>
@@ -101,7 +92,6 @@ function ParseNote({ state }: { state: ParseState }) {
   return null;
 }
 
-const dayMonth = (ms: number) => new Date(ms).toLocaleDateString(undefined, { day: '2-digit', month: '2-digit' });
 
 /** Parse colorido como no site; métrica do papel ao lado (DPS/HPS); no kill, a variação contra o kill anterior dele. */
 function ParseCell({ parse, loading, own }: { parse?: PlayerParse; loading: boolean; own?: OwnParses }) {
@@ -119,7 +109,7 @@ function ParseCell({ parse, loading, own }: { parse?: PlayerParse; loading: bool
   const vs = own?.previous && parse.percent != null ? parse.percent - own.previous.percent : null;
   const title = [
     t.killTitle(metric, String(parse.percent ?? '—'), String(parse.bracketPercent ?? '—'), parse.rank ? t.rank(parse.rank, parse.total ?? 0) : ''),
-    own?.previous ? t.ownTitle(own.previous.percent, dayMonth(own.previous.startMs), own.avg ?? own.previous.percent, own.kills) : own ? t.firstKill : null,
+    own?.previous ? t.ownTitle(own.previous.percent, shortDate(own.previous.startMs), own.avg ?? own.previous.percent, own.kills) : own ? t.firstKill : null,
   ]
     .filter(Boolean)
     .join('\n');
@@ -171,7 +161,7 @@ function PlayerRow({
         </td>
         {potential !== undefined && (
           <td className="num">
-            {potential == null ? <span className="muted">—</span> : <span className={`potential ${potential >= 0.97 ? 'good' : potential >= 0.85 ? 'warn' : 'bad'}`}>{Math.round(potential * 100)}%</span>}
+            {potential == null ? <span className="muted">—</span> : <span className={`potential ${potentialTone(potential)}`}>{Math.round(potential * 100)}%</span>}
           </td>
         )}
         <td className="num">{num(p.dps)}</td>

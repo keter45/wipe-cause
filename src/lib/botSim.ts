@@ -10,6 +10,7 @@ import { buildSimProfile, pickSimPull, type SimAssumption } from './simProfile';
 import { talentTree } from './talents';
 import type { Sample } from './performance';
 import { BUCKET_MS } from './solo';
+import { nightDate, samePullStart } from './samePull';
 
 export const BOT_ITERATIONS = 1000;
 /**
@@ -21,8 +22,6 @@ export const SEQUENCE_SEEDS = 20;
 /** Versão do que salvamos: mudou o formato, a simulação antiga é refeita. */
 const SAVE_VERSION = 2;
 export const BOT_GUID = 'simc-bot';
-/** Pulls que começam a menos disso um do outro são o mesmo pull. */
-const SAME_PULL_MS = 10_000;
 
 /** Ações do SimC que não são casts no log (ataque automático). */
 const NOT_CASTS = new Set(['auto_attack', 'auto_shot', 'melee', 'main_hand', 'off_hand']);
@@ -64,11 +63,8 @@ export interface BotSeq {
   active: number[][];
 }
 
-/** A noite de um pull: a data local, com a madrugada contando para o dia anterior. */
-const nightOf = (startMs: number) => new Date(startMs - 6 * 3600_000).toISOString().slice(0, 10);
-
 /** Uma simulação por player + boss + dificuldade + noite. */
-export const botKey = (ref: Pull, playerName: string) => `${playerName}_${ref.encounterId}_${ref.difficultyId}_${nightOf(ref.startMs)}`;
+export const botKey = (ref: Pull, playerName: string) => `${playerName}_${ref.encounterId}_${ref.difficultyId}_${nightDate(ref.startMs, ref.tzOffsetHours)}`;
 
 export async function loadBotRun(ref: Pull, playerName: string): Promise<BotRun | null> {
   const run = await simcSavedGet<BotRun>(botKey(ref, playerName)).catch(() => null);
@@ -197,7 +193,7 @@ export class NoPullError extends Error {}
 /** O pull simulado e o player nele (o "você" da comparação com o robô). */
 export function botMe(nightPulls: Pull[], run: BotRun, playerName: string): Sample | null {
   // o mesmo pull analisado de outra fonte (log local x Warcraft Logs) começa uns ms diferente
-  const pull = nightPulls.find((p) => p.startMs === run.pullStartMs) ?? nightPulls.find((p) => Math.abs(p.startMs - run.pullStartMs) < SAME_PULL_MS);
+  const pull = nightPulls.find((p) => p.startMs === run.pullStartMs) ?? nightPulls.find((p) => samePullStart(p.startMs, run.pullStartMs));
   const player = pull?.players.find((p) => p.name === playerName);
   return pull && player ? { pull, player } : null;
 }

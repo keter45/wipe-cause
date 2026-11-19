@@ -4,6 +4,9 @@
 import type { WorldMarker, SoakView, AreaView, BossCast, Death, LegacyPairReplay, MechanicResult, OrbTracks, Pickups, PoolView, Pull, PullGround, PullTracks, ReplayRef, UnitAuraView, WaveView } from '../types';
 import { arenaFor, facingToMap, toMap, type ArenaMap } from './arenas';
 
+/** O ▶ e os momentos abrem o replay um pouco antes, para dar contexto (pull e link de visualização). */
+export const REPLAY_LEAD_MS = 3000;
+
 export interface ReplayUnit {
   guid: string;
   name: string;

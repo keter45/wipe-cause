@@ -1,6 +1,7 @@
 import { inDesktop, inViewer, inWeb, invoke, listen } from './backend';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { LogReport, Pull } from '../types';
+import { KEYS, ls } from './storage';
 
 export { inDesktop, inViewer, inWeb };
 /**
@@ -69,21 +70,8 @@ export async function readReportFile(file: File): Promise<LogReport> {
   return JSON.parse(await file.text()) as LogReport;
 }
 
-const LAST_FILE_KEY = 'wipe-cause:last-file';
-export function lastFile(): string | null {
-  try {
-    return localStorage.getItem(LAST_FILE_KEY);
-  } catch {
-    return null;
-  }
-}
-export function rememberFile(path: string) {
-  try {
-    localStorage.setItem(LAST_FILE_KEY, path);
-  } catch {
-    /* sem storage: ok */
-  }
-}
+export const lastFile = (): string | null => ls.get(KEYS.lastFile);
+export const rememberFile = (path: string) => ls.set(KEYS.lastFile, path);
 
 // ---------------------------------------------------------------------------
 // Links externos e link do report do Warcraft Logs
@@ -118,47 +106,24 @@ export function parseWclCode(input: string): string | null {
   return code.length >= 8 ? code : null;
 }
 
-const WCL_LINK_KEY = 'wipe-cause:wcl-report:';
 /** Link do report do WCL lembrado por arquivo de log (análise do WCL: o próprio report). */
 export function savedWclLink(logFile: string): string {
   const code = wclSourceCode(logFile);
   if (code) return `https://www.warcraftlogs.com/reports/${code}`;
-  try {
-    return localStorage.getItem(WCL_LINK_KEY + logFile) ?? '';
-  } catch {
-    return '';
-  }
+  return ls.get(KEYS.wclLink + logFile) ?? '';
 }
-export function saveWclLink(logFile: string, link: string) {
-  try {
-    localStorage.setItem(WCL_LINK_KEY + logFile, link);
-  } catch {
-    /* sem storage */
-  }
-}
+export const saveWclLink = (logFile: string, link: string) => ls.set(KEYS.wclLink + logFile, link);
 
-const WCL_AUTO_KEY = 'wipe-cause:wcl-report-auto:';
 /**
  * Como o link do report chegou: achado sozinho no Warcraft Logs (de quem é e quantos pulls batem),
  * "off" = o usuário tirou o link (não procurar de novo), null = colado à mão ou nenhum.
  */
 export type WclAuto = { owner: string; matched: number } | 'off' | null;
 export function savedWclAuto(logFile: string): WclAuto {
-  try {
-    const v = localStorage.getItem(WCL_AUTO_KEY + logFile);
-    return v == null ? null : v === 'off' ? 'off' : (JSON.parse(v) as WclAuto);
-  } catch {
-    return null;
-  }
+  const key = KEYS.wclAuto + logFile;
+  return ls.get(key) === 'off' ? 'off' : ls.getJson<WclAuto>(key);
 }
-export function saveWclAuto(logFile: string, auto: WclAuto) {
-  try {
-    if (auto == null) localStorage.removeItem(WCL_AUTO_KEY + logFile);
-    else localStorage.setItem(WCL_AUTO_KEY + logFile, auto === 'off' ? 'off' : JSON.stringify(auto));
-  } catch {
-    /* sem storage */
-  }
-}
+export const saveWclAuto = (logFile: string, auto: WclAuto) => ls.set(KEYS.wclAuto + logFile, auto == null ? null : auto === 'off' ? 'off' : JSON.stringify(auto));
 
 // ---------------------------------------------------------------------------
 // Warcraft Recorder (vídeos locais)
@@ -216,11 +181,10 @@ export async function pickFolder(title: string): Promise<string | null> {
 
 /** Versões anteriores guardavam a pasta no localStorage: passa para o settings.json uma vez. */
 export async function migrateWcrDir() {
-  const KEY = 'wipe-cause:wcr-dir';
   try {
-    const old = localStorage.getItem(KEY);
+    const old = ls.get(KEYS.wcrDirOld);
     if (old && !(await wcrGetDir())) await wcrSetDir(old);
-    localStorage.removeItem(KEY);
+    ls.remove(KEYS.wcrDirOld);
   } catch {
     /* sem storage */
   }
@@ -392,21 +356,13 @@ export const simcCancel = () => invoke<void>('simc_cancel');
 /** Simulação salva no computador (no navegador de dev, no localStorage). */
 export async function simcSavedGet<T>(key: string): Promise<T | null> {
   if (devSimc) {
-    try {
-      return JSON.parse(localStorage.getItem(`wipe-cause:sim:${key}`) ?? 'null') as T | null;
-    } catch {
-      return null;
-    }
+    return ls.getJson<T>(KEYS.sim + key);
   }
   return invoke<T | null>('simc_saved_get', { key });
 }
 export async function simcSavedPut(key: string, value: unknown): Promise<void> {
   if (devSimc) {
-    try {
-      localStorage.setItem(`wipe-cause:sim:${key}`, JSON.stringify(value));
-    } catch {
-      /* sem storage */
-    }
+    ls.setJson(KEYS.sim + key, value);
     return;
   }
   return invoke<void>('simc_saved_put', { key, value });

@@ -25,6 +25,7 @@ import { canLoadFull } from '../../lib/fullReplay';
 import { useMessages } from '../../i18n';
 import { viewerHomeMsg } from './ViewerHome.i18n';
 import { NoteCds, PlayAt, TryMetrics } from './ViewerPanels';
+import { REPLAY_LEAD_MS } from '../../lib/replay';
 
 interface Props {
   pulls: Pull[];
@@ -151,8 +152,6 @@ export function ViewerHome({ pulls: all, live, onOpenPull }: Props) {
   );
 }
 
-/** O ▶ abre o replay um pouco antes do momento, para dar contexto. */
-const REPLAY_LEAD_MS = 3000;
 
 /**
  * O replay completo do try visto, num card embaixo. Só carrega (relê o pull no PC de quem

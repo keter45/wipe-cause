@@ -6,6 +6,7 @@
 // O que o núcleo (Rust) grava na análise vem com as duas línguas ({ pt, en }); `tr()` escolhe.
 
 import { useSyncExternalStore } from 'react';
+import { KEYS, ls } from '../lib/storage';
 
 export type Locale = 'pt' | 'en';
 
@@ -33,16 +34,15 @@ export const defineMessages = <T,>(pt: T, en: Shape<T>): Messages<T> => ({ pt, e
 
 // ---------------------------------------------------------------- idioma atual
 
-const KEY = 'wipe-cause:locale';
+
+/** Idioma escolhido em Configurações; null = seguir o sistema. */
+function savedLocale(): Locale | null {
+  const saved = ls.get(KEYS.locale);
+  return saved === 'pt' || saved === 'en' ? saved : null;
+}
 
 function initial(): Locale {
-  try {
-    const saved = localStorage.getItem(KEY);
-    if (saved === 'pt' || saved === 'en') return saved;
-  } catch {
-    /* sem storage */
-  }
-  return systemLocale();
+  return savedLocale() ?? systemLocale();
 }
 
 /** Idioma do sistema: português se o computador estiver em português; senão inglês (o padrão). */
@@ -55,13 +55,7 @@ export function systemLocale(): Locale {
 export type LocaleChoice = Locale | 'system';
 
 function initialChoice(): LocaleChoice {
-  try {
-    const saved = localStorage.getItem(KEY);
-    if (saved === 'pt' || saved === 'en') return saved;
-  } catch {
-    /* sem storage */
-  }
-  return 'system';
+  return savedLocale() ?? 'system';
 }
 
 let locale: Locale = initial();
@@ -79,12 +73,7 @@ export function setLocale(l: LocaleChoice) {
   if (l === choice) return;
   choice = l;
   locale = l === 'system' ? systemLocale() : l;
-  try {
-    if (l === 'system') localStorage.removeItem(KEY);
-    else localStorage.setItem(KEY, l);
-  } catch {
-    /* vale só nesta sessão */
-  }
+  ls.set(KEYS.locale, l === 'system' ? null : l);
   listeners.forEach((f) => f());
 }
 

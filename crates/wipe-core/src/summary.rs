@@ -27,7 +27,9 @@ pub fn title_of(report: &LogReport) -> String {
     ranked.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
     let others = ranked.len().saturating_sub(1);
     let main = &ranked[0].0;
-    format!("{d:0>2}/{m:0>2} · {main}{}", if others > 0 { format!(" +{others}") } else { String::new() })
+    // dia/mês (em inglês, mês/dia), como `dayMonth` do app (src/lib/format.ts)
+    let day = pick(format!("{d:0>2}/{m:0>2}"), format!("{m:0>2}/{d:0>2}"));
+    format!("{day} · {main}{}", if others > 0 { format!(" +{others}") } else { String::new() })
 }
 
 /// Encontro do título: o boss de raid com mais pulls (masmorra só se não houver raid).

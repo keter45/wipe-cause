@@ -2503,10 +2503,7 @@ fn assign_culprits(m: &Mechanic, st: &mut MechState, log: &AssignLog, ranges: &H
 
 fn gaze_culprits(m: &Mechanic, st: &mut MechState, log: &GazeLog) {
     let Some(cfg) = &m.detect.gaze else { return };
-    let short = |g: &str| {
-        let n = log.name(g);
-        n.split('-').next().unwrap_or(n).to_string()
-    };
+    let short = |g: &str| short_name(log.name(g)).to_string();
     for ft in st.fail_times.clone() {
         let victims = crate::gaze::judge(cfg, log, ft);
         if victims.is_empty() {
@@ -2614,7 +2611,7 @@ fn orb_culprits(m: &Mechanic, st: &mut MechState, log: &OrbLog) {
             continue;
         };
         let name = log.name(&c.guid).to_string();
-        let short = name.split('-').next().unwrap_or(&name).to_string();
+        let short = short_name(&name).to_string();
         let (moved, ground) = (&cfg.kinds[c.moved].name, &cfg.kinds[c.ground].name);
         let (mp, me, gp, ge) = (&moved.pt, &moved.en, &ground.pt, &ground.en);
         let d = c.dist_yd.round() as i64;
@@ -2689,7 +2686,7 @@ fn mechanic_replays(m: &Mechanic, st: &MechState, players: &[MechanicPlayer]) ->
 fn pair_culprits(m: &Mechanic, st: &mut MechState, log: &PairLog) {
     let Some(cfg) = &m.detect.pairing else { return };
     let faults = crate::pairing::faults(cfg, log);
-    let short = |n: &str| n.split('-').next().unwrap_or(n).to_string();
+    let short = |n: &str| short_name(n).to_string();
     for f in &faults {
         let names: Vec<String> = f.members.iter().map(|x| short(&x.name)).collect();
         let parts: Vec<String> = f.members.iter().map(|x| x.before.map_or("?".into(), |b| b.to_string())).collect();
@@ -2760,8 +2757,13 @@ fn push_event(st: &mut MechState, t: i64, player: Option<&str>, detail: Text) {
     }
 }
 
+/// "Fulano-Azralon" -> "Fulano" (como `shortName` do app, em src/lib/format.ts).
+pub fn short_name(name: &str) -> &str {
+    name.split('-').next().unwrap_or(name)
+}
+
 fn render(template: &Text, player: &str, count: u32, lethal: Option<u32>) -> Text {
-    let short = player.split('-').next().unwrap_or(player);
+    let short = short_name(player);
     template.map(|t| {
         t.replace("{player}", short)
             .replace("{count}", &count.to_string())

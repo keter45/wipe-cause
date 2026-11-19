@@ -1,6 +1,6 @@
 import type { Pull } from '../types';
 import { raidOnly } from './content';
-import { intlLocale, messagesOf } from '../i18n';
+import { getLocale, intlLocale, messagesOf } from '../i18n';
 import { formatMsg } from './format.i18n';
 
 export function mmss(ms: number): string {
@@ -37,9 +37,34 @@ export function damageSource(source: string): string {
   return source;
 }
 
+/** Porcentagem de um valor já em 0-100: "42.0%" ("—" sem valor). Para fração (0-1), `fraction`. */
 export function pct(n: number | null | undefined, digits = 1): string {
   return n == null ? '—' : `${n.toFixed(digits)}%`;
 }
+
+/** Fração (0-1) em porcentagem inteira: 0.423 -> 42. */
+export const percentOf = (x: number) => Math.round(x * 100);
+
+/** Fração (0-1) em texto: 0.423 -> "42%". */
+export const fraction = (x: number) => `${percentOf(x)}%`;
+
+/** Número no idioma do app com até `max` casas (e no mínimo `min`): 1234.5 -> "1.234,5". */
+export const decimals = (n: number, max = 1, min = 0) => n.toLocaleString(intlLocale(), { minimumFractionDigits: min, maximumFractionDigits: max });
+
+/** Segundos curtos: "3.2s" abaixo de 10s, "42s" acima. */
+export const shortSecs = (ms: number) => `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}s`;
+
+/** Segundos inteiros: "42s". */
+export const wholeSecs = (ms: number) => `${Math.round(ms / 1000)}s`;
+
+/** Data curta no idioma do app: "28/09" (em inglês, "09/28"). */
+export const shortDate = (ms: number) => new Date(ms).toLocaleDateString(intlLocale(), { day: '2-digit', month: '2-digit' });
+
+/** Data e hora curtas no idioma do app. */
+export const shortDateTime = (iso: string | number) => new Date(iso).toLocaleString(intlLocale(), { dateStyle: 'short', timeStyle: 'short' });
+
+/** Nome (de player ou habilidade) para comparar: sem diferença de maiúsculas nem de acento composto. */
+export const normName = (s: string) => s.normalize('NFC').toLocaleLowerCase('en');
 
 /** "Fulano-Azralon" -> "Fulano" */
 export function shortName(name: string): string {
@@ -68,32 +93,40 @@ export function classColor(cls: string | null | undefined): string {
 
 export const ROLE_LABEL: Record<string, string> = { tank: 'Tank', healer: 'Healer', dps: 'DPS' };
 
-/** Encontro do título (boss de raid com mais pulls), para o ícone. */
-export function mainEncounterId(all: Pull[]): number | null {
-  const raid = raidOnly(all);
-  const pulls = raid.length ? raid : all;
-  const count = new Map<number, number>();
-  for (const p of pulls) count.set(p.encounterId, (count.get(p.encounterId) ?? 0) + 1);
-  return [...count.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+/** "9/28/2026 22:48:18.335-3" (formato do log) -> "28/09" (em inglês, "09/28"). O mesmo de `title_of` no núcleo. */
+export function dayMonth(p: Pick<Pull, 'startLocal'>): string {
+  const [m = '?', d = '?'] = (p.startLocal.split(' ')[0] ?? '').split('/');
+  const md = [m.padStart(2, '0'), d.padStart(2, '0')];
+  return (getLocale() === 'en' ? md : md.reverse()).join('/');
 }
+
+/** Hora local do início do pull: "22:48". */
+export const clockOf = (p: Pick<Pull, 'startLocal'>) => p.startLocal.split(' ')[1]?.slice(0, 5) ?? '';
+
+/** Hora local de um instante (epoch ms) no fuso do log: "23:31". */
+export const clockAt = (ms: number, tzOffsetHours: number | null | undefined) => new Date(ms + (tzOffsetHours ?? 0) * 3_600_000).toISOString().slice(11, 16);
+
+/**
+ * O mais frequente (o boss do título): raid antes de masmorra; empate pelo menor `key`, como
+ * `title_of`/`main_encounter` no núcleo (crates/wipe-core/src/summary.rs).
+ */
+function mostPulled<K extends string | number>(all: Pull[], key: (p: Pull) => K): { main: K; distinct: number } | null {
+  const raid = raidOnly(all);
+  const count = new Map<K, number>();
+  for (const p of raid.length ? raid : all) count.set(key(p), (count.get(key(p)) ?? 0) + 1);
+  const ranked = [...count.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return ranked.length ? { main: ranked[0][0], distinct: ranked.length } : null;
+}
+
+/** Encontro do título (boss de raid com mais pulls), para o ícone. */
+export const mainEncounterId = (all: Pull[]): number | null => mostPulled(all, (p) => p.encounterId)?.main ?? null;
 
 /** "24/09 · The Twin Fangs Mythic": data do 1º pull + boss com mais pulls. */
 export function logTitle(all: Pull[]): string {
-  if (!all.length) return messagesOf(formatMsg).noPulls;
-  const [date] = all[0].startLocal.split(' ');
-  const [m, d] = date.split('/');
-  const raid = raidOnly(all);
-  const pulls = raid.length ? raid : all;
-  const count = new Map<string, number>();
-  for (const p of pulls) {
-    const k = `${p.encounterName} ${p.difficultyName}`;
-    count.set(k, (count.get(k) ?? 0) + 1);
-  }
-  const main = [...count.entries()].sort((a, b) => b[1] - a[1])[0][0];
-  const others = count.size - 1;
-  return `${d.padStart(2, '0')}/${m.padStart(2, '0')} · ${main}${others > 0 ? ` +${others}` : ''}`;
+  const top = mostPulled(all, (p) => `${p.encounterName} ${p.difficultyName}`);
+  if (!top) return messagesOf(formatMsg).noPulls;
+  return `${dayMonth(all[0])} · ${top.main}${top.distinct > 1 ? ` +${top.distinct - 1}` : ''}`;
 }
-
 
 /** Momentos em ordem, um por segundo (vários no mesmo segundo viram um ▶ só). */
 export const uniqueSeconds = (times: number[]) => {

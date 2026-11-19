@@ -7,6 +7,8 @@ import { WCL_SOURCE } from './api';
 import type { Pull } from '../types';
 import { WCL_DIFFICULTY } from './wcl';
 import type { WclGuild, WclUser } from './wclApi';
+import { samePullStart } from './samePull';
+import { KEYS, ls } from './storage';
 
 export interface GuildFight {
   id: number;
@@ -53,8 +55,6 @@ export interface GuildNight {
 const MYTHIC_PLUS = 10;
 /** Reports que se sobrepõem (com folga) são da mesma noite. */
 const NIGHT_GAP_MS = 45 * 60_000;
-/** Mesmo pull em dois reports: começam com poucos segundos de diferença. */
-const SAME_PULL_MS = 20_000;
 /** Report com evento há menos que isso = raid acontecendo agora. */
 export const LIVE_MS = 15 * 60_000;
 
@@ -64,7 +64,7 @@ export function uniquePulls(reports: GuildReport[]): { encounterId: number; name
   for (const r of reports) {
     for (const f of r.fights) {
       const start = r.startTime + f.startTime;
-      if (out.some((p) => p.encounterId === f.encounterID && p.difficulty === f.difficulty && Math.abs(p.start - start) < SAME_PULL_MS)) continue;
+      if (out.some((p) => p.encounterId === f.encounterID && p.difficulty === f.difficulty && samePullStart(p.start, start))) continue;
       out.push({ encounterId: f.encounterID, name: f.name, difficulty: f.difficulty, kill: f.kill, start, durationMs: f.endTime - f.startTime });
     }
   }
@@ -119,22 +119,9 @@ export async function fetchGuildReports(guild: WclGuild, days = 30): Promise<Gui
   return (d?.reportData?.reports?.data ?? []).map(toReport);
 }
 
-const GUILD_KEY = 'wipe-cause:wcl-guild';
 /** Guilda escolhida (quem está em mais de uma). */
-export function savedGuildId(): number | null {
-  try {
-    return Number(localStorage.getItem(GUILD_KEY)) || null;
-  } catch {
-    return null;
-  }
-}
-export function saveGuildId(id: number) {
-  try {
-    localStorage.setItem(GUILD_KEY, String(id));
-  } catch {
-    /* sem storage */
-  }
-}
+export const savedGuildId = (): number | null => Number(ls.get(KEYS.wclGuild)) || null;
+export const saveGuildId = (id: number) => ls.set(KEYS.wclGuild, String(id));
 
 // ---------------------------------------------------------------- o report de uma noite do log local
 

@@ -1,4 +1,5 @@
 import { defineMessages } from '../i18n';
+import { glossary as G } from '../i18n/glossary';
 
 const s = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -34,7 +35,7 @@ export const sidebarMsg = defineMessages(
     missingTitle: 'Falta configurar a pasta de logs do WoW',
     missing: 'falta configurar',
     checking: 'Procurando atualizações…',
-    latest: 'Você está na versão mais recente',
+    latest: G.pt.latestVersion,
     available: (v: string) => `Versão ${v} disponível`,
     downloading: 'Baixando atualização…',
     check: 'Procurar atualizações',
@@ -73,7 +74,7 @@ export const sidebarMsg = defineMessages(
     missingTitle: 'The WoW logs folder is not set up',
     missing: 'set up needed',
     checking: 'Checking for updates…',
-    latest: 'You are on the latest version',
+    latest: G.en.latestVersion,
     available: (v: string) => `Version ${v} available`,
     downloading: 'Downloading update…',
     check: 'Check for updates',

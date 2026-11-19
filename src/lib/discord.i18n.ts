@@ -25,6 +25,8 @@ export const discordMsg = defineMessages(
     wipeTitle: (n: number, boss: string, hp: string) => `Wipe ${n} · ${boss} · boss em ${hp}`,
     nightTitle: (day: string) => `Resumo da noite · ${day}`,
     metricsTitle: (day: string) => `Métricas do grupo · ${day}`,
+    killTitle: (boss: string) => `Kill · ${boss}`,
+    evolutionTitle: (boss: string) => `Evolução · ${boss}`,
   },
   {
     more: (n: number) => `+${n} more`,
@@ -48,5 +50,7 @@ export const discordMsg = defineMessages(
     wipeTitle: (n: number, boss: string, hp: string) => `Wipe ${n} · ${boss} · boss at ${hp}`,
     nightTitle: (day: string) => `Night summary · ${day}`,
     metricsTitle: (day: string) => `Group metrics · ${day}`,
+    killTitle: (boss: string) => `Kill · ${boss}`,
+    evolutionTitle: (boss: string) => `Progress · ${boss}`,
   },
 );

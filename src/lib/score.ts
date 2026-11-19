@@ -14,6 +14,7 @@ import { getMarks } from './marks';
 import { messagesOf } from '../i18n';
 import { scoreMsg } from './score.i18n';
 import { killParseOf } from './wclParses';
+import { parseBand } from './parseBands';
 
 /** Desconto por erro, pela gravidade da regra. */
 const PENALTY: Record<string, number> = { wipe: 25, major: 12, minor: 4, none: 0 };
@@ -111,15 +112,13 @@ export function scorePull(p: Pull, assignments: Assignments = assignmentsFor(p))
   return out;
 }
 
-/** Faixa da nota (cor): boa, média ou ruim. */
-export const scoreTone = (s: number) => (s >= 80 ? 'good' : s >= 50 ? 'mid' : 'bad');
+/** Nota abaixo disto é "precisa de atenção" (cartões, tom das notas no app). */
+export const ATTENTION_SCORE = 80;
 
-/**
- * Faixa da nota nas cores dos parses do Warcraft Logs (pela nota mostrada, já arredondada):
- * cinza < 25, verde < 50, azul < 75, roxo < 95, laranja 95–98, rosa 99, dourado 100.
- */
-export function scoreTier(s: number): string {
-  const n = Math.round(s);
-  const tier = n >= 100 ? 'gold' : n >= 99 ? 'pink' : n >= 95 ? 'orange' : n >= 75 ? 'purple' : n >= 50 ? 'blue' : n >= 25 ? 'green' : 'gray';
-  return `q-${tier}`;
-}
+/** Faixa da nota (cor): boa, média ou ruim. */
+export const scoreTone = (s: number) => (s >= ATTENTION_SCORE ? 'good' : s >= 50 ? 'mid' : 'bad');
+
+export { PARSE_BANDS, parseBand } from './parseBands';
+
+/** Classe da faixa da nota (`q-gold`...). */
+export const scoreTier = (s: number): string => `q-${parseBand(s).tier}`;

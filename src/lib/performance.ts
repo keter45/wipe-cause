@@ -42,7 +42,10 @@ export function castsOf(p: PlayerStats): SpellCasts[] {
 }
 const minutes = (ms: number) => ms / 60_000;
 
-export const isHealer = (p: PlayerStats) => p.role === 'healer';
+export const isHealer = (p: Pick<PlayerStats, 'role'>) => p.role === 'healer';
+
+/** O que o player produz: HPS para healer, DPS para os outros (como o Warcraft Logs ranqueia). */
+export const outputUnit = (p: Pick<PlayerStats, 'role'> | null | undefined) => (p && isHealer(p) ? 'HPS' : 'DPS');
 
 /** Dano (ou cura, para healer) por segundo vivo. */
 export function outputPerSec(s: Sample): number {

@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { Pull } from '../types';
 import { noteKey } from './notes';
+import { KEYS, ls } from './storage';
 
 export interface ManualMark {
   id: string;
@@ -20,25 +21,14 @@ export interface ManualMark {
 
 type PullRef = Pick<Pull, 'encounterId' | 'startMs'>;
 
-const KEY = 'wipe-cause:marks:';
 const listeners = new Set<() => void>();
 
 export function getMarks(p: PullRef): ManualMark[] {
-  try {
-    const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(KEY + noteKey(p));
-    return raw ? (JSON.parse(raw) as ManualMark[]) : [];
-  } catch {
-    return [];
-  }
+  return ls.getJson<ManualMark[]>(KEYS.marks + noteKey(p)) ?? [];
 }
 
 function save(p: PullRef, marks: ManualMark[]) {
-  try {
-    if (marks.length) localStorage.setItem(KEY + noteKey(p), JSON.stringify(marks));
-    else localStorage.removeItem(KEY + noteKey(p));
-  } catch {
-    /* sem storage: vale só nesta sessão */
-  }
+  ls.setJson(KEYS.marks + noteKey(p), marks.length ? marks : null);
   listeners.forEach((f) => f());
 }
 

@@ -26,11 +26,12 @@ pub struct DiscordConfig {
     pub clip: bool,
 }
 
+/// Começos aceitos de webhook (os mesmos de WEBHOOK_PREFIXES em src/web/integrations.ts).
+const WEBHOOK_PREFIXES: [&str; 4] = ["https://discord.com/api/webhooks/", "https://discordapp.com/api/webhooks/", "https://ptb.discord.com/api/webhooks/", "https://canary.discord.com/api/webhooks/"];
+
 /// Aceita só webhooks do Discord (a URL vai direto para uma requisição HTTP).
 pub fn valid_webhook(url: &str) -> bool {
-    ["https://discord.com/api/webhooks/", "https://discordapp.com/api/webhooks/", "https://ptb.discord.com/api/webhooks/", "https://canary.discord.com/api/webhooks/"]
-        .iter()
-        .any(|p| url.starts_with(p))
+    WEBHOOK_PREFIXES.iter().any(|p| url.starts_with(p))
 }
 
 #[tauri::command]
@@ -57,47 +58,42 @@ pub fn discord_set_config(app: AppHandle, config: DiscordConfig) -> Result<(), S
     })
 }
 
-/// Envia a mensagem (JSON do webhook: content/embeds). `webhook` = outro destino (ex.: testar
-/// antes de salvar); sem ele, usa o salvo.
+/// O webhook do envio: `webhook` = outro destino (ex.: testar antes de salvar); sem ele, o salvo.
+fn resolve_webhook(app: &AppHandle, webhook: Option<String>) -> Result<String, String> {
+    let url = webhook
+        .or_else(|| settings::load(app).discord_webhook)
+        .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
+    if !valid_webhook(&url) {
+        return Err(pick("Webhook do Discord inválido.", "Invalid Discord webhook."));
+    }
+    Ok(url)
+}
+
+/// O mesmo texto de erro para mensagem e arquivos (e o mesmo do site, em src/web/integrations.ts).
+fn send_error(e: ureq::Error) -> String {
+    match e {
+        ureq::Error::Status(404, _) => pick("O Discord não achou esse webhook (foi apagado?).", "Discord couldn't find that webhook (was it deleted?)."),
+        ureq::Error::Status(429, _) => pick("O Discord limitou os envios; tente de novo em alguns segundos.", "Discord is rate limiting; try again in a few seconds."),
+        ureq::Error::Status(413, _) => pick("Imagem grande demais para o Discord.", "Image too large for Discord."),
+        ureq::Error::Status(code, r) => {
+            let body: String = r.into_string().unwrap_or_default().chars().take(300).collect();
+            pick(format!("O Discord recusou a mensagem ({code}): {body}"), format!("Discord rejected the message ({code}): {body}"))
+        }
+        e => pick(format!("Sem conexão com o Discord: {e}"), format!("No connection to Discord: {e}")),
+    }
+}
+
+/// Envia a mensagem (JSON do webhook: content/embeds).
 #[tauri::command]
 pub async fn discord_post(app: AppHandle, mut payload: serde_json::Value, webhook: Option<String>) -> Result<(), String> {
     with_share_link(&mut payload);
-    let url = webhook
-        .or_else(|| settings::load(&app).discord_webhook)
-        .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
-    if !valid_webhook(&url) {
-        return Err(pick("Webhook do Discord inválido.", "Invalid Discord webhook."));
-    }
+    let url = resolve_webhook(&app, webhook)?;
     tauri::async_runtime::spawn_blocking(move || {
         let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(15)).build();
-        match agent.post(&url).send_json(payload) {
-            Ok(_) => Ok(()),
-            Err(ureq::Error::Status(404, _)) => Err(pick("O Discord não achou esse webhook (foi apagado?).", "Discord couldn't find that webhook (was it deleted?).")),
-            Err(ureq::Error::Status(429, _)) => Err(pick("O Discord limitou os envios; tente de novo em alguns segundos.", "Discord is rate limiting; try again in a few seconds.")),
-            Err(ureq::Error::Status(code, r)) => {
-                let body = r.into_string().unwrap_or_default();
-                Err(pick(format!("O Discord recusou a mensagem ({code}): {body}"), format!("Discord rejected the message ({code}): {body}")))
-            }
-            Err(e) => Err(pick(format!("Sem conexão com o Discord: {e}"), format!("No connection to Discord: {e}"))),
-        }
+        agent.post(&url).send_json(payload).map(|_| ()).map_err(send_error)
     })
     .await
     .map_err(|e| e.to_string())?
-}
-
-/// Envia uma imagem (PNG em base64) com a mensagem; o embed pode usar
-/// `attachment://<file_name>` como imagem.
-#[tauri::command]
-pub async fn discord_post_image(app: AppHandle, mut payload: serde_json::Value, file_name: String, data_b64: String, webhook: Option<String>) -> Result<(), String> {
-    with_share_link(&mut payload);
-    let url = webhook
-        .or_else(|| settings::load(&app).discord_webhook)
-        .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
-    if !valid_webhook(&url) {
-        return Err(pick("Webhook do Discord inválido.", "Invalid Discord webhook."));
-    }
-    let png = base64::engine::general_purpose::STANDARD.decode(data_b64).map_err(|e| e.to_string())?;
-    post_multipart(url, &payload, vec![(file_name, "image/png".to_string(), png)]).await
 }
 
 /// Um arquivo para o Discord: nome, tipo (image/png, image/webp) e o conteúdo em base64.
@@ -109,17 +105,12 @@ pub struct DiscordFile {
     pub data_b64: String,
 }
 
-/// Envia a mensagem com vários arquivos (ex.: o cartão do wipe e o clipe do erro); o embed pode usar
+/// Envia a mensagem com arquivos (o cartão e, no wipe, o clipe do erro); o embed pode usar
 /// `attachment://<nome>`.
 #[tauri::command]
 pub async fn discord_post_files(app: AppHandle, mut payload: serde_json::Value, files: Vec<DiscordFile>, webhook: Option<String>) -> Result<(), String> {
     with_share_link(&mut payload);
-    let url = webhook
-        .or_else(|| settings::load(&app).discord_webhook)
-        .ok_or_else(|| pick("Nenhum webhook do Discord configurado.", "No Discord webhook set up."))?;
-    if !valid_webhook(&url) {
-        return Err(pick("Webhook do Discord inválido.", "Invalid Discord webhook."));
-    }
+    let url = resolve_webhook(&app, webhook)?;
     if !files.iter().all(|f| ALLOWED_MIME.contains(&f.mime.as_str())) {
         return Err("file type not allowed".into());
     }
@@ -157,19 +148,14 @@ fn append_link(payload: &mut serde_json::Value, link: &str) {
     obj.insert("content".into(), serde_json::Value::String(content));
 }
 
-/// Tipos de arquivo que vão ao Discord.
+/// Tipos de arquivo que vão ao Discord (os mesmos de ALLOWED_MIME em src/web/integrations.ts).
 const ALLOWED_MIME: [&str; 2] = ["image/png", "image/webp"];
 
 async fn post_multipart(url: String, payload: &serde_json::Value, files: Vec<(String, String, Vec<u8>)>) -> Result<(), String> {
     let (content_type, body) = multipart(&payload.to_string(), &files);
     tauri::async_runtime::spawn_blocking(move || {
         let agent = ureq::AgentBuilder::new().timeout(Duration::from_secs(30)).build();
-        match agent.post(&url).set("Content-Type", &content_type).send_bytes(&body) {
-            Ok(_) => Ok(()),
-            Err(ureq::Error::Status(413, _)) => Err(pick("Imagem grande demais para o Discord.", "Image too large for Discord.")),
-            Err(ureq::Error::Status(code, r)) => Err(format!("O Discord recusou a imagem ({code}): {}", r.into_string().unwrap_or_default())),
-            Err(e) => Err(pick(format!("Sem conexão com o Discord: {e}"), format!("No connection to Discord: {e}"))),
-        }
+        agent.post(&url).set("Content-Type", &content_type).send_bytes(&body).map(|_| ()).map_err(send_error)
     })
     .await
     .map_err(|e| e.to_string())?

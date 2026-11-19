@@ -3,27 +3,14 @@
 
 import { useSyncExternalStore } from 'react';
 import type { PlayerStats, Pull } from '../types';
+import { KEYS, ls } from './storage';
 
 export type AppMode = 'guild' | 'solo';
 
-const MODE_KEY = 'wipe-cause:mode';
-const CHAR_KEY = 'wipe-cause:solo-char';
-
-const read = (k: string) => {
-  try {
-    return localStorage.getItem(k);
-  } catch {
-    return null;
-  }
-};
-const write = (k: string, v: string | null) => {
-  try {
-    if (v == null) localStorage.removeItem(k);
-    else localStorage.setItem(k, v);
-  } catch {
-    /* sem storage: vale só nesta sessão */
-  }
-};
+const MODE_KEY = KEYS.mode;
+const CHAR_KEY = KEYS.soloChar;
+const read = (k: string) => ls.get(k);
+const write = (k: string, v: string | null) => ls.set(k, v);
 
 let mode: AppMode = read(MODE_KEY) === 'solo' ? 'solo' : 'guild';
 let char: string | null = read(CHAR_KEY);

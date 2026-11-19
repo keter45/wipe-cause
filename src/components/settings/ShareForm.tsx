@@ -3,6 +3,7 @@ import { Check, Copy, ExternalLink, RefreshCw } from 'lucide-react';
 import { openExternal, shareGithubGet, shareGithubSet, shareNewLink, shareStart, shareStatus, shareStop, type GithubStatus, type ShareStatus } from '../../lib/api';
 import { useMessages } from '../../i18n';
 import { shareFormMsg } from './ShareForm.i18n';
+import { copyText } from '../../lib/share';
 
 /** Página do GitHub que cria o token já com a permissão `gist` marcada. */
 const NEW_TOKEN = 'https://github.com/settings/tokens/new?scopes=gist&description=Wipe%20Cause';
@@ -123,13 +124,10 @@ function LinkRow({ url }: { url: string }) {
   const t = useMessages(shareFormMsg);
   const [copied, setCopied] = useState(false);
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* sem área de transferência: o campo já fica selecionável */
-    }
+    // sem área de transferência: o campo já fica selecionável
+    if (!(await copyText(url))) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
   }
   return (
     <div className="share-link-row">

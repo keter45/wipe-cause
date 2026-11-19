@@ -59,7 +59,7 @@ guarda o que falta em `PlayerStats` (`setup.items[].bonusIds`, `setup.faction`, 
 - **Consumíveis:** pelas auras do início do pull. Com os nomes (Warcraft Logs), o que o player **não**
   tinha vira `flask=disabled`, `food=disabled`, `augmentation=disabled`; o que tinha fica com o padrão
   da spec no SimC (não mapeamos qual frasco/comida exato). Log local só traz ids: frascos e comidas
-  conhecidos contam; sem como saber, fica o padrão e a tela avisa. Poção e óleo de arma: padrão do
+  conhecidos contam (lista fixa de ids em `FLASK_IDS` e `FOOD_IDS`, em `simProfile.ts`; outros caem no padrão); sem como saber, fica o padrão e a tela avisa. Poção e óleo de arma: padrão do
   SimC.
 - **Buffs de raid:** `optimal_raid=0` e cada `override.*` ligado só se a classe que dá o buff estava
   no pull (Mage → Arcane Intellect, Warrior → Battle Shout, Druid, Priest, Shaman, Evoker, DH → Chaos

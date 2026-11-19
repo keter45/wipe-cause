@@ -5,6 +5,7 @@
 // tipo: o script carrega este arquivo direto no Node (--experimental-strip-types).
 
 import type { BuffTrace, PlayerStats, Pull, RotationResult } from '../types';
+import { nearestRank, mean as statsMean } from './stats';
 
 /** Casts antes disso não contam (pré-pull, abertura). */
 export const START_MS = 2000;
@@ -59,11 +60,7 @@ export function povOf(pull: Pull, p: PlayerStats, r: RotationResult | undefined 
 const activeAt = (b: BuffTrace, t: number, before = 0) => b.spans.some(([a, z]) => t - a >= before && t <= z);
 const uptime = (b: BuffTrace, until: number) => b.spans.reduce((s, [a, z]) => s + Math.min(z, until) - a, 0) / Math.max(1, until - START_MS);
 
-const quant = (xs: number[], q: number): number => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s[Math.min(s.length - 1, Math.floor(q * s.length))];
-};
-const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+const mean = (xs: number[]) => statsMean(xs) ?? NaN;
 
 // ---------------------------------------------------------------- referência (nos tops)
 
@@ -169,7 +166,7 @@ export function discoverCooldowns(povs: Pov[]): Map<number, number | null> {
       }
       last.set(c.id, c.t);
     }
-    for (const [id, g] of mine) if (g.length >= 4) (perPull.get(id) ?? perPull.set(id, []).get(id)!).push(quant(g, 0.1));
+    for (const [id, g] of mine) if (g.length >= 4) (perPull.get(id) ?? perPull.set(id, []).get(id)!).push(nearestRank(g, 0.1));
   }
   const out = new Map<number, number | null>();
   for (const [id, g] of gaps) {
@@ -177,9 +174,9 @@ export function discoverCooldowns(povs: Pov[]): Map<number, number | null> {
     // dois usos seguidos = cargas: dá para ver o alinhamento, não o tempo segurado
     const short = g.filter((x) => x < 2500).length / g.length;
     const pp = perPull.get(id) ?? [];
-    const cd = pp.length >= 8 ? quant(pp, 0.5) : quant(g, 0.05);
+    const cd = pp.length >= 8 ? nearestRank(pp, 0.5) : nearestRank(g, 0.05);
     if (cd >= 4000 && short < 0.05) out.set(id, cd);
-    else if (quant(g, 0.5) >= 4000) out.set(id, null);
+    else if (nearestRank(g, 0.5) >= 4000) out.set(id, null);
   }
   return out;
 }
@@ -237,7 +234,7 @@ function chance(p: Pov, key: string): number {
 const summarizeHeld = (s: CdStat) => {
   if (s.held.length < 3) return null;
   const xs = s.held.map((h) => h.held);
-  return { med: quant(xs, 0.5), onCd: xs.filter((x) => x <= READY_SLACK_MS).length / xs.length, n: xs.length };
+  return { med: nearestRank(xs, 0.5), onCd: xs.filter((x) => x <= READY_SLACK_MS).length / xs.length, n: xs.length };
 };
 
 /** Referência de decisões a partir dos pulls dos tops (mesma spec e árvore; ou só um boss). */
@@ -258,8 +255,8 @@ export function buildDecisionRef(
       name: name(b, profile.names.get(b) ?? `${b}`),
       consumers: [...set],
       consumerNames: [...set].map((c) => name(c, `${c}`)),
-      lost: rates.length >= 8 ? { med: quant(rates, 0.5), p90: quant(rates, 0.9) } : null,
-      wait: waits.length >= 8 ? { med: quant(waits, 0.5), p90: quant(waits, 0.9) } : null,
+      lost: rates.length >= 8 ? { med: nearestRank(rates, 0.5), p90: nearestRank(rates, 0.9) } : null,
+      wait: waits.length >= 8 ? { med: nearestRank(waits, 0.5), p90: nearestRank(waits, 0.9) } : null,
     };
   }
   // cooldowns: segurado e parceiros
@@ -277,14 +274,14 @@ export function buildDecisionRef(
         const agree = shares.filter((s) => s >= 0.5).length / shares.length;
         const base = mean(have.map((x) => chance(x.p, k)));
         const pid = +k.slice(1);
-        if (m >= 0.75 && agree >= 0.8 && m >= 2.5 * base) partners.push({ key: k, name: name(pid, profile.names.get(pid) ?? `${pid}`), share: round(m), p10: round(quant(shares, 0.1)) });
+        if (m >= 0.75 && agree >= 0.8 && m >= 2.5 * base) partners.push({ key: k, name: name(pid, profile.names.get(pid) ?? `${pid}`), share: round(m), p10: round(nearestRank(shares, 0.1)) });
       }
     }
     if (!held.length && !partners.length) continue;
     ref.cds[id] = {
       name: name(id, `${id}`),
       cd,
-      held: held.length >= 8 ? { med: Math.round(quant(held.map((h) => h.med), 0.5)), p90: Math.round(quant(held.map((h) => h.med), 0.9)), onCd: round(quant(held.map((h) => h.onCd), 0.5)) } : null,
+      held: held.length >= 8 ? { med: Math.round(nearestRank(held.map((h) => h.med), 0.5)), p90: Math.round(nearestRank(held.map((h) => h.med), 0.9)), onCd: round(nearestRank(held.map((h) => h.onCd), 0.5)) } : null,
       partners,
     };
   }
@@ -309,7 +306,7 @@ function buffProfile(povs: Pov[]) {
       for (const [a, z] of b.spans) (dur.get(b.id) ?? dur.set(b.id, []).get(b.id)!).push(z - a);
     }
   const short = new Set<number>();
-  for (const [id, m] of max) if (m <= 3 && quant(dur.get(id) ?? [1e9], 0.5) <= 15000) short.add(id);
+  for (const [id, m] of max) if (m <= 3 && nearestRank(dur.get(id) ?? [1e9], 0.5) <= 15000) short.add(id);
   return { short, names };
 }
 

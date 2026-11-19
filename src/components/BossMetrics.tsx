@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, Check, FlaskConical, Plus, Shield, Swords, X } from 'lucide-react';
 import type { Pull } from '../types';
 import { damagePhases, damageTargets, damageWindowKey, metricNight, metricOptions, moveMetric, saveBossMetrics, savedBossMetrics, type MetricItem, type MetricNight, type MetricOption, type MetricPlayer } from '../lib/bossMetrics';
@@ -18,11 +18,8 @@ const TOP = 5;
 /** Sugestões quando ainda não há métrica escolhida. */
 const SUGGEST = 3;
 
-/** Resumo do boss: as mecânicas que o grupo escolheu acompanhar, cada uma somada na noite. */
-export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPull: (id: number) => void }) {
-  const t = useMessages(bossMetricsMsg);
-  const [open, toggle] = useCollapsed('summary.boss-metrics');
-  const encounterId = pulls[0]?.encounterId ?? 0;
+/** A escolha de métricas de um boss (salva por boss; a mesma no resumo do boss e na Evolução). */
+export function useMetricKeys(encounterId: number) {
   const [keys, setKeysState] = useState<string[]>(() => savedBossMetrics(encounterId));
   const [loadedFor, setLoadedFor] = useState(encounterId);
   // outro boss na mesma tela: carrega a escolha dele
@@ -34,9 +31,39 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
     setKeysState(k);
     saveBossMetrics(encounterId, k);
   };
-  const options = useMemo(() => metricOptions(pulls), [pulls]);
-  const metrics = useMemo(() => keys.map((k) => ({ key: k, m: metricNight(pulls, k) })), [pulls, keys]);
   const toggleKey = (k: string) => setKeys(keys.includes(k) ? keys.filter((x) => x !== k) : [...keys, k]);
+  return { keys, setKeys, toggleKey };
+}
+
+/** Botões de um cartão de métrica: subir, descer, tirar. */
+export type MetricEdit = { onRemove: () => void; onMove: (dir: -1 | 1) => void; first: boolean; last: boolean };
+
+/**
+ * O painel de Métricas do grupo: escolher (Adicionar, sugestões), ordenar e tirar; cada métrica
+ * vira um cartão de `card`. O resumo do boss (a noite) e a Evolução (noite a noite) usam este.
+ * No link de visualização (`readOnly`), só as métricas de quem compartilhou, sem editar.
+ */
+export function MetricsPanel<T>({
+  pulls,
+  hint,
+  className = '',
+  collapseKey,
+  build,
+  card,
+}: {
+  pulls: Pull[];
+  hint: string;
+  className?: string;
+  collapseKey: string;
+  /** cada métrica escolhida com os dados do painel; null se sumiu (mecânica que não existe mais) */
+  build: (keys: string[]) => { key: string; value: T | null }[];
+  card: (value: T, edit: MetricEdit | undefined) => ReactNode;
+}) {
+  const t = useMessages(bossMetricsMsg);
+  const [open, toggle] = useCollapsed(collapseKey);
+  const { keys, setKeys, toggleKey } = useMetricKeys(pulls[0]?.encounterId ?? 0);
+  const options = useMemo(() => metricOptions(pulls), [pulls]);
+  const metrics = useMemo(() => build(keys), [build, keys]);
 
   if (!options.length) return null;
   // as que mais falharam e, com fantasmas, as jardas que eles andaram
@@ -46,10 +73,10 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
   ];
 
   return (
-    <section className="panel boss-metrics">
+    <section className={`panel boss-metrics ${className}`}>
       <header className="boss-metrics-head">
         <div>
-          <h3>{t.title} <Hint>{t.hint}</Hint></h3>
+          <h3>{t.title} <Hint>{hint}</Hint></h3>
         </div>
         <span className="panel-head-actions">
           {/* link de visualização: as métricas são as que quem compartilhou escolheu */}
@@ -75,12 +102,11 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
           )}
           {metrics.length > 0 && (
             <div className="metric-grid">
-              {metrics.map(({ key, m }, i) =>
-                m ? (
-                  <MetricCard
-                    key={key}
-                    m={m}
-                    edit={
+              {metrics.map(({ key, value }, i) =>
+                value != null ? (
+                  <Fragment key={key}>
+                    {card(
+                      value,
                       readOnly
                         ? undefined
                         : {
@@ -88,16 +114,17 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
                             onMove: (dir) => setKeys(moveMetric(keys, key, dir)),
                             first: i === 0,
                             last: i === metrics.length - 1,
-                          }
-                    }
-                    onSelectPull={onSelectPull}
-                  />
+                          },
+                    )}
+                  </Fragment>
                 ) : (
                   <article key={key} className="metric-card gone">
                     <span className="muted small">{t.gone(key)}</span>
-                    {!readOnly && <button className="icon-btn" onClick={() => toggleKey(key)} title={t.remove(key)} aria-label={t.remove(key)}>
-                      <X size={14} strokeWidth={1.5} aria-hidden />
-                    </button>}
+                    {!readOnly && (
+                      <button className="icon-btn" onClick={() => toggleKey(key)} title={t.remove(key)} aria-label={t.remove(key)}>
+                        <X size={14} strokeWidth={1.5} aria-hidden />
+                      </button>
+                    )}
                   </article>
                 ),
               )}
@@ -106,6 +133,39 @@ export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPu
         </>
       )}
     </section>
+  );
+}
+
+/** Resumo do boss: as mecânicas que o grupo escolheu acompanhar, cada uma somada na noite. */
+export function BossMetrics({ pulls, onSelectPull }: { pulls: Pull[]; onSelectPull: (id: number) => void }) {
+  const t = useMessages(bossMetricsMsg);
+  const build = useCallback((keys: string[]) => keys.map((key) => ({ key, value: metricNight(pulls, key) })), [pulls]);
+  return (
+    <MetricsPanel
+      pulls={pulls}
+      hint={t.hint}
+      collapseKey="summary.boss-metrics"
+      build={build}
+      card={(m, edit) => <MetricCard m={m} edit={edit} onSelectPull={onSelectPull} />}
+    />
+  );
+}
+
+/** Subir, descer e tirar uma métrica (no cartão do resumo do boss e no da Evolução). */
+export function MetricTools({ edit, name }: { edit: MetricEdit; name: string }) {
+  const t = useMessages(bossMetricsMsg);
+  return (
+    <span className="metric-tools">
+      <button className="icon-btn" disabled={edit.first} onClick={() => edit.onMove(-1)} title={t.moveUp} aria-label={t.moveUp}>
+        <ArrowUp size={14} strokeWidth={1.5} aria-hidden />
+      </button>
+      <button className="icon-btn" disabled={edit.last} onClick={() => edit.onMove(1)} title={t.moveDown} aria-label={t.moveDown}>
+        <ArrowDown size={14} strokeWidth={1.5} aria-hidden />
+      </button>
+      <button className="icon-btn" onClick={edit.onRemove} title={t.remove(name)} aria-label={t.remove(name)}>
+        <X size={14} strokeWidth={1.5} aria-hidden />
+      </button>
+    </span>
   );
 }
 
@@ -168,7 +228,7 @@ export function MetricCard({
   onSelectPull,
 }: {
   m: MetricNight;
-  edit?: { onRemove: () => void; onMove: (dir: -1 | 1) => void; first: boolean; last: boolean };
+  edit?: MetricEdit;
   onSelectPull?: (id: number) => void;
 }) {
   const full = !edit;
@@ -208,19 +268,7 @@ export function MetricCard({
           )}
           {yd && <span className="muted small"> · {t.walked}</span>}
         </strong>
-        {edit && (
-          <span className="metric-tools">
-            <button className="icon-btn" disabled={edit.first} onClick={() => edit.onMove(-1)} title={t.moveUp} aria-label={t.moveUp}>
-              <ArrowUp size={14} strokeWidth={1.5} aria-hidden />
-            </button>
-            <button className="icon-btn" disabled={edit.last} onClick={() => edit.onMove(1)} title={t.moveDown} aria-label={t.moveDown}>
-              <ArrowDown size={14} strokeWidth={1.5} aria-hidden />
-            </button>
-            <button className="icon-btn" onClick={edit.onRemove} title={t.remove(m.name)} aria-label={t.remove(m.name)}>
-              <X size={14} strokeWidth={1.5} aria-hidden />
-            </button>
-          </span>
-        )}
+        {edit && <MetricTools edit={edit} name={m.name} />}
       </header>
 
       <p className={`small metric-stats ${m.total || dmg ? '' : 'good'}`}>
@@ -254,7 +302,7 @@ export function MetricCard({
 }
 
 /** O que o player tinha livre e não usou: um ícone de pot e um de defensivo, com o detalhe no tooltip. */
-export function UnusedItems({ player }: { player: MetricPlayer }) {
+export function UnusedItems({ player }: { player: Pick<MetricPlayer, 'items' | 'potDeaths' | 'defensiveDeaths'> }) {
   const t = useMessages(bossMetricsMsg);
   const items = player.items ?? [];
   const pot = items.filter((i) => i.kind === 'potion' || i.kind === 'healthstone');
@@ -280,9 +328,36 @@ export function UnusedItems({ player }: { player: MetricPlayer }) {
   );
 }
 
-function PeopleList({ title, people, stack = false, yards = false, damage = false, damageDone = false, tone, full = false }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; damage?: boolean; damageDone?: boolean; tone: 'bad' | 'good'; full?: boolean }) {
+/**
+ * Quem errou (ou ajudou) numa métrica, com "+N" para abrir o resto. `value`/`note` = o número
+ * forte e o texto ao lado de cada um (o resumo do boss conta pulls; a Evolução, noites).
+ * `full`: tudo aberto, sem botão (o cartão de compartilhar).
+ */
+export function MetricPeople<P extends Pick<MetricPlayer, 'guid' | 'name' | 'class' | 'damage' | 'items' | 'potDeaths' | 'defensiveDeaths'>>({
+  title,
+  people,
+  value,
+  note,
+  yards = false,
+  damage = false,
+  tone,
+  full = false,
+  still = false,
+}: {
+  title: string;
+  people: P[];
+  value: (p: P) => string;
+  note: (p: P) => string;
+  yards?: boolean;
+  damage?: boolean;
+  tone: 'bad' | 'good';
+  full?: boolean;
+  /** sem botão (o cartão de compartilhar): os primeiros e "+N" */
+  still?: boolean;
+}) {
   const t = useMessages(bossMetricsMsg);
-  const [all, setAll] = useState(full);
+  const [open, setAll] = useState(false);
+  const all = open || full;
   const shown = all ? people : people.slice(0, TOP);
   return (
     <div className={`metric-people ${yards ? 'metric-people-yards' : ''} ${damage ? 'metric-people-damage' : ''}`}>
@@ -291,19 +366,36 @@ function PeopleList({ title, people, stack = false, yards = false, damage = fals
         {shown.map((p) => (
           <li key={p.guid}>
             <PlayerName name={p.name} guid={p.guid} cls={p.class} />
-            <strong className={`tabular ${tone}`}>{damageDone ? num(p.count) : yards ? t.yards(p.count) : stack ? t.inPulls(p.count) : t.times(p.count)}</strong>
-            <span className="muted small">{damageDone ? t.dmgInPulls(p.pulls) : yards ? t.ghosts(p.max, p.count) : stack ? t.maxStacks(p.max) : t.inPulls(p.pulls)}</span>
+            <strong className={`tabular ${tone}`}>{value(p)}</strong>
+            <span className="muted small">{note(p)}</span>
             {damage && <span className="muted small tabular">{t.playerDamage(num(p.damage ?? 0))}</span>}
             {p.items && p.items.length > 0 && <UnusedItems player={p} />}
           </li>
         ))}
       </ul>
-      {people.length > TOP && !full && (
+      {people.length > TOP && !all && still && <span className="muted small">{t.more(people.length - TOP)}</span>}
+      {people.length > TOP && !full && !still && (
         <button className="btn ghost sm" onClick={() => setAll(!all)} aria-expanded={all}>
           {all ? '−' : t.more(people.length - TOP)}
         </button>
       )}
     </div>
+  );
+}
+
+function PeopleList({ title, people, stack = false, yards = false, damage = false, damageDone = false, tone, full = false }: { title: string; people: MetricPlayer[]; stack?: boolean; yards?: boolean; damage?: boolean; damageDone?: boolean; tone: 'bad' | 'good'; full?: boolean }) {
+  const t = useMessages(bossMetricsMsg);
+  return (
+    <MetricPeople
+      title={title}
+      people={people}
+      tone={tone}
+      full={full}
+      yards={yards}
+      damage={damage}
+      value={(p) => (damageDone ? num(p.count) : yards ? t.yards(p.count) : stack ? t.inPulls(p.count) : t.times(p.count))}
+      note={(p) => (damageDone ? t.dmgInPulls(p.pulls) : yards ? t.ghosts(p.max, p.count) : stack ? t.maxStacks(p.max) : t.inPulls(p.pulls))}
+    />
   );
 }
 

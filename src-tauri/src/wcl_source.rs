@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 use wipe_core::rules::RuleBook;
-use wipe_core::wcl::{covered_by, dedupe, is_short_wipe, slim_events, WclAnalyzer};
+use wipe_core::wcl::{covered_by, is_short_wipe, raid_fights, slim_events, WclAnalyzer};
 use wipe_core::{merge_pulls, AnalyzeOptions, LogReport, Pull};
 use wipe_core::i18n::pick;
 
@@ -51,8 +51,11 @@ const EVENTS_QUERY: &str = "query E($code: String!, $fight: Int!, $start: Float!
   } }
 }";
 
+/// Pasta dos eventos baixados; muda de versão quando o cache antigo não serve mais.
+const CACHE_DIR: &str = "wcl-events-v5";
+
 fn cache_dir(app: &AppHandle, code: &str) -> Option<PathBuf> {
-    Some(app.path().app_data_dir().ok()?.join("wcl-events-v4").join(code))
+    Some(app.path().app_data_dir().ok()?.join(CACHE_DIR).join(code))
 }
 
 fn read_cached(file: &Path) -> Option<Vec<Value>> {
@@ -79,8 +82,17 @@ fn write_cached(file: &Path, events: &[Value]) {
     }
 }
 
-/// Mantém só os reports usados mais recentemente.
+/// Mantém só os reports usados mais recentemente (e apaga as pastas de versões antigas do cache).
 fn prune(root: &Path) {
+    if let Some(parent) = root.parent() {
+        for e in std::fs::read_dir(parent).into_iter().flatten().flatten() {
+            let name = e.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("wcl-events-v") && name != CACHE_DIR {
+                let _ = std::fs::remove_dir_all(e.path());
+            }
+        }
+    }
     let Ok(rd) = std::fs::read_dir(root) else { return };
     let mut dirs: Vec<(SystemTime, PathBuf)> =
         rd.flatten().filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path()))).filter(|(_, p)| p.is_dir()).collect();
@@ -88,6 +100,14 @@ fn prune(root: &Path) {
     for (_, p) in dirs.into_iter().skip(KEEP_REPORTS) {
         let _ = std::fs::remove_dir_all(p);
     }
+}
+
+/// O fight já pode ir para o disco? `span` = início e fim do report (epoch ms); `fight_end` é
+/// relativo ao início do report, como todo tempo de fight no WCL. Assentou se o report tem eventos
+/// depois dele, ou se o report não recebe nada há REPORT_IDLE_MS (log ao vivo parado).
+/// O mesmo que `fightSettled` em src/web/wcl.ts.
+fn fight_settled((start, end): (i64, i64), fight_end: i64, now: i64) -> bool {
+    end - start - fight_end > SETTLED_AFTER_MS || now - end > REPORT_IDLE_MS
 }
 
 fn now_ms() -> i64 {
@@ -122,7 +142,7 @@ pub fn analyze(
         spans.push((report["startTime"].as_i64().unwrap_or(0), report["endTime"].as_i64().unwrap_or(0)));
     }
     // o app é para raid: fights de masmorra (M+) nem entram
-    let all: Vec<_> = dedupe(analyzer.fights()).into_iter().filter(|f| !wipe_core::data::is_dungeon(f.difficulty_id, f.size)).collect();
+    let all = raid_fights(analyzer.fights());
     if all.is_empty() {
         return Err(pick("Nenhum boss nos reports.", "No bosses in the reports."));
     }
@@ -177,7 +197,7 @@ pub fn analyze(
 
 /// Eventos de um fight para o analisador (depois do `begin_*`): do disco, se já foram baixados;
 /// senão da API, página a página (`on_page(páginas)`), guardando quando o fight não muda mais.
-fn feed_fight(app: &AppHandle, analyzer: &mut WclAnalyzer, code: &str, fight_id: i64, (start_time, end_time): (i64, i64), (start, end): (i64, i64), mut on_page: impl FnMut(u64)) -> Result<(), String> {
+fn feed_fight(app: &AppHandle, analyzer: &mut WclAnalyzer, code: &str, fight_id: i64, (start_time, end_time): (i64, i64), span: (i64, i64), mut on_page: impl FnMut(u64)) -> Result<(), String> {
     let file = cache_dir(app, code).map(|d| d.join(format!("fight-{fight_id}.json.gz")));
     if let Some(events) = file.as_deref().and_then(read_cached) {
         analyzer.push_events(&events);
@@ -200,8 +220,7 @@ fn feed_fight(app: &AppHandle, analyzer: &mut WclAnalyzer, code: &str, fight_id:
         pages += 1;
         on_page(pages);
     }
-    let settled = end - end_time > SETTLED_AFTER_MS || now_ms() - (start + end) > REPORT_IDLE_MS;
-    if let (Some(file), true) = (&file, settled) {
+    if let (Some(file), true) = (&file, fight_settled(span, end_time, now_ms())) {
         write_cached(file, &all);
     }
     Ok(())
@@ -247,6 +266,19 @@ pub fn replay(app: &AppHandle, code: &str, fight_id: i64, book: RuleBook, tz_hou
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn fight_settled_uses_relative_fight_times() {
+        use super::fight_settled;
+        let start = 1_760_000_000_000; // report começou (epoch ms)
+        let now = start + 3 * 3_600_000;
+        // o último fight vai até o fim do report e o report recebeu algo agora: ainda chegando
+        assert!(!fight_settled((start, now - 1_000), 3 * 3_600_000 - 1_000, now));
+        // fight com eventos do report bem depois dele: assentou
+        assert!(fight_settled((start, now - 1_000), 3_600_000, now));
+        // report parado há mais de 10 min: assentou mesmo sendo o último
+        assert!(fight_settled((start, now - 11 * 60_000), 3 * 3_600_000 - 11 * 60_000, now));
+    }
+
     use super::*;
 
     #[test]

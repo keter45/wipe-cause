@@ -35,6 +35,7 @@ import { messagesOf, useLocale, useLocaleChoice, useMessages } from './i18n';
 import { appMsg } from './App.i18n';
 import { unifyPlayerGuids } from './lib/guids';
 import { SetupContext, optionalDone, useSetup, useSetupStatus, type SettingsSection } from './lib/setup';
+import { KEYS, ls } from './lib/storage';
 
 /** O que ocupa a área principal: a análise aberta, a lista de logs, a evolução ou as configurações. */
 /** `home`: início do link de visualização (o try da vez e o resumo do boss). */
@@ -45,30 +46,9 @@ type Status = { kind: 'idle' } | { kind: 'loading'; progress: number; path: stri
 /** Analisar e escolher arquivos/pastas só funciona no app (o navegador é só para desenvolver a UI). */
 const needsApp = () => messagesOf(appMsg).needsApp;
 
-const SIDEBAR_KEY = 'wipe-cause:sidebar-open';
-function savedSidebarOpen(): boolean {
-  try {
-    return localStorage.getItem(SIDEBAR_KEY) !== '0';
-  } catch {
-    return true;
-  }
-}
-
-const ONBOARDED_KEY = 'wipe-cause:onboarded';
-function onboarded(): boolean {
-  try {
-    return localStorage.getItem(ONBOARDED_KEY) === '1';
-  } catch {
-    return true;
-  }
-}
-function markOnboarded() {
-  try {
-    localStorage.setItem(ONBOARDED_KEY, '1');
-  } catch {
-    /* sem storage */
-  }
-}
+const savedSidebarOpen = () => ls.getBool(KEYS.sidebarOpen, true);
+const onboarded = () => ls.getBool(KEYS.onboarded, false);
+const markOnboarded = () => ls.setBool(KEYS.onboarded, true);
 
 export default function App() {
   // trocar o idioma remonta as telas (textos montados em memória saem de novo), sem perder o log aberto
@@ -293,11 +273,7 @@ export default function App() {
   function toggleSidebar() {
     const next = !sidebarOpen;
     setSidebarOpen(next);
-    try {
-      localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0');
-    } catch {
-      /* sem storage */
-    }
+    ls.setBool(KEYS.sidebarOpen, next);
   }
 
   // Dev no navegador: ?report=/samples/report.json carrega um relatório gerado pelo wipe-cli;

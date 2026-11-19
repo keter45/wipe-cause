@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { MechanicResult, Pull } from "../types";
-import { mmss } from "../lib/format";
+import { mmss, decimals, wholeSecs } from "../lib/format";
 import { useSeek } from "../lib/wcr";
 import {
   failedPhase,
@@ -12,17 +12,14 @@ import {
 } from "../lib/phases";
 import { SpellName } from "./SpellIcon";
 import { PlayAt } from "./VideoPanel";
-import { intlLocale, messagesOf, tr, useMessages } from "../i18n";
+import { messagesOf, tr, useMessages } from "../i18n";
 import { phaseMsg } from "./PhaseTimes.i18n";
 import { Hint } from "./ui/Hint";
 import { Clamp } from "./ui/Clamp";
 import { CollapseButton, useCollapsed } from "./CollapsiblePanel";
 
 const ordinal = (i: number) => messagesOf(phaseMsg).ordinal(i + 1);
-const oneDecimal = (n: number) =>
-  n.toLocaleString(intlLocale(), { maximumFractionDigits: 1 });
-const secs = (ms: number | undefined) =>
-  ms != null ? `${Math.round(ms / 1000)}s` : "—";
+const secs = (ms: number | undefined) => (ms != null ? wholeSecs(ms) : "—");
 
 /** Pull: cada vez que a fase aconteceu, com a duração numa barra contra o tempo bom e o máximo. */
 export function PullPhaseTimes({ pull }: { pull: Pull }) {
@@ -144,7 +141,7 @@ export function NightPhaseTimes({
                 </strong>
                 <span className="muted small">
                   {t.nightHead(secs(n.targetMs), secs(n.maxMs))}
-                  {n.avg != null && t.nightAvg(oneDecimal(n.avg))}
+                  {n.avg != null && t.nightAvg(decimals(n.avg))}
                 </span>
                 <Hint>{t.legend}</Hint>
                 {button}
@@ -228,7 +225,7 @@ export function NightPhaseTimes({
                               );
                             })}
                             <td className="num">
-                              {avg != null ? `${oneDecimal(avg)}s` : "—"}
+                              {avg != null ? `${decimals(avg)}s` : "—"}
                             </td>
                           </tr>
                         );

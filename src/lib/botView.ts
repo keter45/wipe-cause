@@ -163,3 +163,6 @@ export function fixes(me: Sample, run: BotRun, d: BotDecisions, keyOf: (x: Decis
   }
   return out.filter((x) => x.damage > 0).sort((a, b) => b.damage - a.damage);
 }
+
+/** Tom do % do potencial (perto do robô = bom): o mesmo no resumo do boss, no pull e na tabela de jogadores. */
+export const potentialTone = (frac: number) => (frac >= 0.97 ? 'good' : frac >= 0.85 ? 'warn' : 'bad');
