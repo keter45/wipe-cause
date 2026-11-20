@@ -15,7 +15,7 @@ decide: **que forma** cada habilidade tem, **o tamanho** dela e **onde** ela fic
 `docs/replay-methods.md`. O essencial:
 - **Boss é dado:** tudo sai da regra YAML ou de `data/*.json`. Se o boss pede algo novo, a
   solução é um campo genérico, nunca um `if` para ele; criar esse campo é o critério (b) do
-  Fluxo de feature (CONTRIBUTING): pare e proponha o EGM.
+  Fluxo de feature (CONTRIBUTING): pare e proponha um design.
 - **O log manda:** meça comparando quem tomou com quem estava perto e não tomou.
 - **A arena:** calibre pelo que não pode sair dela.
 - **Ligar e desligar:** tudo pode ser desligado pelo usuário.
@@ -36,7 +36,7 @@ players. O que vem da **regra** é a forma das habilidades, e o que vem da **are
 1. **Relatório**: `npm run replay:check -- <WoWCombatLog.txt> --boss "<nome>" --difficulty Mythic` (precisa do `wipe-cli` em release: `cargo build --release -p wipe-core --bin wipe-cli`). Lê `samples/replay/<data>-<boss>-<dificuldade>.md`: os itens **REVISAR**/**ATENÇÃO**, a tabela "Dano do boss nos players" (cada spell: regra e o que desenha), os casts do boss sem regra e as unidades no mapa.
 2. **Fontes da forma**, nesta ordem de confiança: o que o log comprova (atingidos, auras, contagens), o tooltip do Wowhead por spell e dificuldade (`https://nether.wowhead.com/tooltip/spell/<id>?dd=16`) e o guia da luta. O alcance de lançamento (300 jd, ilimitado) não é o raio da área.
 3. **Resolver cada item** (abaixo), editando a regra do boss.
-4. **Medir** cada tamanho no log, não no olho (ver "Medir").
+4. **Medir** cada tamanho no log, não no olho, com o `wipe-cli probe` (ver "Medir"). Boss novo: a skill `boss-new` já roda as medidas pelas formas da regra.
 5. **Validar**: `cargo test -p wipe-core` (o YAML vai embutido) e o `replay:check` de novo, até não sobrar REVISAR sem explicação. Depois, olhe no app: o pull mais longo na aba Replay (replay completo da luta), uma morte e uma falha com replay, e o clipe do Compartilhar. Forma que aparece no lugar errado é pior que forma nenhuma.
 6. **Anotar** a auditoria do boss em `docs/<boss>-replay-audit.md` (modelo: `docs/coiled-altar-replay-audit.md`): mecânica → o que a fonte diz → o que o replay faz e por quê, separando o que é do tooltip, o que o log mostra e o que é inferido.
 7. **Mostrar ao usuário** o relatório antes/depois e prints do replay. Commit e release só com o "pode subir" dele.
@@ -73,12 +73,16 @@ players. O que vem da **regra** é a forma das habilidades, e o que vem da **are
 
 ## Medir
 
+- **Comece pelo `wipe-cli probe`** (`<medida> <log | pasta do WCL> --encounter <id>`): `pulse-radius` (área no
+  portador ou na unidade), `cone`, `ahead` (soak na frente), `wave-dir`, `pool`, `falloff` (o dano cai?),
+  `units` (a unidade tem posição? onde nasce?) e `ids`. O `replay:check` depois mede a forma desenhada contra o
+  log (tabela "Forma medida").
 - **Antes de desenhar, a premissa**: a unidade tem posição (`arena-check` lista por npc; os tumores do Vashnik só têm no fim do cast)? O dano cai com a distância (dano bruto por faixa de 5 jd; a Caustic Explosion não cai, então não ganha círculo)? A aura da regra é o debuff do player ou o id do cast (o Coiling Ichor tinha o cast: o círculo nunca aparecia)?
 - **Área em volta do marcado medida por pulso** (os ticks de um portador caem no mesmo ms), não por janela de 1 s: em cada lote, quem tomou × quem estava perto e não tomou, Youden dá o raio.
 - **Raio de área**: `wipe-cli radius <log> --damage <id> (--aura <id> | --npc <id>)` mostra a distância de cada atingido até o portador ou a unidade mais perto, num histograma por jarda: o raio é onde a contagem despenca (os golpes mais longe vêm de outros centros).
 - **Soak**: `wipe-cli radius <log> --damage <id> --soak` (players por soak e distância ao meio).
 - **O log dá contagens: use antes da geometria.** Stacks que o raid ganha por orb quebrado dizem quantos quebraram; isso vale mais que reconstruir pela posição.
-- **Hotfix de tamanho**: só o tamanho dos orbs tem histórico, em `detect.orbs.before: [{ until, contact_yd }]` (UTC), para os logs velhos continuarem certos. Outra forma que mudou de tamanho não tem esse campo: criar um é o critério (b) do Fluxo de feature (CONTRIBUTING), então pare e proponha o EGM.
+- **Hotfix de tamanho**: só o tamanho dos orbs tem histórico, em `detect.orbs.before: [{ until, contact_yd }]` (UTC), para os logs velhos continuarem certos. Qualquer outra forma (ou campo) que mudou num hotfix usa `history` na mecânica: `history: [{ until: "AAAA-MM-DDTHH:MM:SSZ", area: { aura: .., radius: <o antigo> } }]` (UTC; o valor novo fica na mecânica). Veja `boss-rules/references/schema.md`.
 
 ## Arena
 
@@ -87,8 +91,8 @@ A imagem de fundo e o chão andável de cada boss ficam em `data/arenas.json` (f
 2. `wipe-cli positions <log>` em logs com o boss (onde os players pisaram) e junte por boss.
 3. Marque o chão em `scripts/arena-fit.mjs` (polígono na imagem com 1224 de largura, `holes` para buracos; ou `hazard` com amostras da cor do perigo; `disk`/`holeDisk` para sala redonda com poço; `core` quando o raid sai da sala principal) e rode. Ele acha escala e posição com o norte para cima (X do log = norte, Y = oeste; o Twin Fangs, sem simetria, confirmou) e grava uma imagem de conferência por boss: os pisões têm que cair no chão, inclusive em detalhes (pontes, poço). Nota acima de ~0,9.
 4. **Confira o tamanho com o que nunca sai da arena** (orbs, fantasmas, machados, adds): todas as posições deles no log têm que cair dentro do chão (`node scripts/arena-check.mjs <log> <encounter> --draw saída.svg` conta por npc e desenha as posições na imagem; quem vive fora do chão de verdade, como boss que nada em volta ou add do poço, vai em `offFloor` na arena). Os pisões sozinhos encolhem a plataforma quando a raide evita a borda (no Coiled Altar o encaixe deu 83 jd e orbs e fantasmas iam até 100,8). Se algo fica fora, meça a largura pelos extremos dessas unidades e trave em `spanYd` no `arena-fit.mjs` (a escala fica fixa, só a posição é procurada). Só players podem aparecer fora, e aí estão caindo.
-4b. **A raide só usa parte da sala, ou a sala é girada no mundo?** (Vashnik: as duas) O encaixe pelos pisões erra escala e giro. Ache lugares que o log fixa, um add por lugar (onde cada add nasce: a primeira posição, voltando o caminho até a primeira linha dele; onde o boss é tankado), case cada um com o lugar na imagem (fonte, porta) e tire a semelhança com giro livre; refine pelas paredes (pisões dentro da sala). Giro que não é múltiplo de 90° = sala girada. Grave em `fixed: { rotation, ... }` no `arena-fit.mjs`, e a arena ganha `rotation` (o `anchored: true` e os `marks` se escrevem à mão em `data/arenas.json`) (lugares com nome; camada "Lugares da sala").
-5. Passe o resultado para `data/arenas.json` à mão: o `arena-fit` grava outros nomes de campo (`url` vira `image`, `score` vira `fit`, a escala e a posição `sPx`/`u0`/`v0`/`cx`/`cy` viram `pxPerYd`/`anchorPx`/`anchorAt`). Se a versão da imagem no raidplan mudar (`-vNNN`), atualize a URL e reencaixe.
+4b. **A raide só usa parte da sala, ou a sala é girada no mundo?** (Vashnik: as duas) O encaixe pelos pisões erra escala e giro. Ache lugares que o log fixa, um add por lugar (onde cada add nasce: a primeira posição, voltando o caminho até a primeira linha dele; onde o boss é tankado), case cada um com o lugar na imagem (fonte, porta) e tire a semelhança com giro livre; refine pelas paredes (pisões dentro da sala). Giro que não é múltiplo de 90° = sala girada. Não faça a conta à mão: escreva os pares num arquivo (`[{ "name": "fonte de fogo", "log": [x, y], "px": [u, v] }]`, pixel na imagem de 1224 de largura) e rode `ARENA=<encounter> node scripts/arena-fit.mjs <occupancy> <imagens> <saída> --anchors pares.json`: ele faz a semelhança com giro livre, mostra o erro de cada par em jardas, refina pelas paredes (nenhum par passa de 6 jd ou do maior erro inicial) e equivale a um `fixed`. Giro que não é múltiplo de 90° (mais de 2° de diferença) vira `rotation` + `anchored: true`, e os nomes dos pares viram `marks` (lugares com nome; camada "Lugares da sala") quando você grava com `--write` (passo 5). Campos opcionais por par: `en` (nome em inglês), `color`, `radius`.
+5. Grave com `--write` (`ARENA=<encounter> node scripts/arena-fit.mjs <occupancy> <imagens> <saída> --write`): ele passa o resultado para `data/arenas.json` com os nomes do app (`url` vira `image`, `score` vira `fit`, `sPx`/`u0`/`v0`/`cx`/`cy` viram `pxPerYd`/`anchorPx`/`anchorAt`), mexe só no que mudou, mostra o diff (antes -> depois) e deixa como estão `marks`, `offFloor`, `spanYd`, `name` e o `rotation`/`anchored` que não vêm do encaixe. Sem `--write` nada é gravado. Se a versão da imagem no raidplan mudar (`-vNNN`), atualize a URL e reencaixe.
 
 ## Unidades que o log não mostra
 
@@ -106,4 +110,4 @@ O log não registra o caminho de algumas unidades (machados entre um golpe e out
 - Nomes de habilidades e bosses em inglês; textos na tela em pt-BR e inglês na mesma mudança.
 - Mudança numa forma que já existe: compare antes e depois em vários logs (falhas, culpados, o que o replay desenha); toda mudança tem que ter explicação no log.
 - Forma ou campo novo no replay (em `encounters/` ou `data/*.json`) é o critério (b) do Fluxo
-  de feature (CONTRIBUTING): pare e proponha o EGM antes de escrever o campo.
+  de feature (CONTRIBUTING): pare e proponha um design antes de escrever o campo.

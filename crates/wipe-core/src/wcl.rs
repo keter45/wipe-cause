@@ -343,6 +343,24 @@ impl WclAnalyzer {
         }
     }
 
+    /// Os eventos de um fight como campos de linha do log, sem passar pelo motor (`probe`):
+    /// `out(t em epoch ms, campos)`.
+    pub(crate) fn each_line(&self, report: usize, events: &[Value], mut out: impl FnMut(i64, &[&str])) {
+        let Some(src) = self.sources.get(report) else { return };
+        let mut fields: Vec<String> = Vec::with_capacity(48);
+        for e in events {
+            if e["type"] == "combatantinfo" {
+                continue;
+            }
+            fields.clear();
+            if !to_fields(&src.actors, &src.abilities, e, &mut fields) {
+                continue;
+            }
+            let f: Vec<&str> = fields.iter().map(String::as_str).collect();
+            out(src.start_time + int(&e["timestamp"]), &f);
+        }
+    }
+
     pub fn end_fight(&mut self) {
         let Some((fight, b)) = self.current.take() else { return };
         let t = self.sources[fight.report].start_time + fight.end_time;

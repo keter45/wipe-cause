@@ -8,6 +8,12 @@
 Convenção: títulos e rótulos do template EGM ficam em inglês; o resto, em
 português.
 
+> **2026-11-20: o projeto deixou de usar o EGM.** Saem a Parte 2 (o fluxo
+> `/egm:*`), o plugin e os agentes `egm:*`. Continuam valendo as regras
+> (Parte 1), o critério de feature grande, agora com design escrito à mão, e
+> a auditoria dos docs (Parte 3), com um subagente comum só de leitura no
+> lugar do `egm:egm-codebase-details`.
+
 --------------------------------------------------------------------------------
 
 ## Overview

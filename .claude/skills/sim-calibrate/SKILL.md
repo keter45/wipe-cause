@@ -67,5 +67,5 @@ A vida por fase depende das **fases na regra do boss** (`encounters/<raide>/<bos
 - Textos na tela sempre em pt-BR e inglês na mesma mudança; nomes de spells e bosses em inglês.
 - As simulações salvas no app não se refazem sozinhas: depois de uma mudança no modelo, o usuário precisa de "Reanalisar o log" (medidas novas do núcleo) e "Simular todos de novo". Diga isso nas notas da release.
 - Se a correção pede medida nova no núcleo e leitura nova na interface (`src/`), que é o
-  critério (a), ou campo novo em `phases`, que é o critério (b), pare e proponha o EGM pelo
+  critério (a), ou campo novo em `phases`, que é o critério (b), pare e proponha um design pelo
   Fluxo de feature (CONTRIBUTING).

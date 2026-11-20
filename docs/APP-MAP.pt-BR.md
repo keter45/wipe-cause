@@ -3,8 +3,8 @@
 Documentação funcional e técnica das telas, componentes e conexões entre funcionalidades.
 
 **Referência:** navegação na versão `0.37.0` em **21/10/2026**, com as alterações locais da
-árvore de trabalho daquela data; texto conferido contra o código da versão `0.58.0` em
-**19/11/2026**, só pelo código, sem abrir as telas.
+árvore de trabalho daquela data; texto conferido contra o código da versão `0.59.0` em
+**20/11/2026**, só pelo código, sem abrir as telas.
 
 ## Como ler
 
@@ -586,6 +586,7 @@ A análise de um arquivo local usa o núcleo local. Integrações opcionais acre
 | Simulação | [botSim](../src/lib/botSim.ts), [simProfile](../src/lib/simProfile.ts), [botDecisions](../src/lib/botDecisions.ts), [botView](../src/lib/botView.ts), [simc.rs](../src-tauri/src/simc.rs), [sim-check](../scripts/sim-check.mjs) |
 | Replay | [FightReplay](../src/components/FightReplay.tsx), [ReplayView](../src/components/ReplayView.tsx), [replayLayers](../src/components/replayLayers.tsx), [fullReplay](../src/lib/fullReplay.ts), [replayTimers](../src/lib/replayTimers.ts), [replayPrefs](../src/lib/replayPrefs.ts), [timelineMoments](../src/lib/timelineMoments.ts), [arenas](../src/lib/arenas.ts), [core/replay.rs](../crates/wipe-core/src/replay.rs), [arenas.json](../data/arenas.json), [utility.json](../data/utility.json), [replay-check](../scripts/replay-check.mjs), [arena-check](../scripts/arena-check.mjs), [arena-fit](../scripts/arena-fit.mjs), [ghost-calibrate](../scripts/ghost-calibrate.mjs) |
 | Configuração de boss | [encounters](../encounters), [rules.rs](../crates/wipe-core/src/rules.rs), [RuleTuning](../src/components/RuleTuning.tsx) |
+| Boss novo (`npm run boss:new`) | [boss-new](../scripts/boss-new.mjs), [bossSources](../scripts/lib/bossSources.mjs), [bossDraft](../scripts/lib/bossDraft.mjs), [probe.rs](../crates/wipe-core/src/probe.rs), [shapeFit](../scripts/lib/shapeFit.mjs), [arenaMath](../scripts/lib/arenaMath.mjs), [design](designs/boss-new.md) |
 | Rotação e dados de jogo | [rotations](../rotations), [rotation.rs](../crates/wipe-core/src/rotation.rs), [data](../data), [rotation.mjs](../scripts/rotation.mjs), [refresh.mjs](../scripts/refresh.mjs) |
 | Exportação e ao vivo | [share](../src/lib/share.ts), [replayClip](../src/lib/replayClip.tsx), [live](../src/lib/live.ts), [discordLive](../src/lib/discordLive.tsx) |
 | Link de visualização | [share.rs](../src-tauri/src/share.rs), [share_gist.rs](../src-tauri/src/share_gist.rs), [viewer](../src/lib/viewer.ts), [backend](../src/lib/backend.ts), [sharedPrefs](../src/lib/sharedPrefs.ts), [viewerStorage](../src/lib/viewerStorage.ts), [storage](../src/lib/storage.ts), [ViewerHome](../src/components/viewer/ViewerHome.tsx), [ViewerPanels](../src/components/viewer/ViewerPanels.tsx), [ShareForm](../src/components/settings/ShareForm.tsx) |
@@ -626,7 +627,7 @@ Esses pontos são registros da inspeção; o item 1 foi corrigido depois, no [PR
 
 ### Conferência contra o código (v0.42.0)
 
-Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026** e da `0.50.0` em **09/11/2026**, da `0.56.0` em **12/11/2026**, da `0.57.0` em **13/11/2026** e da `0.58.0` em **19/11/2026**.
+Em **27/10/2026**, as seções 1 a 8 foram conferidas contra o código da versão `0.42.0` por agentes de auditoria isolados (`egm:egm-codebase-details`, um para as seções 1–3 e outro para as 4–8), sem abrir as telas, pela receita de [egm-adoption](designs/egm-adoption.md#auditoria-prompt-literal-de-cada-agente). Foram atualizados o estado de navegação, os primeiros passos, os filtros e a ação Baixar da Nova análise, a lateral, o robô em execute por fase, o que entrou no replay da v0.38.0 à v0.42.0, as opções do Warcraft Logs e do Discord, os cartões que o site esconde, a persistência, os arquivos novos e os parâmetros de desenvolvimento. A segunda passada achou no código a causa da falha da Evolução Solo (item 1 acima), corrigida em seguida. A navegação acima não foi refeita: os itens observados ali continuam sendo da `0.37.0`. O texto foi conferido de novo contra o código da `0.45.0` em **03/11/2026** e da `0.50.0` em **09/11/2026**, da `0.56.0` em **12/11/2026**, da `0.57.0` em **13/11/2026**, da `0.58.0` em **19/11/2026** e da `0.59.0` em **20/11/2026** (agentes comuns, sem o EGM).
 
 ### Como reproduzir a navegação local
 

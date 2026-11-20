@@ -113,12 +113,12 @@ pub(crate) struct Advanced<'a> {
     pub(crate) info_guid: &'a str,
     owner_guid: &'a str,
     hp: i64,
-    max_hp: i64,
+    pub(crate) max_hp: i64,
     /// posição no mundo (jardas)
     pub(crate) x: f32,
     pub(crate) y: f32,
     /// direção para onde a unidade olha (radianos)
-    facing: Option<f32>,
+    pub(crate) facing: Option<f32>,
     /// recurso principal da unidade: (tipo, atual, máximo); 0 = mana
     power: Option<(u32, i64, i64)>,
     /// quantidade de campos do bloco (varia entre patches)
@@ -486,7 +486,7 @@ impl PullBuilder {
         let difficulty_id = f.get(3).and_then(|v| v.parse().ok()).unwrap_or(0);
         // erros de regra já foram reportados na carga do RuleBook
         let sets = book.for_encounter(encounter_id, &encounter_name);
-        let rules = if sets.is_empty() { None } else { RuleTracker::new(&sets, difficulty_id).ok().map(|r| r.started_at(t)) };
+        let rules = if sets.is_empty() { None } else { RuleTracker::new(&sets, difficulty_id, t).ok().map(|r| r.started_at(t)) };
         let seen_npcs = rules.as_ref().map(|r| r.seen_units().iter().map(|u| u.npc).collect()).unwrap_or_default();
         let clears = rules.as_ref().map(|r| r.unit_clears().to_vec()).unwrap_or_default();
         let last_line_npcs = clears.iter().filter(|c| c.until_last_line || c.by_aura.is_some()).map(|c| c.npc).collect();

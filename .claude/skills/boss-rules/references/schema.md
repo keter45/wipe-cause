@@ -47,6 +47,7 @@ mechanics: [ ... ]              # lista de regras (abaixo)
 | `overrides` | não | mapa dificuldade → campos que mudam (`mythic: { severity: wipe }`) |
 | `tip` | não (padrão vazio; escreva sempre) | o que fazer, 1 frase, palavras próprias, nas duas línguas: `{ pt: "...", en: "..." }` |
 | `message` | não (padrão vazio; escreva sempre) | texto do relatório quando dispara (placeholders `{player}` `{count}` `{stacks}` `{lethal_stacks}`), nas duas línguas: `{ pt: "...", en: "..." }` |
+| `history` | não | lista de `{ until: "AAAA-MM-DDTHH:MM:SSZ", <campos> }` (UTC): pull que começou antes de `until` usa os campos da entrada no lugar dos da mecânica, depois dos `overrides`. Várias entradas: vale a de menor `until` ainda depois do início do pull. Entrada com `key`, `type` ou `history`, ou `until` inválido, é erro ao carregar. Ex.: `history: [{ until: "2026-11-07T15:00:00Z", area: { aura: 1290814, radius: 15 } }]` (a mecânica fica com o raio novo, 12). |
 | `needs_id` | não | `true` enquanto algum ID estiver `null`; só anotação, o app não lê |
 | `notes` | não | observações de calibração |
 

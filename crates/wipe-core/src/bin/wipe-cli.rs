@@ -11,6 +11,36 @@
 //!                                         quem levou o dano até o portador da aura (ou a unidade) mais perto, ou
 //!                                         até o meio do soak (e quantos entraram em cada um)
 //!   wipe-cli wcl <pasta>[,<pasta>] [--json]  analisa reports baixados do Warcraft Logs (scripts/wcl-fetch.mjs)
+//!   wipe-cli wcl <pasta>[,<pasta>] --fight <report>:<fight>  replay completo de um pull do WCL (o mesmo JSON do
+//!                                         `fight`); <report> é o índice da pasta na lista (0 = a primeira)
+//!   wipe-cli probe <medida> <fonte>[,<fonte>] --encounter <id> [--difficulty 16] [--json] [opções]
+//!                                         medidas do boss (docs/replay-methods.md). Fonte: combat log ou pasta do
+//!                                         wcl-fetch. Saída em texto; com --json, JSON (sempre com encounter e pulls):
+//!     ids                                 por spell: { spells: [{ spellId, name, castStart, castSuccess, casters,
+//!                                         auraOnPlayers, auraOnEnemies, auraSources, damageHits, damage,
+//!                                         damageSources, summons }] } (só inimigos ou sem origem lançando/aplicando)
+//!     units                               por npc inimigo: { units: [{ npcId, name, units, lines, posPct, firstLineS,
+//!                                         firstPosS, noPos, spawns: [[x, y, n]], hpMedian, hpMax, diedPct, maxGapS }] }
+//!     falloff --damage <id> | --all       dano bruto por faixa de 5 jd até quem lançou: { spells: [{ spellId, name,
+//!                                         hits, rho, verdict: cai|nao_cai|incerto, bands: [[jd, n, mediana]] }] }
+//!                                         (--all: só spells com 30 acertos ou mais)
+//!     pulse-radius --damage <id> [--aura <id> | --npc <id>]  raio pelo Youden por pulso (sem aura nem npc, o centro é
+//!                                         quem lançou): { damageId, center: aura|npc|source, centerId, lots, radius,
+//!                                         tpr, fpr, hits, others, byAge: [{ fromS, toS, radius, tpr, fpr, hits, others }] }
+//!     ahead (--cast <id> | --damage <id>) [--damage <id> | --aura <id>] [--window 3]  onde cai em relação a quem
+//!                                         lança no fim do cast: { castId, pointsFrom: aura|damage, pointsId, damageIds,
+//!                                         casts, withPoints, r, along, side, angle, dist, points: [p10, p50, p90],
+//!                                         offset: [p50, p90] } (side > 0 = à esquerda; offset = do meio do lote até
+//!                                         o ponto a r jd na frente)
+//!     cone --cast <id> [--damage <id>] [--window 3]  setor no fim do cast pelo Youden: { castId, damageIds, casts,
+//!                                         halfAngle, range, tpr, fpr, hits, others }
+//!     wave-dir (--aura <id> | --cast <id>) --damage <id> [--directions 4] [--duration 6]  direção das ondas por
+//!                                         hipóteses: { damageId, sources, hits, directions, bases: [{ base, phi,
+//!                                         explained, random, hits }], best: {...}, start, speed, width, lateralMax,
+//!                                         farthest: [jd, s] } (base: world|facingOut|facingIn|fromBoss; no cast,
+//!                                         facingOut é a direção de quem lança)
+//!     pool --cast <id> --damage <id> [--duration 30]  por vez que o cast sai: { castId, damageId, casts: [{ pull, n,
+//!                                         t, ticks, delayS, durationS, circles: [[x, y, r]], tpr, fpr, j }] }
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -30,6 +60,9 @@ fn main() -> ExitCode {
             .collect();
         println!("{}", serde_json::to_string(&all).unwrap_or_default());
         return ExitCode::SUCCESS;
+    }
+    if args.first().map(String::as_str) == Some("probe") {
+        return probe(&args[1..]);
     }
     let (Some(cmd), Some(path)) = (args.first(), args.get(1)) else {
         eprintln!("uso: wipe-cli <analyze|spells|peek|fight> <WoWCombatLog.txt> [--json] [--pull <id>] | wipe-cli wcl <pasta>[,<pasta>] [--json|--spells]");
@@ -100,6 +133,20 @@ fn main() -> ExitCode {
             }
         };
     }
+    if cmd == "wcl" {
+        if let Some(spec) = args.iter().position(|a| a == "--fight").and_then(|i| args.get(i + 1)) {
+            return match wcl_replay(path, spec) {
+                Ok(p) => {
+                    println!("{}", serde_json::to_string(&p).unwrap());
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("erro: {e}");
+                    ExitCode::FAILURE
+                }
+            };
+        }
+    }
     let tuning_dir = args.iter().position(|a| a == "--tuning").and_then(|i| args.get(i + 1)).map(PathBuf::from);
     let opts = AnalyzeOptions { death_cutoff, tuning_dir, ..Default::default() };
     let local = args.iter().position(|a| a == "--local").and_then(|i| args.get(i + 1)).map(PathBuf::from);
@@ -139,6 +186,69 @@ fn main() -> ExitCode {
         }
     }
     ExitCode::SUCCESS
+}
+
+/// `wipe-cli probe <medida> <fonte>[,<fonte>] --encounter <id> ...` (ver o topo do arquivo).
+fn probe(args: &[String]) -> ExitCode {
+    let (Some(measure), Some(sources)) = (args.first(), args.get(1)) else {
+        eprintln!("uso: wipe-cli probe <{}> <fonte>[,<fonte>] --encounter <id> [--difficulty 16] [--json] [opções]", wipe_core::probe::MEASURES.join("|"));
+        return ExitCode::from(2);
+    };
+    let val = |k: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1));
+    let id = |k: &str| val(k).and_then(|v| v.parse::<u32>().ok());
+    let secs = |k: &str| val(k).and_then(|v| v.replace(',', ".").parse::<f32>().ok());
+    let Some(encounter) = id("--encounter") else {
+        eprintln!("probe precisa de --encounter <id>");
+        return ExitCode::from(2);
+    };
+    let flt = wipe_core::probe::Filter { encounter, difficulty: id("--difficulty").unwrap_or(16) };
+    let opts = wipe_core::probe::Opts {
+        damage: id("--damage"),
+        aura: id("--aura"),
+        npc: id("--npc"),
+        cast: id("--cast"),
+        all: args.iter().any(|a| a == "--all"),
+        window_s: secs("--window"),
+        directions: id("--directions"),
+        duration_s: secs("--duration"),
+    };
+    let sources: Vec<String> = sources.split(',').map(str::to_string).collect();
+    match wipe_core::probe::run(measure, &sources, flt, &opts) {
+        Ok(v) => {
+            if args.iter().any(|a| a == "--json") {
+                println!("{}", serde_json::to_string(&v).unwrap());
+            } else {
+                print!("{}", wipe_core::probe::text(measure, &v));
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("erro: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Replay completo de um pull do WCL (`--fight <report>:<fight>`), como o app faz ao abrir a aba Replay.
+fn wcl_replay(dirs: &str, spec: &str) -> Result<wipe_core::Pull, String> {
+    let (report, fight) = spec.split_once(':').ok_or("use --fight <report>:<fight>")?;
+    let report: usize = report.parse().map_err(|_| format!("report inválido: {report}"))?;
+    let fight: i64 = fight.parse().map_err(|_| format!("fight inválido: {fight}"))?;
+    let read = |dir: &str, name: &str| -> Result<serde_json::Value, String> {
+        let text = std::fs::read_to_string(std::path::Path::new(dir).join(name)).map_err(|e| format!("{dir}/{name}: {e}"))?;
+        serde_json::from_str(&text).map_err(|e| format!("{dir}/{name}: {e}"))
+    };
+    let dirs: Vec<&str> = dirs.split(',').collect();
+    let dir = dirs.get(report).ok_or_else(|| format!("não há a pasta {report}"))?;
+    let tz = std::env::var("WIPE_TZ").ok().and_then(|v| v.parse().ok()).unwrap_or(-3.0);
+    let mut a = wipe_core::wcl::WclAnalyzer::new(wipe_core::rules::RuleBook::embedded(), 0, tz);
+    for d in &dirs {
+        a.add_report(&read(d, "report.json")?, None)?;
+    }
+    let events = read(dir, &format!("fight-{fight}.json"))?;
+    a.begin_replay(report, fight)?;
+    a.push_events(events.as_array().map_or(&[][..], |v| v.as_slice()));
+    a.replay().ok_or_else(|| "pull curto demais".to_string())
 }
 
 /// Pastas do scripts/wcl-fetch.mjs (report.json e fight-<id>.json), separadas por vírgula:

@@ -53,12 +53,14 @@ pub fn parse_utc(s: &str) -> Option<i64> {
     let (date, time) = s.split_once('T').unwrap_or((s, "00:00"));
     let mut dp = date.split('-');
     let (y, m, d): (i32, u32, u32) = (dp.next()?.parse().ok()?, dp.next()?.parse().ok()?, dp.next()?.parse().ok()?);
-    let (h, min) = time.split_once(':')?;
-    let (h, min): (i64, i64) = (h.parse().ok()?, min.parse().ok()?);
-    if dp.next().is_some() || !(1..=12).contains(&m) || !(1..=31).contains(&d) || h > 23 || min > 59 {
+    let (h, rest) = time.split_once(':')?;
+    // segundos opcionais (`15:00:00`)
+    let (min, sec) = rest.split_once(':').unwrap_or((rest, "0"));
+    let (h, min, sec): (i64, i64, i64) = (h.parse().ok()?, min.parse().ok()?, sec.parse().ok()?);
+    if dp.next().is_some() || !(1..=12).contains(&m) || !(1..=31).contains(&d) || h > 23 || min > 59 || sec > 59 {
         return None;
     }
-    Some(((days_from_civil(y, m, d) * 24 + h) * 60 + min) * 60_000)
+    Some((((days_from_civil(y, m, d) * 24 + h) * 60 + min) * 60 + sec) * 1000)
 }
 
 /// Dias desde 1970-01-01 (algoritmo de Howard Hinnant).

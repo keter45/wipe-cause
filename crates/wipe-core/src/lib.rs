@@ -12,6 +12,7 @@ pub mod replay;
 pub mod markers;
 pub mod peek;
 pub mod positions;
+pub mod probe;
 pub mod report;
 pub mod rotation;
 pub mod rules;

@@ -10,7 +10,8 @@ import path from 'node:path';
 
 const REPO = path.resolve(__dirname, '../..');
 const DIRS = ['crates/wipe-core/src', 'crates/wipe-wasm/src', 'src-tauri/src'];
-const SKIP = /[\\/]bin[\\/]/;
+// o wipe-cli e as medidas que só ele usa (`probe.rs`, ferramenta de desenvolvimento)
+const SKIP = /[\\/]bin[\\/]|[\\/]probe\.rs$/;
 
 const ACCENT = /[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/;
 const WORDS =

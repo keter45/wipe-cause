@@ -6,6 +6,7 @@ description: Gera ou atualiza o arquivo de regras de um boss (encounters/<raid>/
 # boss-rules
 
 Transforma um guia de luta em regras que o motor de análise do wipe-cause consegue checar contra o combat log.
+Boss novo começa pela skill `boss-new` (`npm run boss:new`), que já rascunha a regra pelo Encounter Journal e pelo BigWigs; esta skill completa cada mecânica.
 Saída: um YAML por boss em `encounters/<raid-slug>/<boss-slug>.yaml`, seguindo `references/schema.md`.
 
 Leia `references/schema.md` antes de escrever qualquer arquivo. `encounters/venomous-abyss/the-twin-fangs.yaml` é um exemplo completo.
@@ -14,7 +15,7 @@ Leia `references/schema.md` antes de escrever qualquer arquivo. `encounters/veno
 
 1. **URL de guia** — busque o texto da página (WebFetch; se vier vazio ou só navegação, use o browser e `get_page_text`). Se houver seletor de dificuldade, leia a versão **Mythic** e anote o que é exclusivo de Heroic/Mythic.
 2. **Texto livre colado** — trate como fonte primária; pergunte só se o nome do boss/raid não estiver claro.
-3. **Log real** — rode `cargo run -q -p wipe-core --bin wipe-cli -- spells <WoWCombatLog.txt> > samples/spells.csv` (spells inimigas por pull: casts, hits em players, dano). É a fonte que confirma os IDs; o Journal quase nunca traz os IDs de dano/explosão.
+3. **Log real** — `wipe-cli probe ids <log | pasta do WCL> --encounter <id>` dá o papel de cada spell (cast por npc, aura em player e em inimigo, dano em player); o `wipe-cli spells <log>` dá o CSV por pull. É a fonte que confirma os IDs; o Journal quase nunca traz os IDs de dano/explosão.
 
 ## Fluxo
 
@@ -79,4 +80,4 @@ Regras novas vão em `encounters/<raid>/<boss>.yaml` (embutidas no build). Para 
 - Mecânicas só de tank → `roles: [tank]`; o motor não culpa DPS/healer por elas.
 - Seja conservador em `tolerance`: na dúvida, `0` para `wipe`/`major`, e deixe um `notes` dizendo que precisa calibrar com pulls reais.
 - Se o boss pedir um tipo de campo que `encounters/` ou `data/*.json` não têm, pare o
-  cadastro e proponha o EGM: é o critério (b) do Fluxo de feature (CONTRIBUTING).
+  cadastro e proponha um design (escrito à mão): é o critério (b) do Fluxo de feature (CONTRIBUTING).

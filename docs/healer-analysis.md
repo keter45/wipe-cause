@@ -265,7 +265,8 @@ Mesma estratégia que deu certo nos DPS: protótipo curto, medir, só então gen
    - uso de cooldown só cobra 2 usos atrás (1 em cooldown curto, com 5+ usos na luta) ou nenhum uso;
    - checagens do guia que a referência não cumpre ficaram de fora do YAML (Surging Totem antes do
      Ascendance, Apotheosis com Halo do Archon); as sequências do Preservation Evoker (Echo antes do
-     dano, Stasis com Temporal Anomaly e Dream Breath) também não estão no YAML;
+     dano, Stasis com Temporal Anomaly e Dream Breath) também não estão como checagem no YAML (só no
+     texto do guia);
    - metas de buff na raid tiradas das referências (Atonement 8, Renewing Mist 9, Rejuvenation 5).
 7. **Comparação detalhada (2026-10-12)**: para healer, a busca de logs no Warcraft Logs usa a
    composição como filtro (`healerCompCandidates` em `src/lib/wclApi.ts`): 4 páginas do ranking de

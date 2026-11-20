@@ -651,21 +651,33 @@ impl RuleSet {
         let set = RuleSet { file: file.to_string(), name, encounter_id, global, mechanics, phases, replay_npcs, unit_clears, seen_units, unit_looks };
         // valida já na carga, para erro de YAML aparecer cedo
         for diff in [14, 15, 16] {
-            set.mechanics_for(diff)?;
+            set.mechanics_for(diff, i64::MAX)?;
         }
         Ok(set)
     }
 
-    /// Mecânicas que valem para a dificuldade, com `overrides` aplicados.
-    pub fn mechanics_for(&self, difficulty_id: u32) -> Result<Vec<Mechanic>, String> {
+    /// Mecânicas que valem para a dificuldade, com `overrides` e o `history` do pull aplicados.
+    /// `start_ms`: início do pull (epoch ms, UTC); `i64::MAX` = sem histórico (a regra de hoje).
+    pub fn mechanics_for(&self, difficulty_id: u32, start_ms: i64) -> Result<Vec<Mechanic>, String> {
         let diff = difficulty_key(difficulty_id);
         let mut out = Vec::new();
         for raw in &self.mechanics {
             let mut v = raw.clone();
+            // `history` sai do mapa: não é campo do Mechanic
+            let history = v.as_mapping_mut().and_then(|map| map.remove("history"));
             if let (Some(diff), Some(map)) = (diff, v.as_mapping_mut()) {
                 let ov = map.get("overrides").and_then(|o| o.get(diff)).and_then(Value::as_mapping).cloned();
                 if let Some(ov) = ov {
                     for (k, val) in ov {
+                        map.insert(k, val);
+                    }
+                }
+            }
+            if let (Some(h), Some(map)) = (history, v.as_mapping_mut()) {
+                let key = map.get("key").and_then(Value::as_str).unwrap_or("?").to_string();
+                if let Some(entry) = self.history_entry(&key, &h, start_ms)? {
+                    // depois dos overrides: a entrada vale sobre a dificuldade também
+                    for (k, val) in entry {
                         map.insert(k, val);
                     }
                 }
@@ -680,6 +692,32 @@ impl RuleSet {
             }
         }
         Ok(out)
+    }
+
+    /// Valida o `history` de uma mecânica e devolve os campos da entrada que vale no pull:
+    /// a de menor `until` que ainda é maior que `start_ms`.
+    fn history_entry(&self, key: &str, history: &Value, start_ms: i64) -> Result<Option<yaml_serde::Mapping>, String> {
+        let file = &self.file;
+        let err = |pt: String, en: String| crate::i18n::pick(format!("{file}: mecânica {key}: history {pt}"), format!("{file}: mechanic {key}: history {en}"));
+        let entries = history.as_sequence().ok_or_else(|| err("deve ser uma lista".into(), "must be a list".into()))?; // i18n-ignore: par pt/en
+        let mut best: Option<(i64, &yaml_serde::Mapping)> = None;
+        for e in entries {
+            let map = e.as_mapping().ok_or_else(|| err("entrada deve ser um mapa".into(), "entry must be a map".into()))?; // i18n-ignore: par pt/en
+            for bad in ["key", "type", "history"] {
+                if map.contains_key(bad) {
+                    return Err(err(format!("não aceita `{bad}` numa entrada"), format!("does not accept `{bad}` in an entry"))); // i18n-ignore: par pt/en
+                }
+            }
+            let until = map
+                .get("until")
+                .and_then(Value::as_str)
+                .and_then(crate::timestamp::parse_utc)
+                .ok_or_else(|| err("precisa de `until` com data ISO UTC (2026-11-07T15:00:00Z)".into(), "needs `until` with an ISO UTC date (2026-11-07T15:00:00Z)".into()))?; // i18n-ignore: par pt/en
+            if until > start_ms && best.is_none_or(|(b, _)| until < b) {
+                best = Some((until, map));
+            }
+        }
+        Ok(best.map(|(_, map)| map.iter().filter(|(k, _)| k.as_str() != Some("until")).map(|(k, v)| (k.clone(), v.clone())).collect()))
     }
 }
 
@@ -770,7 +808,7 @@ impl RuleSet {
         }
         let set = RuleSet { file: format!("{} + ajustes", self.file), mechanics, ..self.clone() };
         for diff in [14, 15, 16] {
-            set.mechanics_for(diff)?;
+            set.mechanics_for(diff, i64::MAX)?;
         }
         Ok(set)
     }
@@ -1009,10 +1047,11 @@ pub struct RuleTracker {
 }
 
 impl RuleTracker {
-    pub fn new(sets: &[&RuleSet], difficulty_id: u32) -> Result<Self, String> {
+    /// `start_ms`: início do pull (epoch ms, UTC), para o `history` das mecânicas.
+    pub fn new(sets: &[&RuleSet], difficulty_id: u32, start_ms: i64) -> Result<Self, String> {
         let mut mechs = Vec::new();
         for set in sets {
-            mechs.extend(set.mechanics_for(difficulty_id)?);
+            mechs.extend(set.mechanics_for(difficulty_id, start_ms)?);
         }
         let mut hooks: HashMap<u32, Vec<(usize, Hook)>> = HashMap::new();
         let mut watched_auras = HashSet::new();
@@ -2816,13 +2855,82 @@ mechanics:
     detect: { cast_id: 30 }
 "#;
 
+    const HIST: &str = r#"
+encounter_id: 7
+name: H
+mechanics:
+  - key: area
+    name: A
+    type: interrupt
+    tolerance: 1
+    overrides: { mythic: { tolerance: 2, max_s: 5.0 } }
+    detect: { cast_id: 1 }
+    history:
+      - until: "2026-11-10T00:00:00Z"
+        tolerance: 30
+      - until: "2026-11-07T15:00:00Z"
+        tolerance: 20
+"#;
+
+    #[test]
+    fn history_picks_lowest_until_after_start() {
+        let set = RuleSet::parse("h.yaml", HIST).unwrap();
+        let t = |s: &str| crate::timestamp::parse_utc(s).unwrap();
+        let tol = |ms: i64, d: u32| set.mechanics_for(d, ms).unwrap()[0].tolerance;
+        // antes do menor until: vale a dele
+        assert_eq!(tol(t("2026-11-07T14:59:59Z"), 15), 20);
+        // no until ou depois: a próxima
+        assert_eq!(tol(t("2026-11-07T15:00:00Z"), 15), 30);
+        // depois de todas: a mecânica de base
+        assert_eq!(tol(t("2026-11-10T00:00:00Z"), 15), 1);
+        // sem hora (i64::MAX): base
+        assert_eq!(tol(i64::MAX, 15), 1);
+    }
+
+    #[test]
+    fn history_applies_after_overrides() {
+        let set = RuleSet::parse("h.yaml", HIST).unwrap();
+        let early = crate::timestamp::parse_utc("2026-11-01").unwrap();
+        let m = &set.mechanics_for(16, early).unwrap()[0];
+        // a entrada vence o override de tolerance, e o override de max_s continua
+        assert_eq!(m.tolerance, 20);
+        assert_eq!(m.max_s, Some(5.0));
+        let late = set.mechanics_for(16, i64::MAX).unwrap();
+        assert_eq!(late[0].tolerance, 2);
+    }
+
+    #[test]
+    fn history_load_errors() {
+        let with = |entry: &str| format!("encounter_id: 7
+name: H
+mechanics:
+  - key: a
+    name: A
+    type: interrupt
+    detect: {{ cast_id: 1 }}
+    history:
+      - {entry}
+");
+        assert!(RuleSet::parse("h.yaml", &with("{ until: \"2026-11-07T15:00:00Z\", tolerance: 3 }")).is_ok());
+        for bad in [
+            "{ until: \"2026-11-07T15:00:00Z\", key: b }",
+            "{ until: \"2026-11-07T15:00:00Z\", type: info }",
+            "{ until: \"2026-11-07T15:00:00Z\", history: [] }",
+            "{ until: \"ontem\", tolerance: 3 }",
+            "{ until: \"2026-13-40\", tolerance: 3 }",
+            "{ tolerance: 3 }",
+        ] {
+            assert!(RuleSet::parse("h.yaml", &with(bad)).is_err(), "{bad}");
+        }
+    }
+
     #[test]
     fn applies_overrides_and_difficulty_filter() {
         let set = RuleSet::parse("t.yaml", YAML).unwrap();
-        let heroic = set.mechanics_for(15).unwrap();
+        let heroic = set.mechanics_for(15, i64::MAX).unwrap();
         assert_eq!(heroic.len(), 2);
         assert_eq!(heroic[0].lethal_stacks, Some(11));
-        let mythic = set.mechanics_for(16).unwrap();
+        let mythic = set.mechanics_for(16, i64::MAX).unwrap();
         assert_eq!(mythic.len(), 3);
         assert_eq!((mythic[0].lethal_stacks, mythic[0].severity.as_str()), (Some(9), "wipe"));
     }
@@ -2830,7 +2938,7 @@ mechanics:
     #[test]
     fn evaluates_hits_stacks_and_interrupts() {
         let set = RuleSet::parse("t.yaml", YAML).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         tr.on_damage(20, "P1", "Um-Realm", 100, 1000);
         tr.on_damage(20, "P1", "Um-Realm", 100, 5000);
         tr.on_damage(20, "P2", "Dois-Realm", 100, 6000); // dentro da tolerância
@@ -2870,7 +2978,7 @@ mechanics:
             assert!(err.contains("t.yaml") && err.contains("wave"), "{err}");
         }
         let set = RuleSet::parse("t.yaml", &rule("{ cast_id: 2, speed: 13.5, width: 6, duration_s: 7 }")).unwrap();
-        let tr = RuleTracker::new(&[&set], 16).unwrap();
+        let tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         let infos = tr.cast_waves();
         assert_eq!(infos.len(), 1);
         let w = &infos[0];
@@ -2909,7 +3017,7 @@ mechanics:
     detect: { damage_ids: [70], requires_aura: 71 }
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         // tick normal não é falha; explosão sim — culpado é quem perdeu a aura junto
         tr.on_aura(51, "C", "Carrier-R", 1, true, 1_000);
         tr.on_aura(51, "D", "Other-R", 1, true, 1_000);
@@ -2961,7 +3069,7 @@ mechanics:
   - { key: buster, name: Buster, type: avoidable_damage, roles: [tank], detect: { damage_ids: [5] } }
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let tr = RuleTracker::new(&[&set], 16).unwrap();
+        let tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         assert_eq!(tr.ground_for(1), Some(("dodge", "Dodge", 2_000)));
         assert_eq!(tr.ground_for(2), Some(("pool", "Pool", 6_000)));
         assert_eq!(tr.ground_for(3), None);
@@ -2985,7 +3093,7 @@ mechanics:
     message: "{count} soma(s) errada(s)"
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         assert!(tr.wants_positions());
         for (g, n, base, y) in [("A", "Alice-R", 3000, 0.0), ("B", "Bob-R", 3000, 20.0), ("C", "Carol-R", 1000, 40.0), ("D", "Dan-R", 1000, 60.0)] {
             tr.on_aura(10, g, n, 1, true, 0);
@@ -3028,7 +3136,7 @@ mechanics:
     message: "{count} detonação(ões)"
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         assert!(tr.wants_positions());
         tr.on_enemy_cast_at(5, "G1", Some(2), 0.0, 0.0, 0.0, None, 100); // verde parado em (0,0)
         // Alice pega o roxo e anda até 3 jardas do verde
@@ -3061,7 +3169,7 @@ mechanics:
     max_delay: 4
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         // A: dispel em 1,5s (ok); B: dispel em 6s (atrasado); C: expirou sem dispel
         // no log a remoção vem antes do SPELL_DISPEL, no mesmo instante
         tr.on_aura(80, "A", "A-R", 1, true, 1_000);
@@ -3100,7 +3208,7 @@ mechanics:
         .unwrap();
         book.apply_tuning(&t).unwrap();
         let set = book.find(3421, "The Twin Fangs").unwrap();
-        let ms = set.mechanics_for(16).unwrap();
+        let ms = set.mechanics_for(16, i64::MAX).unwrap();
         assert!(ms.iter().all(|m| m.key != "caustic_globule"), "desligada");
         let ev = ms.iter().find(|m| m.key == "eternal_venom").unwrap();
         assert_eq!((ev.severity.as_str(), ev.warn_stacks, ev.focus), ("minor", Some(5), true));
@@ -3113,7 +3221,7 @@ mechanics:
         // ajuste inválido: erro e o boss segue com a regra de antes
         let bad: Tuning = serde_json::from_value(serde_json::json!({ "encounter_id": 3421, "custom": [{ "key": "x", "name": "x", "type": "nao_existe" }] })).unwrap();
         assert!(book.apply_tuning(&bad).is_err());
-        assert!(book.find(3421, "The Twin Fangs").unwrap().mechanics_for(16).unwrap().iter().any(|m| m.key == "minha_poca"));
+        assert!(book.find(3421, "The Twin Fangs").unwrap().mechanics_for(16, i64::MAX).unwrap().iter().any(|m| m.key == "minha_poca"));
     }
 
     #[test]
@@ -3127,7 +3235,7 @@ mechanics:
     fn coiled_altar_replay_uses_spell_geometry_without_duplicate_ground_marks() {
         let book = RuleBook::embedded();
         let sets = book.for_encounter(3429, "The Coiled Altar");
-        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        let tracker = RuleTracker::new(&sets, 16, i64::MAX).unwrap();
         for (damage, cast) in [(1283594, 1283489), (1299296, 1299267)] {
             let info = tracker.soak_info(tracker.spot_for(damage, 0, false).unwrap()).unwrap();
             assert_eq!((info.radius, info.cast_id, info.players), (9.0, Some(cast), Some(5)));
@@ -3149,7 +3257,7 @@ mechanics:
         // poças de tamanho conhecido: Noxious Ground depois de cada Fangs, Defiled Ground depois de cada Defilement
         let pools = tracker.pool_specs();
         assert_eq!(pools.iter().map(|p| (p.0.as_str(), p.3.cast_id, p.3.shapes.len())).collect::<Vec<_>>(), vec![("noxious_ground", 1282487, 2), ("defiled_ground", 1298381, 2)]);
-        let heroic = RuleTracker::new(&sets, 15).unwrap();
+        let heroic = RuleTracker::new(&sets, 15, i64::MAX).unwrap();
         assert_eq!(heroic.ground_contour_cell(1298591), Some(2.0));
     }
 
@@ -3157,7 +3265,7 @@ mechanics:
     fn twin_fangs_replay_places_the_smash_and_clears_the_orbs() {
         let book = RuleBook::embedded();
         let sets = book.for_encounter(3421, "The Twin Fangs");
-        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        let tracker = RuleTracker::new(&sets, 16, i64::MAX).unwrap();
         // o smash do Stone Breaker: um círculo por cast, 25 jd na frente do Ithraz
         let smash = tracker.cast_soaks();
         assert_eq!(smash.iter().map(|(_, s)| (s.key.as_str(), s.cast_id, s.ahead, s.radius)).collect::<Vec<_>>(), vec![("stone_breaker", Some(1288538), Some(25.0), 3.0)]);
@@ -3183,7 +3291,7 @@ mechanics:
     blame_message: "{player} perdeu o ovo"
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         tr.on_aura(82, "C", "Carrier-R", 1, true, 1_000);
         tr.on_aura(82, "D", "Other-R", 1, true, 1_000);
         // aura que não é de falha: nada
@@ -3204,7 +3312,7 @@ mechanics:
     fn ulatek_eggs_leave_on_last_line_or_on_the_shell() {
         let book = RuleBook::embedded();
         let sets = book.for_encounter(3492, "Ula'tek");
-        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        let tracker = RuleTracker::new(&sets, 16, i64::MAX).unwrap();
         let mut eggs: Vec<(u32, bool, Option<AuraClear>, Option<i64>)> =
             tracker.unit_clears().iter().map(|c| (c.npc, c.until_last_line, c.by_aura, c.lifetime_ms)).collect();
         eggs.sort_by_key(|e| e.0);
@@ -3227,7 +3335,7 @@ mechanics:
     fn vashnik_plague_froth_sends_four_axis_waves() {
         let book = RuleBook::embedded();
         let sets = book.for_encounter(3455, "Vashnik the Malignant");
-        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        let tracker = RuleTracker::new(&sets, 16, i64::MAX).unwrap();
         let (key, _, spell, w) = tracker.waves_for_aura(1281913).unwrap();
         assert_eq!((key, spell, w.directions, w.angle), ("plague_wave", 1295798, 4, 0.0));
         assert_eq!((w.start, w.speed, w.width, w.duration_s), (4.0, 12.3, 6.0, 5.0));
@@ -3248,7 +3356,7 @@ mechanics:
         // a Ula'tek espectral se chama "Ula'tek" no log, como o boss: o mapa usa o nome da regra
         let book = RuleBook::embedded();
         let sets = book.for_encounter(3492, "Ula'tek");
-        let tracker = RuleTracker::new(&sets, 16).unwrap();
+        let tracker = RuleTracker::new(&sets, 16, i64::MAX).unwrap();
         let name = |npc: u32| tracker.unit_looks().iter().find(|l| l.npc == npc).and_then(|l| l.name.clone());
         assert_eq!(name(268029).as_deref(), Some("Ula'tek (spectral)"));
         assert_eq!(name(257758).as_deref(), Some("Ula'tek"));
@@ -3263,7 +3371,7 @@ mechanics:
         let other = book.for_encounter(9999, "Outro Boss");
         assert!(!other.is_empty() && other.iter().all(|s| s.global));
 
-        let mut tr = RuleTracker::new(&other, 16).unwrap();
+        let mut tr = RuleTracker::new(&other, 16, i64::MAX).unwrap();
         tr.on_damage(0, "P1", "Um-Realm", 5000, 1000); // queda (ENVIRONMENTAL_DAMAGE)
         let res = tr.finish(&HashMap::new(), &HashMap::new());
         assert_eq!(res.iter().find(|m| m.key == "environmental").unwrap().failures, 1);
@@ -3285,7 +3393,7 @@ mechanics:
     message: "{count} lenta"
 "#;
         let set = RuleSet::parse("fase.yaml", src).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         // dois bosses recebem a aura juntos: uma janela só
         tr.on_aura(500, "Boss-A", "A", 1, false, 1_000);
         tr.on_aura(500, "Boss-B", "B", 1, false, 1_001);
@@ -3328,7 +3436,7 @@ mechanics:
     message: "{player} pegou as duas ({count}x)"
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         // pulsos de 5s: cada um soma uma stack na aura do lado em que o player está
         let mut stacks: HashMap<(&str, u32), u32> = HashMap::new();
         let mut pulse = |tr: &mut RuleTracker, guid: &'static str, aura: u32, t: i64| {
@@ -3386,7 +3494,7 @@ mechanics:
     detect: { damage_ids: [102] }
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         // A: onda e o stack sobe 12ms depois
         tr.on_aura(100, "A", "A-R", 1, true, 10_000);
         tr.on_aura(101, "A", "A-R", 3, true, 10_012);
@@ -3446,7 +3554,7 @@ mechanics:
     detect: { damage_ids: [205] }
 "#;
         let set = RuleSet::parse("t.yaml", yaml).unwrap();
-        let mut tr = RuleTracker::new(&[&set], 16).unwrap();
+        let mut tr = RuleTracker::new(&[&set], 16, i64::MAX).unwrap();
         let v = |tr: &mut RuleTracker, s: u32, t: i64| tr.on_aura(200, "P", "P-R", s, true, t);
         // adds (hit absorvido inteiro: SPELL_MISSED ainda dá origem)
         tr.on_missed(204, "P", 1_000);

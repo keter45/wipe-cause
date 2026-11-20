@@ -19,28 +19,25 @@ boss ou spec com campos existentes, mudança só de texto, mudança só visual
 sem tela ou componente novo. Texto completo:
 [Fluxo de feature](docs/CONTRIBUTING.pt-BR.md#fluxo-de-feature).
 
-- Cumpre: proponha `/egm:egm-brainstorm` (solução ainda não escolhida) ou
-  `/egm:egm-draft` (solução escolhida) antes de codar.
+- Cumpre: escreva o design à mão em `docs/designs/<feature>.md`, pelo
+  template do [SITEMAP](docs/designs/SITEMAP.md), e só codifique com ele
+  aprovado pelo desenvolvedor.
 - Não cumpre e é boss ou spec: use a skill do processo padrão.
 - Na dúvida: pergunte.
 
-## EGM
+O projeto não usa mais o EGM (plugin `egm@egm`) desde 2026-11-20: nada de
+`/egm:*` nem de agentes `egm:*`.
 
-EGM artifact directory: .egm
+## Design de feature grande
 
-- Plugin `egm@egm` 0.1.0; Claude Code 2.1.271 ou mais novo (abaixo disso,
-  os revisores não rodam isolados).
-- No `/egm:egm-review`, passe como contexto dos revisores
-  `docs/CONTRIBUTING.pt-BR.md`, `docs/designs/SITEMAP.md` e os docs de
-  regras que o design cita, e diga a todo revisor: "não leia nada em
-  `samples/`".
 - Design salvo: `docs/designs/<feature>.md` com Status Approved e a linha no
   SITEMAP (com a coluna Status), dentro do PR da feature; a descrição do PR
   cita o design.
 - Antes de aprovar a feature: confira o design contra o código com a
   variante de design do prompt em "Auditoria: prompt literal de cada
-  agente" de [egm-adoption.md](docs/designs/egm-adoption.md). No último
-  commit do PR, antes do merge: Status Implemented no design e no SITEMAP.
+  agente" de [egm-adoption.md](docs/designs/egm-adoption.md), num subagente
+  comum só de leitura. No último commit do PR, antes do merge: Status
+  Implemented no design e no SITEMAP.
 
 ## Layout de tela
 
@@ -53,4 +50,5 @@ projeto". Sem a skill, siga só a regra 5.
 ## Antes de uma release minor
 
 `npm run docs:links` e a conferência dos docs (Parte 3, item 6, de
-[egm-adoption.md](docs/designs/egm-adoption.md)).
+[egm-adoption.md](docs/designs/egm-adoption.md)), com um subagente comum só
+de leitura por unidade no lugar do `egm:egm-codebase-details`.

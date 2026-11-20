@@ -30,11 +30,15 @@ export function wipeCli(args) {
 export function loadReport(input, cutoff, cacheDir) {
   if (input.endsWith('.json')) return JSON.parse(fs.readFileSync(input, 'utf8'));
   fs.mkdirSync(cacheDir, { recursive: true });
-  const cached = path.join(cacheDir, `${path.basename(input, path.extname(input))}-cut${cutoff}.json`);
-  const fresh = fs.existsSync(cached) && fs.existsSync(WIPE_CLI) && fs.statSync(cached).mtimeMs > Math.max(fs.statSync(input).mtimeMs, fs.statSync(WIPE_CLI).mtimeMs);
+  // pastas do Warcraft Logs (scripts/wcl-fetch.mjs), uma ou várias separadas por vírgula
+  const files = input.split(',');
+  const wcl = files.length > 1 || fs.statSync(input).isDirectory();
+  const cached = path.join(cacheDir, `${path.basename(files[0], path.extname(files[0]))}${files.length > 1 ? `+${files.length - 1}` : ''}-cut${cutoff}.json`);
+  const srcTime = Math.max(...files.map((f) => fs.statSync(wcl ? path.join(f, 'report.json') : f).mtimeMs));
+  const fresh = fs.existsSync(cached) && fs.existsSync(WIPE_CLI) && fs.statSync(cached).mtimeMs > Math.max(srcTime, fs.statSync(WIPE_CLI).mtimeMs);
   if (!fresh) {
-    console.log(`analisando ${path.basename(input)}…`);
-    fs.writeFileSync(cached, wipeCli(['analyze', input, '--json', '--cutoff', String(cutoff)]));
+    console.log(`analisando ${files.map((f) => path.basename(f)).join(', ')}…`);
+    fs.writeFileSync(cached, wipeCli(wcl ? ['wcl', input, '--json', '--cutoff', String(cutoff)] : ['analyze', input, '--json', '--cutoff', String(cutoff)]));
   }
   return JSON.parse(fs.readFileSync(cached, 'utf8'));
 }

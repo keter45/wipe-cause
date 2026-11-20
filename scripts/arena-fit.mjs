@@ -1,7 +1,16 @@
 // Alinha a imagem de fundo de cada arena (raidplan.io) com as coordenadas do combat log e acha o chão
 // andável. Ferramenta de calibração (não roda no app):
 //
-//   node scripts/arena-fit.mjs <occupancy.json> <pasta das imagens> <pasta de saída>
+//   node scripts/arena-fit.mjs <occupancy.json> <pasta das imagens> <pasta de saída> [--write] [--anchors <arquivo.json>]
+//
+//   --write    depois do encaixe, grava o boss em data/arenas.json com os nomes do app (url -> image, score -> fit,
+//              sPx/u0/v0/cx/cy -> pxPerYd/anchorPx/anchorAt). Só mexe no que mudou: marks, offFloor, anchored,
+//              rotation (quando não vem do encaixe), name e spanYd à mão ficam como estão. Mostra o diff (antes -> depois).
+//   --anchors  (com ARENA=<id>) pares [{ "name": "fonte de fogo", "log": [x, y], "px": [u, v] }, ...]: lugar no log
+//              x pixel na imagem de 1224 de largura. Semelhança com giro livre por mínimos quadrados, relatório do erro
+//              de cada par em jardas e refino pelas paredes (pisões dentro do contorno), como um `fixed`. Giro que não é
+//              múltiplo de 90 (mais de 2 graus) grava `rotation` e `anchored: true`; os nomes viram `marks`
+//              (campos opcionais por par: `en`, `color`, `radius`).
 //
 // occupancy.json: onde os players pisaram em cada boss (`wipe-cli positions`, juntado por boss).
 // Para cada arena: o chão (polígono marcado na imagem, ou tudo que não tem a cor do perigo) e a
@@ -11,10 +20,18 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
-const [occFile, imgDir, outDir] = process.argv.slice(2);
-if (!outDir) throw new Error('uso: node scripts/arena-fit.mjs <occupancy.json> <imagens> <saída>');
+import { nearestQuarter, patchArenaText, similarity } from './lib/arenaMath.mjs';
+
+const argv = process.argv.slice(2);
+const WRITE = argv.includes('--write');
+const anchorsAt = argv.indexOf('--anchors');
+const ANCHORS_FILE = anchorsAt >= 0 ? argv[anchorsAt + 1] : null;
+if (anchorsAt >= 0 && (!ANCHORS_FILE || ANCHORS_FILE.startsWith('--'))) throw new Error('--anchors precisa de um arquivo');
+const [occFile, imgDir, outDir] = argv.filter((x, i) => !x.startsWith('--') && i !== (anchorsAt >= 0 ? anchorsAt + 1 : -1));
+if (!outDir) throw new Error('uso: node scripts/arena-fit.mjs <occupancy.json> <imagens> <saída> [--write] [--anchors <arquivo.json>]');
 fs.mkdirSync(outDir, { recursive: true });
 const occ = JSON.parse(fs.readFileSync(occFile, 'utf8'));
 
@@ -281,6 +298,73 @@ function fit(pts, mask, im, a) {
   return best;
 }
 
+/** Pontos (X, Y) do log -> pixel (imagem de 1224 de largura) por `t` (rot, s, u, v, cx, cy), nas mesmas contas de `score`. */
+function project(t, X, Y) {
+  const [a, b, c, d] = mat(t);
+  return [t.u + t.s * (a * (X - t.cx) + b * (Y - t.cy)), t.v + t.s * (c * (X - t.cx) + d * (Y - t.cy))];
+}
+
+/** Inversa de `project`: pixel -> (X, Y) do log. */
+function unproject(t, u, v) {
+  const [A, B, C, D] = mat(t);
+  const det = A * D - B * C;
+  const [du, dv] = [(u - t.u) / t.s, (v - t.v) / t.s];
+  return [t.cx + (D * du - B * dv) / det, t.cy + (-C * du + A * dv) / det];
+}
+
+/**
+ * Encaixe por lugares que o log fixa: semelhança com giro livre pelos pares (log x pixel), depois o refino pelas
+ * paredes (mais pisões dentro do contorno) sem deixar nenhum par passar de `tol` jardas. Tudo na escala de 1224.
+ * Devolve o equivalente a um `fixed` ({ rotation, s, u, v, cx, cy }) e o relatório.
+ */
+function fitAnchors(pairs, pts, mask, im) {
+  if (pairs.length < 2) throw new Error('--anchors: precisa de 2 pares ou mais (3 para conferir)');
+  // mapa = (-Y, X) (norte para cima); pixel com o v para cima (-v): então a semelhança é um giro sem espelho
+  const sim = similarity(pairs.map((p) => [-p.log[1], p.log[0]]), pairs.map((p) => [p.px[0], -p.px[1]]));
+  const free = (sim.theta * 180) / Math.PI;
+  const { quarter, diff } = nearestQuarter(free);
+  const cx = pairs.reduce((sum, p) => sum + p.log[0], 0) / pairs.length;
+  const cy = pairs.reduce((sum, p) => sum + p.log[1], 0) / pairs.length;
+  let t = { rot: diff <= 2 ? quarter : free, s: sim.s, u: 0, v: 0, cx, cy };
+  // posição: o centro dos pares no log cai no centro dos pixels (é assim na semelhança por mínimos quadrados)
+  const [mu, mv] = [(pairs.reduce((sum, p) => sum + p.px[0], 0) / pairs.length), pairs.reduce((sum, p) => sum + p.px[1], 0) / pairs.length];
+  [t.u, t.v] = [mu, mv];
+  const errors = (tt) => pairs.map((p) => Math.hypot(...project(tt, p.log[0], p.log[1]).map((q, i) => q - p.px[i])) / tt.s);
+  const start = errors(t);
+  const tol = Math.max(6, Math.max(...start));
+  const k = WORK / MARK;
+  const toWork = (tt) => ({ o: -1, rot: tt.rot, s: tt.s * k, u: tt.u * k, v: tt.v * k, cx: tt.cx, cy: tt.cy });
+  const insideOf = (tt) => {
+    const tw = toWork(tt);
+    let n = 0;
+    for (const [X, Y] of pts) { const [u, v] = project(tw, X, Y).map((q) => Math.round(q)); if (u >= 0 && v >= 0 && u < im.w && v < im.h && mask[v * im.w + u]) n++; }
+    return n / pts.length;
+  };
+  // pisões dentro do contorno (o que as paredes dizem); a nota desempata e o erro médio dos pares segura o refino perto deles
+  const eval1 = (tt) => (Math.max(...errors(tt)) > tol ? -1 : pts.length ? insideOf(tt) + 0.02 * score(pts, mask, im, toWork(tt)) - 0.004 * (errors(tt).reduce((x, y) => x + y, 0) / pairs.length) : 0);
+  let sc = eval1(t);
+  if (pts.length) {
+    const levels = [[1, 0.02, 8], [0.5, 0.01, 4], [0.25, 0.005, 2], [0.1, 0.002, 1], [0.05, 0.001, 0.5], [0.02, 0.0005, 0.25]];
+    for (const [dr, ds, dp] of levels) {
+      let moved = true;
+      while (moved) {
+        moved = false;
+        const moves = [[0, 0, 0, dp], [0, 0, 0, -dp], [0, 0, dp, 0], [0, 0, -dp, 0], [0, ds, 0, 0], [0, -ds, 0, 0]];
+        if (diff > 2) moves.push([dr, 0, 0, 0], [-dr, 0, 0, 0]);
+        for (const [mr, ms, mu2, mv2] of moves) {
+          const n = { ...t, rot: t.rot + mr, s: t.s * (1 + ms), u: t.u + mu2, v: t.v + mv2 };
+          const ns = eval1(n);
+          if (ns > sc + 1e-4) { t = n; sc = ns; moved = true; }
+        }
+      }
+    }
+  }
+  const after = errors(t);
+  const marks = pairs.map((p, i) => ({ name: p.name, at: unproject(t, p.px[0], p.px[1]).map((q) => +q.toFixed(1)), err: after[i], before: start[i] }));
+  const inside = pts.length ? insideOf(t) : null;
+  return { fixed: { rotation: +t.rot.toFixed(2), s: +t.s.toFixed(4), u: +t.u.toFixed(2), v: +t.v.toFixed(2), cx: +t.cx.toFixed(2), cy: +t.cy.toFixed(2) }, free: { rotation: free, s: sim.s, errors: sim.residuals.map((r) => r / sim.s) }, marks, inside, snapped: diff <= 2 && diff > 0 ? { from: free, to: quarter } : null, multiple90: diff <= 2 };
+}
+
 /** Imagem de conferência: o chão escurecido fora, os pisões em vermelho. */
 function check(a, im, mask, pts, t, file) {
   const out = Buffer.from(im.rgb);
@@ -334,14 +418,67 @@ function outline(a, im, t, mask) {
   return { poly, holes: [] };
 }
 
+const ARENAS_JSON = process.env.ARENAS_JSON ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'arenas.json');
+const anchorPairs = ANCHORS_FILE ? JSON.parse(fs.readFileSync(ANCHORS_FILE, 'utf8')) : null;
+if (anchorPairs && !only) throw new Error('--anchors vale para uma arena: passe ARENA=<id do encounter>');
+
+/** Texto curto de um valor para o diff (antes -> depois). */
+function brief(key, v) {
+  if (v === undefined) return '(novo)';
+  if (key === 'floor') return `${v.length} pontos`;
+  if (key === 'holes') return `${v.length} buraco(s)`;
+  if (key === 'marks') return v.map((m) => `${m.name?.pt ?? m.name} [${m.at}]`).join('; ');
+  return JSON.stringify(v);
+}
+
+/** Campos de data/arenas.json com os nomes do app. `rotation` só vem do encaixe quando ele sabe (fixed/anchors/orientação girada). */
+function arenaFields(r, a, t, existing, anch) {
+  const rot = t.rot != null ? +t.rot.toFixed(2) : ROTATION[t.o];
+  const fields = {
+    name: existing?.name ?? r.name,
+    image: r.url,
+    size: r.size,
+    pxPerYd: r.sPx,
+    anchorPx: [r.u0, r.v0],
+    anchorAt: [r.cx, r.cy],
+    fit: r.score,
+    floor: r.floor.poly,
+    holes: r.floor.holes,
+  };
+  if (rot !== 0 || t.rot != null) fields.rotation = rot;
+  if (anch) {
+    if (!anch.multiple90) fields.anchored = true;
+    fields.marks = anch.marks.map((m, i) => ({
+      name: typeof m.name === 'string' ? { pt: m.name, en: anchorPairs[i].en ?? m.name } : m.name,
+      at: m.at,
+      radius: anchorPairs[i].radius ?? 4,
+      color: anchorPairs[i].color ?? ['#f97316', '#a78bfa', '#f43f5e', '#22d3ee', '#a3e635', '#facc15'][i % 6],
+    }));
+  }
+  return fields;
+}
+
 const result = {};
-for (const a of ARENAS) {
-  if (only && a.id !== only) continue;
-  const o = occ[a.id];
-  if (!o) { console.log(a.id, 'sem posições'); continue; }
-  const im = decode(path.join(imgDir, `${a.img}.jpg`));
-  const mask = floorMask(a, im);
-  const pts = densePoints(o, a.core);
+let written = fs.readFileSync(ARENAS_JSON, 'utf8');
+const existingArenas = JSON.parse(written).arenas;
+let anyWrite = false;
+for (const a0 of ARENAS) {
+  if (only && a0.id !== only) continue;
+  const o = occ[a0.id];
+  if (!o) { console.log(a0.id, 'sem posições'); continue; }
+  const im = decode(path.join(imgDir, `${a0.img}.jpg`));
+  const mask = floorMask(a0, im);
+  const pts = densePoints(o, a0.core);
+  let a = a0;
+  let anch = null;
+  if (anchorPairs) {
+    anch = fitAnchors(anchorPairs, pts, mask, im);
+    a = { ...a0, fixed: anch.fixed };
+    console.log(`--anchors (${anchorPairs.length} pares), semelhança livre: giro ${anch.free.rotation.toFixed(2)}°, ${(anch.free.s * 2).toFixed(3)} px/jd`);
+    for (const [i, m] of anch.marks.entries()) console.log(`  ${String(m.name).padEnd(24)} erro ${anch.free.errors[i].toFixed(1)} jd (semelhança) -> ${m.err.toFixed(1)} jd (refino) · lugar no log [${m.at}]`);
+    if (anch.snapped) console.log(`  giro a ${Math.abs(anch.snapped.from - anch.snapped.to).toFixed(2)}° de ${anch.snapped.to}: travado em ${anch.snapped.to}°`);
+    console.log(`  fixed: ${JSON.stringify(anch.fixed)}${anch.inside == null ? '' : ` · pisões dentro ${(anch.inside * 100).toFixed(1)}%`}`);
+  }
   const t = fit(pts, mask, im, a);
   check(a, im, mask, pts, t, path.join(outDir, `check-${a.id}.png`));
   // canto superior esquerdo e escala da imagem inteira no mundo (para desenhar o fundo)
@@ -363,5 +500,21 @@ for (const a of ARENAS) {
     floor: outline(a, im, t, mask),
   };
   console.log(a.id, o.name.padEnd(24), 'orient', t.o, 'px/yd', (t.s * k).toFixed(2), 'score', t.score.toFixed(3));
+  if (WRITE) {
+    const { text, changes } = patchArenaText(written, a.id, arenaFields(result[a.id], a, t, existingArenas[a.id], anch));
+    written = text;
+    anyWrite = anyWrite || changes.length > 0;
+    console.log(`  --write ${path.relative(process.cwd(), ARENAS_JSON)}: ${changes.length ? '' : 'sem mudança'}`);
+    for (const c of changes) {
+      let extra = '';
+      if ((c.key === 'floor' || c.key === 'holes') && c.before && c.before.length === c.after.length) {
+        const flat = (v) => (c.key === 'floor' ? v : v.flat());
+        const [b, n] = [flat(c.before), flat(c.after)];
+        if (b.length === n.length) extra = ` (vértice mais movido ${Math.max(...b.map((p, i) => Math.hypot(p[0] - n[i][0], p[1] - n[i][1]))).toFixed(1)} jd)`;
+      }
+      console.log(`    ${c.key}: ${brief(c.key, c.before)} -> ${brief(c.key, c.after)}${extra}`);
+    }
+  }
 }
 fs.writeFileSync(path.join(outDir, 'arenas.json'), JSON.stringify(result, null, 1));
+if (WRITE && anyWrite) fs.writeFileSync(ARENAS_JSON, written);

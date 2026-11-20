@@ -200,6 +200,14 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
 - O tamanho vem dos atingidos e das contagens do log (stacks de quem toma por orb quebrado). Orbs
   não têm `UNIT_DIED`: "o orb sumiu do log" mistura orb pego com orb quebrado e não serve para medir.
 
+### Hotfix que muda um tamanho: `history`
+
+- Qualquer campo de uma mecânica pode ter histórico por data (`history: [{ until, <campos> }]`, UTC):
+  pull que começou antes de `until` usa os campos da entrada no lugar dos da mecânica (depois dos
+  `overrides`). Raio de poça, de área, largura de onda, alcance de frontal: meça no log de antes e no de
+  depois do hotfix, deixe o valor novo na mecânica e o antigo na entrada. Os orbs têm o seu próprio
+  (`detect.orbs.before`), que continua valendo.
+
 ### O que o log não põe no chão
 
 - **Fragmentos para pegar** (regra `pickup`): o acerto ao pegar traz a posição de quem pegou; o
@@ -275,6 +283,16 @@ meça a distância de cada atingido até o centro (o meio do soak) e escolha o r
 
 ## Ferramentas
 
+- **Boss novo:** `npm run boss:new -- <encounter_id> [--log <log>] [--tops N]` roda coleta, rascunho, as
+  medidas abaixo, arena e conferência (skill `boss-new`, design [boss-new.md](designs/boss-new.md)).
+- **Medidas versionadas:** cada método desta página é um subcomando do
+  `wipe-cli probe <medida> <log | pasta do WCL>[,...] --encounter <id> [--difficulty 16] [--json]`:
+  `ids` (papel de cada spell no log), `units` (posição, vida e onde cada npc nasce), `falloff` (dano bruto por
+  faixa de 5 jd), `pulse-radius` (raio por pulso, Youden), `ahead` (ponto na frente de quem lança), `cone`,
+  `wave-dir` (hipóteses de direção e envelope de velocidade) e `pool` (centro e raio por vez do cast). Use
+  antes de escrever script descartável.
+- **Forma medida:** o `replay:check` confere cada forma desenhada contra o log (acertos dentro × quem não
+  tomou dentro, `scripts/lib/shapeFit.mjs`), os ids da regra pelo papel e a queda do dano com a distância.
 - Recorte de um pull para medir: `tail -c +<logOffset+1>` do log até o `ENCOUNTER_END`. As posições vêm
   do bloco advanced de cada linha, então o recorte funciona sem a primeira linha do log; sem ela, o
   relatório só marca `advancedLogging: false` (e o app avisa que o Advanced Combat Logging está desligado).

@@ -6,6 +6,12 @@
 //
 //   npm run replay:check -- <WoWCombatLog.txt | relatório.json>              o boss com mais pulls no log
 //   npm run replay:check -- <log> --boss "The Coiled Altar" --difficulty Mythic
+//   npm run replay:check -- samples/wcl-<código>[,samples/wcl-<outro>] ...      reports baixados do Warcraft Logs
+//   --shape-pulls N   quantos pulls (os mais longos) entram na forma medida (padrão 6; 0 desliga)
+//
+// Além do que o mapa desenha, mede a forma contra o log (scripts/lib/shapeFit.mjs: acertos dentro ×
+// quem não tomou dentro), confere os ids da regra pelo papel no log e se o dano cai com a distância
+// (`wipe-cli probe ids` / `probe falloff --all`).
 //
 // O log é analisado pelo wipe-cli (target/release; `cargo build --release -p wipe-core --bin wipe-cli`),
 // sem corte de mortes (o replay mostra o pull inteiro). O relatório fica em
@@ -15,6 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ROOT, bossPulls, cliArgs, loadReport, mmss, wipeCli, writeReport } from './lib/checks.mjs';
+import { FIT_MIN_HITS, fitStatus, mergeFits, shapeFit } from './lib/shapeFit.mjs';
 
 const OUT = path.join(ROOT, 'samples', 'replay');
 const CACHE = path.join(OUT, '.cache');
@@ -93,6 +100,7 @@ const arena = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'arenas.json'),
 
 const items = [];
 const add = (level, text) => items.push({ level, text });
+const pct = (x) => `${(x * 100).toFixed(1)}%`;
 if (!rule) add('REVISAR', `Sem regra para o encounter ${ref.encounterId}: o replay só mostra posições e mortes. Cadastre o boss (skill boss-rules).`);
 if (userRule) add('ATENÇÃO', `Há uma regra do usuário (${path.join(APP_DATA, 'encounters', userRule)}) que substitui a embutida no app: o que você vê lá pode não ser o desta conferência.`);
 if (!arena) add('REVISAR', 'Sem arena em data/arenas.json: o replay fica sem o mapa e sem o chão andável (seção "Arena" da skill replay-build).');
@@ -147,7 +155,7 @@ for (const p of pulls)
     k.n++;
     casts.set(c.spellId, k);
   }
-const unknownCasts = [...casts.values()].filter((c) => !byId.has(c.spellId) && c.n / pulls.length >= CAST_PER_PULL).sort((a, b) => b.n - a.n);
+const unknownCasts = [...casts.values()].filter((c) => !SKIP_SPELLS.has(c.spellId) && !byId.has(c.spellId) && c.n / pulls.length >= CAST_PER_PULL).sort((a, b) => b.n - a.n);
 if (unknownCasts.length) add('ATENÇÃO', `${unknownCasts.length} casts do boss sem regra (lista abaixo): confira no guia se algum é frontal, linha ou área que deveria aparecer no mapa.`);
 
 // unidades que fazem dano e não entram no mapa
@@ -220,11 +228,124 @@ for (const w of castWaves) {
   if (w.noPos > w.casts * CAST_WAVE_NO_POS) add('ATENÇÃO', `${w.name}: ${w.noPos} de ${w.casts} casts sem posição de quem lançou: o log não tem o bloco avançado nessas linhas.`);
 }
 
+// ---------------------------------------------------------------- ids pelo papel e queda com a distância
+
+const srcFiles = input.split(',');
+const srcTag = path.basename(srcFiles[0], path.extname(srcFiles[0]));
+const cliTime = () => (fs.existsSync(path.join(ROOT, 'target', 'release')) ? fs.statSync(path.join(ROOT, 'target', 'release')).mtimeMs : 0);
+/** `wipe-cli probe` no log (ou nos reports do WCL), com cache; null se o wipe-cli é anterior ao probe. */
+function probe(args, tag) {
+  const cached = path.join(CACHE, `${srcTag}-${ref.encounterId}-${ref.difficultyId}-${tag}.json`);
+  const srcTime = Math.max(...srcFiles.map((f) => fs.statSync(f).mtimeMs));
+  if (fs.existsSync(cached) && fs.statSync(cached).mtimeMs > Math.max(srcTime, cliTime())) return JSON.parse(fs.readFileSync(cached, 'utf8'));
+  try {
+    const out = wipeCli(['probe', args[0], input, ...args.slice(1), '--encounter', String(ref.encounterId), '--difficulty', String(ref.difficultyId), '--json']);
+    fs.writeFileSync(cached, out);
+    return JSON.parse(out);
+  } catch (e) {
+    add('ATENÇÃO', `\`wipe-cli probe ${args[0]}\` não rodou (${String(e.message).split('\n')[0]}): recompile o wipe-cli (\`cargo build --release -p wipe-core --bin wipe-cli\`).`);
+    return null;
+  }
+}
+
+/** Os ids da mecânica com o papel que a regra dá a cada um. */
+function rolesOf(m) {
+  const d = m.detect ?? {};
+  const out = [];
+  const push = (id, role, field) => typeof id === 'number' && out.push({ id, role, field });
+  for (const id of d.damage_ids ?? []) push(id, 'dano', 'detect.damage_ids');
+  push(d.cast_id, 'cast', 'detect.cast_id');
+  push(m.cone?.cast_id, 'cast', 'cone.cast_id');
+  push(m.line?.cast_id, 'cast', 'line.cast_id');
+  push(m.waves?.cast_id, 'cast', 'waves.cast_id');
+  push(m.pool?.cast_id, 'cast', 'pool.cast_id');
+  push(d.aura_id, 'aura', 'detect.aura_id');
+  push(m.area?.aura, 'aura', 'area.aura');
+  push(m.waves?.aura, 'aura', 'waves.aura');
+  return out;
+}
+
+const idRoles = [];
+const idsProbe = rule && !input.endsWith('.json') ? probe(['ids'], 'ids') : null;
+if (idsProbe) {
+  const seen = new Map(idsProbe.spells.map((s) => [s.spellId, s]));
+  const has = { dano: (s) => s.damageHits > 0, cast: (s) => s.castStart + s.castSuccess > 0, aura: (s) => s.auraOnPlayers + s.auraOnEnemies > 0 };
+  const roleOf = (s) => [has.cast(s) && 'cast', has.aura(s) && 'aura', has.dano(s) && 'dano'].filter(Boolean).join(' + ') || '—';
+  for (const m of rule.mechanics ?? [])
+    for (const r of rolesOf(m)) {
+      const s = seen.get(r.id);
+      // id que não aparece nos pulls (outra dificuldade, fase não alcançada): sem como julgar
+      if (!s || has[r.role](s)) continue;
+      const actual = roleOf(s);
+      idRoles.push({ key: m.key, ...r, actual });
+      add('REVISAR', `${m.key}: o id ${r.id} está em \`${r.field}\` (${r.role}), mas no log ele é ${actual}: confira o id (skill boss-rules).`);
+    }
+}
+const falloff = input.endsWith('.json') ? null : probe(['falloff', '--all'], 'falloff');
+const fallRows = [];
+if (falloff) {
+  for (const f of falloff.spells) {
+    const row = rows.find((r) => r.spellId === f.spellId);
+    if (!row) continue;
+    const shapeless = row.shapes.length === 0 && row.rules.length > 0;
+    // só a área em volta da unidade que lança: a do portador tem outro centro (o falloff mede até quem lança)
+    const areaShape = row.shapes.includes('área na unidade');
+    let level = null;
+    if (shapeless && f.verdict === 'cai') {
+      level = 'ATENÇÃO';
+      add(level, `${f.name} (${f.spellId}) está sem forma, mas o dano cai com a distância de quem lança (ρ ${f.rho.toFixed(2)}): tem área no chão? (premissa 10 de docs/replay-methods.md)`);
+    } else if (areaShape && f.verdict === 'nao_cai') {
+      level = 'ATENÇÃO';
+      add(level, `${f.name} (${f.spellId}) desenha uma área, mas o dano não cai com a distância (ρ ${f.rho.toFixed(2)}): o círculo diria "afaste-se" sem motivo? (premissa 10)`);
+    }
+    fallRows.push({ ...f, note: row.note, level });
+  }
+}
+
+// ---------------------------------------------------------------- forma medida contra o log
+
+const SHAPE_PULLS = Number(opt('shape-pulls', 6));
+const isLog = !input.endsWith('.json') && srcFiles.length === 1 && fs.statSync(input).isFile();
+/** O pull completo (o mesmo da aba Replay), com cache. */
+function fullPull(p) {
+  const cached = path.join(CACHE, `${srcTag}-fight-${p.id}.json`);
+  if (fs.existsSync(cached) && fs.statSync(cached).mtimeMs > cliTime()) return JSON.parse(fs.readFileSync(cached, 'utf8'));
+  const args = isLog ? ['fight', input, '--pull', String(p.id)] : p.wclFight ? ['wcl', input, '--fight', p.wclFight] : null;
+  if (!args) return null;
+  const out = wipeCli(args);
+  fs.writeFileSync(cached, out);
+  return JSON.parse(out);
+}
+let fits = {};
+if (rule && SHAPE_PULLS > 0 && !input.endsWith('.json')) {
+  const chosen = [...pulls].sort((a, b) => b.durationMs - a.durationMs).slice(0, SHAPE_PULLS);
+  console.log(`medindo a forma em ${chosen.length} pulls…`);
+  const full = chosen
+    .map((p) => {
+      try {
+        return fullPull(p);
+      } catch (e) {
+        add('ATENÇÃO', `pull ${p.pullNumber}: o replay completo não abriu (${String(e.message).split('\n')[0]}).`);
+        return null;
+      }
+    })
+    .filter(Boolean);
+  if (!full.length) add('ATENÇÃO', 'Forma medida: nenhum pull com replay completo (reports do WCL precisam do `wipe-cli wcl --fight`).');
+  fits = mergeFits(full.map((p) => shapeFit(p, rule)));
+  for (const [key, v] of Object.entries(fits)) {
+    const st = fitStatus(v);
+    v.status = st;
+    if (st === 'REVISAR' || st === 'ATENÇÃO') {
+      const why = !v.derived && v.tpr < 0.8 ? `só ${pct(v.tpr)} dos ${v.hits} acertos caem dentro (forma no lugar errado ou pequena)` : `${pct(v.fpr)} de quem estava perto e não tomou estava dentro (forma grande demais)`;
+      add(st, `${key} (${v.shape}): ${why}. Meça de novo com \`wipe-cli probe\` (skill replay-build).`);
+    }
+  }
+}
+
 const status = items.some((i) => i.level === 'REVISAR') ? 'REVISAR' : items.length ? 'ATENÇÃO' : 'OK';
 
 // ---------------------------------------------------------------- relatório
 
-const pct = (x) => `${(x * 100).toFixed(1)}%`;
 const md = [];
 md.push(`# Replay — ${title} (${night})`, '');
 md.push(`**${status}** · ${pulls.length} pulls · regra: ${rule ? rule.file : 'nenhuma'} · arena: ${arena ? `${arena.name} (encaixe ${arena.fit ?? '?'})` : 'nenhuma'}`, '');
@@ -247,7 +368,19 @@ if (ghosts.length) md.push(`- **Fantasmas** (${ghosts.map((m) => m.key).join(', 
 for (const w of castWaves) {
   md.push('', `## Ondas de cast — ${w.name} (${w.key})`, '', `- **Casts:** ${w.casts}: com onda ${w.drawn}, sem acerto ${w.noHits}, sem posição ${w.noPos}`, `- **Acertos:** ${w.hits} com cast (${w.ambiguous} ambíguos, ${w.hits ? pct(w.ambiguous / w.hits) : '—'}), ${w.unassigned} sem cast`);
 }
+if (Object.keys(fits).length) {
+  md.push('', '## Forma medida contra o log', '', `Nos ${Math.min(SHAPE_PULLS, pulls.length)} pulls mais longos. **Dentro**: acertos do dano da mecânica dentro da forma desenhada. **Perto sem tomar, dentro**: quem estava a até 15 jd da borda e não tomou, mas estava dentro (forma grande demais). Com menos de ${FIT_MIN_HITS} acertos, sem status. *Derivada*: o centro vem de quem tomou, então o "dentro" não prova o lugar.`, '', '| Mecânica | Forma | Acertos | Dentro | Perto sem tomar, dentro | Youden | |', '|---|---|---|---|---|---|---|');
+  for (const [key, v] of Object.entries(fits).sort((a, b) => b[1].hits - a[1].hits)) md.push(`| ${key} | ${v.shape}${v.derived ? ' (derivada)' : ''} | ${v.hits} | ${v.tpr == null ? '—' : pct(v.tpr)} | ${v.fpr == null ? '—' : `${pct(v.fpr)} de ${v.nonHit}`} | ${v.youden == null ? '—' : v.youden.toFixed(2)} | ${v.status && v.status !== 'OK' ? v.status : ''} |`);
+}
+if (idRoles.length) {
+  md.push('', '## Ids fora do papel', '', '| Mecânica | Campo | Id | Papel na regra | No log |', '|---|---|---|---|---|');
+  for (const r of idRoles) md.push(`| ${r.key} | \`${r.field}\` | ${r.id} | ${r.role} | ${r.actual} |`);
+}
+if (fallRows.length) {
+  md.push('', '## O dano cai com a distância de quem lança?', '', 'Dano bruto (antes da mitigação) por faixa de 5 jd (`wipe-cli probe falloff`). ρ de Spearman: negativo = cai.', '', '| Spell | No replay | Acertos | ρ | Veredito | |', '|---|---|---|---|---|---|');
+  for (const f of fallRows) md.push(`| ${f.name} (${f.spellId}) | ${f.note} | ${f.hits} | ${f.rho.toFixed(2)} | ${{ cai: 'cai', nao_cai: 'não cai', incerto: 'incerto' }[f.verdict] ?? f.verdict} | ${f.level ?? ''} |`);
+}
 const longest = [...pulls].sort((a, b) => b.durationMs - a.durationMs)[0];
 md.push('', `Para olhar no app: pull ${longest.pullNumber} (${mmss(longest.durationMs)}), aba Replay, com o replay completo da luta.`, '');
-const file = writeReport(OUT, title, md.join('\n'), { title, night, status, items, rule: rule?.file ?? null, arena: arena ? { name: arena.name, fit: arena.fit } : null, rows, unknownCasts, hiddenUnits, assigns, castWaves, lateExits: Object.fromEntries(lateExits) });
+const file = writeReport(OUT, title, md.join('\n'), { title, night, status, items, rule: rule?.file ?? null, arena: arena ? { name: arena.name, fit: arena.fit } : null, rows, unknownCasts, hiddenUnits, assigns, castWaves, lateExits: Object.fromEntries(lateExits), fits, idRoles, falloff: fallRows });
 console.log(`${status} · ${rows.length} spells · ${unknownCasts.length} casts sem regra · ${file}.md`);

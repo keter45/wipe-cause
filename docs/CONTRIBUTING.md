@@ -41,7 +41,8 @@ cargo run -p wipe-core --bin wipe-cli -- analyze path/to/WoWCombatLog.txt
 - `peek <file>`: only the log's encounters (quick read).
 - `positions <file>`: where the players stood on each boss, to align an arena image.
 - `radius <file> --damage <id> (--aura <id> | --npc <id> | --soak)`: the radius of an area.
-- `wcl <folder>[,<folder>] [--json] [--local <log>] [--spells]`: analyzes reports downloaded from Warcraft Logs (`scripts/wcl-fetch.mjs`), or with `--spells` prints their spell CSV; `WIPE_TZ` sets their time zone (default -3).
+- `wcl <folder>[,<folder>] [--json] [--local <log>] [--spells]`: analyzes reports downloaded from Warcraft Logs (`scripts/wcl-fetch.mjs`), or with `--spells` prints their spell CSV; `WIPE_TZ` sets their time zone (default -3). With `--fight <report>:<fight>`, one of their pulls' full replay.
+- `probe <measure> <log | WCL folder>[,...] --encounter <id> [--difficulty 16] [--json]`: the boss measurements (`ids`, `units`, `falloff`, `pulse-radius`, `ahead`, `cone`, `wave-dir`, `pool`; each one's options at the top of `crates/wipe-core/src/bin/wipe-cli.rs`).
 - `fight <file> --pull <id>`: one pull's full replay.
 
 Web version (the same core in WebAssembly, published on GitHub Pages):
@@ -69,7 +70,7 @@ Other development tools:
 | `cargo test -p wipe-core` | core tests (as in CI; `cargo test` alone runs the whole workspace) |
 | `npm run fixture` | regenerates the core's test log (`crates/wipe-core/tests/fixtures/`) |
 | `npm run docs:links` | checks the links between docs |
-| `node scripts/wcl-fetch.mjs <code> [folder]` | downloads a Warcraft Logs report to `samples/wcl-<code>/` (credentials only from environment variables) |
+| `node scripts/wcl-fetch.mjs <code> [folder]` | downloads a Warcraft Logs report to `samples/wcl-<code>/` (credentials only from environment variables; `WCL_ENCOUNTER` and `WCL_DIFFICULTY` download only one boss's pulls) |
 | `node scripts/compare-reports.mjs a.json b.json` | compares two `wipe-cli` reports pull by pull |
 | `node scripts/arena-check.mjs <log> <encounter id> [--difficulty 16] [--draw out.svg]` | checks that everything that is not a player stays on the arena floor |
 | `node scripts/i18n-yaml.mjs extract <out.json>` / `apply <in.json>` | converts YAML texts written in one language only |
@@ -99,7 +100,7 @@ Rules that decide how a feature is designed in this project.
 
 ### Feature workflow
 
-A request goes through EGM when it meets at least one of these:
+A request is a big feature, and needs a design before the code, when it meets at least one of these:
 
 - **(a)** it changes the core (`crates/` or `src-tauri/`) and the interface (`src/`) in the same change;
 - **(b)** it creates a new kind of field or check in `encounters/`, `rotations/` or `data/*.json`;
@@ -107,22 +108,23 @@ A request goes through EGM when it meets at least one of these:
 
 Left out, even if they meet (a): a bug fix with a known cause, and boss or spec content that only uses fields that already exist (those go through the standard processes). Also left out: text-only changes (docs or interface phrases) and visual-only changes that create no screen or component. When in doubt, the session asks the developer.
 
-A big feature has a design in `docs/designs/` (index in [SITEMAP.md](designs/SITEMAP.md), in Portuguese), with Status Approved, inside the feature's PR and cited in the PR description. It can be written by hand, following the template in the SITEMAP, or with the EGM plugin (`egm@egm`).
+A big feature has a design in `docs/designs/` (index in [SITEMAP.md](designs/SITEMAP.md), in Portuguese), with Status Approved, inside the feature's PR and cited in the PR description. It is written by hand, following the template in the SITEMAP, and approved by the developer before the code. The project no longer uses the EGM plugin (`egm@egm`) since 2026-11-20.
 
-Before a minor release: `npm run docs:links` exits with 0, and the doc check from [the EGM design](designs/egm-adoption.md) (in Portuguese) runs on CONTRIBUTING, the APP-MAP and the rule docs, plus any doc changed since the last minor tag.
+Before a minor release: `npm run docs:links` exits with 0, and the doc check from [the adoption design](designs/egm-adoption.md) (in Portuguese; Part 3, with one plain read-only subagent per unit) runs on CONTRIBUTING, the APP-MAP and the rule docs, plus any doc changed since the last minor tag.
 
 ### Standard processes
 
-Each piece of a boss and of a spec has its own process: a script does what is numbers (no AI) and writes a report with **OK**, **ATENÇÃO** (attention) or **REVISAR** (review); a Claude Code skill handles the REVISAR items. Boss rules are the exception: `wipe-cli spells` (CSV) and `wipe-cli radius` (histogram) give the numbers without a status, and the boss's status report comes from `replay:check`.
+Each piece of a boss and of a spec has its own process: a script does what is numbers (no AI) and writes a report with **OK**, **ATENÇÃO** (attention) or **REVISAR** (review); a Claude Code skill handles the REVISAR items. Boss rules are the exception: `wipe-cli spells` (CSV), `wipe-cli radius` (histogram) and `wipe-cli probe` (one subcommand per measurement method in `replay-methods.md`) give the numbers without a status, and the boss's status report comes from `replay:check`.
 
 | What | Numbers | REVISAR |
 |---|---|---|
+| New boss, end to end (collection, rule draft, measurement, arena, checks) | `npm run boss:new` | `boss-new` skill |
 | Boss rules (what is a mistake, who is blamed) | `wipe-cli spells` / `wipe-cli radius` | `boss-rules` skill |
 | Boss replay (abilities on the map, arena) | `npm run replay:check` | `replay-build` skill |
 | Spec rotation | `npm run refresh` | `rotation-refresh` skill |
 | Boss simulation (the SimulationCraft bot) | `npm run sim:check` | `sim-calibrate` skill |
 
-A new boss goes through the first two and the last; a patch or a new raid, through `refresh` too.
+A new boss starts with `npm run boss:new -- <encounter_id> [--log <log>] [--tops N] [--wcl <code>] [--difficulty Mythic] [--only <stage>] [--fresh]` ([design](designs/boss-new.md), in Portuguese; options at the top of `scripts/boss-new.mjs`), which runs the boss rows below in order; a patch or a new raid also goes through `refresh`.
 
 <details>
 <summary><b>Updating everything after a patch, a new raid or a nerf</b></summary>
@@ -167,7 +169,7 @@ The texts come out as templates ("X wasted: use it before it expires"), in both 
 
 [Project rule 6](#project-rules): the boss's abilities always show on the replay (frontals as cones, things on the ground, areas around whoever carries something or around a boss unit, lines, soaks, explosions, orbs, adds) on top of the boss's arena (raidplan.io image aligned with the log's coordinates, `data/arenas.json`).
 
-`npm run replay:check -- <WoWCombatLog.txt | report.json> [--boss "<name>"] [--difficulty Mythic]` (without them, the boss and difficulty with the most pulls) crosses the log with the boss rule and the arena and writes `samples/replay/<date>-<boss>-<difficulty>.md` (and `.json`): each enemy ability that hit players, the rule it is in and what it draws; the boss's casts no rule knows (frontals and lines often start there); units that deal damage and are not on the map; missing arena or a poor fit. Needs `wipe-cli` built in release.
+`npm run replay:check -- <WoWCombatLog.txt | report.json | samples/wcl-<code>[,...]> [--boss "<name>"] [--difficulty Mythic] [--shape-pulls N]` (without them, the boss and difficulty with the most pulls) crosses the log with the boss rule and the arena and writes `samples/replay/<date>-<boss>-<difficulty>.md` (and `.json`): each enemy ability that hit players, the rule it is in and what it draws; the boss's casts no rule knows (frontals and lines often start there); units that deal damage and are not on the map; missing arena or a poor fit; the drawn shape measured against the log in the N longest pulls (default 6), the rule's ids by role and damage that falls off with distance. Needs `wipe-cli` built in release.
 
 REVISAR is a shape or a rule to write: Claude Code's `replay-build` skill handles it (shapes, measuring sizes with `wipe-cli radius`, the arena with `scripts/arena-fit.mjs`, the ghosts with `scripts/ghost-calibrate.mjs`). Example audit: [docs/coiled-altar-replay-audit.md](coiled-altar-replay-audit.md) (in Portuguese). Method: [docs/replay-methods.md](replay-methods.md) (in Portuguese). Other audits: [docs/twin-fangs-vashnik-replay-audit.md](twin-fangs-vashnik-replay-audit.md) and [docs/ulatek-replay-audit.md](ulatek-replay-audit.md) (in Portuguese).
 

@@ -2,6 +2,7 @@
 // análise sem o log local. Ferramenta de desenvolvimento.
 //
 //   $env:WCL_CLIENT_ID="..."; $env:WCL_CLIENT_SECRET="..."; node scripts/wcl-fetch.mjs <código> [pasta]
+//   $env:WCL_ENCOUNTER="3513"; $env:WCL_DIFFICULTY="5"   só os pulls desse boss (e dificuldade do WCL: 5 mítico)
 //
 // As credenciais vêm só das variáveis de ambiente (nunca de arquivo). A saída vai para
 // samples/wcl-<código>/ (fora do git: tem dados da guilda): report.json e um fight-<id>.json
@@ -65,7 +66,9 @@ const EVENTS = `query E($code: String!, $fight: Int!, $start: Float!, $end: Floa
 
 fs.mkdirSync(out, { recursive: true });
 fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report));
-const bosses = report.fights.filter((f) => f.encounterID > 0);
+const onlyBoss = Number(process.env.WCL_ENCOUNTER) || null;
+const onlyDiff = Number(process.env.WCL_DIFFICULTY) || null;
+const bosses = report.fights.filter((f) => f.encounterID > 0 && (!onlyBoss || f.encounterID === onlyBoss) && (!onlyDiff || f.difficulty === onlyDiff));
 for (const f of bosses) {
   const all = [];
   let start = f.startTime;
